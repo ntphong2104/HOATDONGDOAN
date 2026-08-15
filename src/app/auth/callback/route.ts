@@ -32,29 +32,38 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/login?error=auth_failed`);
     }
 
-    const email = session.user.email.toLowerCase();
+    const email = session.user.email.toLowerCase().trim();
 
-    // Check if super admin
+    // 1. Check super admin
     const { data: superAdmin } = await supabase
       .from('super_admins')
       .select('email')
-      .eq('email', email)
+      .ilike('email', email)
       .single();
 
-    if (!superAdmin && !isValidSchoolEmail(email)) {
-      await supabase.auth.signOut();
-      return NextResponse.redirect(`${origin}/login?error=invalid_domain`);
-    }
+    // 2. Check registered student or unit in users table
+    const { data: registeredUser } = await supabase
+      .from('users')
+      .select('email')
+      .ilike('email', email)
+      .single();
 
-    // Check event roles
+    // 3. Check event role
     const { data: eventRoles } = await supabase
       .from('event_roles')
       .select('role_type')
-      .eq('email', email);
+      .ilike('email', email);
 
     const isSuperAdmin = !!superAdmin;
     const isEventAdmin = eventRoles?.some((r) => r.role_type === 'event_admin');
     const isChecker = eventRoles?.some((r) => r.role_type === 'checker');
+
+    const isAuthorized = isSuperAdmin || !!registeredUser || (eventRoles && eventRoles.length > 0) || isValidSchoolEmail(email);
+
+    if (!isAuthorized) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(`${origin}/login?error=invalid_domain`);
+    }
 
     // Check or auto-register student user in users table only if it's a real student email with MSSV format
     const studentMssv = extractMSSV(email);

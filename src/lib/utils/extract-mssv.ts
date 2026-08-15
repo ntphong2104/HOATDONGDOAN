@@ -1,6 +1,11 @@
 export function getSchoolDomains(): string[] {
   const envDomain = process.env.NEXT_PUBLIC_SCHOOL_DOMAIN;
-  const defaults = ['student.ptithcm.edu.vn', 'ptithcm.edu.vn'];
+  const defaults = [
+    'student.ptithcm.edu.vn',
+    'ptithcm.edu.vn',
+    'ptit.edu.vn',
+    'stu.ptit.edu.vn',
+  ];
   if (envDomain && !defaults.includes(envDomain.toLowerCase())) {
     return [envDomain.toLowerCase(), ...defaults];
   }
