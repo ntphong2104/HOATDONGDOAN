@@ -59,11 +59,15 @@ export async function POST(req: Request) {
       .eq('event_id', event_id)
       .single();
 
-    if (!event || event.status !== 'active' || isEventPastDeadline(event)) {
+    if (!event || (!isSuperOrEventAdmin && (event.status !== 'active' || isEventPastDeadline(event)))) {
       if (event && event.status === 'active' && isEventPastDeadline(event)) {
         supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', event_id).then(() => {});
       }
       return NextResponse.json({ success: false, error: 'Bad Request', message: 'Sự kiện đã đóng hoặc đã kết thúc điểm danh (quá 1 giờ sau khi kết thúc)' }, { status: 400 });
+    }
+
+    if (!event) {
+      return NextResponse.json({ success: false, error: 'Not Found', message: 'Sự kiện không tồn tại' }, { status: 404 });
     }
 
     const { data: student } = await supabase
