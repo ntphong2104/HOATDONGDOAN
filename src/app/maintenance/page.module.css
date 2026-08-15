@@ -1,0 +1,33 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  background-color: var(--neutral-50);
+}
+
+.iconWrapper {
+  color: var(--primary-600);
+  margin-bottom: 2rem;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 50%;
+  box-shadow: var(--shadow-md);
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin-bottom: 1rem;
+}
+
+.message {
+  font-size: 1.125rem;
+  color: var(--neutral-600);
+  max-width: 500px;
+  line-height: 1.5;
+}

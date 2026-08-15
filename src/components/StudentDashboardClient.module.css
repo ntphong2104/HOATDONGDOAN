@@ -1,0 +1,204 @@
+.roleLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.adminLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.superAdminLink {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.superAdminLink:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.15);
+  transform: translateY(-1px);
+}
+
+.eventAdminLink {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.eventAdminLink:hover {
+  background: #dbeafe;
+  border-color: #60a5fa;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
+  transform: translateY(-1px);
+}
+
+.scannerLink {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.scannerLink:hover {
+  background: #dcfce7;
+  border-color: #4ade80;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.15);
+  transform: translateY(-1px);
+}
+
+/* Scan Event Section */
+.scanEventSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+.scanEventButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+}
+
+.scanEventButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+}
+
+.scanHelpText {
+  font-size: 0.8rem;
+  color: #475569;
+  margin: 0.625rem 0 0 0;
+}
+
+.qrSection {
+  margin-bottom: 2.25rem;
+  display: flex;
+  justify-content: center;
+}
+
+.historySection {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+}
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.historyTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.emptyHistory {
+  color: #94a3b8;
+  text-align: center;
+  padding: 3rem 1rem;
+  font-size: 0.95rem;
+}
+
+.historyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.historyItem {
+  padding: 1.125rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: all 0.15s ease;
+}
+
+.historyItem:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.historyMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.eventName {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.semester {
+  font-size: 0.825rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.historyDetails {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.35rem;
+  padding-top: 0.625rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.time {
+  font-size: 0.825rem;
+  color: #64748b;
+  font-weight: 500;
+}

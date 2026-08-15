@@ -1,0 +1,79 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: var(--warning-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.iconContainer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background-color: rgba(234, 179, 8, 0.1);
+  color: var(--warning-500);
+  border-radius: 50%;
+  margin-bottom: 1.5rem;
+}
+
+.iconContainer svg {
+  width: 32px;
+  height: 32px;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin: 0 0 1rem 0;
+}
+
+.message {
+  font-size: 0.9375rem;
+  color: var(--neutral-500);
+  line-height: 1.5;
+  margin: 0 0 1.5rem 0;
+}
+
+.instructions {
+  background-color: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  color: var(--neutral-900);
+}
+
+.instructions p {
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.instructions ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.instructions li {
+  margin-bottom: 0.25rem;
+}
+
+.instructions li:last-child {
+  margin-bottom: 0;
+}

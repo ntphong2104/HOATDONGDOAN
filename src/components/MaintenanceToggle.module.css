@@ -1,0 +1,157 @@
+.container {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--neutral-200);
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.active {
+  border-color: rgba(239, 68, 68, 0.5); /* error-500 approx */
+  background-color: rgba(254, 242, 242, 0.5); /* neutral/red mix */
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin: 0 0 0.5rem 0;
+}
+
+.active .title {
+  color: var(--error-500);
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--neutral-500);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.active .subtitle {
+  color: var(--error-500);
+  opacity: 0.9;
+}
+
+.toggle {
+  position: relative;
+  width: 50px;
+  height: 26px;
+  border-radius: 13px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggleOff {
+  background-color: var(--neutral-300);
+}
+
+.toggleOn {
+  background-color: var(--error-500);
+}
+
+.toggleKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.knobOn {
+  transform: translateX(24px);
+}
+
+.knobOff {
+  transform: translateX(0);
+}
+
+.messageSection {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--neutral-200);
+  animation: slideDown 0.3s ease-out;
+}
+
+.active .messageSection {
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--neutral-700);
+  margin-bottom: 0.5rem;
+}
+
+.textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--neutral-300);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  margin-bottom: 1rem;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--error-500);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.saveBtn {
+  background-color: var(--neutral-900);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background-color: var(--neutral-700);
+}
+
+.saveBtn:disabled {
+  background-color: var(--neutral-300);
+  color: var(--neutral-500);
+  cursor: not-allowed;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
