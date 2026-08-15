@@ -3,23 +3,29 @@ import { createServerClient } from '@supabase/ssr';
 
 const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
 
-async function verifyCookie(signed: string): Promise<string | null> {
-  const parts = signed.split('.');
-  if (parts.length !== 2) return null;
-  const [payload, signature] = parts;
-
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(COOKIE_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const buffer = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
-  const expectedSignature = Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-  if (signature === expectedSignature) return payload;
+function parseDemoCookie(cookieVal: string): any | null {
+  if (!cookieVal) return null;
+  try {
+    let decoded = decodeURIComponent(cookieVal);
+    if (decoded.includes('.')) {
+      decoded = decoded.substring(0, decoded.lastIndexOf('.'));
+    }
+    const user = JSON.parse(decoded);
+    if (user && user.email && user.tier) {
+      return user;
+    }
+  } catch {
+    try {
+      let raw = cookieVal;
+      if (raw.includes('.')) {
+        raw = raw.substring(0, raw.lastIndexOf('.'));
+      }
+      const user = JSON.parse(raw);
+      if (user && user.email && user.tier) {
+        return user;
+      }
+    } catch {}
+  }
   return null;
 }
 
@@ -60,41 +66,7 @@ export async function middleware(request: NextRequest) {
   // 1. Check Demo Session Cookie
   const demoCookie = request.cookies.get('demo_session');
   if (demoCookie?.value) {
-    let payload = await verifyCookie(demoCookie.value);
-    if (!payload) {
-      const rawPart = demoCookie.value.includes('.') ? demoCookie.value.split('.')[0] : demoCookie.value;
-      try {
-        const testUser = JSON.parse(decodeURIComponent(rawPart));
-        if (testUser?.email && testUser?.tier) {
-          payload = rawPart;
-        }
-      } catch {
-        try {
-          const testUser = JSON.parse(rawPart);
-          if (testUser?.email && testUser?.tier) {
-            payload = rawPart;
-          }
-        } catch {}
-      }
-    }
-
-    if (!payload) {
-      const response = NextResponse.redirect(new URL('/login', request.url));
-      response.cookies.delete('demo_session');
-      return addSecurityHeaders(response);
-    }
-    
-    let demoUser: any = null;
-    try {
-      demoUser = JSON.parse(decodeURIComponent(payload));
-    } catch {
-      try {
-        demoUser = JSON.parse(payload);
-      } catch {
-        demoUser = null;
-      }
-    }
-
+    const demoUser = parseDemoCookie(demoCookie.value);
     if (demoUser) {
       if (pathname === '/login') {
         return addSecurityHeaders(NextResponse.redirect(new URL('/', request.url)));
@@ -123,7 +95,7 @@ export async function middleware(request: NextRequest) {
         return addSecurityHeaders(NextResponse.redirect(new URL('/', request.url)));
       }
 
-      return addSecurityHeaders(NextResponse.next({ request }));
+      return addSecurityHeaders(NextResponse.next());
     }
   }
 
