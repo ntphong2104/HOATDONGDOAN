@@ -145,19 +145,29 @@ export async function GET() {
     if (isSuperAdmin) {
       const { data: allEvents } = await supabase
         .from('events')
-        .select('event_id, event_name')
+        .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
         .order('created_at', { ascending: false });
 
       managed_events = (allEvents || []).map((e: any) => ({
         event_id: e.event_id,
         event_name: e.event_name,
         role_type: 'event_admin',
+        status: e.status,
+        is_active: e.is_active,
+        event_date: e.event_date,
+        start_time: e.start_time,
+        end_time: e.end_time,
       }));
     } else {
       managed_events = (eventRoles || []).map((r: any) => ({
         event_id: r.event_id,
         event_name: r.events?.event_name || 'Không rõ',
         role_type: r.role_type,
+        status: (r.events as any)?.status,
+        is_active: (r.events as any)?.is_active,
+        event_date: (r.events as any)?.event_date,
+        start_time: (r.events as any)?.start_time,
+        end_time: (r.events as any)?.end_time,
       }));
     }
 

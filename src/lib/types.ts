@@ -127,6 +127,11 @@ export interface ManagedEvent {
   event_id: string;
   event_name: string;
   role_type: 'event_admin' | 'checker';
+  status?: string;
+  is_active?: boolean;
+  event_date?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
 // ──── API Response Types ────

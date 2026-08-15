@@ -35,12 +35,15 @@ export default function ScannerPage() {
 
   useEffect(() => {
     fetch('/api/me')
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.success) {
           setUser(data.data);
-          if (data.data.managed_events.length > 0) {
-            setSelectedEventId(data.data.managed_events[0].event_id);
+          const activeList = (data.data.managed_events || []).filter(
+            (e: any) => e.status === 'active' && e.is_active !== false
+          );
+          if (activeList.length > 0) {
+            setSelectedEventId(activeList[0].event_id);
           } else if (data.data.tier === 'user') {
             router.push('/');
           }
@@ -110,6 +113,9 @@ export default function ScannerPage() {
   if (!user) return null;
 
   const isEventAdminOrSuper = user.tier === 'super_admin' || user.tier === 'event_admin';
+  const activeEvents = (user.managed_events || []).filter(
+    (e) => e.status === 'active' && e.is_active !== false
+  );
 
   return (
     <div className={styles.container}>
@@ -118,11 +124,17 @@ export default function ScannerPage() {
         <InAppBrowserWarning />
         
         <div className={styles.controls}>
-          <EventSelector 
-            events={user.managed_events} 
-            selectedEventId={selectedEventId} 
-            onChange={setSelectedEventId} 
-          />
+          {activeEvents.length > 0 ? (
+            <EventSelector 
+              events={activeEvents} 
+              selectedEventId={selectedEventId} 
+              onChange={setSelectedEventId} 
+            />
+          ) : (
+            <div style={{ padding: '0.85rem 1rem', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', color: '#64748b', fontSize: '0.9rem', textAlign: 'center', fontWeight: 600 }}>
+              Hiện không có sự kiện nào đang mở điểm danh
+            </div>
+          )}
           {isEventAdminOrSuper ? (
             <RoleSelector 
               selectedRole={selectedRole} 
@@ -137,10 +149,14 @@ export default function ScannerPage() {
         </div>
 
         <div className={styles.scannerWrapper}>
-          {selectedEventId ? (
+          {selectedEventId && activeEvents.some(e => e.event_id === selectedEventId) ? (
             <QRScanner onScanSuccess={handleScan} isPaused={isPaused} />
           ) : (
-            <div className={styles.noEvent}>Vui lòng chọn sự kiện</div>
+            <div className={styles.noEvent}>
+              {activeEvents.length === 0
+                ? 'Không có sự kiện nào đang diễn ra để quét mã'
+                : 'Vui lòng chọn sự kiện để quét mã'}
+            </div>
           )}
           
           <ScanResultOverlay 
