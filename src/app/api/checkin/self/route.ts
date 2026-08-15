@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     }
 
     const parts = token.split(':');
-    if (parts.length !== 3) {
+    if (parts.length !== 3 && parts.length !== 4) {
       return NextResponse.json({ success: false, error: 'Mã QR sự kiện không đúng định dạng' }, { status: 400 });
     }
 
