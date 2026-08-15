@@ -20,6 +20,12 @@ import styles from './page.module.css';
 
 export const OFFICIAL_UNITS = [
   {
+    group: '── ĐOÀN THANH NIÊN HỌC VIỆN ──',
+    items: [
+      'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
+    ],
+  },
+  {
     group: '── 8 LIÊN CHI ĐOÀN (LCĐ) ──',
     items: [
       'LCĐ Khoa Công nghệ Thông tin',

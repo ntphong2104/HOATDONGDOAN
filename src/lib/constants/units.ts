@@ -6,6 +6,9 @@ export interface OfficialUnit {
 }
 
 export const OFFICIAL_UNITS: OfficialUnit[] = [
+  // Đoàn Học Viện
+  { code: 'BCH_DOAN', name: 'Đoàn TNCS Học Viện (Đoàn Trường)', type: 'Đoàn Học Viện', email: 'doanthanhnien@ptithcm.edu.vn' },
+
   // 8 Liên Chi Đoàn Khoa
   { code: 'LCD_CNTT', name: 'LCĐ Khoa Công nghệ Thông tin', type: 'LCĐ Khoa', email: 'lcdcntt@student.ptithcm.edu.vn' },
   { code: 'LCD_CNDPT', name: 'LCĐ Công nghệ Đa phương tiện', type: 'LCĐ Khoa', email: 'lcdcndpt@student.ptithcm.edu.vn' },

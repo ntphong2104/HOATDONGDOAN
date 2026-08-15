@@ -709,6 +709,40 @@ function SuperAdminContent() {
                 </button>
 
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', padding: '0.4rem 0.65rem 0.15rem' }}>
+                  Đoàn Thanh Niên Học Viện
+                </div>
+                {OFFICIAL_UNITS.filter((u) => u.type.includes('Đoàn')).map((unit) => (
+                  <button
+                    key={unit.code}
+                    type="button"
+                    onClick={() => {
+                      setSelectedUnitFilter(unit.name);
+                      setActiveTab('events');
+                      setIsSidebarOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.45rem 0.65rem',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: selectedUnitFilter === unit.name ? '#2563eb' : 'transparent',
+                      color: selectedUnitFilter === unit.name ? '#ffffff' : '#334155',
+                      fontWeight: selectedUnitFilter === unit.name ? 800 : 500,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {unit.name}
+                    </span>
+                    {selectedUnitFilter === unit.name && <span>✓</span>}
+                  </button>
+                ))}
+
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', padding: '0.4rem 0.65rem 0.15rem' }}>
                   8 Liên Chi Đoàn Khoa
                 </div>
                 {OFFICIAL_UNITS.filter((u) => u.type.includes('LCĐ')).map((unit) => (
@@ -745,7 +779,7 @@ function SuperAdminContent() {
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', padding: '0.5rem 0.65rem 0.15rem' }}>
                   16 CLB / Đội / Nhóm
                 </div>
-                {OFFICIAL_UNITS.filter((u) => !u.type.includes('LCĐ')).map((unit) => (
+                {OFFICIAL_UNITS.filter((u) => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map((unit) => (
                   <button
                     key={unit.code}
                     type="button"
@@ -2352,6 +2386,13 @@ function SuperAdminContent() {
                       outline: 'none',
                     }}
                   >
+                    <optgroup label="Đoàn Thanh Niên Học Viện">
+                      {OFFICIAL_UNITS.filter(u => u.type.includes('Đoàn')).map(u => (
+                        <option key={u.code} value={u.code}>
+                          {u.name} ({u.email})
+                        </option>
+                      ))}
+                    </optgroup>
                     <optgroup label="8 Liên Chi Đoàn Khoa">
                       {OFFICIAL_UNITS.filter(u => u.type.includes('LCĐ')).map(u => (
                         <option key={u.code} value={u.code}>
@@ -2360,7 +2401,7 @@ function SuperAdminContent() {
                       ))}
                     </optgroup>
                     <optgroup label="16 CLB / Đội / Nhóm">
-                      {OFFICIAL_UNITS.filter(u => !u.type.includes('LCĐ')).map(u => (
+                      {OFFICIAL_UNITS.filter(u => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map(u => (
                         <option key={u.code} value={u.code}>
                           {u.name} ({u.email})
                         </option>
