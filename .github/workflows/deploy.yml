@@ -17,8 +17,6 @@ jobs:
           script: |
             cd /var/www/hoatdongdoan
             git pull origin main
-            npm install --production
-            rm -rf .next
-            npm run build
+            npx next build
             pm2 restart hoatdongdoan --update-env
-            echo "✅ Deploy completed at $(date)"
+            echo "✅ Deploy completed in lightning speed at $(date)"
