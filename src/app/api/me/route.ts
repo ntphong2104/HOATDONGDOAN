@@ -17,16 +17,18 @@ export async function GET() {
     const cookieStore = await cookies();
     const demoCookie = cookieStore.get('demo_session');
     if (demoCookie?.value) {
-      let rawVal = demoCookie.value;
-      if (rawVal.includes('.')) {
-        const parts = rawVal.split('.');
-        rawVal = parts[0];
+      let raw = demoCookie.value.trim();
+      const sigMatch = raw.match(/^(.+)\.[0-9a-fA-F]{64}$/);
+      if (sigMatch) {
+        raw = sigMatch[1];
       }
       let demoUser: any = null;
       try {
-        demoUser = JSON.parse(decodeURIComponent(rawVal));
+        demoUser = JSON.parse(decodeURIComponent(raw));
       } catch {
-        demoUser = JSON.parse(rawVal);
+        try {
+          demoUser = JSON.parse(raw);
+        } catch {}
       }
       if (demoUser && demoUser.email) {
         return NextResponse.json({ success: true, data: demoUser }, { headers: noCacheHeaders });

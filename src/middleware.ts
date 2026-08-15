@@ -6,26 +6,20 @@ const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
 function parseDemoCookie(cookieVal: string): any | null {
   if (!cookieVal) return null;
   try {
-    let decoded = decodeURIComponent(cookieVal);
-    if (decoded.includes('.')) {
-      decoded = decoded.substring(0, decoded.lastIndexOf('.'));
+    let raw = cookieVal.trim();
+    // Only strip signature if it matches .[64-hex-chars] at the very end
+    const sigMatch = raw.match(/^(.+)\.[0-9a-fA-F]{64}$/);
+    if (sigMatch) {
+      raw = sigMatch[1];
     }
-    const user = JSON.parse(decoded);
-    if (user && user.email && user.tier) {
-      return user;
-    }
-  } catch {
     try {
-      let raw = cookieVal;
-      if (raw.includes('.')) {
-        raw = raw.substring(0, raw.lastIndexOf('.'));
-      }
+      const user = JSON.parse(decodeURIComponent(raw));
+      if (user && user.email) return user;
+    } catch {
       const user = JSON.parse(raw);
-      if (user && user.email && user.tier) {
-        return user;
-      }
-    } catch {}
-  }
+      if (user && user.email) return user;
+    }
+  } catch {}
   return null;
 }
 
