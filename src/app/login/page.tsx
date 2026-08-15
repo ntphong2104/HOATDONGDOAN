@@ -68,10 +68,7 @@ function LoginContent() {
       });
       const data = await res.json();
       if (data.success && data.redirectUrl) {
-        if (typeof window !== 'undefined' && data.profile) {
-          document.cookie = `demo_session=${encodeURIComponent(JSON.stringify(data.profile))}; path=/; max-age=604800; SameSite=Lax;`;
-          window.location.replace(data.redirectUrl);
-        } else if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined') {
           window.location.replace(data.redirectUrl);
         }
       } else {

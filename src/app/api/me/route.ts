@@ -17,8 +17,20 @@ export async function GET() {
     const cookieStore = await cookies();
     const demoCookie = cookieStore.get('demo_session');
     if (demoCookie?.value) {
-      const demoUser = JSON.parse(decodeURIComponent(demoCookie.value));
-      return NextResponse.json({ success: true, data: demoUser }, { headers: noCacheHeaders });
+      let rawVal = demoCookie.value;
+      if (rawVal.includes('.')) {
+        const parts = rawVal.split('.');
+        rawVal = parts[0];
+      }
+      let demoUser: any = null;
+      try {
+        demoUser = JSON.parse(decodeURIComponent(rawVal));
+      } catch {
+        demoUser = JSON.parse(rawVal);
+      }
+      if (demoUser && demoUser.email) {
+        return NextResponse.json({ success: true, data: demoUser }, { headers: noCacheHeaders });
+      }
     }
   } catch {
     // Non-request context fallback
