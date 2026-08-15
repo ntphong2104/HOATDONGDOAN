@@ -35,8 +35,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true);
   const [reconciling, setReconciling] = useState(false);
   const [togglingReg, setTogglingReg] = useState(false);
-  const [activeTab, setActiveTab] = useState<'checkins' | 'registrations' | 'ratings'>('checkins');
+  const [activeTab, setActiveTab] = useState<'checkins' | 'registrations' | 'ratings' | 'noshow'>('checkins');
   const [ratings, setRatings] = useState<any[]>([]);
+  const [manualMSSV, setManualMSSV] = useState('');
+  const [manualCheckinStatus, setManualCheckinStatus] = useState('');
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingFeedback, setRatingFeedback] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
@@ -164,6 +166,29 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const handleManualCheckin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualMSSV.trim()) return;
+    setManualCheckinStatus('Đang xử lý...');
+    try {
+      const res = await fetch('/api/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mssv: manualMSSV.trim(), event_id: event?.event_id, participate_role: 'participant' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setManualCheckinStatus(`Thành công: Đã điểm danh cho ${manualMSSV}`);
+        setManualMSSV('');
+        fetchData();
+      } else {
+        setManualCheckinStatus(`Lỗi: ${data.message || data.error}`);
+      }
+    } catch (err: any) {
+      setManualCheckinStatus(`Lỗi kết nối: ${err.message}`);
+    }
   };
 
   const handleReconcileAttendance = async () => {
@@ -302,6 +327,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </span>
           </p>
 
+          {event.status === 'active' && (
+            <>
           <div
             style={{
               marginTop: '1.25rem',
@@ -523,16 +550,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
           </div>
+            </>
+          )}
         </div>
 
-        <DynamicEventQRModal
-          eventId={event.event_id}
-          eventName={event.event_name}
-          targetRole={projectorRole}
-          isOpen={showDynamicQR}
-          onClose={() => setShowDynamicQR(false)}
-        />
+        {event.status === 'active' && (
+          <DynamicEventQRModal
+            eventId={event.event_id}
+            eventName={event.event_name}
+            targetRole={projectorRole}
+            isOpen={showDynamicQR}
+            onClose={() => setShowDynamicQR(false)}
+          />
+        )}
 
+        {event.status === 'active' && (
         <div className={styles.statsGrid}>
           <StatCard
             title="Người tham gia"
@@ -556,7 +588,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             subtitle="Điều phối chương trình"
           />
         </div>
+        )}
 
+        {event.status === 'active' && (
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
@@ -591,6 +625,31 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             )}
           </ul>
         </section>
+        )}
+
+        {event.status !== 'active' && isSuperAdmin && (
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Bổ sung điểm danh thủ công (Super Admin)</h2>
+            </div>
+            <form onSubmit={handleManualCheckin} className={styles.addForm} style={{ marginBottom: '1rem' }}>
+              <input 
+                type="text" 
+                placeholder="Nhập MSSV cần điểm danh..." 
+                value={manualMSSV}
+                onChange={(e) => setManualMSSV(e.target.value)}
+                className={styles.input}
+                required
+              />
+              <button type="submit" className={styles.button}>Điểm danh</button>
+            </form>
+            {manualCheckinStatus && (
+              <div style={{ color: manualCheckinStatus.startsWith('Lỗi') ? '#dc2626' : '#16a34a', fontSize: '0.9rem', fontWeight: 600 }}>
+                {manualCheckinStatus}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
@@ -627,6 +686,23 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 }}
               >
                 Danh Sách Đăng Ký ({registrations.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('noshow')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: activeTab === 'noshow' ? '#2563eb' : '#f1f5f9',
+                  color: activeTab === 'noshow' ? '#ffffff' : '#475569',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Chưa Điểm Danh ({registrations.filter(r => !r.attended).length})
               </button>
 
               {(isApproverRole || ratings.length > 0) && (
@@ -703,6 +779,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               searchable
               searchPlaceholder="Tìm kiếm trong danh sách đăng ký..."
               emptyMessage="Chưa có sinh viên nào đăng ký sự kiện này."
+            />
+          ) : activeTab === 'noshow' ? (
+            <DataTable 
+              columns={[
+                { key: 'mssv', label: 'MSSV' },
+                { key: 'full_name', label: 'Họ và tên' },
+                { key: 'class_id', label: 'Lớp' },
+                { key: 'role_type', label: 'Vai trò đăng ký' }
+              ]}
+              data={registrations.filter(r => !r.attended)}
+              searchable
+              searchPlaceholder="Tìm kiếm MSSV, Họ tên..."
+              emptyMessage="Không có sinh viên nào vắng mặt."
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
