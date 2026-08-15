@@ -272,12 +272,38 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const isSuperAdmin = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
   const backTarget = isSuperAdmin ? '/super-admin' : '/admin';
 
+  // Authorization: only super admin or users with a role in this event can view
+  const hasEventAccess = isSuperAdmin || currentUser?.managed_events?.some(
+    (e: any) => e.event_id === resolvedParams.id
+  );
+
   if (loading || !event) {
     return (
       <div className={styles.container}>
         <Header userName="Admin Sự Kiện" showBack backHref={backTarget} />
         <main className={styles.main}>
           <div className={styles.loading}>Đang tải thông tin sự kiện...</div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!hasEventAccess) {
+    return (
+      <div className={styles.container}>
+        <Header userName={currentUser?.full_name || 'Admin'} showBack backHref={backTarget} title="KHÔNG CÓ QUYỀN" />
+        <main className={styles.main}>
+          <div style={{
+            textAlign: 'center',
+            padding: '3rem 1.5rem',
+            background: '#fff1f2',
+            borderRadius: '16px',
+            border: '1.5px solid #fecaca',
+            color: '#b91c1c',
+          }}>
+            <p style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>⛔ Bạn không có quyền xem sự kiện này</p>
+            <p style={{ fontSize: '0.875rem', margin: 0, color: '#64748b' }}>Chỉ Super Admin hoặc người được gán vai trò trong sự kiện mới có quyền truy cập.</p>
+          </div>
         </main>
       </div>
     );
