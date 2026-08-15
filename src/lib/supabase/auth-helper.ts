@@ -101,8 +101,8 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   const isSubAdminUnit = lowerEmail.startsWith('lcd') || lowerEmail.startsWith('clb') || lowerEmail.startsWith('doi');
 
   const isSuperAdmin = !!superAdmin || explicitTier === 'super_admin';
-  const isEventAdmin = isSuperAdmin || isSubAdminUnit || (eventRoles?.some((r) => r.role_type === 'event_admin') ?? false) || explicitTier === 'event_admin';
-  const isChecker = isSuperAdmin || isSubAdminUnit || (eventRoles?.some((r) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) || explicitTier === 'checker';
+  const isEventAdmin = isSuperAdmin || isSubAdminUnit || (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) || explicitTier === 'event_admin';
+  const isChecker = isSuperAdmin || isSubAdminUnit || (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) || explicitTier === 'checker';
 
   let tier: UserTier = explicitTier || 'user';
   if (isSuperAdmin) {
