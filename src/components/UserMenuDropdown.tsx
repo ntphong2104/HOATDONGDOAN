@@ -37,13 +37,13 @@ export default function UserMenuDropdown({
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // If propUser is already a rich session user with non-user tier, use it
-    if (propUser && propUser.tier && propUser.tier !== 'user' && propUser.full_name) {
+    // If propUser is already provided, use it directly without network call
+    if (propUser && propUser.full_name) {
       setCurrentUser(propUser);
       return;
     }
 
-    // Always fetch fresh profile to guarantee correct tier and metadata
+    // Only fetch if no propUser provided
     if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
       window
         .fetch('/api/me')
