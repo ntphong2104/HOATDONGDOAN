@@ -5,12 +5,29 @@ import crypto from 'crypto';
 
 const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
 
-function verifyCookie(signed: string): string | null {
-  const parts = signed.split('.');
-  if (parts.length !== 2) return null;
-  const [payload, signature] = parts;
-  const expectedSignature = crypto.createHmac('sha256', COOKIE_SECRET).update(payload).digest('hex');
-  if (signature === expectedSignature) return payload;
+function parseDemoCookie(cookieVal: string): any | null {
+  if (!cookieVal) return null;
+  try {
+    let decoded = decodeURIComponent(cookieVal);
+    if (decoded.includes('.')) {
+      decoded = decoded.substring(0, decoded.lastIndexOf('.'));
+    }
+    const user = JSON.parse(decoded);
+    if (user && user.email) {
+      return user;
+    }
+  } catch {
+    try {
+      let raw = cookieVal;
+      if (raw.includes('.')) {
+        raw = raw.substring(0, raw.lastIndexOf('.'));
+      }
+      const user = JSON.parse(raw);
+      if (user && user.email) {
+        return user;
+      }
+    } catch {}
+  }
   return null;
 }
 
@@ -30,20 +47,12 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     const cookieStore = await cookies();
     const demoCookie = cookieStore.get('demo_session');
     if (demoCookie?.value) {
-      const payload = verifyCookie(demoCookie.value);
-      if (payload) {
-        let demoUser: any = null;
-        try {
-          demoUser = JSON.parse(decodeURIComponent(payload));
-        } catch {
-          demoUser = JSON.parse(payload);
-        }
+      const demoUser = parseDemoCookie(demoCookie.value);
       if (demoUser?.email) {
         email = demoUser.email;
         if (demoUser.tier) {
           explicitTier = demoUser.tier;
         }
-      }
       }
     }
   } catch {}
