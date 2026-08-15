@@ -1,6 +1,13 @@
 import crypto from 'crypto';
 
-const SECRET = process.env.DYNAMIC_QR_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('DYNAMIC_QR_SECRET is required in production'); })() : 'dev-only-secret-key');
+function getSecret(): string {
+  const secret = process.env.DYNAMIC_QR_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('DYNAMIC_QR_SECRET is required in production');
+  }
+  return 'dev-only-secret-key';
+}
 const WINDOW_SECONDS = 10; // Token changes every 10 seconds
 const TOLERANCE_WINDOWS = 2; // Valid for current window and 2 previous windows (~30s total)
 
@@ -10,7 +17,7 @@ export function generateDynamicToken(
   timestampMs = Date.now()
 ): { token: string; expiresInSeconds: number; window: number; role: string } {
   const currentWindow = Math.floor(timestampMs / 1000 / WINDOW_SECONDS);
-  const data = `${eventId}:${currentWindow}:${role}:${SECRET}`;
+  const data = `${eventId}:${currentWindow}:${role}:${getSecret()}`;
   const signature = crypto.createHash('sha256').update(data).digest('hex').substring(0, 16);
   const token = `${eventId}:${currentWindow}:${role}:${signature}`;
 
@@ -43,7 +50,7 @@ export function verifyDynamicToken(
       return { valid: false, role: 'participant' };
     }
 
-    const expectedData = `${eventId}:${tokenWindow}:${tokenRole}:${SECRET}`;
+    const expectedData = `${eventId}:${tokenWindow}:${tokenRole}:${getSecret()}`;
     const expectedSignature = crypto.createHash('sha256').update(expectedData).digest('hex').substring(0, 16);
 
     const sigBuf = Buffer.from(tokenSignature);
@@ -68,7 +75,7 @@ export function verifyDynamicToken(
       return { valid: false, role: 'participant' };
     }
 
-    const expectedData = `${eventId}:${tokenWindow}:${SECRET}`;
+    const expectedData = `${eventId}:${tokenWindow}:${getSecret()}`;
     const expectedSignature = crypto.createHash('sha256').update(expectedData).digest('hex').substring(0, 16);
 
     const sigBuf = Buffer.from(tokenSignature);
