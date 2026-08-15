@@ -174,7 +174,7 @@ export async function POST(req: Request) {
         room_name: room_name || 'Không mượn',
         requires_ctsv_approval: requiresCtsv,
         requires_facility_approval: requiresFacility,
-        current_stage: 'ctsv',
+        current_stage: 'youth_union',
         status: 'pending',
       })
       .select()

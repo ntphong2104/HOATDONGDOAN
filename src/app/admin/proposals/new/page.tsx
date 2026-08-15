@@ -774,16 +774,73 @@ export default function NewProposalPage() {
               </div>
               <div>
                 <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                  4. Quy Trình Phê Duyệt Tự Động (CTSV & Phòng Tổ Chức)
+                  4. Quy Trình Phê Duyệt Tự Động (Đoàn TN → CTSV → Phòng Tổ Chức)
                 </h2>
                 <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.2rem 0 0' }}>
-                  Kế hoạch đã qua Đoàn thông qua, hệ thống sẽ tự động chuyển trình Phòng CTSV và Phòng Tổ Chức để duyệt cấp phòng.
+                  Kế hoạch sẽ được gửi trình Đoàn Thanh Niên duyệt trước, sau đó tự động chuyển sang CTSV và Phòng Tổ Chức.
                 </p>
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              {/* Bước 1 */}
+              {/* Bước 1 - Đoàn TN */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1rem 1.25rem',
+                  background: '#ffffff',
+                  border: '1.5px solid #bbf7d0',
+                  borderRadius: '14px',
+                  boxShadow: '0 2px 8px rgba(22, 163, 74, 0.06)',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '10px',
+                      background: '#16a34a',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.9rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    1
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                      Đoàn TNCS Học Viện Duyệt Kế Hoạch
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
+                      Đoàn Thanh Niên xét duyệt nội dung, mục đích và tính phù hợp của kế hoạch
+                    </div>
+                  </div>
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: '20px',
+                    background: '#dcfce7',
+                    color: '#15803d',
+                    border: '1px solid #bbf7d0',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Bắt buộc
+                </span>
+              </div>
+
+              {/* Bước 2 - CTSV */}
               <div
                 style={{
                   display: 'flex',
@@ -813,7 +870,7 @@ export default function NewProposalPage() {
                       justifyContent: 'center',
                     }}
                   >
-                    1
+                    2
                   </div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
@@ -840,7 +897,7 @@ export default function NewProposalPage() {
                 </span>
               </div>
 
-              {/* Bước 2 */}
+              {/* Bước 3 - Phòng Tổ Chức */}
               <div
                 style={{
                   display: 'flex',
@@ -871,7 +928,7 @@ export default function NewProposalPage() {
                       justifyContent: 'center',
                     }}
                   >
-                    2
+                    3
                   </div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
