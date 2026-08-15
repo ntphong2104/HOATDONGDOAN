@@ -125,3 +125,22 @@
     background-position: -200% 0;
   }
 }
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1rem 1.125rem;
+  }
+  
+  .value {
+    font-size: 1.75rem;
+  }
+  
+  .iconCircle {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .title {
+    font-size: 0.7rem;
+  }
+}

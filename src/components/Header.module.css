@@ -17,6 +17,9 @@
   display: flex;
   align-items: center;
   gap: 0.875rem;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
 }
 
 .logoIcon {
@@ -127,9 +130,12 @@
 
 @media (max-width: 640px) {
   .header {
-    padding: 0 1rem;
+    padding: 0 0.75rem;
   }
   .userName {
     max-width: 120px;
+  }
+  .appSubtitle {
+    display: none;
   }
 }
