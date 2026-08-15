@@ -11,6 +11,8 @@
   width: 100%;
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .pageHeader {
@@ -140,6 +142,46 @@
   }
 }
 
+@media (max-width: 640px) {
+  .main {
+    padding: 1.5rem 1rem 3rem;
+  }
+  .sectionCard {
+    padding: 1.25rem 1rem;
+  }
+  .gridFour {
+    grid-template-columns: 1fr;
+  }
+  .submitBar {
+    flex-direction: column;
+    padding: 1rem;
+  }
+  .submitBar > * {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 1rem 0.5rem 2rem;
+  }
+  .title {
+    font-size: 1.5rem;
+  }
+  .sectionCard {
+    padding: 1rem 0.75rem;
+  }
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .totalBanner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Form Controls */
 .fieldGroup {
   display: flex;
@@ -184,6 +226,10 @@
 
 .inputField::placeholder {
   color: #94a3b8;
+}
+
+.selectField {
+  appearance: none;
 }
 
 /* Number Mini Cards */

@@ -16,6 +16,7 @@ import {
   AlertTriangleIcon,
 } from '@/components/icons';
 import type { Room } from '@/lib/types';
+import styles from './page.module.css';
 
 export const OFFICIAL_UNITS = [
   {
@@ -69,9 +70,14 @@ export default function NewProposalPage() {
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [endTime, setEndTime] = useState('11:30');
 
-  const [participantCount, setParticipantCount] = useState(60);
-  const [volunteerCount, setVolunteerCount] = useState(10);
-  const [organizerCount, setOrganizerCount] = useState(5);
+  const [participantCount, setParticipantCount] = useState<number | string>(60);
+  const [volunteerCount, setVolunteerCount] = useState<number | string>(10);
+  const [organizerCount, setOrganizerCount] = useState<number | string>(5);
+
+  const handleNumberChange = (setter: React.Dispatch<React.SetStateAction<number | string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setter(val === '' ? '' : Number(val));
+  };
 
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [selectedRoomName, setSelectedRoomName] = useState('Không mượn');
@@ -210,9 +216,9 @@ export default function NewProposalPage() {
           start_time: startTime,
           end_date: endDate,
           end_time: endTime,
-          participant_count: participantCount,
-          volunteer_count: volunteerCount,
-          organizer_count: organizerCount,
+          participant_count: Number(participantCount) || 0,
+          volunteer_count: Number(volunteerCount) || 0,
+          organizer_count: Number(organizerCount) || 0,
           room_id: selectedRoomId || null,
           room_name: selectedRoomName,
         }),
@@ -236,10 +242,10 @@ export default function NewProposalPage() {
   const backTarget = isSuperAdmin ? '/super-admin' : '/admin';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column' }}>
+    <div className={styles.container}>
       <Header showBack backHref={backTarget} title="TRÌNH KẾ HOẠCH MỞ SỰ KIỆN" />
 
-      <main style={{ flex: 1, maxWidth: '960px', width: '100%', margin: '0 auto', padding: '2rem 1.25rem 4rem', boxSizing: 'border-box' }}>
+      <main className={styles.main}>
         {/* Header Breadcrumb */}
         <div style={{ marginBottom: '2rem' }}>
           <Link
@@ -258,10 +264,10 @@ export default function NewProposalPage() {
             <ArrowLeftIcon size={16} />
             <span>{isSuperAdmin ? 'Quay lại Bàn Quản Trị Toàn Trường' : 'Xem danh sách kế hoạch đã nộp'}</span>
           </Link>
-          <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#0f172a', margin: '0 0 0.4rem 0', letterSpacing: '-0.02em' }}>
+          <h1 className={styles.title}>
             Đề Xuất / Trình Kế Hoạch Sự Kiện Mới
           </h1>
-          <p style={{ fontSize: '0.95rem', color: '#64748b', margin: 0 }}>
+          <p className={styles.subtitle}>
             Kế hoạch sẽ được tự động chuyển qua các cấp phê duyệt theo quy mô và địa điểm mượn.
           </p>
         </div>
@@ -289,15 +295,7 @@ export default function NewProposalPage() {
           )}
 
           {/* ═══════════════ MỤC 1: TÊN CHƯƠNG TRÌNH & ĐƠN VỊ ═══════════════ */}
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1.5px solid #cbd5e1',
-              borderRadius: '20px',
-              padding: '1.75rem 2rem',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
-            }}
-          >
+          <div className={styles.sectionCard}>
             <div
               style={{
                 display: 'flex',
@@ -331,7 +329,7 @@ export default function NewProposalPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+            <div className={styles.gridTwo}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
                   Tên chương trình sự kiện <span style={{ color: '#ef4444' }}>*</span>
@@ -392,15 +390,7 @@ export default function NewProposalPage() {
           </div>
 
           {/* ═══════════════ MỤC 2: THỜI GIAN & QUY MÔ NHÂN SỰ ═══════════════ */}
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1.5px solid #cbd5e1',
-              borderRadius: '20px',
-              padding: '1.75rem 2rem',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
-            }}
-          >
+          <div className={styles.sectionCard}>
             <div
               style={{
                 display: 'flex',
@@ -435,7 +425,7 @@ export default function NewProposalPage() {
             </div>
 
             {/* Khung 4 Ô Thời Gian */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+            <div className={styles.gridFour}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
                   Ngày bắt đầu <span style={{ color: '#ef4444' }}>*</span>
@@ -526,7 +516,7 @@ export default function NewProposalPage() {
             </div>
 
             {/* 3 Thẻ Nhập Quy Mô Nhân Sự */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginTop: '1.5rem' }}>
+            <div className={styles.gridThree} style={{ marginTop: '1.5rem' }}>
               <div
                 style={{
                   background: '#f8fafc',
@@ -548,7 +538,7 @@ export default function NewProposalPage() {
                   type="number"
                   min="0"
                   value={participantCount}
-                  onChange={(e) => setParticipantCount(Number(e.target.value))}
+                  onChange={handleNumberChange(setParticipantCount)}
                   style={{
                     fontSize: '1.35rem',
                     fontWeight: 800,
@@ -584,7 +574,7 @@ export default function NewProposalPage() {
                   type="number"
                   min="0"
                   value={volunteerCount}
-                  onChange={(e) => setVolunteerCount(Number(e.target.value))}
+                  onChange={handleNumberChange(setVolunteerCount)}
                   style={{
                     fontSize: '1.35rem',
                     fontWeight: 800,
@@ -620,7 +610,7 @@ export default function NewProposalPage() {
                   type="number"
                   min="0"
                   value={organizerCount}
-                  onChange={(e) => setOrganizerCount(Number(e.target.value))}
+                  onChange={handleNumberChange(setOrganizerCount)}
                   style={{
                     fontSize: '1.35rem',
                     fontWeight: 800,
@@ -637,21 +627,7 @@ export default function NewProposalPage() {
             </div>
 
             {/* Banner Tổng Quy Mô */}
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-                border: '1.5px solid #86efac',
-                borderRadius: '16px',
-                padding: '1.1rem 1.5rem',
-                marginTop: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '0.75rem',
-                boxShadow: '0 4px 12px rgba(34, 197, 94, 0.12)',
-              }}
-            >
+            <div className={styles.totalBanner}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <UsersIcon size={20} color="#166534" />
                 <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#166534' }}>
@@ -665,15 +641,7 @@ export default function NewProposalPage() {
           </div>
 
           {/* ═══════════════ MỤC 3: ĐỊA ĐIỂM & KIỂM TRA TRÙNG PHÒNG ═══════════════ */}
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1.5px solid #cbd5e1',
-              borderRadius: '20px',
-              padding: '1.75rem 2rem',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
-            }}
-          >
+          <div className={styles.sectionCard}>
             <div
               style={{
                 display: 'flex',
@@ -935,32 +903,10 @@ export default function NewProposalPage() {
           </div>
 
           {/* ═══════════════ FOOTER ACTION BAR ═══════════════ */}
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1.5px solid #cbd5e1',
-              borderRadius: '20px',
-              padding: '1.25rem 2rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)',
-              flexWrap: 'wrap',
-              gap: '1rem',
-            }}
-          >
+          <div className={styles.submitBar}>
             <Link
               href="/admin/proposals"
-              style={{
-                padding: '0.75rem 1.5rem',
-                fontSize: '0.95rem',
-                fontWeight: 700,
-                color: '#64748b',
-                textDecoration: 'none',
-                borderRadius: '12px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-              }}
+              className={styles.cancelButton}
             >
               Hủy Bỏ
             </Link>
@@ -968,21 +914,7 @@ export default function NewProposalPage() {
             <button
               type="submit"
               disabled={submitting || (selectedRoomId !== '' && conflictResult.conflict)}
-              style={{
-                padding: '0.875rem 2rem',
-                background: submitting || (selectedRoomId !== '' && conflictResult.conflict)
-                  ? '#94a3b8'
-                  : 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '1rem',
-                fontWeight: 800,
-                cursor: submitting || (selectedRoomId !== '' && conflictResult.conflict) ? 'not-allowed' : 'pointer',
-                boxShadow: submitting || (selectedRoomId !== '' && conflictResult.conflict)
-                  ? 'none'
-                  : '0 4px 14px rgba(37, 99, 235, 0.35)',
-              }}
+              className={styles.submitButton}
             >
               {submitting ? 'Đang gửi hồ sơ...' : 'Gửi Trình Kế Hoạch Phê Duyệt ➔'}
             </button>
