@@ -292,8 +292,8 @@ export async function POST(req: Request) {
     );
   }
 
-  if (process.env.NODE_ENV === 'production' && process.env.ENABLE_DEMO_MODE !== 'true') {
-    return NextResponse.json({ success: false, error: 'Chế độ demo đã tắt trong production' }, { status: 403 });
+  if (process.env.ENABLE_DEMO_MODE === 'false') {
+    return NextResponse.json({ success: false, error: 'Chế độ demo đã tắt' }, { status: 403 });
   }
   try {
     const { role } = await req.json();
