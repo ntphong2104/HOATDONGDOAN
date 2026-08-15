@@ -132,10 +132,32 @@
   .header {
     padding: 0 0.75rem;
   }
+  .branding {
+    max-width: 140px;
+    min-width: 0;
+  }
+  .appTitle {
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .userName {
-    max-width: 120px;
+    max-width: 100px;
   }
   .appSubtitle {
     display: none;
+  }
+  .left {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .branding {
+    max-width: 100px;
+  }
+  .appTitle {
+    font-size: 0.7rem;
   }
 }
