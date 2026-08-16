@@ -303,17 +303,19 @@ function SuperAdminContent() {
     if (p.status === 'rejected') {
       return {
         type: 'rejected' as const,
-        label: 'Đã từ chối',
-        badgeBg: '#fee2e2',
+        label: '● Đã từ chối',
+        badgeBg: '#fef2f2',
         badgeColor: '#b91c1c',
+        badgeBorder: '#fecaca',
       };
     }
     if (p.status === 'pending') {
       return {
         type: 'pending' as const,
-        label: `Chờ duyệt: ${getStageLabel(p.current_stage)}`,
-        badgeBg: '#fef3c7',
+        label: `⏳ Chờ: ${getStageLabel(p.current_stage)}`,
+        badgeBg: '#fffbeb',
         badgeColor: '#b45309',
+        badgeBorder: '#fde68a',
       };
     }
     // p.status === 'approved'
@@ -325,17 +327,19 @@ function SuperAdminContent() {
     if (isPast) {
       return {
         type: 'closed' as const,
-        label: 'Đã duyệt • Đã đóng / Kết thúc',
-        badgeBg: '#f1f5f9',
+        label: '● Đã kết thúc',
+        badgeBg: '#f8fafc',
         badgeColor: '#64748b',
+        badgeBorder: '#e2e8f0',
       };
     }
 
     return {
       type: 'active' as const,
-      label: 'Đã duyệt • Đang mở sự kiện',
-      badgeBg: '#dcfce7',
+      label: '● Đang mở điểm danh',
+      badgeBg: '#f0fdf4',
       badgeColor: '#15803d',
+      badgeBorder: '#bbf7d0',
     };
   }, [events]);
 
@@ -1532,11 +1536,11 @@ function SuperAdminContent() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>Chương trình & Đơn vị</th>
-                      <th>Thời gian & Quy mô</th>
-                      <th>Địa điểm</th>
-                      <th>Trạng thái</th>
-                      <th>Thao tác</th>
+                      <th style={{ minWidth: '220px' }}>Chương trình & Đơn vị</th>
+                      <th style={{ minWidth: '190px' }}>Thời gian & Quy mô</th>
+                      <th style={{ minWidth: '160px' }}>Địa điểm</th>
+                      <th style={{ minWidth: '170px', textAlign: 'center' }}>Trạng thái</th>
+                      <th style={{ minWidth: '140px', textAlign: 'right' }}>Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1555,29 +1559,42 @@ function SuperAdminContent() {
                       filteredProposals.map((p) => (
                         <tr key={p.id}>
                           <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                              <Link href={`/admin/proposals/${p.id}`} style={{ fontWeight: 700, color: '#1e40af', textDecoration: 'none' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                              <Link
+                                href={`/admin/proposals/${p.id}`}
+                                style={{
+                                  fontWeight: 800,
+                                  color: '#1e40af',
+                                  textDecoration: 'none',
+                                  fontSize: '0.925rem',
+                                  lineHeight: 1.35,
+                                }}
+                              >
                                 {p.title}
                               </Link>
-                              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                {p.organization_unit} • Bởi {p.created_by}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#64748b' }}>
+                                <span style={{ fontWeight: 600, color: '#334155' }}>{p.organization_unit}</span>
+                                <span style={{ color: '#cbd5e1' }}>•</span>
+                                <span>{p.created_by}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem' }}>
+                              <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                                {new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time.slice(0, 5)} - {p.end_time.slice(0, 5)})
+                              </span>
+                              <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.8rem' }}>
+                                👥 {p.total_count} người ({p.participant_count} SV, {p.volunteer_count} CTV)
                               </span>
                             </div>
                           </td>
                           <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.85rem' }}>
-                              <span>{new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time.slice(0, 5)} - {p.end_time.slice(0, 5)})</span>
-                              <span style={{ color: '#16a34a', fontWeight: 600 }}>
-                                {p.total_count} người ({p.participant_count} SV, {p.volunteer_count} CTV)
-                              </span>
-                            </div>
-                          </td>
-                          <td>
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
-                              {p.room_name}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>
+                              📍 {p.room_name || 'Hội trường / Phòng họp'}
                             </span>
                           </td>
-                          <td>
+                          <td style={{ textAlign: 'center' }}>
                             {(() => {
                               const displayStatus = getProposalDisplayStatus(p);
                               return (
@@ -1585,12 +1602,14 @@ function SuperAdminContent() {
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
+                                    justifyContent: 'center',
                                     gap: '0.35rem',
-                                    padding: '0.35rem 0.75rem',
+                                    padding: '0.4rem 0.85rem',
                                     background: displayStatus.badgeBg,
                                     color: displayStatus.badgeColor,
-                                    borderRadius: '16px',
-                                    fontSize: '0.8rem',
+                                    border: `1.5px solid ${displayStatus.badgeBorder || '#e2e8f0'}`,
+                                    borderRadius: '20px',
+                                    fontSize: '0.78rem',
                                     fontWeight: 700,
                                     whiteSpace: 'nowrap',
                                   }}
@@ -1600,21 +1619,22 @@ function SuperAdminContent() {
                               );
                             })()}
                           </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                               {p.status === 'pending' && (
                                 <>
                                   <button
                                     onClick={() => approveProposal(p.id)}
                                     style={{
-                                      padding: '0.35rem 0.75rem',
+                                      padding: '0.4rem 0.75rem',
                                       background: '#16a34a',
                                       color: 'white',
                                       border: 'none',
-                                      borderRadius: '6px',
+                                      borderRadius: '8px',
                                       fontWeight: 700,
                                       fontSize: '0.8rem',
                                       cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
                                     }}
                                   >
                                     Duyệt cấp này
@@ -1622,14 +1642,15 @@ function SuperAdminContent() {
                                   <button
                                     onClick={() => rejectProposal(p.id)}
                                     style={{
-                                      padding: '0.35rem 0.75rem',
-                                      background: '#dc2626',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '6px',
+                                      padding: '0.4rem 0.75rem',
+                                      background: '#fee2e2',
+                                      color: '#b91c1c',
+                                      border: '1px solid #fecaca',
+                                      borderRadius: '8px',
                                       fontWeight: 700,
                                       fontSize: '0.8rem',
                                       cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
                                     }}
                                   >
                                     Từ chối
@@ -1639,13 +1660,18 @@ function SuperAdminContent() {
                               <Link
                                 href={`/admin/proposals/${p.id}`}
                                 style={{
-                                  padding: '0.35rem 0.6rem',
-                                  background: '#f1f5f9',
-                                  color: '#334155',
-                                  borderRadius: '6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  padding: '0.4rem 0.75rem',
+                                  background: '#eff6ff',
+                                  color: '#2563eb',
+                                  border: '1px solid #bfdbfe',
+                                  borderRadius: '8px',
                                   fontSize: '0.8rem',
-                                  fontWeight: 600,
+                                  fontWeight: 700,
                                   textDecoration: 'none',
+                                  whiteSpace: 'nowrap',
                                 }}
                               >
                                 Xem tiến độ ➔
