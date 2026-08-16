@@ -45,6 +45,19 @@ function SuperAdminContent() {
   const [isUnitsMenuOpen, setIsUnitsMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const switchTab = (tab: SuperAdminTab) => {
+    setActiveTab(tab);
+    setIsSidebarOpen(false);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('superadmin_active_tab', tab);
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        window.history.replaceState(null, '', url.toString());
+      } catch {}
+    }
+  };
+
   const [stats, setStats] = useState({ events: 0, checkins: 0, students: 0 });
   const [events, setEvents] = useState<Event[]>([]);
   const [proposals, setProposals] = useState<EventProposal[]>([]);
@@ -102,7 +115,27 @@ function SuperAdminContent() {
   const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    if (tabParam) setActiveTab(tabParam);
+    if (tabParam) {
+      setActiveTab(tabParam);
+      try {
+        localStorage.setItem('superadmin_active_tab', tabParam);
+      } catch {}
+    } else if (typeof window !== 'undefined') {
+      try {
+        const savedTab = localStorage.getItem('superadmin_active_tab') as SuperAdminTab | null;
+        if (
+          savedTab &&
+          ['events', 'proposals', 'officers', 'rooms', 'units', 'students', 'delegates', 'blacklist', 'settings'].includes(
+            savedTab
+          )
+        ) {
+          setActiveTab(savedTab);
+          const url = new URL(window.location.href);
+          url.searchParams.set('tab', savedTab);
+          window.history.replaceState(null, '', url.toString());
+        }
+      } catch {}
+    }
   }, [tabParam]);
 
   useEffect(() => {
@@ -725,10 +758,7 @@ function SuperAdminContent() {
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'events' ? styles.tabActive : ''}`}
-            onClick={() => {
-              setActiveTab('events');
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => switchTab('events')}
           >
             <div className={styles.tabButtonLeft}>
               <CalendarIcon size={18} />
@@ -740,10 +770,7 @@ function SuperAdminContent() {
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'proposals' ? styles.tabActive : ''}`}
-            onClick={() => {
-              setActiveTab('proposals');
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => switchTab('proposals')}
           >
             <div className={styles.tabButtonLeft}>
               <ShieldCheckIcon size={18} />
@@ -757,10 +784,7 @@ function SuperAdminContent() {
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'officers' ? styles.tabActive : ''}`}
-            onClick={() => {
-              setActiveTab('officers');
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => switchTab('officers')}
           >
             <div className={styles.tabButtonLeft}>
               <UsersIcon size={18} />
@@ -781,10 +805,7 @@ function SuperAdminContent() {
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'rooms' ? styles.tabActive : ''}`}
-            onClick={() => {
-              setActiveTab('rooms');
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => switchTab('rooms')}
           >
             <div className={styles.tabButtonLeft}>
               <SettingsIcon size={18} />
@@ -799,7 +820,7 @@ function SuperAdminContent() {
               className={`${styles.tabButton} ${activeTab === 'units' || isUnitsMenuOpen ? styles.tabActive : ''}`}
               onClick={() => {
                 setIsUnitsMenuOpen(!isUnitsMenuOpen);
-                setActiveTab('units');
+                switchTab('units');
               }}
               style={{ justifyContent: 'space-between' }}
             >
@@ -833,8 +854,7 @@ function SuperAdminContent() {
                   type="button"
                   onClick={() => {
                     setSelectedUnitFilter(null);
-                    setActiveTab('events');
-                    setIsSidebarOpen(false);
+                    switchTab('events');
                   }}
                   style={{
                     display: 'flex',
@@ -864,8 +884,7 @@ function SuperAdminContent() {
                     type="button"
                     onClick={() => {
                       setSelectedUnitFilter(unit.name);
-                      setActiveTab('events');
-                      setIsSidebarOpen(false);
+                      switchTab('events');
                     }}
                     style={{
                       display: 'flex',
@@ -898,8 +917,7 @@ function SuperAdminContent() {
                     type="button"
                     onClick={() => {
                       setSelectedUnitFilter(unit.name);
-                      setActiveTab('events');
-                      setIsSidebarOpen(false);
+                      switchTab('events');
                     }}
                     style={{
                       display: 'flex',
@@ -932,8 +950,7 @@ function SuperAdminContent() {
                     type="button"
                     onClick={() => {
                       setSelectedUnitFilter(unit.name);
-                      setActiveTab('events');
-                      setIsSidebarOpen(false);
+                      switchTab('events');
                     }}
                     style={{
                       display: 'flex',
@@ -963,10 +980,7 @@ function SuperAdminContent() {
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'students' ? styles.tabActive : ''}`}
-            onClick={() => {
-              setActiveTab('students');
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => switchTab('students')}
           >
             <div className={styles.tabButtonLeft}>
               <UsersIcon size={18} />
@@ -978,10 +992,7 @@ function SuperAdminContent() {
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'delegates' ? styles.tabActive : ''}`}
-            onClick={() => {
-              setActiveTab('delegates');
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => switchTab('delegates')}
           >
             <div className={styles.tabButtonLeft}>
               <CheckCircleIcon size={18} />
@@ -1001,10 +1012,7 @@ function SuperAdminContent() {
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'blacklist' ? styles.tabActive : ''}`}
-            onClick={() => {
-              setActiveTab('blacklist');
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => switchTab('blacklist')}
           >
             <div className={styles.tabButtonLeft}>
               <ShieldCheckIcon size={18} />
@@ -1024,10 +1032,7 @@ function SuperAdminContent() {
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === 'settings' ? styles.tabActive : ''}`}
-            onClick={() => {
-              setActiveTab('settings');
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => switchTab('settings')}
           >
             <div className={styles.tabButtonLeft}>
               <ShieldCheckIcon size={18} />
@@ -1077,7 +1082,7 @@ function SuperAdminContent() {
                 color="primary"
                 icon={<UsersIcon size={20} />}
                 subtitle="Dữ liệu sinh viên toàn trường"
-                onClick={() => setActiveTab('students')}
+                onClick={() => switchTab('students')}
                 isActive={activeTab === 'students'}
               />
               <StatCard
@@ -1087,7 +1092,7 @@ function SuperAdminContent() {
                 color="warning"
                 icon={<CalendarIcon size={20} />}
                 subtitle="Sự kiện Đoàn Thanh Niên hoạt động"
-                onClick={() => setActiveTab('events')}
+                onClick={() => switchTab('events')}
                 isActive={activeTab === 'events'}
               />
               <StatCard
@@ -1097,7 +1102,7 @@ function SuperAdminContent() {
                 color="success"
                 icon={<CheckCircleIcon size={20} />}
                 subtitle="Lượt quét minh chứng hợp lệ"
-                onClick={() => setActiveTab('events')}
+                onClick={() => switchTab('events')}
                 isActive={activeTab === 'events'}
               />
             </section>
