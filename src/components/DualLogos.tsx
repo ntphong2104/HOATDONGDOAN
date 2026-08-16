@@ -22,41 +22,27 @@ export default function DualLogos({
       <div className={styles.logosGroup}>
         {/* Logo PTIT */}
         <div className={styles.logoWrapper} title="Học viện Công nghệ Bưu chính Viễn thông">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/logos/logo-ptit.png"
             alt="Logo Học viện Công nghệ Bưu chính Viễn thông Cơ sở tại TP. Hồ Chí Minh"
             width={pixelSize}
             height={pixelSize}
-            loading="eager"
-            decoding="async"
+            priority
+            sizes={`${pixelSize}px`}
             className={styles.logoImg}
-            onError={(e) => {
-              const target = e.currentTarget;
-              if (target.src.endsWith('.png')) {
-                target.src = '/logos/logo-ptit.svg';
-              }
-            }}
           />
         </div>
 
         {/* Logo Đoàn Thanh Niên */}
         <div className={styles.logoWrapper} title="Đoàn TNCS Hồ Chí Minh">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/logos/logo-doan.png"
             alt="Logo Đoàn TNCS Hồ Chí Minh Học viện Công nghệ Bưu chính Viễn thông"
             width={pixelSize}
             height={pixelSize}
-            loading="eager"
-            decoding="async"
+            priority
+            sizes={`${pixelSize}px`}
             className={styles.logoImg}
-            onError={(e) => {
-              const target = e.currentTarget;
-              if (target.src.endsWith('.png')) {
-                target.src = '/logos/logo-doan.svg';
-              }
-            }}
           />
         </div>
       </div>

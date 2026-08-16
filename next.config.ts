@@ -23,9 +23,9 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
+              "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' data: blob: https://*.googleusercontent.com https://accounts.google.com https://ptithcm.com",
+              "img-src 'self' data: blob: https://*.googleusercontent.com https://accounts.google.com https://ptithcm.com https://*.ptithcm.edu.vn",
               "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://ptithcm.com",
               "frame-src 'self' https://accounts.google.com",

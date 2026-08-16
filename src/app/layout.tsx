@@ -35,6 +35,20 @@ export const metadata: Metadata = {
     siteName: 'Hoạt Động Đoàn PTIT HCM',
     locale: 'vi_VN',
     type: 'website',
+    images: [
+      {
+        url: 'https://ptithcm.com/logos/logo-ptit.png',
+        width: 512,
+        height: 512,
+        alt: 'Logo Học viện Công nghệ Bưu chính Viễn thông Cơ sở tại TP. Hồ Chí Minh',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Hoạt Động Đoàn - PTIT HCM',
+    description: 'Hệ thống điểm danh QR động & quản lý minh chứng ĐRL chính thức của Đoàn Thanh Niên PTIT HCM',
+    images: ['https://ptithcm.com/logos/logo-ptit.png'],
   },
 };
 
