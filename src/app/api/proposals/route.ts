@@ -131,8 +131,13 @@ export async function POST(req: Request) {
       'clb.caulong@student.ptithcm.edu.vn': 'CLB Cầu Lông',
     };
 
+    const isPrivileged =
+      auth.isSuperAdmin ||
+      auth.tier === 'youth_union' ||
+      auth.email.toLowerCase().includes('doanthanhnien');
+
     let finalOrganizationUnit = organization_unit;
-    if (!auth.isSuperAdmin) {
+    if (!isPrivileged) {
       const userUnit = EMAIL_TO_UNIT[auth.email.toLowerCase()];
       if (userUnit) {
         // Force to the user's own unit regardless of what was sent

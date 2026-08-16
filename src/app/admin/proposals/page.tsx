@@ -77,7 +77,7 @@ export default function ProposalsListPage() {
   }
 
   const isApprover = tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'super_admin';
-  const isPureApprover = tier === 'youth_union' || tier === 'ctsv' || tier === 'facility';
+  const isPureApprover = tier === 'ctsv' || tier === 'facility';
 
   const myTargetStage: ProposalStage | null =
     tier === 'youth_union'

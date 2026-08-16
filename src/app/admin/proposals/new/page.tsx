@@ -113,9 +113,14 @@ export default function NewProposalPage() {
         if (data.success && data.data) {
           setCurrentUser(data.data);
           const isSA = data.data.tier === 'super_admin' || data.data.isSuperAdmin;
-          const email = (data.data.email || '').toLowerCase();
+          const isYouthUnion = data.data.tier === 'youth_union' || email.includes('doanthanhnien');
+          const isPrivileged = isSA || isYouthUnion;
 
-          if (!isSA) {
+          if (isYouthUnion) {
+            // Default to Đoàn Trường but allow picking any of the 24 units
+            setOrganizationUnit('Đoàn TNCS Học Viện Cơ Sở TP.HCM');
+            setLockedUnit(null);
+          } else if (!isPrivileged) {
             // Import unit mapping and match by email
             const allUnits = OFFICIAL_UNITS.flatMap((g) => g.items);
 
@@ -296,7 +301,8 @@ export default function NewProposalPage() {
   };
 
   const isSuperAdmin = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
-  const backTarget = isSuperAdmin ? '/super-admin' : '/admin';
+  const isYouthUnion = currentUser?.tier === 'youth_union' || (currentUser?.email || '').toLowerCase().includes('doanthanhnien');
+  const backTarget = isSuperAdmin ? '/super-admin?tab=proposals' : isYouthUnion ? '/admin/proposals' : '/admin';
 
   return (
     <div className={styles.container}>
