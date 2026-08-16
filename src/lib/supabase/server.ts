@@ -44,3 +44,24 @@ export async function createClient() {
     }
   );
 }
+
+export async function createAdminClient() {
+  const supabaseUrl = getValidUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+  if (!serviceRoleKey) {
+    return createClient();
+  }
+  return createServerClient(
+    supabaseUrl,
+    serviceRoleKey,
+    {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        setAll() {},
+      },
+    }
+  );
+}
+

@@ -10,7 +10,7 @@ import { POST as CameraCheckinPOST } from '@/app/api/checkin/route';
 import { POST as SelfCheckinPOST } from '@/app/api/checkin/self/route';
 import { GET as RatingsGET, POST as RatingsPOST } from '@/app/api/events/[id]/ratings/route';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { cookies } from 'next/headers';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
@@ -19,6 +19,7 @@ import { generateDynamicToken, verifyDynamicToken } from '@/lib/utils/dynamic-qr
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase/auth-helper', () => ({
@@ -79,6 +80,7 @@ describe('Events API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
     (checkRateLimit as jest.Mock).mockReturnValue({ allowed: true });
     // Reset builders
     Object.keys(builders).forEach(key => delete builders[key]);

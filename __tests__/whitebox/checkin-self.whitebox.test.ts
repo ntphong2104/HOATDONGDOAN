@@ -32,6 +32,7 @@ const mockSupabase: any = {
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn().mockImplementation(() => Promise.resolve(mockSupabase)),
+  createAdminClient: jest.fn().mockImplementation(() => Promise.resolve(mockSupabase)),
 }));
 
 jest.mock('next/headers', () => {

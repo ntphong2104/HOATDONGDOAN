@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { verifyDynamicToken } from '@/lib/utils/dynamic-qr';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     const email = auth.email;
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     // Rate Limiting: Max 5 attempts per 10 seconds per student to prevent spam / brute-force
     const rateLimit = checkRateLimit(`checkin_self_${email}`, 5, 10000);
