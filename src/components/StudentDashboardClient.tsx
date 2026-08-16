@@ -116,34 +116,24 @@ export default function StudentDashboardClient({
 
   return (
     <>
-      {/* Switch Banner for Admins/Officers */}
+      {/* Switch back to admin banner if viewing as student */}
       {tier !== 'user' && (
         <div
           style={{
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
-            color: '#ffffff',
-            borderRadius: '16px',
-            padding: '1rem 1.35rem',
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '12px',
+            padding: '0.65rem 1rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: '1.5rem',
-            flexWrap: 'wrap',
-            gap: '0.85rem',
-            boxShadow: '0 4px 14px rgba(30, 58, 138, 0.25)',
+            marginBottom: '1.25rem',
+            gap: '0.5rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <ShieldCheckIcon size={20} color="#93c5fd" />
-            <div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 800 }}>
-                Bạn đang ở Cổng Sinh Viên (Mã QR Điểm Danh & Minh Chứng Cá Nhân)
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#bfdbfe', marginTop: '0.15rem' }}>
-                Dùng mã QR bên dưới hoặc quét mã trên màn hình hội trường khi bạn tham gia sự kiện.
-              </div>
-            </div>
-          </div>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e40af' }}>
+            🔵 Đang xem Cổng Sinh Viên
+          </span>
           <Link
             href={
               tier === 'super_admin'
@@ -155,84 +145,20 @@ export default function StudentDashboardClient({
                 : '/scanner'
             }
             style={{
-              background: '#ffffff',
-              color: '#1e40af',
-              padding: '0.5rem 1rem',
-              borderRadius: '10px',
-              fontSize: '0.85rem',
-              fontWeight: 800,
+              background: '#2563eb',
+              color: '#ffffff',
+              padding: '0.4rem 0.85rem',
+              borderRadius: '8px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
               textDecoration: 'none',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.35rem',
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+              gap: '0.3rem',
             }}
           >
-            Quay Lại Bàn Quản Trị ➔
+            Về Bàn Quản Trị ➔
           </Link>
-        </div>
-      )}
-
-      {/* Role Navigation Links for Admins */}
-      <div className={styles.roleLinks}>
-        {tier === 'super_admin' && (
-          <Link href="/super-admin" className={`${styles.adminLink} ${styles.superAdminLink}`}>
-            <ShieldCheckIcon size={18} />
-            Quản trị toàn trường (Super Admin)
-          </Link>
-        )}
-        {(tier === 'super_admin' || tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'event_admin') && (
-          <Link href="/admin/proposals" className={`${styles.adminLink} ${styles.eventAdminLink}`}>
-            <ShieldCheckIcon size={18} />
-            Trình & Duyệt Kế Hoạch
-          </Link>
-        )}
-        {(tier === 'super_admin' || tier === 'event_admin') && (
-          <Link href="/admin" className={`${styles.adminLink} ${styles.eventAdminLink}`}>
-            <SettingsIcon size={18} />
-            Quản lý sự kiện & Danh sách điểm danh
-          </Link>
-        )}
-        {(tier === 'super_admin' || tier === 'event_admin' || tier === 'checker') && (
-          <Link href="/scanner" className={`${styles.adminLink} ${styles.scannerLink}`}>
-            <ScanCameraIcon size={18} />
-            Mở máy quét mã QR điểm danh
-          </Link>
-        )}
-      </div>
-
-      {/* Delegate Special Banner */}
-      {delegateInfo?.isDelegate && (
-        <div
-          style={{
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-            color: '#ffffff',
-            padding: '1.25rem 1.5rem',
-            borderRadius: '16px',
-            marginBottom: '1.75rem',
-            boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.25)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '1rem',
-          }}
-        >
-          <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.2)', padding: '0.2rem 0.65rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>
-              <ShieldCheckIcon size={14} color="#ffffff" /> Quyền Ban Chấp Hành Chi Đoàn (Bí Thư / Phó Bí Thư)
-            </div>
-            <h3 style={{ margin: '0.4rem 0 0.2rem', fontSize: '1.15rem', fontWeight: 800 }}>
-              Tra Cứu Hoạt Động & Chấm Điểm Rèn Luyện Chi Đoàn {delegateInfo.class_id}
-            </h3>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#e0e7ff' }}>
-              Quyền hạn tra cứu danh sách, lịch sử sự kiện và minh chứng của đoàn viên thuộc Chi đoàn (Lớp) {delegateInfo.class_id}.
-            </p>
-          </div>
-          <div style={{ background: '#ffffff', color: '#1e3a8a', padding: '0.6rem 1rem', borderRadius: '12px', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
-            <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Thời Hạn Còn Lại</div>
-            <div style={{ color: '#16a34a', fontSize: '1.1rem' }}>{delegateInfo.daysLeft} ngày</div>
-          </div>
         </div>
       )}
 
@@ -293,11 +219,42 @@ export default function StudentDashboardClient({
       {/* DELEGATE SECTION: TRA CỨU DANH SÁCH & ĐIỂM RÈN LUYỆN CHI ĐOÀN */}
       {delegateInfo?.isDelegate && (
         <section className={styles.historySection} style={{ marginTop: '2rem', border: '2px solid #bfdbfe' }}>
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
+              color: '#ffffff',
+              padding: '1.25rem 1.5rem',
+              borderRadius: '12px',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}
+          >
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.2)', padding: '0.2rem 0.65rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                <ShieldCheckIcon size={14} color="#ffffff" /> Quyền Ban Chấp Hành Chi Đoàn (Bí Thư / Phó Bí Thư)
+              </div>
+              <h3 style={{ margin: '0.4rem 0 0.2rem', fontSize: '1.1rem', fontWeight: 800 }}>
+                Tra Cứu Hoạt Động & Chấm Điểm Rèn Luyện Chi Đoàn {delegateInfo.class_id}
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#e0e7ff' }}>
+                Quyền hạn tra cứu danh sách, lịch sử sự kiện và minh chứng của đoàn viên thuộc Chi đoàn (Lớp) {delegateInfo.class_id}.
+              </p>
+            </div>
+            <div style={{ background: '#ffffff', color: '#1e3a8a', padding: '0.5rem 1rem', borderRadius: '10px', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Thời Hạn Còn Lại</div>
+              <div style={{ color: '#16a34a', fontSize: '1.1rem' }}>{delegateInfo.daysLeft} ngày</div>
+            </div>
+          </div>
+
           <div className={styles.historyHeader} style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <h2 className={styles.historyTitle} style={{ color: '#1e40af' }}>
                 <UsersIcon size={20} color="#2563eb" />
-                Danh Sách Đoàn Viên & Hoạt Động Chi Đoàn {delegateInfo.class_id} ({classStudents.length})
+                Danh Sách Đoàn Viên Chi Đoàn {delegateInfo.class_id} ({classStudents.length})
               </h2>
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                 Tra cứu số sự kiện đã tham gia và xem chi tiết minh chứng để phục vụ chấm Điểm Rèn Luyện (ĐRL)
