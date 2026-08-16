@@ -63,3 +63,31 @@ export async function GET(
     },
   });
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const resolvedParams = await params;
+  const auth = await getAuthContext();
+  if (!auth || (!auth.isSuperAdmin && auth.tier !== 'youth_union')) {
+    return NextResponse.json(
+      { success: false, error: 'Chỉ Super Admin hoặc Đoàn Học Viện mới có quyền xóa kế hoạch' },
+      { status: 403 }
+    );
+  }
+
+  const supabase = await createClient();
+
+  // Delete proposal logs first
+  await supabase.from('proposal_logs').delete().eq('proposal_id', resolvedParams.id);
+
+  // Delete proposal
+  const { error } = await supabase.from('event_proposals').delete().eq('id', resolvedParams.id);
+  if (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true, message: 'Đã xóa kế hoạch thành công' });
+}
+

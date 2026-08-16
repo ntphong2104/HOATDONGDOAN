@@ -163,6 +163,32 @@ export default function ProposalsListPage() {
     }
   };
 
+  const handleDeleteProposal = async (id: string, title: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Xác nhận XÓA VĨNH VIỄN kế hoạch "${title}"? Thao tác này không thể hoàn tác.`)) {
+      return;
+    }
+
+    setActionLoading(id);
+    try {
+      const res = await fetch(`/api/proposals/${id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Đã xóa kế hoạch thành công');
+        fetchProposals();
+      } else {
+        alert(data.error || 'Lỗi xóa kế hoạch');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const getStageBadgeClass = (stage: ProposalStage, status: string) => {
     if (status === 'approved') return styles.stageApproved;
     if (status === 'rejected') return styles.stageRejected;
@@ -462,6 +488,28 @@ export default function ProposalsListPage() {
                             style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
                           >
                             Thu Hồi / Từ Chối
+                          </button>
+                        </div>
+                      )}
+
+                      {(tier === 'super_admin' || tier === 'youth_union' || isSuperAdmin) && (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteProposal(item.id, item.title, e)}
+                            disabled={actionLoading === item.id}
+                            style={{
+                              padding: '0.45rem 0.75rem',
+                              borderRadius: '8px',
+                              border: '1.5px solid #fecaca',
+                              background: '#fff1f2',
+                              color: '#e11d48',
+                              fontWeight: 700,
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Xóa
                           </button>
                         </div>
                       )}
