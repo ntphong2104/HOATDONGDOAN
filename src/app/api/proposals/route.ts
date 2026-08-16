@@ -101,6 +101,44 @@ export async function POST(req: Request) {
       room_name = 'Không mượn',
     } = body;
 
+    // ── Server-side: enforce organization_unit for non-super-admin ──
+    const EMAIL_TO_UNIT: Record<string, string> = {
+      'doanthanhnien@ptithcm.edu.vn': 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
+      'lcdcntt@student.ptithcm.edu.vn': 'LCĐ Khoa Công nghệ Thông tin',
+      'lcdcndpt@student.ptithcm.edu.vn': 'LCĐ Công nghệ Đa phương tiện',
+      'lcdattt@student.ptithcm.edu.vn': 'LCĐ An toàn Thông tin',
+      'lcdvt@student.ptithcm.edu.vn': 'LCĐ Khoa Viễn thông',
+      'lcddt@student.ptithcm.edu.vn': 'LCĐ Khoa Điện tử',
+      'lcdqtkd@student.ptithcm.edu.vn': 'LCĐ Khoa Quản trị Kinh doanh',
+      'lcdmkt@student.ptithcm.edu.vn': 'LCĐ Marketing',
+      'lcdketoan@student.ptithcm.edu.vn': 'LCĐ Kế toán',
+      'clb.itmc@student.ptithcm.edu.vn': 'CLB ITMC',
+      'clb.antoanthongtin@student.ptithcm.edu.vn': 'CLB An toàn Thông tin',
+      'clb.tienganh@student.ptithcm.edu.vn': 'CLB Tiếng Anh',
+      'doivannghe@student.ptithcm.edu.vn': 'Đội Văn Nghệ',
+      'clb.guitar@student.ptithcm.edu.vn': 'CLB Guitar',
+      'doisinhvientinhnguyen@student.ptithcm.edu.vn': 'Đội Sinh Viên Tình Nguyện',
+      'clb.ketnoi@student.ptithcm.edu.vn': 'CLB Kết Nối',
+      'clb.truyenthongcmc@student.ptithcm.edu.vn': 'CLB C.MC',
+      'clb.37dosinhvien@student.ptithcm.edu.vn': 'CLB 37 Độ Sinh viên',
+      'clb.bma@student.ptithcm.edu.vn': 'CLB BMA',
+      'clb.bongchuyen@student.ptithcm.edu.vn': 'CLB Bóng Chuyền',
+      'clbbongda@student.ptithcm.edu.vn': 'CLB Bóng Đá',
+      'clb.bongro@student.ptithcm.edu.vn': 'CLB Bóng Rổ',
+      'clb.vovinam@student.ptithcm.edu.vn': 'CLB VOVINAM',
+      'clb.covua@student.ptithcm.edu.vn': 'CLB Cờ',
+      'clb.caulong@student.ptithcm.edu.vn': 'CLB Cầu Lông',
+    };
+
+    let finalOrganizationUnit = organization_unit;
+    if (!auth.isSuperAdmin) {
+      const userUnit = EMAIL_TO_UNIT[auth.email.toLowerCase()];
+      if (userUnit) {
+        // Force to the user's own unit regardless of what was sent
+        finalOrganizationUnit = userUnit;
+      }
+    }
+
     const sanitizedTitle = sanitizeInput(title);
     if (!sanitizedTitle) {
       return NextResponse.json({ success: false, error: 'Tên chương trình không được để trống' }, { status: 400 });
@@ -120,7 +158,7 @@ export async function POST(req: Request) {
       /\ufffd/,
       /\$\{/,
     ];
-    if (suspiciousPatterns.some((pattern) => pattern.test(title) || pattern.test(organization_unit) || pattern.test(room_name))) {
+    if (suspiciousPatterns.some((pattern) => pattern.test(title) || pattern.test(finalOrganizationUnit) || pattern.test(room_name))) {
       return NextResponse.json({ success: false, error: 'Phát hiện ký tự hoặc cú pháp không hợp lệ' }, { status: 400 });
     }
 
@@ -177,7 +215,7 @@ export async function POST(req: Request) {
       .insert({
         title: sanitizedTitle,
         created_by: auth.email,
-        organization_unit: sanitizeInput(organization_unit) || 'Liên Chi Đoàn',
+        organization_unit: sanitizeInput(finalOrganizationUnit) || 'Liên Chi Đoàn',
         start_date,
         start_time,
         end_date,
