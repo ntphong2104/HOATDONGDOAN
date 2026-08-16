@@ -331,6 +331,13 @@ describe('Events API', () => {
     const mockReq = (body: any) => new NextRequest('http://localhost/api', { method: 'POST', body: JSON.stringify(body) });
 
     beforeEach(() => {
+      (getAuthContext as jest.Mock).mockResolvedValue({
+        email: 'std@a.com',
+        isSuperAdmin: false,
+        isEventAdmin: false,
+        isChecker: false,
+        tier: 'user',
+      });
       (cookies as jest.Mock).mockResolvedValue({ get: () => null });
       mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { email: 'std@a.com' } } });
       (checkRateLimit as jest.Mock).mockReturnValue({ allowed: true });

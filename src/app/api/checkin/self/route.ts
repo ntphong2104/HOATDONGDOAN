@@ -1,40 +1,20 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { verifyDynamicToken } from '@/lib/utils/dynamic-qr';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { getAuthContext } from '@/lib/supabase/auth-helper';
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    let email: string | null = null;
-
-    // Check demo cookie
-    const cookieStore = await cookies();
-    const demoCookie = cookieStore.get('demo_session');
-    if (demoCookie?.value) {
-      const demoUser = JSON.parse(demoCookie.value);
-      email = demoUser.email;
-    }
-
-    // Check Supabase session
-    if (!email) {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser?.email) {
-        email = authUser.email;
-      } else {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.email) {
-          email = session.user.email;
-        }
-      }
-    }
-
-    if (!email) {
+    const auth = await getAuthContext();
+    if (!auth?.email) {
       return NextResponse.json({ success: false, error: 'Vui lòng đăng nhập để điểm danh' }, { status: 401 });
     }
+
+    const email = auth.email;
+    const supabase = await createClient();
 
     // Rate Limiting: Max 5 attempts per 10 seconds per student to prevent spam / brute-force
     const rateLimit = checkRateLimit(`checkin_self_${email}`, 5, 10000);
@@ -172,6 +152,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    console.error('Self checkin error:', err);
+    return NextResponse.json({ success: false, error: err?.message || 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 }
