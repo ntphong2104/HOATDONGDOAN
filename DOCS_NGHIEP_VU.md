@@ -219,9 +219,11 @@ flowchart TD
 2. **Khóa Đa Tầng Đồng Bộ:**
    - **Giao diện (`/super-admin` & `/admin`):** Tự động đổi màu huy hiệu từ 🟢 Xanh ("Đang mở") sang ⚪ Xám ("Đã đóng") khi sự kiện đã quá thời gian kết thúc.
    - **API Điểm danh (`/api/checkin` & `/api/checkin/self`):** Lập tức từ chối mọi yêu cầu quét mã khi sự kiện ở trạng thái đóng với thông báo: *"Sự kiện đã đóng hoặc đã kết thúc điểm danh"*.
-3. **Nút "Mở Lại / Đóng Sự Kiện" Thủ Công:**
-   - Ban Tổ Chức (Event Admin / Đơn vị tạo sự kiện / Đoàn Học Viện / Super Admin) có nút **`🔓 Mở Lại Sự Kiện` / `🔒 Đóng Sự Kiện`** ngay trên đầu trang quản trị sự kiện `/admin/events/[id]`.
-   - Giúp Ban Tổ Chức linh hoạt kích hoạt lại sự kiện nếu cần cho phép quét bổ sung hoặc kéo dài thời gian hoạt động.
+3. **Phân Quyền Mở Lại Sự Kiện Đã Tự Động Đóng:**
+   - **Khi sự kiện chưa kết thúc hoặc đóng thủ công sớm:** Ban Tổ Chức (Event Admin đơn vị cơ sở) được phép chủ động đóng/mở lại sự kiện của mình.
+   - **Khi sự kiện đã quá 1 giờ sau giờ kết thúc (Tự động đóng):**
+     - **Admin cấp nhỏ (LCĐ / CLB trực thuộc):** **BỊ KHÓA QUYỀN MỞ LẠI**. Giao diện hiển thị huy hiệu khóa và API từ chối với thông báo: *"Chương trình đã kết thúc quá 1 giờ và tự động đóng. Cán bộ đơn vị trực thuộc không được phép tự mở lại. Vui lòng liên hệ Super Admin hoặc Đoàn Thanh Niên Học Viện."*
+     - **Super Admin & Đoàn Thanh Niên (`youth_union` / `doanthanhnien@ptithcm.edu.vn`):** Có toàn quyền kích hoạt nút **`🔓 Mở Lại Sự Kiện`** để mở lại sự kiện cho bất kỳ đơn vị trực thuộc nào khi có yêu cầu chính đáng. Hệ thống sẽ tự động cập nhật lại khung giờ để phục vụ điểm danh bổ sung mà không bị đóng lại ngay lập tức.
 
 ---
 

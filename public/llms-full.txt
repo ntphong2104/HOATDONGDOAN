@@ -23,7 +23,7 @@ Hệ thống được xây dựng trên nền tảng Next.js 16 App Router (Turb
 
 ## 5. Quy Chế Trạng Thái Sự Kiện (Đóng / Mở Lại)
 - **Tự động đóng:** Sự kiện tự động chuyển sang trạng thái "Đã đóng" sau khi giờ kết thúc + 1 giờ đã qua để ngăn điểm danh bù ngoài giờ.
-- **Mở lại thủ công:** Ban Tổ Chức, Đoàn Học Viện hoặc Super Admin có nút "Mở Lại Sự Kiện" trực tiếp trong trang quản trị để tiếp tục tổ chức hoặc quét điểm danh bổ sung.
+- **Mở lại thủ công:** Khi sự kiện đã quá 1 giờ sau giờ kết thúc, chỉ Super Admin hoặc Đoàn Thanh Niên Học Viện mới có quyền mở lại sự kiện cho các đơn vị trực thuộc (Admin đơn vị trực thuộc bị khóa quyền mở lại).
 
 ## 6. Cơ Chế Chống Gian Lận & Quy Chế 3-Strike Blacklist
 - Phát hiện và chặn các trường hợp sinh viên đăng ký tham gia nhưng không có mặt điểm danh.

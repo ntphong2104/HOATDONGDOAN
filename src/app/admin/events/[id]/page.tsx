@@ -272,7 +272,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const isSuperAdmin = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
   const backTarget = isSuperAdmin ? '/super-admin' : '/admin';
 
-  const isYouthUnion = currentUser?.tier === 'youth_union';
+  const isYouthUnion =
+    currentUser?.tier === 'youth_union' ||
+    Boolean(currentUser?.email?.toLowerCase().includes('doanthanhnien'));
+  const isPrivileged = isSuperAdmin || isYouthUnion;
   const isEventCreator = Boolean(
     event?.created_by &&
     currentUser?.email &&
@@ -290,6 +293,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const handleToggleEventStatus = async () => {
     if (!event) return;
     const newStatus = event.status === 'active' ? 'closed' : 'active';
+    const isPast = isEventPastDeadline(event);
+
+    if (newStatus === 'active' && isPast && !isPrivileged) {
+      alert('Chương trình đã kết thúc quá 1 giờ và tự động đóng. Cán bộ đơn vị trực thuộc không được phép tự mở lại. Vui lòng liên hệ Super Admin hoặc Đoàn Thanh Niên Học Viện để được hỗ trợ.');
+      return;
+    }
+
     const actionText = newStatus === 'active' ? 'MỞ LẠI' : 'ĐÓNG';
     if (!confirm(`Xác nhận ${actionText} sự kiện "${event.event_name}"?`)) return;
 
@@ -304,7 +314,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         setEvent(data.data);
         alert(`Đã ${actionText.toLowerCase()} sự kiện thành công!`);
       } else {
-        alert(data.error || 'Lỗi cập nhật trạng thái sự kiện');
+        alert(data.error || data.message || 'Lỗi cập nhật trạng thái sự kiện');
       }
     } catch (err: any) {
       alert(`Lỗi: ${err.message || 'Lỗi kết nối'}`);
@@ -387,23 +397,59 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <span style={{ color: event.status === 'active' ? '#16a34a' : '#dc2626', fontWeight: 700, fontSize: '0.9rem' }}>
               {event.status === 'active' ? '● Đang mở điểm danh' : '● Đã đóng sự kiện'}
             </span>
-            <button
-              type="button"
-              onClick={handleToggleEventStatus}
-              style={{
-                padding: '0.35rem 0.85rem',
-                borderRadius: '8px',
-                border: '1.5px solid',
-                borderColor: event.status === 'active' ? '#fca5a5' : '#86efac',
-                background: event.status === 'active' ? '#fef2f2' : '#f0fdf4',
-                color: event.status === 'active' ? '#dc2626' : '#15803d',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                cursor: 'pointer',
-              }}
-            >
-              {event.status === 'active' ? '🔒 Đóng Sự Kiện' : '🔓 Mở Lại Sự Kiện'}
-            </button>
+            {event.status === 'active' ? (
+              <button
+                type="button"
+                onClick={handleToggleEventStatus}
+                style={{
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1.5px solid #fca5a5',
+                  background: '#fef2f2',
+                  color: '#dc2626',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
+              >
+                🔒 Đóng Sự Kiện
+              </button>
+            ) : isPrivileged ? (
+              <button
+                type="button"
+                onClick={handleToggleEventStatus}
+                style={{
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1.5px solid #86efac',
+                  background: '#f0fdf4',
+                  color: '#15803d',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
+              >
+                🔓 Mở Lại Sự Kiện
+              </button>
+            ) : (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '8px',
+                  border: '1.5px solid #e2e8f0',
+                  background: '#f8fafc',
+                  color: '#64748b',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                }}
+                title="Sự kiện tự động đóng sau 1 giờ. Chỉ Super Admin và Đoàn Thanh Niên mới có quyền mở lại."
+              >
+                🔒 Đã tự động đóng (Liên hệ Đoàn TN để mở lại)
+              </span>
+            )}
           </div>
 
           {event.status === 'active' && (

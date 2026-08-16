@@ -61,3 +61,42 @@ export function getEffectiveEventStatus(
   if (isEventPastDeadline(event, currentTimeMs)) return 'closed';
   return 'active';
 }
+
+/**
+ * Checks whether an event's schedule has passed its auto-close threshold (1 hour after end_time on event_date)
+ * based purely on schedule date/time, ignoring the current status field.
+ */
+export function isEventScheduleExpired(
+  event: EventScheduleInfo,
+  currentTimeMs: number = Date.now()
+): boolean {
+  if (!event.event_date) return false;
+
+  try {
+    const datePart = event.event_date.includes('T')
+      ? event.event_date.split('T')[0]
+      : event.event_date;
+    const endTimePart = event.end_time ? event.end_time.slice(0, 5) : '22:00';
+    const [hoursStr, minutesStr] = endTimePart.split(':');
+    const hours = parseInt(hoursStr || '22', 10);
+    const minutes = parseInt(minutesStr || '0', 10);
+
+    const [yearStr, monthStr, dayStr] = datePart.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const day = parseInt(dayStr, 10);
+
+    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
+      return false;
+    }
+
+    const endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+    // 1 hour buffer after end time (60 mins * 60 secs * 1000 ms)
+    const autoCloseThreshold = endDateTime.getTime() + 60 * 60 * 1000;
+
+    return currentTimeMs > autoCloseThreshold;
+  } catch {
+    return false;
+  }
+}
