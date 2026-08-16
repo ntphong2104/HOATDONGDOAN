@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
 import type { SessionUser, UserTier } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -80,30 +81,12 @@ export async function GET() {
       } catch {}
     }
 
-    // Check dynamic officer_roles table / system_settings
+    // Check dynamic officer_roles via persistent store
     let assignedOfficerRole: any = null;
     try {
-      const { data: offRole } = await supabase
-        .from('officer_roles')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
-      if (offRole) assignedOfficerRole = offRole;
+      const roles = await getStoredOfficerRoles(supabase);
+      assignedOfficerRole = roles.find((r) => r.email.toLowerCase() === email.toLowerCase());
     } catch {}
-
-    if (!assignedOfficerRole) {
-      try {
-        const { data: settingData } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', 'officer_roles')
-          .maybeSingle();
-        if (settingData?.value && Array.isArray(settingData.value)) {
-          const found = settingData.value.find((r: any) => r.email.toLowerCase() === email.toLowerCase());
-          if (found) assignedOfficerRole = found;
-        }
-      } catch {}
-    }
 
     let eventRoles: any = [];
     try {
@@ -124,20 +107,19 @@ export async function GET() {
       email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn';
 
     const isYouthUnion =
-      assignedOfficerRole?.role_tier === 'youth_union' ||
-      email.includes('doanthanhnien');
+      assignedOfficerRole?.role_tier === 'youth_union';
 
     const isCtsv =
-      assignedOfficerRole?.role_tier === 'ctsv' ||
-      email.includes('ctsv');
+      assignedOfficerRole?.role_tier === 'ctsv';
 
     const isFacility =
-      assignedOfficerRole?.role_tier === 'facility' ||
-      email.includes('quantri') ||
-      email.includes('csvc');
+      assignedOfficerRole?.role_tier === 'facility';
 
     const isSubAdminUnit =
       email.toLowerCase().startsWith('lcd') ||
+      email.toLowerCase().startsWith('clb') ||
+      email.toLowerCase().startsWith('doi') ||
+      assignedOfficerRole?.role_tier === 'event_admin';
       email.toLowerCase().startsWith('clb') ||
       email.toLowerCase().startsWith('doi');
 

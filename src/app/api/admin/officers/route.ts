@@ -2,108 +2,16 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { sanitizeInput } from '@/lib/security/sanitizer';
+import {
+  ROOT_SUPER_ADMIN,
+  getStoredOfficerRoles,
+  saveOfficerRole,
+  removeOfficerRole,
+  type OfficerRoleItem,
+} from '@/lib/constants/officers-store';
 import type { UserTier } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-const ROOT_SUPER_ADMIN = 'n22dccn158@student.ptithcm.edu.vn';
-
-export interface OfficerRoleItem {
-  id: string;
-  email: string;
-  role_tier: UserTier;
-  unit_code?: string;
-  unit_name?: string;
-  full_name?: string;
-  notes?: string;
-  created_by?: string;
-  created_at: string;
-}
-
-// Helper to fetch officer roles with fallback
-export async function getStoredOfficerRoles(supabase: any): Promise<OfficerRoleItem[]> {
-  try {
-    const { data: tableData, error: tableErr } = await supabase
-      .from('officer_roles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!tableErr && tableData) {
-      return tableData.map((d: any) => ({
-        id: String(d.id),
-        email: d.email.toLowerCase(),
-        role_tier: d.role_tier,
-        unit_code: d.unit_code || 'BCH_DOAN',
-        unit_name: d.unit_name || 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
-        full_name: d.full_name || '',
-        notes: d.notes || '',
-        created_by: d.created_by || 'Super Admin',
-        created_at: d.created_at || new Date().toISOString(),
-      }));
-    }
-  } catch {}
-
-  // Fallback: check system_settings
-  try {
-    const { data: settingData } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'officer_roles')
-      .maybeSingle();
-
-    if (settingData?.value && Array.isArray(settingData.value)) {
-      return settingData.value;
-    }
-  } catch {}
-
-  // Default seed list
-  return [
-    {
-      id: 'root-1',
-      email: ROOT_SUPER_ADMIN,
-      role_tier: 'super_admin',
-      unit_code: 'BCH_DOAN',
-      unit_name: 'Ban Quản Trị Toàn Trường',
-      full_name: 'Nguyễn Thanh Phong',
-      notes: 'Super Admin Gốc (Root Admin)',
-      created_by: 'System',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'default-youth-union',
-      email: 'doanthanhnien@ptithcm.edu.vn',
-      role_tier: 'youth_union',
-      unit_code: 'BCH_DOAN',
-      unit_name: 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
-      full_name: 'Đoàn Thanh Niên Học Viện',
-      notes: 'Tài khoản chức năng Đoàn Học Viện',
-      created_by: 'System',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'default-ctsv',
-      email: 'ctsv@ptithcm.edu.vn',
-      role_tier: 'ctsv',
-      unit_code: 'PHONG_CTSV',
-      unit_name: 'Phòng Công Tác Sinh Viên (CTSV)',
-      full_name: 'Phòng CTSV',
-      notes: 'Tài khoản chức năng Phòng CTSV',
-      created_by: 'System',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'default-csvc',
-      email: 'quantri@ptithcm.edu.vn',
-      role_tier: 'facility',
-      unit_code: 'PHONG_CSVC',
-      unit_name: 'Phòng Quản Trị CSVC & Tổ Chức',
-      full_name: 'Phòng Quản Trị CSVC',
-      notes: 'Tài khoản chức năng Phòng CSVC',
-      created_by: 'System',
-      created_at: new Date().toISOString(),
-    },
-  ];
-}
 
 export async function GET() {
   try {
@@ -116,8 +24,13 @@ export async function GET() {
     const roles = await getStoredOfficerRoles(supabase);
 
     // Populate full_name from users table if missing
-    const { data: allUsers } = await supabase.from('users').select('email, full_name, mssv, class_id');
-    const userMap = new Map((allUsers || []).map((u: any) => [u.email.toLowerCase(), u]));
+    let userMap = new Map<string, any>();
+    try {
+      const { data: allUsers } = await supabase.from('users').select('email, full_name, mssv, class_id');
+      if (allUsers) {
+        userMap = new Map((allUsers || []).map((u: any) => [u.email.toLowerCase(), u]));
+      }
+    } catch {}
 
     const enrichedRoles = roles.map((r) => {
       const u = userMap.get(r.email.toLowerCase());
@@ -190,57 +103,21 @@ export async function POST(req: Request) {
 
     const officialName = fullNameInput || dbUser?.full_name || emailRaw.split('@')[0];
 
-    // 1. Try inserting into officer_roles table
-    let insertedInTable = false;
-    try {
-      const { data, error } = await supabase
-        .from('officer_roles')
-        .upsert({
-          email: emailRaw,
-          role_tier: roleTier,
-          unit_code: unitCode,
-          unit_name: unitName,
-          full_name: officialName,
-          notes: notes || `Cấp quyền bởi ${auth.email}`,
-          created_by: auth.email,
-          created_at: new Date().toISOString(),
-        }, { onConflict: 'email,role_tier,unit_code' })
-        .select()
-        .single();
+    const newItem: OfficerRoleItem = {
+      id: `off-${Date.now()}`,
+      email: emailRaw,
+      role_tier: roleTier,
+      unit_code: unitCode,
+      unit_name: unitName,
+      full_name: officialName,
+      notes: notes || `Cấp quyền bởi ${auth.email}`,
+      created_by: auth.email,
+      created_at: new Date().toISOString(),
+    };
 
-      if (!error && data) {
-        insertedInTable = true;
-      }
-    } catch {}
+    await saveOfficerRole(newItem, supabase);
 
-    // 2. Also keep system_settings updated
-    try {
-      const existing = await getStoredOfficerRoles(supabase);
-      const filtered = existing.filter((r) => !(r.email.toLowerCase() === emailRaw && r.role_tier === roleTier && r.unit_code === unitCode));
-      const newItem: OfficerRoleItem = {
-        id: `off-${Date.now()}`,
-        email: emailRaw,
-        role_tier: roleTier,
-        unit_code: unitCode,
-        unit_name: unitName,
-        full_name: officialName,
-        notes: notes || `Cấp quyền bởi ${auth.email}`,
-        created_by: auth.email,
-        created_at: new Date().toISOString(),
-      };
-      const updatedList = [newItem, ...filtered];
-
-      await supabase
-        .from('system_settings')
-        .upsert({
-          key: 'officer_roles',
-          value: updatedList,
-          updated_at: new Date().toISOString(),
-          updated_by: auth.email,
-        }, { onConflict: 'key' });
-    } catch {}
-
-    // 3. If role is super_admin, also sync to super_admins table
+    // If role is super_admin, also sync to super_admins table
     if (roleTier === 'super_admin') {
       try {
         await supabase.from('super_admins').upsert({ email: emailRaw });
@@ -266,7 +143,7 @@ export async function DELETE(req: Request) {
     const { searchParams } = new URL(req.url);
     const emailRaw = String(searchParams.get('email') || '').trim().toLowerCase();
     const roleTier = String(searchParams.get('role_tier') || '').trim();
-    const id = searchParams.get('id');
+    const id = searchParams.get('id') || undefined;
 
     if (!emailRaw) {
       return NextResponse.json({ success: false, error: 'Thiếu email cán bộ cần thu hồi quyền' }, { status: 400 });
@@ -290,40 +167,9 @@ export async function DELETE(req: Request) {
 
     const supabase = await createClient();
 
-    // 1. Delete from officer_roles table
-    try {
-      if (id && !id.startsWith('off-') && !id.startsWith('root-') && !id.startsWith('default-')) {
-        await supabase.from('officer_roles').delete().eq('id', id);
-      } else {
-        let q = supabase.from('officer_roles').delete().ilike('email', emailRaw);
-        if (roleTier) q = q.eq('role_tier', roleTier);
-        await q;
-      }
-    } catch {}
+    await removeOfficerRole(emailRaw, roleTier, id, supabase);
 
-    // 2. Delete from system_settings
-    try {
-      const existing = await getStoredOfficerRoles(supabase);
-      const updatedList = existing.filter((r) => {
-        if (id && r.id === id) return false;
-        if (r.email.toLowerCase() === emailRaw) {
-          if (roleTier && r.role_tier !== roleTier) return true;
-          return false;
-        }
-        return true;
-      });
-
-      await supabase
-        .from('system_settings')
-        .upsert({
-          key: 'officer_roles',
-          value: updatedList,
-          updated_at: new Date().toISOString(),
-          updated_by: auth.email,
-        }, { onConflict: 'key' });
-    } catch {}
-
-    // 3. If revoked super_admin, also remove from super_admins table
+    // If revoked super_admin, also remove from super_admins table
     if (roleTier === 'super_admin' || !roleTier) {
       try {
         await supabase.from('super_admins').delete().ilike('email', emailRaw);

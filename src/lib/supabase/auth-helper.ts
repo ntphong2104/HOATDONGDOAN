@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from './server';
+import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
 import type { UserTier } from '@/lib/types';
 import crypto from 'crypto';
 
@@ -90,30 +91,12 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     superAdmin = data;
   } catch {}
 
-  // Check dynamic officer_roles table / system_settings
+  // Check dynamic officer_roles via persistent store
   let assignedOfficerRole: any = null;
   try {
-    const { data: offRole } = await supabase
-      .from('officer_roles')
-      .select('*')
-      .ilike('email', email)
-      .maybeSingle();
-    if (offRole) assignedOfficerRole = offRole;
+    const roles = await getStoredOfficerRoles(supabase);
+    assignedOfficerRole = roles.find((r) => r.email.toLowerCase() === email.toLowerCase());
   } catch {}
-
-  if (!assignedOfficerRole) {
-    try {
-      const { data: settingData } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'officer_roles')
-        .maybeSingle();
-      if (settingData?.value && Array.isArray(settingData.value)) {
-        const found = settingData.value.find((r: any) => r.email.toLowerCase() === email.toLowerCase());
-        if (found) assignedOfficerRole = found;
-      }
-    } catch {}
-  }
 
   // Check event_roles table
   let eventRoles: any = [];
@@ -136,19 +119,15 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   const isYouthUnion =
     explicitTier === 'youth_union' ||
-    assignedOfficerRole?.role_tier === 'youth_union' ||
-    lowerEmail.includes('doanthanhnien');
+    assignedOfficerRole?.role_tier === 'youth_union';
 
   const isCtsv =
     explicitTier === 'ctsv' ||
-    assignedOfficerRole?.role_tier === 'ctsv' ||
-    lowerEmail.includes('ctsv');
+    assignedOfficerRole?.role_tier === 'ctsv';
 
   const isFacility =
     explicitTier === 'facility' ||
-    assignedOfficerRole?.role_tier === 'facility' ||
-    lowerEmail.includes('quantri') ||
-    lowerEmail.includes('csvc');
+    assignedOfficerRole?.role_tier === 'facility';
 
   const isEventAdmin =
     isSuperAdmin ||

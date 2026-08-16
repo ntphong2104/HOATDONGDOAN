@@ -223,11 +223,22 @@ function SuperAdminContent() {
       return;
     }
 
+    // Optimistic UI removal
+    setOfficers((prev) =>
+      prev.filter(
+        (o) =>
+          !(
+            o.email.toLowerCase() === officer.email.toLowerCase() &&
+            (officer.role_tier ? o.role_tier === officer.role_tier : true)
+          )
+      )
+    );
+
     try {
       const res = await fetch(
         `/api/admin/officers?email=${encodeURIComponent(officer.email)}&role_tier=${encodeURIComponent(
           officer.role_tier
-        )}&id=${encodeURIComponent(officer.id)}`,
+        )}&id=${encodeURIComponent(officer.id || '')}`,
         { method: 'DELETE' }
       );
       const data = await res.json();
@@ -236,9 +247,11 @@ function SuperAdminContent() {
         fetchOfficers();
       } else {
         alert(data.error || 'Lỗi thu hồi quyền');
+        fetchOfficers();
       }
     } catch (e) {
       alert('Lỗi kết nối máy chủ');
+      fetchOfficers();
     }
   };
 

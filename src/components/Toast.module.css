@@ -1,7 +1,8 @@
 .toastContainer {
   position: fixed;
-  top: 20px;
-  left: 20px;
+  top: 76px;
+  right: 24px;
+  left: auto;
   z-index: 9999999;
   display: flex;
   flex-direction: column;
@@ -19,16 +20,16 @@
   padding: 12px 14px;
   background: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.05);
-  animation: slideInFromLeft 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.14), 0 4px 10px -2px rgba(0, 0, 0, 0.06);
+  animation: slideInFromRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
-@keyframes slideInFromLeft {
+@keyframes slideInFromRight {
   from {
     opacity: 0;
-    transform: translateX(-35px) scale(0.96);
+    transform: translateX(35px) scale(0.96);
   }
   to {
     opacity: 1;
