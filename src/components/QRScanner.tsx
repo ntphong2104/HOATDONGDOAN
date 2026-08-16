@@ -15,55 +15,66 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [hasCameraError, setHasCameraError] = useState(false);
-  const scanCallback = onScanSuccess || onScan;
+
+  const isPausedRef = useRef(isPaused);
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+
+  const scanCallbackRef = useRef(onScanSuccess || onScan);
+  useEffect(() => {
+    scanCallbackRef.current = onScanSuccess || onScan;
+  }, [onScanSuccess, onScan]);
+
+  const startScanner = async () => {
+    const scannerId = 'qr-reader-viewport';
+    setHasCameraError(false);
+
+    try {
+      if (!scannerRef.current) {
+        scannerRef.current = new Html5Qrcode(scannerId);
+      }
+
+      if (scannerRef.current.isScanning) {
+        try {
+          await scannerRef.current.stop();
+        } catch {}
+      }
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+      };
+
+      await scannerRef.current.start(
+        { facingMode },
+        config,
+        (decodedText) => {
+          if (!isPausedRef.current && scanCallbackRef.current) {
+            scanCallbackRef.current(decodedText);
+          }
+        },
+        undefined
+      );
+    } catch (err) {
+      console.error('Failed to start camera scanner:', err);
+      setHasCameraError(true);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
-    const scannerId = 'qr-reader-viewport';
-
-    const startScanner = async () => {
-      try {
-        if (!scannerRef.current) {
-          scannerRef.current = new Html5Qrcode(scannerId);
-        }
-
-        if (scannerRef.current.isScanning) {
-          await scannerRef.current.stop();
-        }
-
-        const config = {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-        };
-
-        await scannerRef.current.start(
-          { facingMode },
-          config,
-          (decodedText) => {
-            if (!isPaused && scanCallback) {
-              scanCallback(decodedText);
-            }
-          },
-          undefined
-        );
-      } catch (err) {
-        if (isMounted) {
-          console.error('Failed to start scanner:', err);
-          setHasCameraError(true);
-        }
-      }
-    };
 
     startScanner();
 
     return () => {
       isMounted = false;
       if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(console.error);
+        scannerRef.current.stop().catch(() => {});
       }
     };
-  }, [facingMode, isPaused, scanCallback]);
+  }, [facingMode]);
 
   const toggleCamera = () => {
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
@@ -89,6 +100,23 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
       {hasCameraError && (
         <div className={styles.errorOverlay}>
           <span>Không thể truy cập camera. Vui lòng kiểm tra quyền.</span>
+          <button
+            type="button"
+            onClick={startScanner}
+            style={{
+              marginTop: '0.75rem',
+              padding: '0.4rem 0.85rem',
+              background: '#ffffff',
+              color: '#dc2626',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+            }}
+          >
+            Thử lại
+          </button>
         </div>
       )}
 
