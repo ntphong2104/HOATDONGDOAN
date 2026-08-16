@@ -349,6 +349,7 @@ describe('Events API', () => {
       (verifyDynamicToken as jest.Mock).mockReturnValue({ valid: true, role: 'participant' });
       getBuilder('users').mockData = { mssv: 'N123' };
       getBuilder('events').mockData = { event_id: '1', status: 'active', is_active: true };
+      getBuilder('event_registrations').mockData = { id: 1, role_type: 'participant', attended: false };
       (isEventPastDeadline as jest.Mock).mockReturnValue(false);
       getBuilder('check_ins').mockData = null; // not existing, then insert success
       // Mock insert returning data for single()
@@ -367,6 +368,7 @@ describe('Events API', () => {
       (verifyDynamicToken as jest.Mock).mockReturnValue({ valid: true, role: 'participant' });
       getBuilder('users').mockData = { mssv: 'N123' };
       getBuilder('events').mockData = { event_id: '1', status: 'active', is_active: true };
+      getBuilder('event_registrations').mockData = { id: 1, role_type: 'participant', attended: false };
       (isEventPastDeadline as jest.Mock).mockReturnValue(false);
       
       const checkinBuilder = getBuilder('check_ins');

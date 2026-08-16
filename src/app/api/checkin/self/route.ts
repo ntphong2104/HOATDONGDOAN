@@ -109,6 +109,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Sự kiện này đã kết thúc và quá hạn điểm danh (sau 1 giờ từ khi kết thúc)' }, { status: 400 });
     }
 
+    // Check if student has registered for this event
+    const { data: registration } = await supabase
+      .from('event_registrations')
+      .select('id, role_type, attended')
+      .eq('event_id', eventId)
+      .eq('mssv', mssv)
+      .maybeSingle();
+
+    if (!registration) {
+      return NextResponse.json({
+        success: false,
+        error: `Bạn chưa đăng ký tham gia sự kiện "${event.event_name}". Vui lòng đăng ký trước khi điểm danh!`,
+        not_registered: true,
+      }, { status: 400 });
+    }
+
+    const effectiveRole =
+      assignedRole !== 'participant'
+        ? assignedRole
+        : registration.role_type === 'volunteer'
+        ? 'volunteer'
+        : 'participant';
+
     // Check duplicate check-in
     const { data: existingCheckin } = await supabase
       .from('check_ins')
@@ -131,7 +154,7 @@ export async function POST(req: Request) {
       .insert({
         event_id: eventId,
         mssv,
-        participate_role: assignedRole,
+        participate_role: effectiveRole,
         checked_by: 'Mã QR Động (Tự quét)',
       })
       .select()
