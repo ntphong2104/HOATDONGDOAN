@@ -71,9 +71,15 @@ export default function NewProposalPage() {
   // Form states
   const [title, setTitle] = useState('');
   const [organizationUnit, setOrganizationUnit] = useState('LCĐ Khoa Công nghệ Thông tin');
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+  // Use Vietnam timezone (UTC+7) for default date
+  const getVNDate = () => {
+    const now = new Date();
+    const vnTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+    return vnTime.toISOString().split('T')[0];
+  };
+  const [startDate, setStartDate] = useState(getVNDate);
   const [startTime, setStartTime] = useState('08:00');
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(getVNDate);
   const [endTime, setEndTime] = useState('11:30');
 
   const [participantCount, setParticipantCount] = useState<number | string>(60);
@@ -508,7 +514,11 @@ export default function NewProposalPage() {
                   type="date"
                   required
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    // Auto-sync endDate if it's before the new startDate
+                    if (endDate < e.target.value) setEndDate(e.target.value);
+                  }}
                   style={{
                     padding: '0.8rem',
                     border: '1.5px solid #cbd5e1',
