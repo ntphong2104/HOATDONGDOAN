@@ -32,6 +32,7 @@ export async function GET(req: Request) {
   let query = supabase
     .from('event_proposals')
     .select('*')
+    .neq('status', 'deleted')
     .order('created_at', { ascending: false });
 
   // Only filter by created_by if regular student or event admin
