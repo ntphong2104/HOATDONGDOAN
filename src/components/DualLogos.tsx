@@ -30,6 +30,7 @@ export default function DualLogos({
             priority
             sizes={`${pixelSize}px`}
             className={styles.logoImg}
+            style={{ width: `${pixelSize}px`, height: `${pixelSize}px`, objectFit: 'contain', aspectRatio: '1 / 1' }}
           />
         </div>
 
@@ -43,6 +44,7 @@ export default function DualLogos({
             priority
             sizes={`${pixelSize}px`}
             className={styles.logoImg}
+            style={{ width: `${pixelSize}px`, height: `${pixelSize}px`, objectFit: 'contain', aspectRatio: '1 / 1' }}
           />
         </div>
       </div>

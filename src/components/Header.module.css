@@ -106,6 +106,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .userChip {
@@ -117,6 +118,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 20px;
   font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
 .userName {
@@ -132,32 +134,41 @@
   .header {
     padding: 0 0.75rem;
   }
-  .branding {
-    max-width: 140px;
+  .left {
+    gap: 0.5rem;
+    flex: 1;
     min-width: 0;
   }
+  .branding {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
   .appTitle {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .userName {
-    max-width: 100px;
+    max-width: 120px;
   }
   .appSubtitle {
     display: none;
   }
-  .left {
-    gap: 0.5rem;
-  }
 }
 
 @media (max-width: 400px) {
-  .branding {
-    max-width: 100px;
+  .header {
+    padding: 0 0.5rem;
+  }
+  .left {
+    gap: 0.35rem;
   }
   .appTitle {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+  }
+  .userName {
+    max-width: 90px;
   }
 }

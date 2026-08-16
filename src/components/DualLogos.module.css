@@ -3,12 +3,14 @@
   align-items: center;
   gap: 0.75rem;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .logosGroup {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .logoWrapper {
@@ -22,6 +24,8 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   transition: transform 0.2s ease;
+  flex-shrink: 0;
+  aspect-ratio: 1 / 1;
 }
 
 .logoWrapper:hover {
@@ -32,37 +36,51 @@
   display: block;
   object-fit: contain;
   border-radius: 50%;
+  flex-shrink: 0;
+  aspect-ratio: 1 / 1;
 }
 
 .sm .logoWrapper {
   width: 32px;
   height: 32px;
+  min-width: 32px;
+  min-height: 32px;
 }
 
 .sm .logoImg {
-  width: 28px;
-  height: 28px;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px;
+  min-height: 28px;
 }
 
 .md .logoWrapper {
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .md .logoImg {
-  width: 38px;
-  height: 38px;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px;
+  min-height: 38px;
 }
 
 .lg .logoWrapper {
   width: 60px;
   height: 60px;
+  min-width: 60px;
+  min-height: 60px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .lg .logoImg {
-  width: 52px;
-  height: 52px;
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 52px;
+  min-height: 52px;
 }
 
 .textGroup {
