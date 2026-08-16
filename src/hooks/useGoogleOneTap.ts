@@ -110,7 +110,15 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
       }
     };
 
-    loadGoogleScript();
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(() => {
+        if (isMounted) loadGoogleScript();
+      });
+    } else {
+      setTimeout(() => {
+        if (isMounted) loadGoogleScript();
+      }, 300);
+    }
 
     return () => {
       isMounted = false;

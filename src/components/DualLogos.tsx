@@ -25,9 +25,11 @@ export default function DualLogos({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logos/logo-ptit.png"
-            alt="Logo PTIT"
+            alt="Logo Học viện Công nghệ Bưu chính Viễn thông Cơ sở tại TP. Hồ Chí Minh"
             width={pixelSize}
             height={pixelSize}
+            loading="eager"
+            decoding="async"
             className={styles.logoImg}
             onError={(e) => {
               const target = e.currentTarget;
@@ -43,9 +45,11 @@ export default function DualLogos({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logos/logo-doan.png"
-            alt="Logo Đoàn TNCS Hồ Chí Minh"
+            alt="Logo Đoàn TNCS Hồ Chí Minh Học viện Công nghệ Bưu chính Viễn thông"
             width={pixelSize}
             height={pixelSize}
+            loading="eager"
+            decoding="async"
             className={styles.logoImg}
             onError={(e) => {
               const target = e.currentTarget;

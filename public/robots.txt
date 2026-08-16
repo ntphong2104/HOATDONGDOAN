@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /llms.txt
+Disallow: /api/
+Disallow: /admin/
+Disallow: /super-admin/
+
+Sitemap: https://ptithcm.com/sitemap.xml

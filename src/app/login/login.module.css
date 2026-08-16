@@ -39,8 +39,9 @@
 
 .subtitle {
   font-size: 0.875rem;
-  color: #475569;
+  color: #334155;
   margin-bottom: 1.75rem;
+  line-height: 1.5;
 }
 
 .error {
@@ -173,8 +174,8 @@
 
 .demoBtnDesc {
   font-size: 0.725rem;
-  color: #475569;
-  font-weight: 500;
+  color: #334155;
+  font-weight: 600;
   margin-top: 0.2rem;
 }
 
