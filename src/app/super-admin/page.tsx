@@ -1580,11 +1580,11 @@ function SuperAdminContent() {
                       boxSizing: 'border-box',
                     }}
                   >
-                    <option value="youth_union">🚩 Đoàn Thanh Niên Học Viện (Duyệt Bước 1)</option>
-                    <option value="ctsv">👥 Phòng Công Tác Sinh Viên - CTSV (Duyệt Bước 2)</option>
-                    <option value="facility">🏛️ Phòng Quản Trị CSVC & Tổ Chức (Duyệt Bước 3)</option>
-                    <option value="event_admin">🏢 Ban Chấp Hành LCĐ / CLB (Quản Trị Đơn Vị)</option>
-                    <option value="super_admin">🎖️ Super Admin (Toàn Quyền Quản Trị Toàn Trường)</option>
+                    <option value="youth_union">Đoàn Thanh Niên Học Viện (Duyệt Bước 1)</option>
+                    <option value="ctsv">Phòng Công Tác Sinh Viên - CTSV (Duyệt Bước 2)</option>
+                    <option value="facility">Phòng Quản Trị CSVC & Tổ Chức (Duyệt Bước 3)</option>
+                    <option value="event_admin">Ban Chấp Hành LCĐ / CLB (Quản Trị Đơn Vị)</option>
+                    <option value="super_admin">Super Admin (Toàn Quyền Quản Trị Toàn Trường)</option>
                   </select>
                 </div>
 
@@ -1763,24 +1763,29 @@ function SuperAdminContent() {
                             </td>
                             <td>
                               {officer.role_tier === 'super_admin' ? (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#fee2e2', color: '#991b1b', fontSize: '0.8rem', fontWeight: 800 }}>
-                                  🎖️ Super Admin
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#fee2e2', color: '#991b1b', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  <ShieldCheckIcon size={14} color="#991b1b" />
+                                  <span>Super Admin</span>
                                 </span>
                               ) : officer.role_tier === 'youth_union' ? (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#dcfce7', color: '#166534', fontSize: '0.8rem', fontWeight: 800 }}>
-                                  🚩 Đoàn Học Viện (Bước 1)
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#dcfce7', color: '#166534', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  <CheckCircleIcon size={14} color="#166534" />
+                                  <span>Đoàn Học Viện (Bước 1)</span>
                                 </span>
                               ) : officer.role_tier === 'ctsv' ? (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#dbeafe', color: '#1e40af', fontSize: '0.8rem', fontWeight: 800 }}>
-                                  👥 Phòng CTSV (Bước 2)
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#dbeafe', color: '#1e40af', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  <UsersIcon size={14} color="#1e40af" />
+                                  <span>Phòng CTSV (Bước 2)</span>
                                 </span>
                               ) : officer.role_tier === 'facility' ? (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#ffedd5', color: '#9a3412', fontSize: '0.8rem', fontWeight: 800 }}>
-                                  🏛️ Phòng CSVC (Bước 3)
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#ffedd5', color: '#9a3412', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  <BuildingIcon size={14} color="#9a3412" />
+                                  <span>Phòng CSVC (Bước 3)</span>
                                 </span>
                               ) : (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.8rem', fontWeight: 800 }}>
-                                  🏢 Admin LCĐ / CLB
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  <SettingsIcon size={14} color="#6b21a8" />
+                                  <span>Admin LCĐ / CLB</span>
                                 </span>
                               )}
                             </td>
@@ -1802,8 +1807,9 @@ function SuperAdminContent() {
                             </td>
                             <td style={{ textAlign: 'center' }}>
                               {officer.isRootAdmin || officer.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn' ? (
-                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#16a34a', background: '#f0fdf4', padding: '0.3rem 0.65rem', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                                  🎖️ Admin Gốc
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', fontWeight: 800, color: '#16a34a', background: '#f0fdf4', padding: '0.3rem 0.65rem', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                                  <ShieldCheckIcon size={13} color="#16a34a" />
+                                  <span>Admin Gốc</span>
                                 </span>
                               ) : (
                                 <button
