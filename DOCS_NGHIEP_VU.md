@@ -73,38 +73,43 @@ Hệ thống thiết lập danh sách cứng gồm **24 tổ chức thanh niên 
 
 ---
 
-## 2.2. Ma trận Phân quyền 7 Cấp
+## 2.2. Ma trận Phân quyền 7 Cấp & Đa Tài Khoản (Multi-Account RBAC)
+
+Hệ thống hỗ trợ **Phân quyền đa tài khoản linh hoạt**: Super Admin có thể gán bất kỳ Email Google cá nhân nào của Học viện (`@ptithcm.edu.vn` hoặc `@student.ptithcm.edu.vn`) vào các ban ngành (Đoàn Học Viện, CTSV, CSVC, LCĐ/CLB, Super Admin) để các cán bộ làm việc độc lập mà không cần chia sẻ chung mật khẩu.
 
 ```mermaid
 graph TD
-    SA["👑 1. Super Admin<br/>(BTV Đoàn Trường)"] --> YU["🏛️ 2. Đoàn TNCS Học Viện"]
-    SA --> CTSV["🎓 3. Phòng CTSV"]
-    SA --> FAC["🏢 4. Phòng Tổ Chức / CSVC"]
-    SA --> EA["🎪 5. Event Admin (24 Đơn vị)"]
+    SA["👑 1. Super Admin<br/>(BTV Đoàn Trường & Quản Trị Hệ Thống)"] --> YU["🏛️ 2. Đoàn TNCS Học Viện (Duyệt Bước 1)"]
+    SA --> CTSV["🎓 3. Phòng CTSV (Duyệt Bước 2)"]
+    SA --> FAC["🏢 4. Phòng Tổ Chức / CSVC (Duyệt Bước 3)"]
+    SA --> EA["🎪 5. Event Admin (24 Đơn vị LCĐ / CLB)"]
     EA --> CK["📱 6. Checker (CTV Điểm Danh)"]
-    SA --> DEL["📜 7. Cán bộ Chi đoàn (Tra cứu ĐRL)"]
-    SA --> STU["🎓 8. Sinh viên (Đăng ký / Quét QR)"]
+    SA --> DEL["📜 7. Cán bộ Chi đoàn (Tra cứu ĐRL Lớp - 30 Ngày)"]
+    SA --> STU["🎓 8. Sinh viên Toàn trường (Đăng ký / Quét QR)"]
 ```
 
-| Quyền hạn & Chức năng | Super Admin | Phòng CTSV | Phòng CSVC | Event Admin (Đơn vị) | Checker (CTV) | Cán bộ Chi đoàn | Sinh viên |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Quản trị toàn trường (`/super-admin`)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Tạo / Sửa / Xóa Sự kiện** | ✅ | ❌ | ❌ | ✅ *(Sự kiện mình)* | ❌ | ❌ | ❌ |
-| **Gán Admin / Phân quyền CTV** | ✅ | ❌ | ❌ | ✅ *(Sự kiện mình)* | ❌ | ❌ | ❌ |
-| **Trình duyệt Kế hoạch mới** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Thẩm định Kế hoạch (Nội dung/Quy mô)** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Thẩm định & Cấp phòng CSVC** | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Phê duyệt Kế hoạch & Sinh sự kiện** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Chiếu màn hình QR Động Hội trường** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Quét Camera điểm danh (`/scanner`)** | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| **Chốt & Xử phạt No-Show Blacklist** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Mở khóa Blacklist cho sinh viên** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Cấp quyền Tra cứu ĐRL Chi đoàn** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Tra cứu ĐRL sinh viên cùng lớp** | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ *(30 ngày)* | ❌ |
-| **Đăng ký tham gia sự kiện** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Sinh viên tự quét QR trên màn hình** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Đánh giá sao & Góp ý sự kiện** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Xuất Excel toàn trường** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Quyền hạn & Chức năng | Super Admin | Đoàn Học Viện | Phòng CTSV | Phòng CSVC | Event Admin (24 Đơn vị) | Checker (CTV) | Cán bộ Chi đoàn | Sinh viên |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Quản trị toàn trường (`/super-admin`)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Phân quyền Cán bộ đa tài khoản (`/api/admin/officers`)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Xem Nhật ký Kiểm toán nội bộ (Audit Trail chi tiết)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Tạo / Sửa / Xóa Sự kiện** | ✅ | ❌ | ❌ | ❌ | ✅ *(Sự kiện mình)* | ❌ | ❌ | ❌ |
+| **Gán Admin / Phân quyền CTV sự kiện** | ✅ | ❌ | ❌ | ❌ | ✅ *(Sự kiện mình)* | ❌ | ❌ | ❌ |
+| **Trình duyệt Kế hoạch mới (`/admin/proposals/new`)** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Duyệt Kế hoạch Bước 1 (Phong trào thanh niên)** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Duyệt Kế hoạch Bước 2 (Quy mô & Nội dung SV)** | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Duyệt Kế hoạch Bước 3 (Cấp phòng CSVC)** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Phê duyệt Kế hoạch & Tự động sinh sự kiện** | ✅ | ✅ *(Bước cuối)*| ✅ *(Bước cuối)*| ✅ *(Bước cuối)*| ❌ | ❌ | ❌ | ❌ |
+| **Chiếu màn hình QR Động Hội trường** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Quét Camera điểm danh (`/scanner`)** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| **Chốt & Xử phạt No-Show Blacklist** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Mở khóa Blacklist cho sinh viên** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Cấp quyền Tra cứu ĐRL Chi đoàn (30 ngày)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Tra cứu ĐRL sinh viên cùng lớp** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ *(30 ngày)* | ❌ |
+| **Đăng ký tham gia sự kiện** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Sinh viên tự quét QR trên màn hình** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Đánh giá sao & Góp ý sự kiện** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Xuất Excel toàn trường** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -261,6 +266,39 @@ stateDiagram-v2
 
 ---
 
+## Quy trình 8: Quản Lý Cán Bộ & Phân Quyền Đa Tài Khoản (Multi-Account RBAC)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor SA as 👑 Super Admin (Admin Gốc)
+    participant Sys as ⚡ Hệ Thống (/api/admin/officers)
+    participant DB as 🗄️ Bảng officer_roles
+    actor Off as 👤 Cán Bộ Được Cấp Quyền
+
+    SA->>Sys: Nhập Email cá nhân (@ptithcm.edu.vn) & Chọn Vai Trò
+    Sys->>Sys: Kiểm tra Domain hợp lệ & Ràng buộc bảo mật
+    Sys->>DB: Ghi nhận phân quyền & Ghi log người cấp
+    Sys-->>SA: Báo cấp quyền thành công
+    Off->>Sys: Đăng nhập bằng Google cá nhân của trường
+    Sys->>DB: Tự động nhận diện Vai Trò (Đoàn HV / CTSV / CSVC / LCĐ)
+    Sys-->>Off: Chuyển thẳng vào Bàn Phê Duyệt / Quản trị tương ứng
+```
+
+### Chi tiết nghiệp vụ:
+1. **Phân Quyền Cho Nhiều Cá Nhân Trong Ban Ngành:**
+   - Super Admin có thể cấp quyền cho nhiều cán bộ cùng thuộc Đoàn Học Viện, Phòng CTSV, Phòng CSVC hoặc 24 LCĐ/CLB.
+   - Mỗi cán bộ dùng **chính tài khoản Google cá nhân của trường** để đăng nhập, hệ thống tự động nhận diện vai trò.
+2. **Bảo Mật Tuyệt Đối Nhật Ký Kiểm Toán (Audit Logs Confidentiality):**
+   - **Chỉ Super Admin (Admin Gốc)** mới thấy được mục **"Nhật Ký Kiểm Toán Cán Bộ"** với đầy đủ chi tiết: Email cá nhân, Họ tên người duyệt, thời gian chính xác từng giây, và ghi chú dặn dò.
+   - **Sinh viên & Các đơn vị LCĐ:** Khi xem chi tiết kế hoạch chỉ nhìn thấy tiến trình các bước sạch sẽ (`1. Đoàn Học Viện → 2. Phòng CTSV → 3. Phòng CSVC`) mà **hoàn toàn không thấy thông tin nội bộ** của cán bộ xử lý.
+3. **Các Cơ Chế Bảo Vệ Bất Biến:**
+   - **Bảo vệ Admin Gốc (Root Admin Immunity):** Tài khoản `n22dccn158@student.ptithcm.edu.vn` được bảo vệ bất biến, không bất kỳ ai có thể thu hồi hoặc xóa bỏ.
+   - **Chống Tự Khóa (Self-Lockout Prevention):** Ngăn chặn Super Admin vô tình tự thu hồi quyền của chính tài khoản mình đang đăng nhập.
+   - **Ràng Buộc Miền Email:** Chỉ cho phép phân quyền cho email có đuôi `@ptithcm.edu.vn` hoặc `@student.ptithcm.edu.vn`.
+
+---
+
 # 4. BẢN ĐỒ CƠ SỞ DỮ LIỆU (DATABASE SCHEMA DICTIONARY)
 
 ### 1. Bảng `events` (Sự kiện)
@@ -281,13 +319,26 @@ stateDiagram-v2
 | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY` | Khóa chính đề xuất |
 | `title` | `TEXT` | `NOT NULL` | Tên kế hoạch chương trình |
-| `unit_name` | `TEXT` | `NOT NULL` | Đơn vị chủ trì (LCĐ / CLB) |
-| `expected_participants` | `INTEGER` | `NOT NULL` | Quy mô sinh viên dự kiến |
-| `room_id` | `UUID` | `NULLABLE` | Phòng mượn của trường |
-| `current_stage` | `TEXT` | `'ctsv' \| 'facility' \| 'approved' \| 'rejected'` | Giai đoạn phê duyệt |
+| `organization_unit` | `TEXT` | `NOT NULL` | Đơn vị chủ trì (LCĐ / CLB) |
+| `total_count` | `INTEGER` | `NOT NULL` | Tổng quy mô dự kiến |
+| `room_name` | `TEXT` | `NULLABLE` | Phòng mượn của trường |
+| `current_stage` | `TEXT` | `'youth_union' \| 'ctsv' \| 'facility' \| 'super_admin' \| 'approved' \| 'rejected'` | Giai đoạn phê duyệt |
 | `status` | `TEXT` | `'pending' \| 'approved' \| 'rejected'` | Trạng thái chung |
 
-### 3. Bảng `check_ins` (Lượt điểm danh)
+### 3. Bảng `officer_roles` (Phân quyền Cán bộ Đa tài khoản)
+| Cột | Kiểu Dữ Liệu | Ràng Buộc | Mô Tả Nghiệp Vụ |
+| :--- | :--- | :--- | :--- |
+| `id` | `BIGSERIAL` | `PRIMARY KEY` | Khóa chính phân quyền cán bộ |
+| `email` | `VARCHAR(100)` | `NOT NULL` | Email Google cá nhân của cán bộ |
+| `role_tier` | `VARCHAR(30)` | `NOT NULL` | Vai trò (`super_admin`, `youth_union`, `ctsv`, `facility`, `event_admin`) |
+| `unit_code` | `VARCHAR(50)` | `NOT NULL` | Mã đơn vị phụ trách (VD: `BCH_DOAN`, `LCD_CNTT`) |
+| `unit_name` | `VARCHAR(150)` | `NOT NULL` | Tên đầy đủ đơn vị phụ trách |
+| `full_name` | `VARCHAR(150)` | `NULLABLE` | Họ tên cán bộ |
+| `notes` | `TEXT` | `NULLABLE` | Chức vụ / Ghi chú |
+| `created_by` | `VARCHAR(100)` | `NOT NULL` | Email Super Admin cấp quyền |
+| `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Thời điểm cấp quyền |
+
+### 4. Bảng `check_ins` (Lượt điểm danh)
 | Cột | Kiểu Dữ Liệu | Ràng Buộc | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- |
 | `id` | `BIGSERIAL` | `PRIMARY KEY` | Khóa chính lượt điểm danh |
@@ -296,7 +347,7 @@ stateDiagram-v2
 | `participate_role` | `TEXT` | `'participant' \| 'volunteer' \| 'organizer'` | Vai trò tham gia |
 | `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Thời điểm quét mã |
 
-### 4. Bảng `event_roles` (Phân quyền sự kiện)
+### 5. Bảng `event_roles` (Phân quyền sự kiện)
 | Cột | Kiểu Dữ Liệu | Ràng Buộc | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- |
 | `id` | `BIGSERIAL` | `PRIMARY KEY` | Khóa chính phân quyền |
@@ -304,7 +355,7 @@ stateDiagram-v2
 | `email` | `TEXT` | `NOT NULL` | Email tài khoản quản trị |
 | `role_type` | `TEXT` | `'event_admin' \| 'checker'` | Vai trò (Admin / CTV Quét) |
 
-### 5. Bảng `class_delegates` (Ủy quyền Cán bộ Chi đoàn)
+### 6. Bảng `class_delegates` (Ủy quyền Cán bộ Chi đoàn)
 | Cột | Kiểu Dữ Liệu | Ràng Buộc | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY` | Khóa chính ủy quyền |
@@ -321,6 +372,9 @@ stateDiagram-v2
 
 | Phương thức | Endpoint | Thẩm Quyền | Mô Tả Chức Năng |
 | :--- | :--- | :--- | :--- |
+| `GET` | `/api/admin/officers` | Super Admin | Lấy danh sách cán bộ và phân quyền hệ thống |
+| `POST` | `/api/admin/officers` | Super Admin | Cấp quyền cán bộ mới cho email trường |
+| `DELETE`| `/api/admin/officers` | Super Admin | Thu hồi quyền cán bộ (Chống xóa Root Admin) |
 | `GET` | `/api/events` | Mọi user đã đăng nhập | Lấy danh sách sự kiện kèm tự động đóng sau 1h |
 | `POST` | `/api/events` | Super Admin / Event Admin | Tạo sự kiện mới |
 | `GET` | `/api/events/[id]` | Mọi user đã đăng nhập | Xem chi tiết sự kiện |
@@ -331,8 +385,8 @@ stateDiagram-v2
 | `GET` | `/api/events/[id]/dynamic-qr` | Event Admin | Lấy mã QR động hội trường (đổi mỗi 10s) |
 | `GET` | `/api/proposals` | Ban Giám sát / Ban Tổ chức | Danh sách kế hoạch trình duyệt |
 | `POST` | `/api/proposals` | Event Admin (Đơn vị) | Gửi kế hoạch sự kiện mới |
-| `POST` | `/api/proposals/[id]/approve` | CTSV / CSVC / Super Admin | Phê duyệt kế hoạch theo giai đoạn |
-| `POST` | `/api/proposals/[id]/reject` | CTSV / CSVC / Super Admin | Từ chối kế hoạch kèm lý do |
+| `POST` | `/api/proposals/[id]/approve` | Đoàn HV / CTSV / CSVC / Super Admin | Phê duyệt kế hoạch theo giai đoạn |
+| `POST` | `/api/proposals/[id]/reject` | Đoàn HV / CTSV / CSVC / Super Admin | Từ chối kế hoạch kèm lý do |
 | `POST` | `/api/proposals/check-conflict`| Đơn vị nộp kế hoạch | Kiểm tra trùng lịch phòng hội trường |
 | `GET` | `/api/admin/delegates` | Super Admin | Danh sách cán bộ Chi đoàn được ủy quyền |
 | `POST` | `/api/admin/delegates` | Super Admin | Cấp quyền tra cứu ĐRL 30 ngày |
