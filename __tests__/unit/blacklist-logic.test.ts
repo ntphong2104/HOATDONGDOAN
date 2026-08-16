@@ -105,5 +105,22 @@ describe('Blacklist & No-Show Business Logic', () => {
       expect(res.isOpen).toBe(false);
       expect(res.reason).toContain('đã bắt đầu');
     });
+
+    test('auto-closed when event is within 12h before start time by default', () => {
+      const soon = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const soonDate = `${soon.getFullYear()}-${String(soon.getMonth() + 1).padStart(2, '0')}-${String(soon.getDate()).padStart(2, '0')}`;
+      const soonTime = `${String(soon.getHours()).padStart(2, '0')}:${String(soon.getMinutes()).padStart(2, '0')}:00`;
+      const res = isRegistrationWindowOpen(soonDate, soonTime, 'active', undefined);
+      expect(res.isOpen).toBe(false);
+      expect(res.reason).toContain('12 tiếng');
+    });
+
+    test('re-opened when organizer explicitly opens registration within 12h', () => {
+      const soon = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const soonDate = `${soon.getFullYear()}-${String(soon.getMonth() + 1).padStart(2, '0')}-${String(soon.getDate()).padStart(2, '0')}`;
+      const soonTime = `${String(soon.getHours()).padStart(2, '0')}:${String(soon.getMinutes()).padStart(2, '0')}:00`;
+      const res = isRegistrationWindowOpen(soonDate, soonTime, 'active', true);
+      expect(res.isOpen).toBe(true);
+    });
   });
 });

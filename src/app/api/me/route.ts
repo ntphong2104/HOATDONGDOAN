@@ -32,7 +32,74 @@ export async function GET() {
         } catch {}
       }
       if (demoUser && demoUser.email) {
-        return NextResponse.json({ success: true, data: demoUser }, { headers: noCacheHeaders });
+        try {
+          const supabase = await createClient();
+          let eventRoles: any = [];
+          try {
+            const res = await supabase
+              .from('event_roles')
+              .select(`
+                event_id,
+                role_type,
+                events (event_name, status, is_active, event_date, start_time, end_time)
+              `)
+              .ilike('email', demoUser.email);
+            if (res.data) eventRoles = res.data;
+          } catch {}
+
+          let createdEvents: any = [];
+          try {
+            const res = await supabase
+              .from('events')
+              .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
+              .ilike('created_by', demoUser.email);
+            if (res.data) createdEvents = res.data;
+          } catch {}
+
+          const managed_events: any[] = [];
+          const seenEventIds = new Set<string>();
+
+          if (demoUser.managed_events && Array.isArray(demoUser.managed_events)) {
+            for (const me of demoUser.managed_events) {
+              if (me.event_id) {
+                managed_events.push(me);
+                seenEventIds.add(me.event_id);
+              }
+            }
+          }
+
+          for (const er of eventRoles) {
+            if (er.event_id && !seenEventIds.has(er.event_id)) {
+              managed_events.push({
+                event_id: er.event_id,
+                event_name: er.events?.event_name || 'Sự kiện',
+                role_type: er.role_type,
+              });
+              seenEventIds.add(er.event_id);
+            }
+          }
+
+          for (const ce of createdEvents) {
+            if (ce.event_id && !seenEventIds.has(ce.event_id)) {
+              managed_events.push({
+                event_id: ce.event_id,
+                event_name: ce.event_name,
+                role_type: 'event_admin',
+              });
+              seenEventIds.add(ce.event_id);
+            }
+          }
+
+          return NextResponse.json({
+            success: true,
+            data: {
+              ...demoUser,
+              managed_events,
+            },
+          }, { headers: noCacheHeaders });
+        } catch {
+          return NextResponse.json({ success: true, data: demoUser }, { headers: noCacheHeaders });
+        }
       }
     }
   } catch {

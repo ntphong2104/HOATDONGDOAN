@@ -85,7 +85,7 @@ export function isRegistrationWindowOpen(
   eventDate?: string,
   startTime?: string,
   eventStatus?: string,
-  isRegistrationOpen = true
+  isRegistrationOpen?: boolean | null
 ): {
   isOpen: boolean;
   eventStartTime?: Date;
@@ -136,6 +136,16 @@ export function isRegistrationWindowOpen(
       isOpen: false,
       eventStartTime: eventStart,
       reason: 'Sự kiện đã bắt đầu diễn ra hoặc đã kết thúc.',
+    };
+  }
+
+  // 4. Auto-close 12 hours before event start (unless organizer explicitly opened it with isRegistrationOpen === true)
+  const hoursDiff = (eventStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+  if (isRegistrationOpen !== true && hoursDiff < 12) {
+    return {
+      isOpen: false,
+      eventStartTime: eventStart,
+      reason: 'Cổng đăng ký đã tự động đóng (trước giờ khai mạc 12 tiếng). Ban tổ chức có thể mở lại thủ công.',
     };
   }
 

@@ -272,10 +272,44 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const isSuperAdmin = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
   const backTarget = isSuperAdmin ? '/super-admin' : '/admin';
 
-  // Authorization: only super admin or users with a role in this event can view
-  const hasEventAccess = isSuperAdmin || currentUser?.managed_events?.some(
-    (e: any) => e.event_id === resolvedParams.id
+  const isYouthUnion = currentUser?.tier === 'youth_union';
+  const isEventCreator = Boolean(
+    event?.created_by &&
+    currentUser?.email &&
+    event.created_by.toLowerCase() === currentUser.email.toLowerCase()
   );
+  const hasEventRole = currentUser?.managed_events?.some(
+    (e: any) => e.event_id === resolvedParams.id
+  ) || roles?.some(
+    (r: any) => r.email?.toLowerCase() === currentUser?.email?.toLowerCase()
+  );
+
+  // Authorization: super admin, youth union, event creator or assigned role can view
+  const hasEventAccess = isSuperAdmin || isYouthUnion || isEventCreator || hasEventRole;
+
+  const handleToggleEventStatus = async () => {
+    if (!event) return;
+    const newStatus = event.status === 'active' ? 'closed' : 'active';
+    const actionText = newStatus === 'active' ? 'MỞ LẠI' : 'ĐÓNG';
+    if (!confirm(`Xác nhận ${actionText} sự kiện "${event.event_name}"?`)) return;
+
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setEvent(data.data);
+        alert(`Đã ${actionText.toLowerCase()} sự kiện thành công!`);
+      } else {
+        alert(data.error || 'Lỗi cập nhật trạng thái sự kiện');
+      }
+    } catch (err: any) {
+      alert(`Lỗi: ${err.message || 'Lỗi kết nối'}`);
+    }
+  };
 
   if (loading || !event) {
     return (
@@ -302,7 +336,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             color: '#b91c1c',
           }}>
             <p style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>⛔ Bạn không có quyền xem sự kiện này</p>
-            <p style={{ fontSize: '0.875rem', margin: 0, color: '#64748b' }}>Chỉ Super Admin hoặc người được gán vai trò trong sự kiện mới có quyền truy cập.</p>
+            <p style={{ fontSize: '0.875rem', margin: 0, color: '#64748b' }}>Chỉ Super Admin, Đoàn Học Viện hoặc đơn vị tạo sự kiện mới có quyền truy cập.</p>
           </div>
         </main>
       </div>
@@ -347,11 +381,30 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <ClockIcon size={16} />
             {event.event_date ? new Date(event.event_date).toLocaleDateString('vi-VN') : 'Hôm nay'}
             {event.start_time && ` (${event.start_time.slice(0, 5)} - ${event.end_time ? event.end_time.slice(0, 5) : '22:00'})`}
-            {' • '}
-            <span style={{ color: event.status === 'active' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-              {event.status === 'active' ? '● Đang mở điểm danh' : '● Đã đóng điểm danh'}
-            </span>
           </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ color: event.status === 'active' ? '#16a34a' : '#dc2626', fontWeight: 700, fontSize: '0.9rem' }}>
+              {event.status === 'active' ? '● Đang mở điểm danh' : '● Đã đóng sự kiện'}
+            </span>
+            <button
+              type="button"
+              onClick={handleToggleEventStatus}
+              style={{
+                padding: '0.35rem 0.85rem',
+                borderRadius: '8px',
+                border: '1.5px solid',
+                borderColor: event.status === 'active' ? '#fca5a5' : '#86efac',
+                background: event.status === 'active' ? '#fef2f2' : '#f0fdf4',
+                color: event.status === 'active' ? '#dc2626' : '#15803d',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+              }}
+            >
+              {event.status === 'active' ? '🔒 Đóng Sự Kiện' : '🔓 Mở Lại Sự Kiện'}
+            </button>
+          </div>
 
           {event.status === 'active' && (
             <>
