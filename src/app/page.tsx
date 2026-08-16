@@ -6,24 +6,33 @@ import StudentDashboardClient from '@/components/StudentDashboardClient';
 import type { HistoryItem, ParticipateRole, SessionUser } from '@/lib/types';
 import styles from './page.module.css';
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ view?: string }>;
+}) {
   const auth = await getAuthContext();
   if (!auth) {
     redirect('/login');
   }
 
-  // ──── Điều hướng các cấp Quản trị & Ban ngành về đúng Không Gian Làm Việc ────
-  if (auth.tier === 'super_admin' || auth.isSuperAdmin) {
-    redirect('/super-admin');
-  }
-  if (auth.tier === 'youth_union' || auth.tier === 'ctsv' || auth.tier === 'facility') {
-    redirect('/admin/proposals');
-  }
-  if (auth.tier === 'event_admin' || auth.isEventAdmin) {
-    redirect('/admin');
-  }
-  if (auth.tier === 'checker') {
-    redirect('/scanner');
+  const resolvedParams = searchParams ? await searchParams : {};
+  const isStudentView = resolvedParams?.view === 'student';
+
+  // ──── Điều hướng các cấp Quản trị về đúng Không Gian Làm Việc (Trừ khi chủ động vào xem Cổng Sinh Viên) ────
+  if (!isStudentView) {
+    if (auth.tier === 'super_admin' || auth.isSuperAdmin) {
+      redirect('/super-admin');
+    }
+    if (auth.tier === 'youth_union' || auth.tier === 'ctsv' || auth.tier === 'facility') {
+      redirect('/admin/proposals');
+    }
+    if (auth.tier === 'event_admin' || auth.isEventAdmin) {
+      redirect('/admin');
+    }
+    if (auth.tier === 'checker') {
+      redirect('/scanner');
+    }
   }
 
   // ──── Giao diện Dành Riêng Cho Sinh Viên (Mã QR Điểm Danh & Lịch Sử) ────

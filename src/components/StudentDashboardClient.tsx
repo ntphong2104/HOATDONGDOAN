@@ -116,12 +116,75 @@ export default function StudentDashboardClient({
 
   return (
     <>
+      {/* Switch Banner for Admins/Officers */}
+      {tier !== 'user' && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
+            color: '#ffffff',
+            borderRadius: '16px',
+            padding: '1rem 1.35rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '1.5rem',
+            flexWrap: 'wrap',
+            gap: '0.85rem',
+            boxShadow: '0 4px 14px rgba(30, 58, 138, 0.25)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <ShieldCheckIcon size={20} color="#93c5fd" />
+            <div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+                Bạn đang ở Cổng Sinh Viên (Mã QR Điểm Danh & Minh Chứng Cá Nhân)
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#bfdbfe', marginTop: '0.15rem' }}>
+                Dùng mã QR bên dưới hoặc quét mã trên màn hình hội trường khi bạn tham gia sự kiện.
+              </div>
+            </div>
+          </div>
+          <Link
+            href={
+              tier === 'super_admin'
+                ? '/super-admin'
+                : tier === 'youth_union' || tier === 'ctsv' || tier === 'facility'
+                ? '/admin/proposals'
+                : tier === 'event_admin'
+                ? '/admin'
+                : '/scanner'
+            }
+            style={{
+              background: '#ffffff',
+              color: '#1e40af',
+              padding: '0.5rem 1rem',
+              borderRadius: '10px',
+              fontSize: '0.85rem',
+              fontWeight: 800,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            Quay Lại Bàn Quản Trị ➔
+          </Link>
+        </div>
+      )}
+
       {/* Role Navigation Links for Admins */}
       <div className={styles.roleLinks}>
         {tier === 'super_admin' && (
           <Link href="/super-admin" className={`${styles.adminLink} ${styles.superAdminLink}`}>
             <ShieldCheckIcon size={18} />
             Quản trị toàn trường (Super Admin)
+          </Link>
+        )}
+        {(tier === 'super_admin' || tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'event_admin') && (
+          <Link href="/admin/proposals" className={`${styles.adminLink} ${styles.eventAdminLink}`}>
+            <ShieldCheckIcon size={18} />
+            Trình & Duyệt Kế Hoạch
           </Link>
         )}
         {(tier === 'super_admin' || tier === 'event_admin') && (

@@ -235,6 +235,20 @@ export default function UserMenuDropdown({
 
           {/* Navigation Links */}
           <ul className={styles.menuList}>
+            {/* Cổng Sinh Viên & Mã QR Cá Nhân (Dành cho MỌI tài khoản kể cả Admin) */}
+            <li>
+              <Link
+                href="/?view=student"
+                className={styles.menuItem}
+                onClick={() => setIsOpen(false)}
+              >
+                <div className={styles.menuItemIcon} style={{ color: '#16a34a' }}>
+                  <QrCodeIcon size={16} />
+                </div>
+                <span>Cổng Sinh Viên & Mã QR Cá Nhân</span>
+              </Link>
+            </li>
+
             {/* Pure Department Approvers Menu */}
             {isPureApprover && (
               <li>
@@ -247,22 +261,6 @@ export default function UserMenuDropdown({
                     <ShieldCheckIcon size={16} />
                   </div>
                   <span>Bàn Phê Duyệt Kế Hoạch</span>
-                </Link>
-              </li>
-            )}
-
-            {/* Non-Approver Standard Student Home */}
-            {!isPureApprover && (
-              <li>
-                <Link
-                  href="/"
-                  className={styles.menuItem}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <div className={styles.menuItemIcon}>
-                    <QrCodeIcon size={16} />
-                  </div>
-                  <span>Trang Tổng Quan & Mã QR</span>
                 </Link>
               </li>
             )}
