@@ -1,0 +1,126 @@
+.toastContainer {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 9999999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+  max-width: min(380px, calc(100vw - 32px));
+  width: 100%;
+}
+
+.toastItem {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.05);
+  animation: slideInFromLeft 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-35px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.toastSuccess {
+  border: 1.5px solid #86efac;
+  border-left: 4px solid #16a34a;
+}
+
+.toastError {
+  border: 1.5px solid #fca5a5;
+  border-left: 4px solid #dc2626;
+}
+
+.toastWarning {
+  border: 1.5px solid #fde68a;
+  border-left: 4px solid #d97706;
+}
+
+.toastInfo {
+  border: 1.5px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
+}
+
+.iconBox {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.iconBoxSuccess {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.iconBoxError {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.iconBoxWarning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.iconBoxInfo {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.messageContent {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.closeButton:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+@media (max-width: 640px) {
+  .toastContainer {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    max-width: calc(100vw - 24px);
+  }
+}
