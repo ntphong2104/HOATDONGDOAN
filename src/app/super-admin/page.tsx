@@ -1593,11 +1593,11 @@ function SuperAdminContent() {
                       boxSizing: 'border-box',
                     }}
                   >
-                    <option value="youth_union">Đoàn Thanh Niên Học Viện (Duyệt Bước 1)</option>
-                    <option value="ctsv">Phòng Công Tác Sinh Viên - CTSV (Duyệt Bước 2)</option>
-                    <option value="facility">Phòng Quản Trị CSVC & Tổ Chức (Duyệt Bước 3)</option>
-                    <option value="event_admin">Ban Chấp Hành LCĐ / CLB (Quản Trị Đơn Vị)</option>
-                    <option value="super_admin">Super Admin (Toàn Quyền Quản Trị Toàn Trường)</option>
+                    <option value="youth_union">Đoàn Thanh Niên Học Viện</option>
+                    <option value="ctsv">Phòng Công Tác Sinh Viên (CTSV)</option>
+                    <option value="facility">Phòng Quản Trị CSVC & Tổ Chức</option>
+                    <option value="event_admin">Ban Chấp Hành LCĐ / CLB</option>
+                    <option value="super_admin">Super Admin (Toàn Quyền Quản Trị)</option>
                   </select>
                 </div>
 
@@ -1634,11 +1634,11 @@ function SuperAdminContent() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
-                    Chức Vụ / Ghi Chú
+                    Chức Vụ / Ghi Chú Phân Công
                   </label>
                   <input
                     type="text"
-                    placeholder="VD: Ủy viên BTV Đoàn trường, Chuyên viên CTSV..."
+                    placeholder="VD: Ủy viên BTV, Chuyên viên, Bí thư LCĐ..."
                     value={officerNotes}
                     onChange={(e) => setOfficerNotes(e.target.value)}
                     style={{
@@ -1680,7 +1680,7 @@ function SuperAdminContent() {
                     }}
                   >
                     <PlusIcon size={16} />
-                    <span>{grantingOfficer ? 'Đang cấp quyền...' : '+ Cấp Quyền Cho Cán Bộ'}</span>
+                    <span>{grantingOfficer ? 'Đang cấp quyền...' : 'Gán Quyền Cán Bộ'}</span>
                   </button>
                 </div>
               </form>
@@ -1783,17 +1783,17 @@ function SuperAdminContent() {
                               ) : officer.role_tier === 'youth_union' ? (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#dcfce7', color: '#166534', fontSize: '0.8rem', fontWeight: 800 }}>
                                   <CheckCircleIcon size={14} color="#166534" />
-                                  <span>Đoàn Học Viện (Bước 1)</span>
+                                  <span>Đoàn Học Viện</span>
                                 </span>
                               ) : officer.role_tier === 'ctsv' ? (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#dbeafe', color: '#1e40af', fontSize: '0.8rem', fontWeight: 800 }}>
                                   <UsersIcon size={14} color="#1e40af" />
-                                  <span>Phòng CTSV (Bước 2)</span>
+                                  <span>Phòng CTSV</span>
                                 </span>
                               ) : officer.role_tier === 'facility' ? (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#ffedd5', color: '#9a3412', fontSize: '0.8rem', fontWeight: 800 }}>
                                   <BuildingIcon size={14} color="#9a3412" />
-                                  <span>Phòng CSVC (Bước 3)</span>
+                                  <span>Phòng CSVC</span>
                                 </span>
                               ) : (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.8rem', fontWeight: 800 }}>
