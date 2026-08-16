@@ -128,9 +128,17 @@ export function isRegistrationWindowOpen(
     return { isOpen: true };
   }
 
+  // If organizer explicitly opened registration, keep it open!
+  if (isRegistrationOpen === true) {
+    return {
+      isOpen: true,
+      eventStartTime: eventStart,
+    };
+  }
+
   const now = new Date();
 
-  // 3. Closes when event starts
+  // 3. Closes when event starts by default
   if (now > eventStart) {
     return {
       isOpen: false,
@@ -139,9 +147,9 @@ export function isRegistrationWindowOpen(
     };
   }
 
-  // 4. Auto-close 12 hours before event start (unless organizer explicitly opened it with isRegistrationOpen === true)
+  // 4. Auto-close 12 hours before event start by default
   const hoursDiff = (eventStart.getTime() - now.getTime()) / (1000 * 60 * 60);
-  if (isRegistrationOpen !== true && hoursDiff < 12) {
+  if (hoursDiff < 12) {
     return {
       isOpen: false,
       eventStartTime: eventStart,

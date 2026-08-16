@@ -101,7 +101,7 @@ describe('Blacklist & No-Show Business Logic', () => {
 
     test('closed when event start time has already passed', () => {
       const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const res = isRegistrationWindowOpen(pastDate, '08:00:00', 'active', true);
+      const res = isRegistrationWindowOpen(pastDate, '08:00:00', 'active', undefined);
       expect(res.isOpen).toBe(false);
       expect(res.reason).toContain('đã bắt đầu');
     });

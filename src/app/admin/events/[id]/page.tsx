@@ -49,19 +49,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [projectorRole, setProjectorRole] = useState<'participant' | 'volunteer' | 'organizer'>('participant');
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
 
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) {
-        fetchData();
+        fetchData(false);
       }
     };
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, [resolvedParams.id]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
       const meRes = await fetch('/api/me');
       const meData = await meRes.json();
@@ -78,7 +78,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         .eq('event_id', resolvedParams.id)
         .single();
       
-      setEvent(eventData);
+      if (eventData) {
+        setEvent(eventData);
+      }
 
       const res = await fetch(`/api/events/${resolvedParams.id}/checkins`);
       const checkinsData = await res.json();
@@ -105,8 +107,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      if (isInitial) setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSubmitEventRating = async () => {
@@ -124,7 +127,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       if (data.success) {
         alert(data.message || 'Đã gửi đánh giá thành công!');
         setRatingFeedback('');
-        fetchData();
+        fetchData(false);
       } else {
         alert(data.error || 'Lỗi gửi đánh giá');
       }
@@ -168,7 +171,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       const data = await res.json();
       if (data.success) {
         alert(data.message);
-        fetchData();
+        if (data.data) {
+          setEvent(data.data);
+        } else {
+          setEvent((prev) => (prev ? { ...prev, is_registration_open: !isCurrentlyOpen } : null));
+        }
+        fetchData(false);
       } else {
         alert(data.error || 'Lỗi thay đổi trạng thái');
       }
