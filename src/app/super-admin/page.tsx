@@ -826,7 +826,7 @@ function SuperAdminContent() {
             >
               <div className={styles.tabButtonLeft}>
                 <BuildingIcon size={18} />
-                <span>24 Đơn Vị Trực Thuộc Đoàn</span>
+                <span>Các Đơn Vị Trực Thuộc</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <span className={styles.tabBadge}>{OFFICIAL_UNITS.length}</span>
@@ -1524,7 +1524,7 @@ function SuperAdminContent() {
                 </div>
               </div>
               <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1.5px solid #f3e8ff', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase' }}>24 Đơn Vị LCĐ/CLB</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase' }}>Các Đơn Vị (LCĐ/CLB)</span>
                 <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#7c3aed', marginTop: '0.35rem' }}>
                   {officers.filter((o) => o.role_tier === 'event_admin').length}
                 </div>
@@ -2047,7 +2047,7 @@ function SuperAdminContent() {
                 <div>
                   <h2 className={styles.sectionTitle}>
                     <BuildingIcon size={20} color="#2563eb" />
-                    Danh Sách 24 Đơn Vị Tổ Chức (8 LCĐ & 16 CLB/Đội Nhóm)
+                    Danh Sách Các Đơn Vị Trực Thuộc (Đoàn Trường, 8 LCĐ & 16 CLB/Đội/Nhóm)
                   </h2>
                   <p className={styles.sectionSubtitle}>
                     Các đơn vị tổ chức có quyền nộp kế hoạch chương trình và quản lý sự kiện trong hệ thống
