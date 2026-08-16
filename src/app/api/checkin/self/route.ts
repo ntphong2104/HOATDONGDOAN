@@ -149,6 +149,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Lỗi ghi nhận điểm danh: ' + (checkinErr.message || 'Lỗi hệ thống') }, { status: 500 });
     }
 
+    // Synchronize event_registrations attended status
+    try {
+      await supabase
+        .from('event_registrations')
+        .upsert(
+          {
+            event_id: eventId,
+            email: email,
+            mssv: mssv,
+            full_name: studentUser?.full_name || mssv,
+            class_id: studentUser?.class_id || 'PTIT',
+            role_type: assignedRole === 'volunteer' ? 'volunteer' : 'participant',
+            attended: true,
+          },
+          { onConflict: 'event_id,mssv' }
+        );
+    } catch (syncErr) {
+      console.warn('Could not sync event_registrations:', syncErr);
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Điểm danh thành công!',

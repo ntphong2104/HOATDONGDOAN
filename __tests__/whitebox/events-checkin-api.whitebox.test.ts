@@ -238,22 +238,21 @@ describe('Events API', () => {
     const mockReq = new NextRequest('http://localhost/api', { method: 'GET' });
 
     it('returns 401', async () => {
-      mockSupabase.auth.getSession.mockResolvedValue({ data: { session: null } });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce(null);
       const res = await CheckinsGET(mockReq, { params: mockParams });
       expect(res.status).toBe(401);
     });
 
     it('returns 403', async () => {
-      mockSupabase.auth.getSession.mockResolvedValue({ data: { session: { user: { email: 'a@a.com' } } } });
-      getBuilder('super_admins').mockData = null;
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'a@a.com', isSuperAdmin: false, tier: 'user' });
       getBuilder('event_roles').mockData = null;
+      getBuilder('events').mockData = { created_by: 'other@ptit.edu.vn' };
       const res = await CheckinsGET(mockReq, { params: mockParams });
       expect(res.status).toBe(403);
     });
 
     it('returns checkins', async () => {
-      mockSupabase.auth.getSession.mockResolvedValue({ data: { session: { user: { email: 'a@a.com' } } } });
-      getBuilder('super_admins').mockData = { email: 'a@a.com' };
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'a@a.com', isSuperAdmin: true, tier: 'super_admin' });
       getBuilder('check_ins').mockData = [{ mssv: '123', users: { full_name: 'A' }, participate_role: 'volunteer' }];
       const res = await CheckinsGET(mockReq, { params: mockParams });
       const json = await res.json();

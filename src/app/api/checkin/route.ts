@@ -108,6 +108,26 @@ export async function POST(req: Request) {
       throw error;
     }
 
+    // Synchronize event_registrations attended status
+    try {
+      await supabase
+        .from('event_registrations')
+        .upsert(
+          {
+            event_id,
+            email: student.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
+            mssv,
+            full_name: student.full_name || mssv,
+            class_id: student.class_id || 'PTIT',
+            role_type: participate_role === 'volunteer' ? 'volunteer' : 'participant',
+            attended: true,
+          },
+          { onConflict: 'event_id,mssv' }
+        );
+    } catch (syncErr) {
+      console.warn('Could not sync event_registrations in checker checkin:', syncErr);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
