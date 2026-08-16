@@ -5,6 +5,14 @@ jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
 }));
 
+jest.mock('@/lib/constants/officers-store', () => ({
+  getStoredOfficerRoles: jest.fn().mockResolvedValue([
+    { email: 'doanthanhnien@ptithcm.edu.vn', role_tier: 'youth_union', role_title: 'Đoàn Học Viện' },
+    { email: 'phongctsv@ptithcm.edu.vn', role_tier: 'ctsv', role_title: 'Phòng CTSV' },
+    { email: 'phongquantri@ptithcm.edu.vn', role_tier: 'facility', role_title: 'Phòng CSVC' },
+  ]),
+}));
+
 describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () => {
   let mockSupabase: any;
 
@@ -165,7 +173,7 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
   test('Branch 9: Detects youth_union tier from email', async () => {
     setupMockSupabase({
       sessionUser: { email: 'doanthanhnien@ptithcm.edu.vn' },
-      dbUser: null,
+      dbUser: { mssv: 'CANBO', full_name: 'Đoàn Học Viện', class_id: 'BCH' },
       superAdmin: null,
     });
 
@@ -179,7 +187,7 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
   test('Branch 10: Detects ctsv tier from email', async () => {
     setupMockSupabase({
       sessionUser: { email: 'phongctsv@ptithcm.edu.vn' },
-      dbUser: null,
+      dbUser: { mssv: 'CANBO', full_name: 'Phòng CTSV', class_id: 'CTSV' },
       superAdmin: null,
     });
 
@@ -193,7 +201,7 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
   test('Branch 11: Detects facility tier from email with quantri keyword', async () => {
     setupMockSupabase({
       sessionUser: { email: 'phongquantri@ptithcm.edu.vn' },
-      dbUser: null,
+      dbUser: { mssv: 'CANBO', full_name: 'Phòng CSVC', class_id: 'CSVC' },
       superAdmin: null,
     });
 

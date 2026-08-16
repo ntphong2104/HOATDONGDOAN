@@ -20,7 +20,7 @@ describe('Unit Tests: extractMSSV & isValidSchoolEmail', () => {
     test('returns null for non-school email domains', () => {
       expect(extractMSSV('student@gmail.com')).toBeNull();
       expect(extractMSSV('n22dccn001@hust.edu.vn')).toBeNull();
-      expect(extractMSSV('n22dccn001@ptit.edu.vn')).toBeNull();
+      expect(extractMSSV('n22dccn001@neu.edu.vn')).toBeNull();
     });
 
     test('handles empty or malformed email strings gracefully', () => {

@@ -39,6 +39,12 @@ describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
         full_name: 'Trần Thị Bích',
         class_id: 'D22CQCN01-N',
       },
+      N22DCCN003: {
+        mssv: 'N22DCCN003',
+        email: 'n22dccn003@ptit.edu.vn',
+        full_name: 'Lê Văn Cường',
+        class_id: 'D22CQCN01-N',
+      },
     };
 
     dbCheckins = [];
@@ -48,19 +54,31 @@ describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
         getSession: jest.fn().mockResolvedValue({
           data: { session: { user: { email: 'admin@ptit.edu.vn' } } },
         }),
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: { email: 'admin@ptit.edu.vn' } },
+        }),
       },
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'super_admins') {
           return {
             select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            single: jest.fn().mockResolvedValue({ data: { email: 'admin@ptit.edu.vn' }, error: null }),
+            eq: jest.fn().mockImplementation((col: string, val: string) => ({
+              single: jest.fn().mockResolvedValue({ data: val === 'admin@ptit.edu.vn' ? { email: val } : null, error: null }),
+              maybeSingle: jest.fn().mockResolvedValue({ data: val === 'admin@ptit.edu.vn' ? { email: val } : null, error: null }),
+            })),
+            ilike: jest.fn().mockImplementation((col: string, val: string) => ({
+              single: jest.fn().mockResolvedValue({ data: val === 'admin@ptit.edu.vn' ? { email: val } : null, error: null }),
+              maybeSingle: jest.fn().mockResolvedValue({ data: val === 'admin@ptit.edu.vn' ? { email: val } : null, error: null }),
+            })),
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
           };
         }
         if (table === 'event_roles') {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockResolvedValue({ data: [], error: null }),
             single: jest.fn().mockResolvedValue({ data: null, error: null }),
           };
         }
@@ -172,11 +190,17 @@ describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
     // Step 4: Event Admin closes the event
     dbEvents['event-001'].status = 'closed';
 
-    // Step 5: Scanning after event closure is blocked -> Expect 400 Bad Request
+    // Step 5: Regular Checker scanning after event closure is blocked -> Expect 400 Bad Request
+    mockSupabase.auth.getUser = jest.fn().mockResolvedValue({
+      data: { user: { email: 'checker@ptit.edu.vn' } },
+    });
+    mockSupabase.auth.getSession = jest.fn().mockResolvedValue({
+      data: { session: { user: { email: 'checker@ptit.edu.vn' } } },
+    });
     const scanAfterCloseReq = new Request('http://localhost:3000/api/checkin', {
       method: 'POST',
       body: JSON.stringify({
-        mssv: 'N22DCCN001',
+        mssv: 'N22DCCN003',
         event_id: 'event-001',
         participate_role: 'participant',
       }),
@@ -185,6 +209,12 @@ describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
     expect(scanAfterCloseRes.status).toBe(400);
 
     // Step 6: Export Event Check-in data for Excel report
+    mockSupabase.auth.getUser = jest.fn().mockResolvedValue({
+      data: { user: { email: 'admin@ptit.edu.vn' } },
+    });
+    mockSupabase.auth.getSession = jest.fn().mockResolvedValue({
+      data: { session: { user: { email: 'admin@ptit.edu.vn' } } },
+    });
     const exportReq = new Request('http://localhost:3000/api/events/event-001/checkins', {
       method: 'GET',
     });

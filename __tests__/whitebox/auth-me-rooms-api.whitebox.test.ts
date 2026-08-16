@@ -157,7 +157,7 @@ describe('API Route Whitebox Tests', () => {
 
   describe('me/route', () => {
     it('GET should return demo user if cookie exists', async () => {
-      (cookies().get as jest.Mock).mockReturnValue({ value: encodeURIComponent(JSON.stringify({ mssv: 'TEST' })) });
+      (cookies().get as jest.Mock).mockReturnValue({ value: encodeURIComponent(JSON.stringify({ mssv: 'TEST', email: 'test@student.ptithcm.edu.vn' })) });
       const res = await MeGET();
       const data = await res.json();
       expect(data.success).toBe(true);

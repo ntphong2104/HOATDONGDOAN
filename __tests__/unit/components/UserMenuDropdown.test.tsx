@@ -93,7 +93,7 @@ describe('UserMenuDropdown', () => {
     await userEvent.click(trigger);
     
     expect(screen.getByText('Máy Quét Điểm Danh (Camera)')).toBeInTheDocument();
-    expect(screen.getByText('Trang Tổng Quan & Mã QR')).toBeInTheDocument();
+    expect(screen.getByText('Cổng Sinh Viên & Mã QR Cá Nhân')).toBeInTheDocument();
   });
 
   it('handles click outside', async () => {

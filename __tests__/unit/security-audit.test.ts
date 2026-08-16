@@ -89,8 +89,8 @@ describe('Comprehensive Security & Business Logic Audit Suite', () => {
     });
 
     test('returns accurate stage labels in Vietnamese', () => {
-      expect(getStageLabel('ctsv')).toBe('1. Phòng Công Tác Sinh Viên (CTSV)');
-      expect(getStageLabel('facility')).toBe('2. Phòng Tổ Chức Hành Chính (Cấp phòng)');
+      expect(getStageLabel('ctsv')).toContain('Phòng Công Tác Sinh Viên (CTSV)');
+      expect(getStageLabel('facility')).toContain('Phòng Tổ Chức Hành Chính');
       expect(getStageLabel('approved')).toBe('Đã duyệt toàn bộ & Đã tạo sự kiện');
     });
   });

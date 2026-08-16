@@ -6,18 +6,18 @@ import {
 
 describe('Event Proposal Approval Logic (CTSV & Phòng Tổ Chức)', () => {
   describe('calculateProposalStages', () => {
-    test('no room borrowed: only CTSV stage required', () => {
+    test('no room borrowed: youth_union and CTSV stage required', () => {
       const result = calculateProposalStages(40, null, 'Không mượn');
       expect(result.requiresCtsv).toBe(true);
       expect(result.requiresFacility).toBe(false);
-      expect(result.stagesList).toEqual(['ctsv']);
+      expect(result.stagesList).toEqual(['youth_union', 'ctsv']);
     });
 
-    test('with room borrowed: triggers CTSV and Facility (Phòng Tổ Chức) stages', () => {
+    test('with room borrowed: triggers Youth Union, CTSV and Facility stages', () => {
       const result = calculateProposalStages(80, 'room-123', 'Hội trường 2B');
       expect(result.requiresCtsv).toBe(true);
       expect(result.requiresFacility).toBe(true);
-      expect(result.stagesList).toEqual(['ctsv', 'facility']);
+      expect(result.stagesList).toEqual(['youth_union', 'ctsv', 'facility']);
     });
   });
 

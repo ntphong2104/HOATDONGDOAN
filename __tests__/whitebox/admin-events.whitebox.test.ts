@@ -30,7 +30,12 @@ describe('Whitebox Tests: Admin & Event API Routes', () => {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
             single: jest.fn().mockResolvedValue({
+              data: isSuperAdmin ? { email: userEmail } : null,
+              error: null,
+            }),
+            maybeSingle: jest.fn().mockResolvedValue({
               data: isSuperAdmin ? { email: userEmail } : null,
               error: null,
             }),
@@ -40,6 +45,7 @@ describe('Whitebox Tests: Admin & Event API Routes', () => {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockResolvedValue({ data: [], error: null }),
             delete: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
           };
         }
