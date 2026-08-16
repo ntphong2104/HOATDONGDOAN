@@ -163,8 +163,8 @@ sequenceDiagram
 ## Quy trình 2: Cổng Đăng ký Công khai, Khóa Tự Động 12 Giờ & Quyền Mở Thủ Công
 
 1. **Link Đăng Ký Độc Lập:** Mỗi sự kiện có đường link dạng `/events/[event_id]/register`.
-2. **Đăng Ký 1-Chạm Siêu Nhanh & Vai Trò Mặc Định:**
-   - **Xác nhận 1-Chạm:** Sinh viên đăng nhập bằng tài khoản Google trường, hệ thống tự động tải thông tin sinh viên và chương trình. Sinh viên chỉ cần bấm **`⚡ Xác Nhận Đăng Ký (1-Chạm)`** là hoàn tất ngay, không cần gõ hay điền bất kỳ biểu mẫu nào.
+2. **Đăng Ký Nhanh & Vai Trò Mặc Định:**
+   - **Xác nhận đăng ký:** Sinh viên đăng nhập bằng tài khoản Google trường, hệ thống tự động tải thông tin sinh viên và chương trình. Sinh viên chỉ cần bấm **`Xác Nhận Đăng Ký Tham Gia`** là hoàn tất ngay, không cần gõ hay điền bất kỳ biểu mẫu nào.
    - **Vai trò mặc định:** Tất cả sinh viên đăng ký qua link công khai đều mang vai trò mặc định là **`participant` (Người tham gia)** để nhận Điểm Rèn Luyện tham gia phong trào.
    - **Phân công CTV / Ban hỗ trợ:** Ban Tổ Chức / Admin có toàn quyền chỉ định và gán vai trò Cộng tác viên (Checker quét mã / Volunteer hỗ trợ) cho sinh viên trực tiếp trong trang quản trị sự kiện trước hoặc sau khi chương trình diễn ra.
 3. **Quy Tắc Khóa Hạn Chót Tự Động Trước 12 Tiếng (`12h Auto-Close`):**

@@ -332,7 +332,7 @@ export default function EventRegisterPage({
                   </div>
 
                   <button type="submit" disabled={submitting} className={styles.submitBtn}>
-                    {submitting ? 'Đang xử lý đăng ký...' : '⚡ Xác Nhận Đăng Ký Tham Gia (1-Chạm)'}
+                    {submitting ? 'Đang xử lý đăng ký...' : 'Xác Nhận Đăng Ký Tham Gia'}
                   </button>
 
                   <div className={styles.policyNote}>
