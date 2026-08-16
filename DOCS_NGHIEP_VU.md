@@ -93,16 +93,16 @@ graph TD
 | **Quản trị toàn trường (`/super-admin`)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Phân quyền Cán bộ đa tài khoản (`/api/admin/officers`)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Xem Nhật ký Kiểm toán nội bộ (Audit Trail chi tiết)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Tạo / Sửa / Xóa Sự kiện** | ✅ | ❌ | ❌ | ❌ | ✅ *(Sự kiện mình)* | ❌ | ❌ | ❌ |
-| **Gán Admin / Phân quyền CTV sự kiện** | ✅ | ❌ | ❌ | ❌ | ✅ *(Sự kiện mình)* | ❌ | ❌ | ❌ |
-| **Trình duyệt Kế hoạch mới (`/admin/proposals/new`)** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Tạo / Sửa / Xóa Sự kiện** | ✅ | ✅ *(Toàn quyền)* | ❌ | ❌ | ✅ *(Sự kiện mình)* | ❌ | ❌ | ❌ |
+| **Gán Admin / Phân quyền CTV sự kiện** | ✅ | ✅ *(Toàn quyền)* | ❌ | ❌ | ✅ *(Sự kiện mình)* | ❌ | ❌ | ❌ |
+| **Trình duyệt Kế hoạch mới (`/admin/proposals/new`)** | ✅ | ✅ *(Cho mình & 24 Đơn vị)* | ❌ | ❌ | ✅ *(Khóa đơn vị mình)* | ❌ | ❌ | ❌ |
 | **Duyệt Kế hoạch Bước 1 (Phong trào thanh niên)** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Duyệt Kế hoạch Bước 2 (Quy mô & Nội dung SV)** | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Duyệt Kế hoạch Bước 3 (Cấp phòng CSVC)** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Phê duyệt Kế hoạch & Tự động sinh sự kiện** | ✅ | ✅ *(Bước cuối)*| ✅ *(Bước cuối)*| ✅ *(Bước cuối)*| ❌ | ❌ | ❌ | ❌ |
-| **Chiếu màn hình QR Động Hội trường** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Quét Camera điểm danh (`/scanner`)** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| **Chốt & Xử phạt No-Show Blacklist** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Chiếu màn hình QR Động Hội trường** | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Quét Camera điểm danh (`/scanner`)** | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| **Chốt & Xử phạt No-Show Blacklist** | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | **Mở khóa Blacklist cho sinh viên** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Cấp quyền Tra cứu ĐRL Chi đoàn (30 ngày)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Tra cứu ĐRL sinh viên cùng lớp** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ *(30 ngày)* | ❌ |
@@ -146,12 +146,17 @@ sequenceDiagram
 ```
 
 ### Chi tiết nghiệp vụ:
-1. **Kiểm tra Xung Đột Phòng (`/api/proposals/check-conflict`):**
+1. **Quyền Khởi Tạo Kế Hoạch:**
+   - **Đoàn TNCS Học Viện (`doanthanhnien@ptithcm.edu.vn`):** Được tạo kế hoạch dưới danh nghĩa chính mình ("Đoàn TNCS Học Viện Cơ Sở TP.HCM") hoặc đại diện nộp thay cho bất kỳ đơn vị nào trong 24 đơn vị trực thuộc (8 LCĐ Khoa + 16 CLB/Đội/Nhóm).
+   - **24 Đơn vị cơ sở (LCĐ/CLB):** Bị khóa cứng danh xưng tổ chức đúng theo email được cấp (tránh nộp mạo danh đơn vị khác).
+2. **Kiểm tra Xung Đột Phòng (`/api/proposals/check-conflict`):**
    - Nếu kế hoạch chọn phòng (Hội trường 2A08, 2A10, Phòng Hội thảo, Sân bóng...), hệ thống tự động kiểm tra xem phòng đó trong cùng `event_date` có bị trùng khung giờ `start_time` - `end_time` với bất kỳ sự kiện hoặc kế hoạch đã được duyệt nào khác hay không.
-2. **Chuyển Giai Đoạn Động (`calculateProposalStages` & `getNextStage`):**
-   - **Kế hoạch không mượn phòng (hoặc trực tuyến):** Bỏ qua bước CSVC $\rightarrow$ Trình thẳng từ CTSV lên Super Admin.
-   - **Kế hoạch có mượn phòng:** Bắt buộc qua CTSV duyệt trước $\rightarrow$ sau đó tới Phòng CSVC duyệt cấp phòng $\rightarrow$ Super Admin chốt quyết định.
-3. **Tự Động Sinh Sự Kiện:** Ngay khi Super Admin bấm `Phê duyệt toàn diện`, hệ thống tự động chèn 1 bản ghi vào bảng `events`, đồng thời gán quyền `event_admin` cho email của đơn vị nộp kế hoạch.
+3. **Chuyển Giai Đoạn Động 3 Cấp (`calculateProposalStages` & `getNextStage`):**
+   - **Bước 1 (Đoàn Học Viện):** Thẩm định nội dung, tôn chỉ hoạt động & định hướng phong trào thanh niên.
+   - **Bước 2 (Phòng CTSV):** Kích hoạt khi quy mô $> 50$ sinh viên hoặc sự kiện yêu cầu quản lý chuyên sâu.
+   - **Bước 3 (Phòng CSVC):** Kích hoạt khi có mượn phòng/hội trường/sân bãi của Học viện để thẩm định & cấp phòng.
+   - **Bước Cuối (Super Admin):** Cấp duyệt chung cuộc hoặc giai đoạn cuối duyệt hoàn tất.
+4. **Tự Động Sinh Sự Kiện:** Ngay khi bước cuối cùng bấm `Phê duyệt`, hệ thống tự động chèn 1 bản ghi vào bảng `events` (status: active), đồng thời tự động gán quyền `event_admin` cho email của người tạo kế hoạch.
 
 ---
 
