@@ -255,8 +255,12 @@ function LoginContent() {
             Tài khoản 24 Đơn vị LCĐ & CLB (Admin Đơn Vị):
           </span>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+            <label htmlFor="subAdminSelect" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 }}>
+              Chọn Đơn vị LCĐ & CLB
+            </label>
             <select
               id="subAdminSelect"
+              aria-label="Chọn Đơn vị LCĐ & CLB để đăng nhập"
               defaultValue=""
               style={{
                 flex: 1,
