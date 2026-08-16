@@ -1174,7 +1174,23 @@ function SuperAdminContent() {
                           title="Bấm vào dòng này để mở trang quản trị sự kiện"
                         >
                           <td>
-                            <span className={styles.eventName}>{event.event_name}</span>
+                            <Link
+                              href={`/admin/events/${event.event_id}`}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                color: '#1e40af',
+                                fontWeight: 800,
+                                fontSize: '0.975rem',
+                                textDecoration: 'none',
+                              }}
+                              className={styles.eventName}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span>{event.event_name}</span>
+                              <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>➔</span>
+                            </Link>
                           </td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -1234,29 +1250,52 @@ function SuperAdminContent() {
                                 </button>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteEvent(event.event_id, event.event_name)}
-                                style={{
-                                  padding: '0.45rem 0.8rem',
-                                  borderRadius: '8px',
-                                  border: '1.5px solid #fecaca',
-                                  background: '#fff1f2',
-                                  color: '#e11d48',
-                                  fontSize: '0.8rem',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.35rem',
-                                  transition: 'all 0.15s ease',
-                                  flexShrink: 0,
-                                }}
-                                title={`Xóa vĩnh viễn sự kiện "${event.event_name}"`}
-                              >
-                                <TrashIcon size={14} color="#e11d48" />
-                                <span>Xóa</span>
-                              </button>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                <Link
+                                  href={`/admin/events/${event.event_id}`}
+                                  style={{
+                                    padding: '0.45rem 0.85rem',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #bfdbfe',
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                  title={`Vào trang quản trị sự kiện "${event.event_name}"`}
+                                >
+                                  <span>Vào Sự Kiện</span>
+                                  <span>➔</span>
+                                </Link>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteEvent(event.event_id, event.event_name)}
+                                  style={{
+                                    padding: '0.45rem 0.8rem',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #fecaca',
+                                    background: '#fff1f2',
+                                    color: '#e11d48',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                  title={`Xóa vĩnh viễn sự kiện "${event.event_name}"`}
+                                >
+                                  <TrashIcon size={14} color="#e11d48" />
+                                  <span>Xóa</span>
+                                </button>
+                              </div>
                             </div>
                           </td>
                         </tr>
