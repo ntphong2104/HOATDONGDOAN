@@ -68,11 +68,10 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const assignedRole = verification.role === 'volunteer' 
-      ? 'Cộng tác viên' 
-      : verification.role === 'organizer' 
-      ? 'Ban tổ chức' 
-      : 'Người tham gia';
+    const assignedRole =
+      verification.role === 'volunteer' || verification.role === 'organizer'
+        ? verification.role
+        : 'participant';
 
     // Find student info
     let mssv = extractMSSV(email);
@@ -82,8 +81,10 @@ export async function POST(req: Request) {
       .eq('email', email)
       .single();
 
-    if (studentUser) {
+    if (studentUser?.mssv) {
       mssv = studentUser.mssv;
+    } else if (!mssv && email) {
+      mssv = email.split('@')[0].toUpperCase();
     }
 
     if (!mssv) {
@@ -137,7 +138,15 @@ export async function POST(req: Request) {
       .single();
 
     if (checkinErr) {
-      return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+      console.error('Checkin DB insert error:', checkinErr);
+      if (checkinErr.code === '23505') {
+        return NextResponse.json({
+          success: false,
+          is_duplicate: true,
+          error: `Bạn đã điểm danh sự kiện "${event.event_name}" trước đó rồi!`,
+        }, { status: 409 });
+      }
+      return NextResponse.json({ success: false, error: 'Lỗi ghi nhận điểm danh: ' + (checkinErr.message || 'Lỗi hệ thống') }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -148,11 +157,11 @@ export async function POST(req: Request) {
         mssv,
         full_name: studentUser?.full_name || mssv,
         class_id: studentUser?.class_id || '',
-        checkin_time: checkinRecord.created_at,
+        checkin_time: checkinRecord?.created_at || new Date().toISOString(),
       },
     });
   } catch (err: any) {
-    console.error('Self checkin error:', err);
+    console.error('Self checkin catch error:', err);
     return NextResponse.json({ success: false, error: err?.message || 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 }
