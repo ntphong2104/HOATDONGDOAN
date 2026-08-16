@@ -27,7 +27,7 @@ export default async function AdminEventsPage() {
   // Fetch events for admin
   let eventsQuery = supabase.from('events').select('*').order('created_at', { ascending: false });
 
-  if (!auth.isSuperAdmin) {
+  if (!auth.isSuperAdmin && auth.tier !== 'youth_union') {
     // Check if user has explicit event_roles
     const { data: eventRoles } = await supabase
       .from('event_roles')
@@ -37,9 +37,22 @@ export default async function AdminEventsPage() {
 
     const roleEventIds = (eventRoles || []).map((r) => r.event_id);
 
-    // If unit has specific assigned events, filter by them; otherwise show all events for convenience
-    if (roleEventIds.length > 0) {
-      eventsQuery = eventsQuery.in('event_id', roleEventIds);
+    // Also find events created by this user/unit
+    const { data: createdEvents } = await supabase
+      .from('events')
+      .select('event_id')
+      .ilike('created_by', auth.email);
+
+    const createdEventIds = (createdEvents || []).map((e) => e.event_id);
+
+    // Combine both lists (assigned + created)
+    const allAccessibleIds = [...new Set([...roleEventIds, ...createdEventIds])];
+
+    if (allAccessibleIds.length > 0) {
+      eventsQuery = eventsQuery.in('event_id', allAccessibleIds);
+    } else {
+      // No events at all for this unit — return empty
+      eventsQuery = eventsQuery.eq('event_id', '__none__');
     }
   }
 
