@@ -16,6 +16,7 @@ import {
   BuildingIcon,
 } from '@/components/icons';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
+import { isEventPastDeadline } from '@/lib/utils/event-logic';
 import type { EventProposal, ProposalStage, SessionUser } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -226,6 +227,13 @@ export default function ProposalsListPage() {
     if (a.status === 'pending' && b.status !== 'pending') return -1;
     if (a.status !== 'pending' && b.status === 'pending') return 1;
 
+    // Active before closed
+    const aPast = a.status === 'approved' && isEventPastDeadline({ event_date: a.start_date, end_time: a.end_time });
+    const bPast = b.status === 'approved' && isEventPastDeadline({ event_date: b.start_date, end_time: b.end_time });
+
+    if (!aPast && bPast) return -1;
+    if (aPast && !bPast) return 1;
+
     // Otherwise sort by updated_at or created_at descending
     return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime();
   });
@@ -404,7 +412,9 @@ export default function ProposalsListPage() {
 
                     <span className={`${styles.stageBadge} ${getStageBadgeClass(item.current_stage, item.status)}`}>
                       {item.status === 'approved'
-                        ? 'Đã Duyệt Chung Cuộc'
+                        ? (isEventPastDeadline({ event_date: item.start_date, end_time: item.end_time })
+                            ? 'Đã Duyệt • Đã Đóng'
+                            : 'Đã Duyệt • Đang Mở')
                         : item.status === 'rejected'
                         ? 'Đã Từ Chối'
                         : `Đang ở: ${getStageLabel(item.current_stage)}`}

@@ -76,6 +76,7 @@ function SuperAdminContent() {
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [penaltiesLoading, setPenaltiesLoading] = useState(true);
   const [delegatesLoading, setDelegatesLoading] = useState(true);
+  const [proposalStatusFilter, setProposalStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
 
   // Form states for Officer Role Management
   const [officerEmail, setOfficerEmail] = useState('');
@@ -298,12 +299,99 @@ function SuperAdminContent() {
     });
   }, [events, selectedUnitFilter]);
 
+  const getProposalDisplayStatus = React.useCallback((p: EventProposal) => {
+    if (p.status === 'rejected') {
+      return {
+        type: 'rejected' as const,
+        label: 'Đã từ chối',
+        badgeBg: '#fee2e2',
+        badgeColor: '#b91c1c',
+      };
+    }
+    if (p.status === 'pending') {
+      return {
+        type: 'pending' as const,
+        label: `Chờ duyệt: ${getStageLabel(p.current_stage)}`,
+        badgeBg: '#fef3c7',
+        badgeColor: '#b45309',
+      };
+    }
+    // p.status === 'approved'
+    const matchedEvent = events.find((e) => e.event_id === (p as any).event_id || (p.title && e.event_name === p.title));
+    const isPast = matchedEvent
+      ? isEventPastDeadline(matchedEvent)
+      : isEventPastDeadline({ event_date: p.start_date, end_time: p.end_time });
+
+    if (isPast) {
+      return {
+        type: 'closed' as const,
+        label: 'Đã duyệt • Đã đóng / Kết thúc',
+        badgeBg: '#f1f5f9',
+        badgeColor: '#64748b',
+      };
+    }
+
+    return {
+      type: 'active' as const,
+      label: 'Đã duyệt • Đang mở sự kiện',
+      badgeBg: '#dcfce7',
+      badgeColor: '#15803d',
+    };
+  }, [events]);
+
   const filteredProposals = React.useMemo(() => {
-    if (!selectedUnitFilter) return proposals;
-    return proposals.filter((p) => {
-      return isSameUnit(p.organization_unit, selectedUnitFilter);
+    let list = proposals;
+    if (selectedUnitFilter) {
+      list = list.filter((p) => isSameUnit(p.organization_unit, selectedUnitFilter));
+    }
+
+    if (proposalStatusFilter !== 'all') {
+      list = list.filter((p) => {
+        const displayStatus = getProposalDisplayStatus(p);
+        if (proposalStatusFilter === 'pending') return displayStatus.type === 'pending';
+        if (proposalStatusFilter === 'active') return displayStatus.type === 'active';
+        if (proposalStatusFilter === 'closed') return displayStatus.type === 'closed' || displayStatus.type === 'rejected';
+        return true;
+      });
+    }
+
+    // Sort: Chờ duyệt lên đầu -> Đang mở/sắp tới -> Đã đóng/Từ chối xuống cuối cùng
+    return [...list].sort((a, b) => {
+      const statusA = getProposalDisplayStatus(a);
+      const statusB = getProposalDisplayStatus(b);
+
+      const score = (type: string) => {
+        if (type === 'pending') return 1;
+        if (type === 'active') return 2;
+        if (type === 'closed') return 3;
+        return 4; // rejected
+      };
+
+      const diff = score(statusA.type) - score(statusB.type);
+      if (diff !== 0) return diff;
+
+      // Secondary sort: mới nhất lên trước
+      return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
     });
-  }, [proposals, selectedUnitFilter]);
+  }, [proposals, selectedUnitFilter, proposalStatusFilter, getProposalDisplayStatus]);
+
+  const proposalCounts = React.useMemo(() => {
+    const base = selectedUnitFilter
+      ? proposals.filter((p) => isSameUnit(p.organization_unit, selectedUnitFilter))
+      : proposals;
+    let pending = 0;
+    let active = 0;
+    let closed = 0;
+
+    for (const p of base) {
+      const st = getProposalDisplayStatus(p);
+      if (st.type === 'pending') pending++;
+      else if (st.type === 'active') active++;
+      else closed++;
+    }
+
+    return { all: base.length, pending, active, closed };
+  }, [proposals, selectedUnitFilter, getProposalDisplayStatus]);
 
   const fetchPenalties = async () => {
     try {
@@ -1364,6 +1452,82 @@ function SuperAdminContent() {
                 </div>
               </div>
 
+              {/* Bộ lọc trạng thái kế hoạch */}
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem', marginBottom: '1.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setProposalStatusFilter('all')}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    borderColor: proposalStatusFilter === 'all' ? '#2563eb' : '#e2e8f0',
+                    background: proposalStatusFilter === 'all' ? '#2563eb' : '#ffffff',
+                    color: proposalStatusFilter === 'all' ? '#ffffff' : '#475569',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Tất cả ({proposalCounts.all})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProposalStatusFilter('pending')}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    borderColor: proposalStatusFilter === 'pending' ? '#d97706' : '#fed7aa',
+                    background: proposalStatusFilter === 'pending' ? '#d97706' : '#fffbeb',
+                    color: proposalStatusFilter === 'pending' ? '#ffffff' : '#b45309',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  ⏳ Chờ duyệt ({proposalCounts.pending})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProposalStatusFilter('active')}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    borderColor: proposalStatusFilter === 'active' ? '#16a34a' : '#bbf7d0',
+                    background: proposalStatusFilter === 'active' ? '#16a34a' : '#f0fdf4',
+                    color: proposalStatusFilter === 'active' ? '#ffffff' : '#15803d',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  🟢 Đang mở sự kiện ({proposalCounts.active})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProposalStatusFilter('closed')}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    borderColor: proposalStatusFilter === 'closed' ? '#475569' : '#e2e8f0',
+                    background: proposalStatusFilter === 'closed' ? '#475569' : '#f8fafc',
+                    color: proposalStatusFilter === 'closed' ? '#ffffff' : '#64748b',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  ⚪ Đã kết thúc / Đóng ({proposalCounts.closed})
+                </button>
+              </div>
+
               <div className={styles.tableWrapper}>
                 <table className={styles.table}>
                   <thead>
@@ -1371,7 +1535,7 @@ function SuperAdminContent() {
                       <th>Chương trình & Đơn vị</th>
                       <th>Thời gian & Quy mô</th>
                       <th>Địa điểm</th>
-                      <th>Cấp duyệt hiện tại</th>
+                      <th>Trạng thái</th>
                       <th>Thao tác</th>
                     </tr>
                   </thead>
@@ -1386,7 +1550,7 @@ function SuperAdminContent() {
                         </td>
                       </tr>
                     ) : filteredProposals.length === 0 ? (
-                      <tr><td colSpan={5} className={styles.emptyState}>Không có kế hoạch nào {selectedUnitFilter ? `của đơn vị ${selectedUnitFilter}` : ''}</td></tr>
+                      <tr><td colSpan={5} className={styles.emptyState}>Không có kế hoạch nào phù hợp bộ lọc</td></tr>
                     ) : (
                       filteredProposals.map((p) => (
                         <tr key={p.id}>
@@ -1414,19 +1578,27 @@ function SuperAdminContent() {
                             </span>
                           </td>
                           <td>
-                            {p.status === 'approved' ? (
-                              <span style={{ padding: '0.3rem 0.75rem', background: '#dcfce7', color: '#15803d', borderRadius: '16px', fontSize: '0.8rem', fontWeight: 700 }}>
-                                Đã duyệt & Tạo sự kiện
-                              </span>
-                            ) : p.status === 'rejected' ? (
-                              <span style={{ padding: '0.3rem 0.75rem', background: '#fee2e2', color: '#b91c1c', borderRadius: '16px', fontSize: '0.8rem', fontWeight: 700 }}>
-                                Đã từ chối
-                              </span>
-                            ) : (
-                              <span style={{ padding: '0.3rem 0.75rem', background: '#fef3c7', color: '#b45309', borderRadius: '16px', fontSize: '0.8rem', fontWeight: 700 }}>
-                                {getStageLabel(p.current_stage)}
-                              </span>
-                            )}
+                            {(() => {
+                              const displayStatus = getProposalDisplayStatus(p);
+                              return (
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem',
+                                    padding: '0.35rem 0.75rem',
+                                    background: displayStatus.badgeBg,
+                                    color: displayStatus.badgeColor,
+                                    borderRadius: '16px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {displayStatus.label}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
