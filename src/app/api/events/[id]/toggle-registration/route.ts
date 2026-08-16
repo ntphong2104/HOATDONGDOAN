@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
+import { isEventScheduleExpired } from '@/lib/utils/event-logic';
 
 export async function POST(
   req: Request,
@@ -8,9 +10,11 @@ export async function POST(
 ) {
   const resolvedParams = await params;
   const auth = await getAuthContext();
-  if (!auth || (!auth.isSuperAdmin && !auth.isEventAdmin)) {
+  if (!auth || (!auth.isSuperAdmin && !auth.isEventAdmin && auth.tier !== 'youth_union')) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
+
+  const isPrivileged = auth.isSuperAdmin || auth.tier === 'youth_union' || (auth.email || '').includes('doanthanhnien');
 
   const supabase = await createClient();
 
@@ -25,9 +29,30 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
-  // 2. Toggle registration state
-  const currentOpen = event.is_registration_open !== false; // Default is true
-  const newOpen = !currentOpen;
+  const currentWindow = isRegistrationWindowOpen(
+    event.event_date,
+    event.start_time,
+    event.status,
+    event.is_registration_open
+  );
+
+  const body = await req.json().catch(() => ({}));
+  const newOpen = typeof body.open === 'boolean' ? body.open : !currentWindow.isOpen;
+
+  // If reopening registration on an expired event, only Super Admin & Đoàn TN can do it
+  if (newOpen) {
+    const isExpired = isEventScheduleExpired(event);
+    if (isExpired && !isPrivileged) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Chương trình đã kết thúc quá 1 giờ và tự động đóng. Cán bộ đơn vị trực thuộc không được phép mở lại cổng đăng ký. Vui lòng liên hệ Super Admin hoặc Đoàn Thanh Niên.',
+        },
+        { status: 403 }
+      );
+    }
+  }
 
   const { data: updatedEvent, error: updateErr } = await supabase
     .from('events')
@@ -37,7 +62,7 @@ export async function POST(
     .single();
 
   if (updateErr) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -49,3 +74,4 @@ export async function POST(
       : 'Đã đóng cổng đăng ký sự kiện thành công!',
   });
 }
+

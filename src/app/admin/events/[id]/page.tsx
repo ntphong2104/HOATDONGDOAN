@@ -21,6 +21,8 @@ import {
   TrashIcon,
 } from '@/components/icons';
 import type { Event, EventRole, CheckinExportRow, EventRegistration } from '@/lib/types';
+import { isEventPastDeadline, isEventScheduleExpired } from '@/lib/utils/event-logic';
+import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import styles from './page.module.css';
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -134,16 +136,34 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   };
 
   const handleToggleRegistration = async () => {
-    const isCurrentlyOpen = event?.is_registration_open !== false;
+    if (!event) return;
+    const currentWindow = isRegistrationWindowOpen(
+      event.event_date,
+      event.start_time,
+      event.status,
+      event.is_registration_open
+    );
+    const isCurrentlyOpen = currentWindow.isOpen;
+    const isExpired = isEventScheduleExpired(event);
+
+    if (!isCurrentlyOpen && isExpired && !isPrivileged) {
+      alert(
+        'Chương trình đã kết thúc quá 1 giờ và tự động đóng. Cán bộ đơn vị trực thuộc không được phép mở lại cổng đăng ký. Vui lòng liên hệ Super Admin hoặc Đoàn Thanh Niên Học Viện.'
+      );
+      return;
+    }
+
     const msg = isCurrentlyOpen
       ? 'Bạn có chắc muốn ĐÓNG cổng đăng ký của sự kiện này sớm? (Sinh viên sẽ không thể đăng ký thêm)'
-      : 'Bạn có chắc muốn MỞ LẠI cổng đăng ký cho sự kiện này?';
+      : 'Bạn có chắc muốn MỞ LẠI cổng đăng ký cho sự kiện này? (Cho phép sinh viên đăng ký bổ sung)';
     if (!confirm(msg)) return;
 
     setTogglingReg(true);
     try {
       const res = await fetch(`/api/events/${resolvedParams.id}/toggle-registration`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ open: !isCurrentlyOpen }),
       });
       const data = await res.json();
       if (data.success) {
@@ -452,142 +472,201 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
 
-          {event.status === 'active' && (
-            <>
-          <div
-            style={{
-              marginTop: '1.25rem',
-              padding: '1.25rem 1.5rem',
-              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-              border: '1.5px solid #bfdbfe',
-              borderRadius: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '1rem',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#1e40af', textTransform: 'uppercase' }}>
-                Cổng Link Đăng Ký Công Khai
-              </span>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e3a8a', marginTop: '0.2rem' }}>
-                {registrations.length} sinh viên đã đăng ký tham gia
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#3b82f6', marginTop: '0.15rem' }}>
-                Gửi link này cho sinh viên các khoa để đăng ký tham gia hoặc làm CTV
-              </div>
-            </div>
+          {event.status === 'active' && (() => {
+            const regWindow = isRegistrationWindowOpen(
+              event.event_date,
+              event.start_time,
+              event.status,
+              event.is_registration_open
+            );
+            const isExpired = isEventScheduleExpired(event);
 
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={handleCopyLink}
+            return (
+              <div
                 style={{
-                  padding: '0.55rem 1rem',
-                  background: copied ? '#16a34a' : '#2563eb',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-                }}
-              >
-                {copied ? 'Đã sao chép link!' : 'Sao Chép Link Đăng Ký'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleToggleRegistration}
-                disabled={togglingReg}
-                style={{
-                  padding: '0.55rem 1rem',
-                  background: event.is_registration_open !== false ? '#d97706' : '#16a34a',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  boxShadow:
-                    event.is_registration_open !== false
-                      ? '0 2px 6px rgba(217, 119, 6, 0.25)'
-                      : '0 2px 6px rgba(22, 163, 74, 0.25)',
-                }}
-              >
-                {togglingReg
-                  ? 'Đang xử lý...'
-                  : event.is_registration_open !== false
-                  ? 'Tắt Cổng Đăng Ký (Đóng Sớm)'
-                  : 'Mở Lại Cổng Đăng Ký'}
-              </button>
-
-              <a
-                href={`/events/${event.event_id}/register`}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  padding: '0.55rem 1rem',
-                  background: '#ffffff',
-                  color: '#2563eb',
-                  border: '1.5px solid #bfdbfe',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
+                  marginTop: '1.25rem',
+                  padding: '1.25rem 1.5rem',
+                  background: regWindow.isOpen
+                    ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)'
+                    : 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                  border: `1.5px solid ${regWindow.isOpen ? '#bfdbfe' : '#fde68a'}`,
+                  borderRadius: '16px',
+                  display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
                 }}
               >
-                Mở Trang Đăng Ký ➔
-              </a>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: regWindow.isOpen ? '#1e40af' : '#b45309', textTransform: 'uppercase' }}>
+                      Cổng Link Đăng Ký Công Khai
+                    </span>
+                    <span
+                      style={{
+                        padding: '0.2rem 0.65rem',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        background: regWindow.isOpen ? '#dcfce7' : '#fee2e2',
+                        color: regWindow.isOpen ? '#15803d' : '#b91c1c',
+                        border: `1px solid ${regWindow.isOpen ? '#86efac' : '#fca5a5'}`,
+                      }}
+                    >
+                      {regWindow.isOpen ? '● Đang mở đăng ký' : '● Đã đóng cổng đăng ký'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: regWindow.isOpen ? '#1e3a8a' : '#92400e', marginTop: '0.3rem' }}>
+                    {registrations.length} sinh viên đã đăng ký tham gia
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: regWindow.isOpen ? '#3b82f6' : '#b45309', marginTop: '0.15rem' }}>
+                    {regWindow.isOpen
+                      ? 'Gửi link này cho sinh viên các khoa để đăng ký tham gia hoặc làm CTV'
+                      : `Trạng thái: ${regWindow.reason || 'Cổng đăng ký đã tự động đóng theo quy chế.'}`}
+                  </div>
+                </div>
 
-              <button
-                type="button"
-                onClick={handleReconcileAttendance}
-                disabled={reconciling}
-                style={{
-                  padding: '0.55rem 1rem',
-                  background: '#c2410c',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(194, 65, 12, 0.25)',
-                }}
-              >
-                {reconciling ? 'Đang xử lý...' : 'Chốt & Phạt Vắng Mặt (No-Show)'}
-              </button>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    style={{
+                      padding: '0.55rem 1rem',
+                      background: copied ? '#16a34a' : '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                    }}
+                  >
+                    {copied ? 'Đã sao chép link!' : 'Sao Chép Link Đăng Ký'}
+                  </button>
 
-              <button
-                type="button"
-                onClick={handleDeleteEvent}
-                style={{
-                  padding: '0.55rem 1rem',
-                  background: '#fff1f2',
-                  color: '#e11d48',
-                  border: '1.5px solid #fecaca',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  transition: 'all 0.15s ease',
-                }}
-                title={`Xóa vĩnh viễn sự kiện này`}
-              >
-                <TrashIcon size={16} color="#e11d48" />
-                <span>Xóa Sự Kiện</span>
-              </button>
-            </div>
-          </div>
+                  {regWindow.isOpen ? (
+                    <button
+                      type="button"
+                      onClick={handleToggleRegistration}
+                      disabled={togglingReg}
+                      style={{
+                        padding: '0.55rem 1rem',
+                        background: '#d97706',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(217, 119, 6, 0.25)',
+                      }}
+                    >
+                      {togglingReg ? 'Đang xử lý...' : '🔒 Tắt Cổng Đăng Ký (Đóng Sớm)'}
+                    </button>
+                  ) : (!isExpired || isPrivileged) ? (
+                    <button
+                      type="button"
+                      onClick={handleToggleRegistration}
+                      disabled={togglingReg}
+                      style={{
+                        padding: '0.55rem 1rem',
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
+                      }}
+                    >
+                      {togglingReg ? 'Đang xử lý...' : '🔓 Mở Lại Cổng Đăng Ký'}
+                    </button>
+                  ) : (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.55rem 0.85rem',
+                        borderRadius: '10px',
+                        border: '1.5px solid #e2e8f0',
+                        background: '#ffffff',
+                        color: '#64748b',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                      }}
+                      title="Sự kiện kết thúc quá 1 giờ. Chỉ Super Admin hoặc Đoàn Thanh Niên mới có quyền mở lại cổng đăng ký."
+                    >
+                      🔒 Khóa mở lại (Liên hệ Đoàn TN)
+                    </span>
+                  )}
+
+                  <a
+                    href={`/events/${event.event_id}/register`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: '0.55rem 1rem',
+                      background: '#ffffff',
+                      color: '#2563eb',
+                      border: '1.5px solid #bfdbfe',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    Mở Trang Đăng Ký ➔
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={handleReconcileAttendance}
+                    disabled={reconciling}
+                    style={{
+                      padding: '0.55rem 1rem',
+                      background: '#c2410c',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(194, 65, 12, 0.25)',
+                    }}
+                  >
+                    {reconciling ? 'Đang xử lý...' : 'Chốt & Phạt Vắng Mặt (No-Show)'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDeleteEvent}
+                    style={{
+                      padding: '0.55rem 1rem',
+                      background: '#fff1f2',
+                      color: '#e11d48',
+                      border: '1.5px solid #fecaca',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <TrashIcon size={15} />
+                    <span>Xóa Sự Kiện</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
           <div style={{ marginTop: '1.25rem', padding: '1.25rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
