@@ -754,8 +754,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
           </div>
-            </>
-          )}
         </div>
 
         {event.status === 'active' && (
