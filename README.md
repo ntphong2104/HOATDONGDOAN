@@ -11,15 +11,16 @@
 Tài liệu bao gồm:
 1. **Cơ cấu 24 Đơn vị Cơ sở:** 8 Liên Chi Đoàn Khoa + 16 CLB/Đội/Nhóm trực thuộc.
 2. **Ma trận Phân quyền 7 Cấp:** Super Admin, Đoàn Học viện, Phòng CTSV, Phòng Tổ chức/CSVC, Event Admin, Checker, Cán bộ Chi đoàn, Sinh viên.
-3. **7 Quy trình Nghiệp vụ Cốt lõi:**
+3. **8 Quy trình Nghiệp vụ Cốt lõi:**
    - Trình duyệt kế hoạch & Cấp phòng sự kiện (Kiểm tra xung đột phòng).
-   - Cổng đăng ký công khai & Khóa hạn chót 12 giờ.
+   - Cổng đăng ký công khai, Khóa tự động 12 giờ & Quyền mở thủ công.
    - Điểm danh QR Động OTP đổi mỗi 10s (HMAC-SHA256 Anti-Replay).
-   - Tự động đóng sự kiện và khóa điểm danh sau 1 giờ.
+   - Tự động đóng sự kiện và Nút mở lại / Đóng thủ công.
    - Cơ chế kỷ luật 3-Strike Blacklist (3 lần vắng mặt $\rightarrow$ Khóa tài khoản).
+   - Phân quyền Cán bộ đa tài khoản & Bảo vệ Admin Gốc bất biến.
    - Ủy quyền Cán bộ Chi đoàn tra cứu ĐRL trong thời hạn 30 ngày.
    - Đánh giá sao & Xuất báo cáo Excel UTF-8 chuẩn.
-4. **Bản đồ Cơ sở Dữ liệu (Schema Dictionary)** & **Danh mục 25+ API Endpoints**.
+4. **Bản đồ Cơ sở Dữ liệu (Schema Dictionary)** & **Danh mục 30+ API Endpoints**.
 
 ---
 
@@ -32,7 +33,7 @@ npm install
 # Chạy môi trường phát triển (Development)
 npm run dev
 
-# Chạy kiểm thử tự động (23 Test Suites / 140 Tests)
+# Chạy kiểm thử tự động (38 Test Suites / 456 Tests)
 npm test
 
 # Xây dựng bản phát hành (Production Build)

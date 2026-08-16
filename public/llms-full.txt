@@ -3,7 +3,7 @@
 > Tài liệu kỹ thuật chi tiết dành cho AI Agents và các hệ thống tích hợp về Nền tảng Quản lý Hoạt Động Đoàn - Hội tại Học viện Công nghệ Bưu chính Viễn thông Cơ sở tại TP. Hồ Chí Minh.
 
 ## 1. Tổng Quan Hệ Thống
-Hệ thống được xây dựng trên nền tảng Next.js 16 App Router (Turbopack), cơ sở dữ liệu Supabase PostgreSQL với cơ chế Row Level Security (RLS) và xác thực OAuth2 / Google Workspace.
+Hệ thống được xây dựng trên nền tảng Next.js 16 App Router (Turbopack), cơ sở dữ liệu Supabase PostgreSQL với cơ chế Row Level Security (RLS) và xác thực OAuth2 / Google Workspace chính chủ Học viện (@ptithcm.edu.vn, @student.ptithcm.edu.vn).
 
 ## 2. Quy Trình Phê Duyệt Kế Hoạch 3 Cấp
 Mỗi đề xuất sự kiện từ 24 Liên Chi Đoàn (LCĐ) và Câu Lạc Bộ (CLB) phải trải qua quy trình thẩm định đa tầng tự động:
@@ -14,14 +14,23 @@ Mỗi đề xuất sự kiện từ 24 Liên Chi Đoàn (LCĐ) và Câu Lạc B�
 
 ## 3. Cơ Chế Điểm Danh Bảo Mật QR Động (HMAC-SHA256)
 - Mã QR động được sinh phía máy chủ sử dụng thuật toán TOTP thời gian thực với khóa bí mật HMAC-SHA256.
-- Mã tự động xoay vòng sau mỗi 15 giây để chống chụp ảnh gửi từ xa.
-- Hỗ trợ quét hai chiều: Ban tổ chức quét mã sinh viên hoặc Sinh viên dùng camera quét mã trên màn chiếu hội trường.
+- Mã tự động xoay vòng sau mỗi 10 giây (dung sai 15 giây) để chống chụp ảnh gửi từ xa.
+- Hỗ trợ quét hai chiều: Ban tổ chức quét thẻ sinh viên hoặc Sinh viên dùng camera điện thoại quét mã trên màn chiếu hội trường.
 
-## 4. Cơ Chế Chống Gian Lận & Quy Chế 3-Strike Blacklist
+## 4. Quy Chế Cổng Đăng Ký 12 Giờ & Quyền Mở Lại Thủ Công
+- **Tự động đóng trước 12h:** Cổng đăng ký sự kiện của sinh viên tự động đóng trước giờ bắt đầu sự kiện 12 tiếng để phục vụ chốt danh sách tổ chức.
+- **Quyền mở lại của Ban Tổ Chức:** Ban Tổ Chức / Super Admin có nút bấm bật/tắt cổng đăng ký trong trang quản trị sự kiện để mở lại cho sinh viên đăng ký bổ sung nếu cần.
+
+## 5. Quy Chế Trạng Thái Sự Kiện (Đóng / Mở Lại)
+- **Tự động đóng:** Sự kiện tự động chuyển sang trạng thái "Đã đóng" sau khi giờ kết thúc + 1 giờ đã qua để ngăn điểm danh bù ngoài giờ.
+- **Mở lại thủ công:** Ban Tổ Chức, Đoàn Học Viện hoặc Super Admin có nút "Mở Lại Sự Kiện" trực tiếp trong trang quản trị để tiếp tục tổ chức hoặc quét điểm danh bổ sung.
+
+## 6. Cơ Chế Chống Gian Lận & Quy Chế 3-Strike Blacklist
 - Phát hiện và chặn các trường hợp sinh viên đăng ký tham gia nhưng không có mặt điểm danh.
 - Tự động cộng dồn vi phạm: Sinh viên vi phạm 3 lần (3 Strikes) sẽ bị khóa quyền đăng ký sự kiện trong vòng 30 ngày.
+- Chỉ Super Admin Đoàn Trường mới có quyền ân xá / mở khóa Blacklist.
 
-## 5. Danh Mục Đường Dẫn Hệ Thống
+## 7. Danh Mục Đường Dẫn Hệ Thống
 - Trang chủ: https://ptithcm.com/
 - Đăng nhập: https://ptithcm.com/login
 - Quản lý kế hoạch: https://ptithcm.com/admin/proposals

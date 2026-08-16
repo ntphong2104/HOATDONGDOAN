@@ -155,19 +155,23 @@ sequenceDiagram
 
 ---
 
-## Quy trình 2: Cổng Đăng ký Công khai & Khóa Hạn chót 12 Giờ
+## Quy trình 2: Cổng Đăng ký Công khai, Khóa Tự Động 12 Giờ & Quyền Mở Thủ Công
 
 1. **Link Đăng Ký Độc Lập:** Mỗi sự kiện có đường link dạng `/events/[event_id]/register`.
 2. **Lựa Chọn Vai Trò:**
    - `participant`: Người tham gia (Được tính ĐRL tham gia phong trào).
    - `volunteer`: Cộng tác viên hỗ trợ sự kiện (Được tính ĐRL nòng cốt / hỗ trợ).
-3. **Quy Tắc Khóa Hạn Chót Trước 12 Tiếng (`12h Cutoff`):**
-   - Thời điểm khóa = `event_date + start_time - 12 giờ`.
+3. **Quy Tắc Khóa Hạn Chót Tự Động Trước 12 Tiếng (`12h Auto-Close`):**
+   - Cổng đăng ký sẽ **tự động đóng trước giờ bắt đầu sự kiện 12 tiếng** (`event_date + start_time - 12 giờ`).
    - *(Ví dụ: Sự kiện diễn ra lúc 08:00 sáng ngày 15/08 $\rightarrow$ Đúng 20:00 tối ngày 14/08 cổng đăng ký sẽ tự động đóng)*.
-4. **Kiểm Tra Điều Kiện Nghiêm Ngặt:**
+   - Sinh viên truy cập sau mốc này sẽ nhận thông báo: *"Cổng đăng ký đã tự động đóng (trước giờ khai mạc 12 tiếng). Ban tổ chức có thể mở lại thủ công."*
+4. **Quyền Can Thiệp Linh Hoạt Của Ban Tổ Chức (Manual Override):**
+   - Ban Tổ Chức (Event Admin / Super Admin) có nút **Bật / Tắt Cổng Đăng Ký** trong trang quản trị sự kiện.
+   - Khi Ban Tổ Chức bấm **"Mở Cổng Đăng Ký"**, sinh viên vẫn được phép đăng ký bình thường dù đang nằm trong khoảng 12 tiếng trước giờ khai mạc (cho đến khi sự kiện chính thức bắt đầu).
+5. **Kiểm Tra Điều Kiện Nghiêm Ngặt:**
    - ❌ Từ chối đăng ký nếu sinh viên đang bị **Blacklist (Khóa tài khoản)**.
    - ❌ Từ chối đăng ký nếu đã đăng ký sự kiện này từ trước (Duplicate prevention).
-   - ❌ Từ chối đăng ký nếu Admin sự kiện chủ động đóng cổng sớm bằng nút `Tắt Cổng Đăng Ký`.
+   - ❌ Từ chối đăng ký nếu Admin sự kiện chủ động đóng cổng bằng nút `Tắt Cổng Đăng Ký`.
 
 ---
 
@@ -202,15 +206,17 @@ flowchart TD
 
 ---
 
-## Quy trình 4: Tự động Đóng Sự kiện Sau 1 Giờ (Auto-Close Engine)
+## Quy trình 4: Tự động Đóng Sự kiện & Nút Mở Lại / Đóng Thủ Công (Status Toggle Engine)
 
-1. **Công Thức Khóa:**
+1. **Công Thức Khóa Tự Động:**
    $$\text{Thời điểm đóng tự động} = \text{Ngày diễn ra } (event\_date) + \text{Giờ kết thúc } (end\_time) + 1 \text{ tiếng}$$
    *(Nếu không nhập `end_time`, mặc định lấy 22:00 cùng ngày)*.
 2. **Khóa Đa Tầng Đồng Bộ:**
-   - **Giao diện (`/super-admin` & `/admin`):** Tự động đổi màu huy hiệu từ 🟢 Xanh ("Đang mở") sang ⚪ Xám ("Đã đóng") mà không cần chờ Admin thao tác tay.
-   - **API Điểm danh (`/api/checkin` & `/api/checkin/self`):** Lập tức từ chối mọi yêu cầu quét mã sau khung giờ này với thông báo: *"Sự kiện đã đóng hoặc đã kết thúc điểm danh (quá 1 giờ sau khi kết thúc)"*.
-   - **Cơ sở dữ liệu (Database):** Cập nhật vĩnh viễn `status: 'closed'` và `is_active: false`.
+   - **Giao diện (`/super-admin` & `/admin`):** Tự động đổi màu huy hiệu từ 🟢 Xanh ("Đang mở") sang ⚪ Xám ("Đã đóng") khi sự kiện đã quá thời gian kết thúc.
+   - **API Điểm danh (`/api/checkin` & `/api/checkin/self`):** Lập tức từ chối mọi yêu cầu quét mã khi sự kiện ở trạng thái đóng với thông báo: *"Sự kiện đã đóng hoặc đã kết thúc điểm danh"*.
+3. **Nút "Mở Lại / Đóng Sự Kiện" Thủ Công:**
+   - Ban Tổ Chức (Event Admin / Đơn vị tạo sự kiện / Đoàn Học Viện / Super Admin) có nút **`🔓 Mở Lại Sự Kiện` / `🔒 Đóng Sự Kiện`** ngay trên đầu trang quản trị sự kiện `/admin/events/[id]`.
+   - Giúp Ban Tổ Chức linh hoạt kích hoạt lại sự kiện nếu cần cho phép quét bổ sung hoặc kéo dài thời gian hoạt động.
 
 ---
 
