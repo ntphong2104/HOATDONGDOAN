@@ -204,32 +204,50 @@
 
 .inputField,
 .selectField {
-  padding: 0.8rem 1rem;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 1rem;
   border: 1.5px solid #cbd5e1;
   border-radius: 12px;
   font-size: 0.95rem;
   color: #0f172a;
-  background: #f8fafc;
+  background-color: #f8fafc;
   font-family: inherit;
   transition: all 0.2s ease;
   width: 100%;
   box-sizing: border-box;
+  line-height: 48px;
+}
+
+.selectField {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 2.75rem;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.15rem;
+  cursor: pointer;
+}
+
+.selectField:disabled {
+  background-color: #e2e8f0;
+  color: #475569;
+  cursor: not-allowed;
+  font-weight: 600;
 }
 
 .inputField:focus,
 .selectField:focus {
   outline: none;
-  background: #ffffff;
+  background-color: #ffffff;
   border-color: #2563eb;
   box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.12);
 }
 
 .inputField::placeholder {
   color: #94a3b8;
-}
-
-.selectField {
-  appearance: none;
 }
 
 /* Number Mini Cards */

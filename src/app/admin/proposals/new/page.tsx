@@ -403,17 +403,7 @@ export default function NewProposalPage() {
                   placeholder="VD: Hội thảo Công nghệ AI & Chuyển đổi số 2026"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  style={{
-                    padding: '0.85rem 1rem',
-                    border: '1.5px solid #cbd5e1',
-                    borderRadius: '12px',
-                    fontSize: '0.95rem',
-                    color: '#0f172a',
-                    background: '#f8fafc',
-                    outline: 'none',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                  }}
+                  className={styles.inputField}
                 />
               </div>
 
@@ -425,19 +415,7 @@ export default function NewProposalPage() {
                   <select
                     value={organizationUnit}
                     disabled
-                    style={{
-                      padding: '0.85rem 1rem',
-                      border: '1.5px solid #cbd5e1',
-                      borderRadius: '12px',
-                      fontSize: '0.95rem',
-                      color: '#0f172a',
-                      background: '#e2e8f0',
-                      outline: 'none',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      cursor: 'not-allowed',
-                      fontWeight: 600,
-                    }}
+                    className={styles.selectField}
                     required
                   >
                     <option value={lockedUnit}>{lockedUnit}</option>
@@ -446,18 +424,7 @@ export default function NewProposalPage() {
                   <select
                     value={organizationUnit}
                     onChange={(e) => setOrganizationUnit(e.target.value)}
-                    style={{
-                      padding: '0.85rem 1rem',
-                      border: '1.5px solid #cbd5e1',
-                      borderRadius: '12px',
-                      fontSize: '0.95rem',
-                      color: '#0f172a',
-                      background: '#f8fafc',
-                      outline: 'none',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      cursor: 'pointer',
-                    }}
+                    className={styles.selectField}
                     required
                   >
                     {OFFICIAL_UNITS.map((group) => (
@@ -525,16 +492,7 @@ export default function NewProposalPage() {
                     // Auto-sync endDate if it's before the new startDate
                     if (endDate < e.target.value) setEndDate(e.target.value);
                   }}
-                  style={{
-                    padding: '0.8rem',
-                    border: '1.5px solid #cbd5e1',
-                    borderRadius: '12px',
-                    fontSize: '0.925rem',
-                    color: '#0f172a',
-                    background: '#f8fafc',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                  }}
+                  className={styles.inputField}
                 />
               </div>
 
@@ -547,16 +505,7 @@ export default function NewProposalPage() {
                   required
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  style={{
-                    padding: '0.8rem',
-                    border: '1.5px solid #cbd5e1',
-                    borderRadius: '12px',
-                    fontSize: '0.925rem',
-                    color: '#0f172a',
-                    background: '#f8fafc',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                  }}
+                  className={styles.inputField}
                 />
               </div>
 
@@ -569,16 +518,7 @@ export default function NewProposalPage() {
                   required
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  style={{
-                    padding: '0.8rem',
-                    border: '1.5px solid #cbd5e1',
-                    borderRadius: '12px',
-                    fontSize: '0.925rem',
-                    color: '#0f172a',
-                    background: '#f8fafc',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                  }}
+                  className={styles.inputField}
                 />
               </div>
 
@@ -591,16 +531,7 @@ export default function NewProposalPage() {
                   required
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  style={{
-                    padding: '0.8rem',
-                    border: '1.5px solid #cbd5e1',
-                    borderRadius: '12px',
-                    fontSize: '0.925rem',
-                    color: '#0f172a',
-                    background: '#f8fafc',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                  }}
+                  className={styles.inputField}
                 />
               </div>
             </div>
@@ -772,18 +703,7 @@ export default function NewProposalPage() {
               <select
                 value={selectedRoomId}
                 onChange={handleRoomChange}
-                style={{
-                  padding: '0.85rem 1rem',
-                  border: '1.5px solid #cbd5e1',
-                  borderRadius: '12px',
-                  fontSize: '0.95rem',
-                  color: '#0f172a',
-                  background: '#f8fafc',
-                  outline: 'none',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  cursor: 'pointer',
-                }}
+                className={styles.selectField}
               >
                 <option value="">Không mượn phòng (Tổ chức trực tuyến / Ngoài trường)</option>
                 {rooms.map((r) => (
