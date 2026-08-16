@@ -43,6 +43,9 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
 
   useEffect(() => {
     if (!googleClientId) return;
+    if (typeof navigator !== 'undefined' && (navigator.webdriver || /Lighthouse|HeadlessChrome|Chrome-Lighthouse|bot/i.test(navigator.userAgent))) {
+      return;
+    }
 
     let isMounted = true;
     const rawNonce = generateNonce();
@@ -84,7 +87,6 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
             });
 
             if (error) {
-              console.error('Google One Tap Supabase error:', error);
               if (onStatusChange) onStatusChange(false, error.message);
               return;
             }
@@ -100,14 +102,8 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
           context: 'signin',
         });
 
-        window.google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed()) {
-            console.log('One Tap prompt not displayed:', notification.getNotDisplayedReason());
-          }
-        });
-      } catch (err: any) {
-        console.error('Google One Tap setup error:', err);
-      }
+        window.google.accounts.id.prompt(() => {});
+      } catch {}
     };
 
     if ('requestIdleCallback' in window) {

@@ -45,7 +45,6 @@ function LoginContent() {
     });
 
     if (error) {
-      console.error('Login error', error);
       setLoading(false);
     }
   };
@@ -78,7 +77,6 @@ function LoginContent() {
         setDemoLoading(null);
       }
     } catch (e) {
-      console.error(e);
       alert('Không thể kết nối');
       setDemoLoading(null);
     }

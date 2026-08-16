@@ -1,17 +1,16 @@
-# Hoạt Động Đoàn PTIT - Nền Tảng Quản Lý & Minh Chứng Hoạt Động Đoàn Hội Học Viện
+# Hoạt Động Đoàn PTIT - Nền Tảng Quản Lý & Điểm Danh Số
 
-> Nền tảng quản lý sự kiện, điểm danh bằng mã QR động bảo mật (Anti-Fraud) và cấp minh chứng điểm rèn luyện (ĐRL) cho sinh viên Học viện Công nghệ Bưu chính Viễn thông - Cơ sở tại TP. Hồ Chí Minh (PTIT HCM).
+> Nền tảng chuyển đổi số quản lý sự kiện, điểm danh bằng mã QR động bảo mật (HMAC-SHA256) và cấp minh chứng điểm rèn luyện (ĐRL) cho sinh viên Học viện Công nghệ Bưu chính Viễn thông Cơ sở tại TP. Hồ Chí Minh.
 
-## Các Tính Năng Cốt Lõi
-- **Đăng nhập Google Workspace Học Viện**: Xác thực chính chủ sinh viên và cán bộ Đoàn trường (`@student.ptithcm.edu.vn`, `@ptithcm.edu.vn`).
-- **Check-in QR Động Chống Gian Lận (HMAC-SHA256)**: Mã QR tự động làm mới mỗi 15 giây, ngăn chặn chụp ảnh hoặc chia sẻ từ xa.
-- **Hệ Thống Phê Duyệt Kế Hoạch 3 Bước**:
-  1. Giai đoạn 1: Đoàn Thanh Niên Học Viện (Thẩm định kế hoạch thanh niên).
-  2. Giai đoạn 2: Phòng Công Tác Sinh Viên - CTSV (Thẩm định quy mô & phương án SV).
-  3. Giai đoạn 3: Phòng Quản Trị CSVC & Tổ Chức (Thẩm định & Cấp địa điểm/phòng).
-- **Phân Quyền Đa Tài Khoản**: Super Admin có thể phân quyền cán bộ cho nhiều cá nhân thuộc Đoàn Học Viện, Phòng CTSV, Phòng CSVC và 24 Liên Chi Đoàn / Câu Lạc Bộ.
-- **Tra Cứu & Xuất Minh Chứng ĐRL**: Hỗ trợ Ban cán sự lớp và sinh viên tra cứu lịch sử tham gia sự kiện và xuất file Excel chuẩn.
+## Cổng Truy Cập & Tính Năng Chính
 
-## Cấu Trúc Đơn Vị
-- Đơn vị chủ quản: Đoàn TNCS Hồ Chí Minh - Học viện Công nghệ Bưu chính Viễn thông (Cơ sở tại TP. Hồ Chí Minh).
-- Hệ thống đơn vị trực thuộc: 24 Liên Chi Đoàn Khoa và Câu Lạc Bộ / Đội / Nhóm.
+- [Trang Chủ & Điểm Danh](https://ptithcm.com/): Cổng sinh viên xem mã QR cá nhân, quét mã QR sự kiện và theo dõi lịch sử điểm danh tích lũy.
+- [Đăng Nhập Học Viện](https://ptithcm.com/login): Xác thực tài khoản Google Workspace chính chủ sinh viên và cán bộ (@student.ptithcm.edu.vn, @ptithcm.edu.vn).
+- [Bàn Phê Duyệt Kế Hoạch 3 Cấp](https://ptithcm.com/admin/proposals): Hệ thống trình duyệt hồ sơ số qua 3 bước: 1. Đoàn Học Viện -> 2. Phòng CTSV -> 3. Phòng CSVC.
+- [Tạo Hồ Sơ Kế Hoạch Mới](https://ptithcm.com/admin/proposals/new): Form đăng ký tổ chức sự kiện dành cho 24 Liên Chi Đoàn và Câu Lạc Bộ với tính năng kiểm tra tự động trùng lịch phòng hội trường.
+- [Máy Quét Camera Điểm Danh](https://ptithcm.com/scanner): Giao diện quét mã QR chuyên dụng tốc độ cao dành cho Ban Tổ Chức và Cộng Tác Viên.
+- [Bảng Quản Trị Toàn Trường](https://ptithcm.com/super-admin): Trung tâm kiểm soát danh sách sự kiện toàn trường, phân quyền cán bộ và xuất báo cáo tổng hợp.
+
+## Tài Liệu Bổ Sung
+
+- [Tài Liệu Chi Tiết Đầy Đủ (llms-full.txt)](https://ptithcm.com/llms-full.txt): Toàn bộ tài liệu kiến trúc kỹ thuật, quy chế 3-Strike Blacklist, hệ thống đánh giá sao và API phân quyền.
