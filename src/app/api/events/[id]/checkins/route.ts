@@ -54,19 +54,47 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 
-  const exportData = (checkins || []).map((c: any, index: number) => ({
+  // Also query attended registrations for complete data consistency
+  const { data: attendedRegistrations } = await supabase
+    .from('event_registrations')
+    .select('mssv, full_name, class_id, role_type, created_at')
+    .eq('event_id', resolvedParams.id)
+    .eq('attended', true);
+
+  const checkinsMap = new Map<string, any>();
+
+  (checkins || []).forEach((c: any) => {
+    checkinsMap.set(c.mssv, {
+      mssv: c.mssv,
+      full_name: c.users?.full_name || c.mssv,
+      class_id: c.users?.class_id || '',
+      participate_role:
+        c.participate_role === 'volunteer'
+          ? 'Cộng tác viên'
+          : c.participate_role === 'organizer'
+          ? 'Ban tổ chức'
+          : 'Người tham gia',
+      checked_by: c.checked_by || 'Mã QR Động (Tự quét)',
+      checkin_time: c.created_at,
+    });
+  });
+
+  (attendedRegistrations || []).forEach((r: any) => {
+    if (!checkinsMap.has(r.mssv)) {
+      checkinsMap.set(r.mssv, {
+        mssv: r.mssv,
+        full_name: r.full_name || r.mssv,
+        class_id: r.class_id || '',
+        participate_role: r.role_type === 'volunteer' ? 'Cộng tác viên' : 'Người tham gia',
+        checked_by: 'Mã QR Động (Tự quét)',
+        checkin_time: r.created_at || new Date().toISOString(),
+      });
+    }
+  });
+
+  const exportData = Array.from(checkinsMap.values()).map((c, index) => ({
     stt: index + 1,
-    mssv: c.mssv,
-    full_name: c.users?.full_name || c.mssv,
-    class_id: c.users?.class_id || '',
-    participate_role:
-      c.participate_role === 'participant'
-        ? 'Người tham gia'
-        : c.participate_role === 'volunteer'
-        ? 'Cộng tác viên'
-        : 'Ban tổ chức',
-    checked_by: c.checked_by,
-    checkin_time: c.created_at,
+    ...c,
   }));
 
   return NextResponse.json({ success: true, data: exportData });

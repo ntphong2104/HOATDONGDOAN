@@ -137,6 +137,16 @@ describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
             })),
           };
         }
+        if (table === 'event_registrations') {
+          return {
+            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                eq: jest.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          };
+        }
         return {};
       }),
     };
