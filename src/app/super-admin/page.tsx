@@ -1404,7 +1404,7 @@ function SuperAdminContent() {
                 <div>
                   <h2 className={styles.sectionTitle}>
                     <ShieldCheckIcon size={20} color="#c2410c" />
-                    Danh Sách Kế Hoạch Trình Duyệt Đa Tầng ({filteredProposals.length})
+                    Danh Sách Kế Hoạch Trình Duyệt ({filteredProposals.length})
                   </h2>
                   {selectedUnitFilter && (
                     <p className={styles.sectionSubtitle}>

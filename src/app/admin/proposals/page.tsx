@@ -312,7 +312,7 @@ export default function ProposalsListPage() {
             <p className={styles.sectionSubtitle}>
               {isApprover
                 ? `Danh sách kế hoạch trình qua ${departmentTitle}`
-                : 'Theo dõi tiến trình xét duyệt đa tầng của các kế hoạch'}
+                : 'Theo dõi tiến trình xét duyệt của các kế hoạch'}
             </p>
           </div>
 
