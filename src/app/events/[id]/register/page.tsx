@@ -72,7 +72,7 @@ export default function EventRegisterPage({
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) {
-      router.push('/login');
+      router.push(`/login?redirect=/events/${resolvedParams.id}/register`);
       return;
     }
 

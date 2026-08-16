@@ -38,7 +38,15 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-const PUBLIC_ROUTES = ['/login', '/auth/callback', '/maintenance', '/api/admin/maintenance', '/api/auth/demo'];
+const PUBLIC_ROUTES = [
+  '/login',
+  '/auth/callback',
+  '/maintenance',
+  '/api/admin/maintenance',
+  '/api/auth/demo',
+  '/events',
+  '/api/events',
+];
 
 function getValidUrl(url: string | undefined): string {
   if (!url) return 'https://placeholder.supabase.co';
@@ -63,7 +71,11 @@ export async function middleware(request: NextRequest) {
     const demoUser = parseDemoCookie(demoCookie.value);
     if (demoUser) {
       if (pathname === '/login') {
-        return addSecurityHeaders(NextResponse.redirect(new URL('/', request.url)));
+        const redirectParam =
+          request.nextUrl.searchParams.get('redirect') || request.nextUrl.searchParams.get('next');
+        return addSecurityHeaders(
+          NextResponse.redirect(new URL(redirectParam && redirectParam.startsWith('/') ? redirectParam : '/', request.url))
+        );
       }
 
       // Role authorization checks
@@ -130,15 +142,23 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // If unauthenticated and accessing protected route -> redirect to login
+    // If unauthenticated and accessing protected route -> redirect to login with target redirect
     if (!user && !isPublicRoute) {
       const loginUrl = new URL('/login', request.url);
+      if (pathname && pathname !== '/') {
+        const fullTarget = request.nextUrl.search ? `${pathname}${request.nextUrl.search}` : pathname;
+        loginUrl.searchParams.set('redirect', fullTarget);
+      }
       return addSecurityHeaders(NextResponse.redirect(loginUrl));
     }
 
-    // If authenticated and on /login -> redirect to home
+    // If authenticated and on /login -> redirect to intended target or home
     if (user && pathname === '/login') {
-      return addSecurityHeaders(NextResponse.redirect(new URL('/', request.url)));
+      const redirectParam =
+        request.nextUrl.searchParams.get('redirect') || request.nextUrl.searchParams.get('next');
+      return addSecurityHeaders(
+        NextResponse.redirect(new URL(redirectParam && redirectParam.startsWith('/') ? redirectParam : '/', request.url))
+      );
     }
 
     // Maintenance Mode Check

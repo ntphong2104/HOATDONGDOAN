@@ -24,6 +24,7 @@ function LoginContent() {
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
+  const redirectParam = searchParams.get('redirect') || searchParams.get('next');
 
   const [modalDismissed, setModalDismissed] = useState(false);
 
@@ -37,10 +38,15 @@ function LoginContent() {
 
   const handleLogin = async () => {
     setLoading(true);
+    const callbackUrl =
+      redirectParam && redirectParam.startsWith('/')
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectParam)}`
+        : `${window.location.origin}/auth/callback`;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl,
       },
     });
 
@@ -65,7 +71,7 @@ function LoginContent() {
       const res = await fetch('/api/auth/demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
+        body: JSON.stringify({ role, redirect: redirectParam }),
       });
       const data = await res.json();
       if (data.success && data.redirectUrl) {

@@ -296,7 +296,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Chế độ demo đã tắt' }, { status: 403 });
   }
   try {
-    const { role } = await req.json();
+    const body = await req.json();
+    const role = body?.role || 'user';
     let profile = DEMO_PROFILES[role];
 
     if (!profile && (role.startsWith('lcd') || role.startsWith('clb') || role.startsWith('doi'))) {
@@ -320,13 +321,20 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
-    let redirectUrl = '/';
-    if (profile.tier === 'checker') redirectUrl = '/scanner';
-    if (profile.tier === 'event_admin') redirectUrl = '/admin/proposals';
-    if (profile.tier === 'youth_union' || profile.tier === 'ctsv' || profile.tier === 'facility') {
-      redirectUrl = '/admin/proposals';
+    const targetRedirect = body.redirect || body.next;
+    let redirectUrl =
+      targetRedirect && typeof targetRedirect === 'string' && targetRedirect.startsWith('/')
+        ? targetRedirect
+        : '/';
+
+    if (!targetRedirect || targetRedirect === '/') {
+      if (profile.tier === 'checker') redirectUrl = '/scanner';
+      if (profile.tier === 'event_admin') redirectUrl = '/admin/proposals';
+      if (profile.tier === 'youth_union' || profile.tier === 'ctsv' || profile.tier === 'facility') {
+        redirectUrl = '/admin/proposals';
+      }
+      if (profile.tier === 'super_admin') redirectUrl = '/super-admin';
     }
-    if (profile.tier === 'super_admin') redirectUrl = '/super-admin';
 
     const response = NextResponse.json(
       { success: true, profile, redirectUrl },

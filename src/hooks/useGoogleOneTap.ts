@@ -92,7 +92,12 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
             }
 
             if (data?.session) {
-              router.push('/');
+              const redirectParam =
+                typeof window !== 'undefined'
+                  ? new URLSearchParams(window.location.search).get('redirect') ||
+                    new URLSearchParams(window.location.search).get('next')
+                  : null;
+              router.push(redirectParam && redirectParam.startsWith('/') ? redirectParam : '/');
               router.refresh();
             }
           },

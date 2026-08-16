@@ -101,6 +101,12 @@ export async function GET(request: Request) {
       email.startsWith('doi') ||
       isEventAdmin;
 
+    // If a specific target page was requested (e.g. /events/[id]/register)
+    const nextTarget = searchParams.get('next') || searchParams.get('redirect');
+    if (nextTarget && nextTarget.startsWith('/') && nextTarget !== '/login') {
+      return NextResponse.redirect(`${origin}${nextTarget}`);
+    }
+
     // Smart role-based redirection
     if (isSuperAdmin) {
       return NextResponse.redirect(`${origin}/super-admin`);
