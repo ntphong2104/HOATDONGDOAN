@@ -949,13 +949,135 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           {activeTab === 'checkins' ? (
             <DataTable 
               columns={[
-                { key: 'stt', label: 'STT' },
-                { key: 'mssv', label: 'MSSV' },
-                { key: 'full_name', label: 'Họ và tên' },
-                { key: 'class_id', label: 'Lớp' },
-                { key: 'participate_role', label: 'Vai trò' },
-                { key: 'checked_by', label: 'Người quét' },
-                { key: 'checkin_time', label: 'Thời gian quét' },
+                {
+                  key: 'stt',
+                  label: 'STT',
+                  render: (_val: any, _row: any, index?: number) => (
+                    <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.85rem' }}>
+                      {(index ?? 0) + 1}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'mssv',
+                  label: 'MSSV',
+                  render: (val: string) => (
+                    <span
+                      style={{
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        color: '#1e40af',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.85rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {val}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'full_name',
+                  label: 'Họ và tên',
+                  render: (val: string) => (
+                    <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                      {val || '—'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'class_id',
+                  label: 'Lớp',
+                  render: (val: string) => (
+                    <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      {val || '—'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'participate_role',
+                  label: 'Vai trò',
+                  render: (val: string) => {
+                    const isVol = val === 'Cộng tác viên' || val === 'volunteer';
+                    const isOrg = val === 'Ban tổ chức' || val === 'organizer';
+                    const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
+                    const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
+                    const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
+                    const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
+                    return (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '3px 10px',
+                          borderRadius: '20px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: bg,
+                          color,
+                          border: `1px solid ${border}`,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {label}
+                      </span>
+                    );
+                  },
+                },
+                {
+                  key: 'checked_by',
+                  label: 'Hình thức / Người quét',
+                  render: (val: string) => {
+                    const isSelf = !val || val.includes('Tự quét') || val.includes('QR Động');
+                    return (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          color: '#475569',
+                          padding: '3px 9px',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {isSelf ? '📱 Tự quét QR' : `👤 ${val}`}
+                      </span>
+                    );
+                  },
+                },
+                {
+                  key: 'checkin_time',
+                  label: 'Thời gian quét',
+                  render: (val: string) => {
+                    if (!val) return '—';
+                    try {
+                      const d = new Date(val);
+                      return (
+                        <span
+                          style={{
+                            color: '#1e293b',
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}{' '}
+                          <span style={{ color: '#94a3b8', fontWeight: 400 }}>•</span>{' '}
+                          {d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+                      );
+                    } catch {
+                      return val;
+                    }
+                  },
+                },
               ]}
               data={checkins}
               searchable
@@ -965,24 +1087,130 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           ) : activeTab === 'registrations' ? (
             <DataTable 
               columns={[
-                { key: 'mssv', label: 'MSSV' },
-                { key: 'full_name', label: 'Họ và tên' },
-                { key: 'class_id', label: 'Lớp' },
-                { key: 'role_type', label: 'Vai trò đăng ký' },
+                {
+                  key: 'mssv',
+                  label: 'MSSV',
+                  render: (val: string) => (
+                    <span
+                      style={{
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        color: '#1e40af',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.85rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {val}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'full_name',
+                  label: 'Họ và tên',
+                  render: (val: string) => (
+                    <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                      {val || '—'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'class_id',
+                  label: 'Lớp',
+                  render: (val: string) => (
+                    <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      {val || '—'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'role_type',
+                  label: 'Vai trò đăng ký',
+                  render: (val: string) => {
+                    const isVol = val === 'Cộng tác viên' || val === 'volunteer';
+                    const isOrg = val === 'Ban tổ chức' || val === 'organizer';
+                    const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
+                    const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
+                    const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
+                    const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
+                    return (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '3px 10px',
+                          borderRadius: '20px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: bg,
+                          color,
+                          border: `1px solid ${border}`,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {label}
+                      </span>
+                    );
+                  },
+                },
                 {
                   key: 'attended',
                   label: 'Trạng thái tham gia',
                   render: (val: boolean) =>
                     val ? (
-                      <span style={{ color: '#16a34a', fontWeight: 700 }}>Đã có mặt</span>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '3px 10px',
+                          borderRadius: '20px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          background: '#ecfdf5',
+                          color: '#16a34a',
+                          border: '1px solid #a7f3d0',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ✓ Đã có mặt
+                      </span>
                     ) : (
-                      <span style={{ color: '#dc2626', fontWeight: 600 }}>Chưa check-in</span>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '3px 10px',
+                          borderRadius: '20px',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          background: '#fef2f2',
+                          color: '#dc2626',
+                          border: '1px solid #fecaca',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ✕ Chưa điểm danh
+                      </span>
                     ),
                 },
                 {
                   key: 'created_at',
                   label: 'Ngày đăng ký',
-                  render: (val: string) => new Date(val).toLocaleString('vi-VN'),
+                  render: (val: string) => {
+                    if (!val) return '—';
+                    const d = new Date(val);
+                    return (
+                      <span style={{ color: '#475569', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                        {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}{' '}
+                        <span style={{ color: '#cbd5e1' }}>•</span>{' '}
+                        {d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </span>
+                    );
+                  },
                 },
               ]}
               data={registrations}
@@ -993,10 +1221,74 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           ) : activeTab === 'noshow' ? (
             <DataTable 
               columns={[
-                { key: 'mssv', label: 'MSSV' },
-                { key: 'full_name', label: 'Họ và tên' },
-                { key: 'class_id', label: 'Lớp' },
-                { key: 'role_type', label: 'Vai trò đăng ký' }
+                {
+                  key: 'mssv',
+                  label: 'MSSV',
+                  render: (val: string) => (
+                    <span
+                      style={{
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        color: '#1e40af',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.85rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {val}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'full_name',
+                  label: 'Họ và tên',
+                  render: (val: string) => (
+                    <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                      {val || '—'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'class_id',
+                  label: 'Lớp',
+                  render: (val: string) => (
+                    <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      {val || '—'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'role_type',
+                  label: 'Vai trò đăng ký',
+                  render: (val: string) => {
+                    const isVol = val === 'Cộng tác viên' || val === 'volunteer';
+                    const isOrg = val === 'Ban tổ chức' || val === 'organizer';
+                    const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
+                    const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
+                    const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
+                    const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
+                    return (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '3px 10px',
+                          borderRadius: '20px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: bg,
+                          color,
+                          border: `1px solid ${border}`,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {label}
+                      </span>
+                    );
+                  },
+                },
               ]}
               data={registrations.filter(r => !r.attended)}
               searchable
