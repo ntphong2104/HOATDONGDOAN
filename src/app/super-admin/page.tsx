@@ -1230,7 +1230,7 @@ function SuperAdminContent() {
                                   }}
                                   className={styles.actionButton}
                                 >
-                                  + Gán Admin
+                                  Gán Admin Đơn Vị
                                 </button>
                               </div>
 

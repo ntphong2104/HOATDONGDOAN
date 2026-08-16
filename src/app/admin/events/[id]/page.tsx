@@ -633,7 +633,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               className={styles.input}
               required
             />
-            <button type="submit" className={styles.button}>+ Thêm Checker</button>
+            <button type="submit" className={styles.button}>Thêm CTV Quét Mã</button>
           </form>
 
           <ul className={styles.roleList}>
