@@ -33,7 +33,7 @@ import { getEffectiveEventStatus, isEventPastDeadline } from '@/lib/utils/event-
 import type { Event, User, EventProposal, Room, UserPenalty } from '@/lib/types';
 import styles from './page.module.css';
 
-type SuperAdminTab = 'events' | 'proposals' | 'rooms' | 'units' | 'students' | 'delegates' | 'blacklist' | 'settings';
+type SuperAdminTab = 'events' | 'proposals' | 'officers' | 'rooms' | 'units' | 'students' | 'delegates' | 'blacklist' | 'settings';
 
 function SuperAdminContent() {
   const router = useRouter();
@@ -48,6 +48,7 @@ function SuperAdminContent() {
   const [stats, setStats] = useState({ events: 0, checkins: 0, students: 0 });
   const [events, setEvents] = useState<Event[]>([]);
   const [proposals, setProposals] = useState<EventProposal[]>([]);
+  const [officers, setOfficers] = useState<any[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [students, setStudents] = useState<User[]>([]);
   const [penalties, setPenalties] = useState<UserPenalty[]>([]);
@@ -57,10 +58,20 @@ function SuperAdminContent() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [proposalsLoading, setProposalsLoading] = useState(true);
+  const [officersLoading, setOfficersLoading] = useState(true);
   const [roomsLoading, setRoomsLoading] = useState(true);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [penaltiesLoading, setPenaltiesLoading] = useState(true);
   const [delegatesLoading, setDelegatesLoading] = useState(true);
+
+  // Form states for Officer Role Management
+  const [officerEmail, setOfficerEmail] = useState('');
+  const [officerFullName, setOfficerFullName] = useState('');
+  const [officerRoleTier, setOfficerRoleTier] = useState<UserTier>('youth_union');
+  const [officerUnitCode, setOfficerUnitCode] = useState('BCH_DOAN');
+  const [officerNotes, setOfficerNotes] = useState('');
+  const [grantingOfficer, setGrantingOfficer] = useState(false);
+  const [officerFilter, setOfficerFilter] = useState<string>('all');
 
   // Form states for Room creation
   const [newRoomName, setNewRoomName] = useState('');
@@ -127,10 +138,109 @@ function SuperAdminContent() {
     fetchEvents();
     fetchStudents();
     fetchProposals();
+    fetchOfficers();
     fetchRooms();
     fetchPenalties();
     fetchDelegates();
   }, []);
+
+  const fetchOfficers = async () => {
+    try {
+      const res = await fetch('/api/admin/officers');
+      const data = await res.json();
+      if (data.success) {
+        setOfficers(data.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setOfficersLoading(false);
+    }
+  };
+
+  const grantOfficerRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!officerEmail || grantingOfficer) return;
+    setGrantingOfficer(true);
+    try {
+      let unitName = 'Đoàn TNCS Học Viện Cơ Sở TP.HCM';
+      if (officerRoleTier === 'super_admin') unitName = 'Ban Quản Trị Toàn Trường';
+      else if (officerRoleTier === 'ctsv') unitName = 'Phòng Công Tác Sinh Viên (CTSV)';
+      else if (officerRoleTier === 'facility') unitName = 'Phòng Quản Trị CSVC & Tổ Chức';
+      else if (officerRoleTier === 'event_admin') {
+        const foundUnit = OFFICIAL_UNITS.find((u) => u.code === officerUnitCode);
+        unitName = foundUnit?.name || officerUnitCode;
+      }
+
+      const res = await fetch('/api/admin/officers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: officerEmail,
+          full_name: officerFullName,
+          role_tier: officerRoleTier,
+          unit_code: officerRoleTier === 'event_admin' ? officerUnitCode : 'BCH_DOAN',
+          unit_name: unitName,
+          notes: officerNotes,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setOfficerEmail('');
+        setOfficerFullName('');
+        setOfficerNotes('');
+        fetchOfficers();
+      } else {
+        alert(data.error || 'Lỗi phân quyền cán bộ');
+      }
+    } catch (e) {
+      alert('Lỗi kết nối máy chủ');
+    } finally {
+      setGrantingOfficer(false);
+    }
+  };
+
+  const revokeOfficerRole = async (officer: any) => {
+    if (officer.isRootAdmin || officer.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn') {
+      alert('BẢO VỆ BẤT BIẾN: Không thể thu hồi quyền của Super Admin Gốc của hệ thống!');
+      return;
+    }
+
+    const officerDisplayName = officer.full_name || officer.email;
+    const roleLabel =
+      officer.role_tier === 'super_admin'
+        ? 'Super Admin'
+        : officer.role_tier === 'youth_union'
+        ? 'Đoàn Học Viện'
+        : officer.role_tier === 'ctsv'
+        ? 'Phòng CTSV'
+        : officer.role_tier === 'facility'
+        ? 'Phòng CSVC'
+        : 'Admin Đơn vị LCĐ';
+
+    if (!confirm(`Xác nhận THU HỒI QUYỀN "${roleLabel}" của cán bộ ${officerDisplayName} (${officer.email})?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `/api/admin/officers?email=${encodeURIComponent(officer.email)}&role_tier=${encodeURIComponent(
+          officer.role_tier
+        )}&id=${encodeURIComponent(officer.id)}`,
+        { method: 'DELETE' }
+      );
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchOfficers();
+      } else {
+        alert(data.error || 'Lỗi thu hồi quyền');
+      }
+    } catch (e) {
+      alert('Lỗi kết nối máy chủ');
+    }
+  };
 
   const filteredEvents = React.useMemo(() => {
     if (!selectedUnitFilter) return events;
@@ -628,6 +738,30 @@ function SuperAdminContent() {
             </div>
             <span className={styles.tabBadge}>
               {proposals.filter((p) => p.status === 'pending').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.tabButton} ${activeTab === 'officers' ? styles.tabActive : ''}`}
+            onClick={() => {
+              setActiveTab('officers');
+              setIsSidebarOpen(false);
+            }}
+          >
+            <div className={styles.tabButtonLeft}>
+              <UsersIcon size={18} />
+              <span>Cán Bộ & Phân Quyền</span>
+            </div>
+            <span
+              className={styles.tabBadge}
+              style={{
+                background: officers.length > 0 ? '#dc2626' : undefined,
+                color: officers.length > 0 ? '#ffffff' : undefined,
+                fontWeight: 800,
+              }}
+            >
+              {officers.length}
             </span>
           </button>
 
@@ -1291,6 +1425,407 @@ function SuperAdminContent() {
                           </td>
                         </tr>
                       ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* TAB: CÁN BỘ & PHÂN QUYỀN ĐA TÀI KHOẢN */}
+        {activeTab === 'officers' && (
+          <div className={styles.tabContent}>
+            {/* Header & Stat Summary */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Tổng Cán Bộ Cấp Quyền</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#0f172a', marginTop: '0.35rem' }}>{officers.length}</div>
+              </div>
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1.5px solid #fee2e2', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#dc2626', textTransform: 'uppercase' }}>Super Admin</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#dc2626', marginTop: '0.35rem' }}>
+                  {officers.filter((o) => o.role_tier === 'super_admin').length}
+                </div>
+              </div>
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1.5px solid #dcfce7', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase' }}>Đoàn Học Viện</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#16a34a', marginTop: '0.35rem' }}>
+                  {officers.filter((o) => o.role_tier === 'youth_union').length}
+                </div>
+              </div>
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1.5px solid #dbeafe', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase' }}>Phòng CTSV</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#2563eb', marginTop: '0.35rem' }}>
+                  {officers.filter((o) => o.role_tier === 'ctsv').length}
+                </div>
+              </div>
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1.5px solid #ffedd5', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase' }}>Phòng CSVC</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#ea580c', marginTop: '0.35rem' }}>
+                  {officers.filter((o) => o.role_tier === 'facility').length}
+                </div>
+              </div>
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1.5px solid #f3e8ff', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase' }}>24 Đơn Vị LCĐ/CLB</span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#7c3aed', marginTop: '0.35rem' }}>
+                  {officers.filter((o) => o.role_tier === 'event_admin').length}
+                </div>
+              </div>
+            </div>
+
+            {/* Form Cấp Quyền Cán Bộ Mới Card */}
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                border: '1.5px solid #cbd5e1',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                padding: '1.75rem',
+                marginBottom: '1.75rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#fee2e2', color: '#991b1b', padding: '0.25rem 0.65rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <ShieldCheckIcon size={14} color="#991b1b" /> Phân Quyền Đa Tài Khoản Cho Cán Bộ
+                  </div>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '0.4rem 0 0.2rem' }}>
+                    Thêm & Gán Quyền Cán Bộ / Ban Chấp Hành
+                  </h2>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.4 }}>
+                    Cấp quyền cho cán bộ, chuyên viên, Bí thư/Phó Bí thư sử dụng tài khoản Google cá nhân của trường (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn) để duyệt hồ sơ và quản lý hoạt động.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={grantOfficerRole} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', alignItems: 'flex-end' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                    Email Cán Bộ / Sinh Viên *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="VD: nguyenvana@ptithcm.edu.vn"
+                    value={officerEmail}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setOfficerEmail(val);
+                      // Auto populate name if exists in students list
+                      const matched = students.find((s) => s.email?.toLowerCase() === val.trim().toLowerCase());
+                      if (matched && !officerFullName) {
+                        setOfficerFullName(matched.full_name || '');
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      height: '44px',
+                      padding: '0 0.85rem',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '10px',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      background: '#f8fafc',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                    Họ và Tên Cán Bộ
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: Nguyễn Văn A (Để trống tự lấy)"
+                    value={officerFullName}
+                    onChange={(e) => setOfficerFullName(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '44px',
+                      padding: '0 0.85rem',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '10px',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      background: '#f8fafc',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                    Cấp Quyền / Vai Trò *
+                  </label>
+                  <select
+                    value={officerRoleTier}
+                    onChange={(e) => setOfficerRoleTier(e.target.value as UserTier)}
+                    style={{
+                      width: '100%',
+                      height: '44px',
+                      padding: '0 0.85rem',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '10px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      color: '#0f172a',
+                      background: '#f8fafc',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value="youth_union">🚩 Đoàn Thanh Niên Học Viện (Duyệt Bước 1)</option>
+                    <option value="ctsv">👥 Phòng Công Tác Sinh Viên - CTSV (Duyệt Bước 2)</option>
+                    <option value="facility">🏛️ Phòng Quản Trị CSVC & Tổ Chức (Duyệt Bước 3)</option>
+                    <option value="event_admin">🏢 Ban Chấp Hành LCĐ / CLB (Quản Trị Đơn Vị)</option>
+                    <option value="super_admin">🎖️ Super Admin (Toàn Quyền Quản Trị Toàn Trường)</option>
+                  </select>
+                </div>
+
+                {officerRoleTier === 'event_admin' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                      Chọn Đơn Vị LCĐ / CLB Phụ Trách *
+                    </label>
+                    <select
+                      value={officerUnitCode}
+                      onChange={(e) => setOfficerUnitCode(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '44px',
+                        padding: '0 0.85rem',
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: '10px',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        color: '#0f172a',
+                        background: '#f8fafc',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      {OFFICIAL_UNITS.map((u) => (
+                        <option key={u.code} value={u.code}>
+                          {u.name} ({u.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                    Chức Vụ / Ghi Chú
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: Ủy viên BTV Đoàn trường, Chuyên viên CTSV..."
+                    value={officerNotes}
+                    onChange={(e) => setOfficerNotes(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '44px',
+                      padding: '0 0.85rem',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '10px',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      background: '#f8fafc',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button
+                    type="submit"
+                    disabled={grantingOfficer}
+                    style={{
+                      width: '100%',
+                      height: '44px',
+                      padding: '0 1.25rem',
+                      background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: 800,
+                      fontSize: '0.9rem',
+                      cursor: grantingOfficer ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.45rem',
+                      boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
+                    }}
+                  >
+                    <PlusIcon size={16} />
+                    <span>{grantingOfficer ? 'Đang cấp quyền...' : '+ Cấp Quyền Cho Cán Bộ'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Bảng Danh Sách Cán Bộ Đang Có Quyền */}
+            <section className={styles.section}>
+              <div className={styles.sectionHeader} style={{ flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h2 className={styles.sectionTitle}>
+                    <UsersIcon size={20} color="#dc2626" />
+                    Danh Sách Cán Bộ & Phân Quyền Hệ Thống ({officers.length})
+                  </h2>
+                  <p className={styles.sectionSubtitle}>
+                    Mọi cán bộ trong danh sách này khi đăng nhập bằng Google cá nhân sẽ có đầy đủ thẩm quyền tương ứng.
+                  </p>
+                </div>
+
+                {/* Filter Pill Tabs */}
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'all', label: 'Tất cả' },
+                    { key: 'super_admin', label: 'Super Admin' },
+                    { key: 'youth_union', label: 'Đoàn Học Viện' },
+                    { key: 'ctsv', label: 'Phòng CTSV' },
+                    { key: 'facility', label: 'Phòng CSVC' },
+                    { key: 'event_admin', label: 'LCĐ/CLB' },
+                  ].map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setOfficerFilter(f.key)}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '8px',
+                        border: officerFilter === f.key ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
+                        background: officerFilter === f.key ? '#fee2e2' : '#ffffff',
+                        color: officerFilter === f.key ? '#991b1b' : '#64748b',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.tableResponsive}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Cán Bộ / Tài Khoản</th>
+                      <th>Cấp Thẩm Quyền</th>
+                      <th>Đơn Vị Phụ Trách</th>
+                      <th>Chức Vụ / Ghi Chú</th>
+                      <th>Ngày Cấp & Người Cấp</th>
+                      <th style={{ textAlign: 'center' }}>Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {officersLoading ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                          Đang tải danh sách cán bộ...
+                        </td>
+                      </tr>
+                    ) : officers.filter((o) => officerFilter === 'all' || o.role_tier === officerFilter).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                          Chưa có cán bộ nào trong mục này.
+                        </td>
+                      </tr>
+                    ) : (
+                      officers
+                        .filter((o) => officerFilter === 'all' || o.role_tier === officerFilter)
+                        .map((officer) => (
+                          <tr key={officer.id || officer.email}>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>
+                                  {officer.full_name || officer.email}
+                                </strong>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b', fontFamily: 'monospace' }}>
+                                  {officer.email}
+                                </span>
+                                {officer.mssv && (
+                                  <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
+                                    MSSV: {officer.mssv} {officer.class_id ? `• Lớp ${officer.class_id}` : ''}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              {officer.role_tier === 'super_admin' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#fee2e2', color: '#991b1b', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  🎖️ Super Admin
+                                </span>
+                              ) : officer.role_tier === 'youth_union' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#dcfce7', color: '#166534', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  🚩 Đoàn Học Viện (Bước 1)
+                                </span>
+                              ) : officer.role_tier === 'ctsv' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#dbeafe', color: '#1e40af', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  👥 Phòng CTSV (Bước 2)
+                                </span>
+                              ) : officer.role_tier === 'facility' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#ffedd5', color: '#9a3412', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  🏛️ Phòng CSVC (Bước 3)
+                                </span>
+                              ) : (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.8rem', fontWeight: 800 }}>
+                                  🏢 Admin LCĐ / CLB
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                                {officer.unit_name || officer.unit_code || '—'}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{ fontSize: '0.85rem', color: '#475569' }}>
+                                {officer.notes || '—'}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#64748b' }}>
+                                <span>{new Date(officer.created_at).toLocaleDateString('vi-VN')}</span>
+                                <span style={{ fontSize: '0.725rem', color: '#94a3b8' }}>Bởi: {officer.created_by || 'Super Admin'}</span>
+                              </div>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {officer.isRootAdmin || officer.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn' ? (
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#16a34a', background: '#f0fdf4', padding: '0.3rem 0.65rem', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                                  🎖️ Admin Gốc
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => revokeOfficerRole(officer)}
+                                  style={{
+                                    padding: '0.35rem 0.75rem',
+                                    background: '#fee2e2',
+                                    color: '#dc2626',
+                                    border: '1px solid #fca5a5',
+                                    borderRadius: '8px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Thu Hồi Quyền
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
                     )}
                   </tbody>
                 </table>

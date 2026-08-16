@@ -85,10 +85,35 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     const { data } = await supabase
       .from('super_admins')
       .select('email')
-      .eq('email', email)
-      .single();
+      .ilike('email', email)
+      .maybeSingle();
     superAdmin = data;
   } catch {}
+
+  // Check dynamic officer_roles table / system_settings
+  let assignedOfficerRole: any = null;
+  try {
+    const { data: offRole } = await supabase
+      .from('officer_roles')
+      .select('*')
+      .ilike('email', email)
+      .maybeSingle();
+    if (offRole) assignedOfficerRole = offRole;
+  } catch {}
+
+  if (!assignedOfficerRole) {
+    try {
+      const { data: settingData } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'officer_roles')
+        .maybeSingle();
+      if (settingData?.value && Array.isArray(settingData.value)) {
+        const found = settingData.value.find((r: any) => r.email.toLowerCase() === email.toLowerCase());
+        if (found) assignedOfficerRole = found;
+      }
+    } catch {}
+  }
 
   // Check event_roles table
   let eventRoles: any = [];
@@ -96,27 +121,59 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     const { data } = await supabase
       .from('event_roles')
       .select('role_type')
-      .eq('email', email);
+      .ilike('email', email);
     eventRoles = data || [];
   } catch {}
 
   const lowerEmail = email.toLowerCase();
   const isSubAdminUnit = lowerEmail.startsWith('lcd') || lowerEmail.startsWith('clb') || lowerEmail.startsWith('doi');
 
-  const isSuperAdmin = !!superAdmin || explicitTier === 'super_admin';
-  const isEventAdmin = isSuperAdmin || isSubAdminUnit || (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) || explicitTier === 'event_admin';
-  const isChecker = isSuperAdmin || isSubAdminUnit || (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) || explicitTier === 'checker';
+  const isSuperAdmin =
+    !!superAdmin ||
+    explicitTier === 'super_admin' ||
+    assignedOfficerRole?.role_tier === 'super_admin' ||
+    lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
+
+  const isYouthUnion =
+    explicitTier === 'youth_union' ||
+    assignedOfficerRole?.role_tier === 'youth_union' ||
+    lowerEmail.includes('doanthanhnien');
+
+  const isCtsv =
+    explicitTier === 'ctsv' ||
+    assignedOfficerRole?.role_tier === 'ctsv' ||
+    lowerEmail.includes('ctsv');
+
+  const isFacility =
+    explicitTier === 'facility' ||
+    assignedOfficerRole?.role_tier === 'facility' ||
+    lowerEmail.includes('quantri') ||
+    lowerEmail.includes('csvc');
+
+  const isEventAdmin =
+    isSuperAdmin ||
+    isYouthUnion ||
+    isCtsv ||
+    isFacility ||
+    isSubAdminUnit ||
+    assignedOfficerRole?.role_tier === 'event_admin' ||
+    (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
+    explicitTier === 'event_admin';
+
+  const isChecker =
+    isSuperAdmin ||
+    isSubAdminUnit ||
+    (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) ||
+    explicitTier === 'checker';
 
   let tier: UserTier = explicitTier || 'user';
   if (isSuperAdmin) {
     tier = 'super_admin';
-  } else if (explicitTier) {
-    tier = explicitTier;
-  } else if (email.includes('doanthanhnien')) {
+  } else if (isYouthUnion) {
     tier = 'youth_union';
-  } else if (email.includes('ctsv')) {
+  } else if (isCtsv) {
     tier = 'ctsv';
-  } else if (email.includes('quantri') || email.includes('csvc')) {
+  } else if (isFacility) {
     tier = 'facility';
   } else if (isEventAdmin) {
     tier = 'event_admin';

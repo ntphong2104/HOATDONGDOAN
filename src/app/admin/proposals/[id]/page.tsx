@@ -1025,42 +1025,49 @@ export default function ProposalDetailPage({
             </div>
           )}
 
-          {/* ═══════════════ AUDIT LOGS ═══════════════ */}
-          <div style={{ paddingTop: '1.5rem', borderTop: '1.5px solid #f1f5f9' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.75rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <FileTextIcon size={16} color="#64748b" />
-              <span>Nhật Ký Xử Lý Hồ Sơ:</span>
-            </h3>
-
-            {proposal.logs && proposal.logs.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                {proposal.logs.map((log) => (
-                  <div
-                    key={log.id}
-                    style={{
-                      background: '#f8fafc',
-                      borderRadius: '10px',
-                      padding: '0.75rem 1rem',
-                      border: '1px solid #e2e8f0',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.25rem',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b' }}>
-                      <span>
-                        <strong style={{ color: '#0f172a' }}>{log.actor_name || log.actor_email}</strong> ({log.actor_email})
-                      </span>
-                      <span>{new Date(log.created_at).toLocaleString('vi-VN')}</span>
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: '#334155' }}>{log.notes}</div>
-                  </div>
-                ))}
+          {/* ═══════════════ AUDIT LOGS (DÀNH RIÊNG CHO SUPER ADMIN) ═══════════════ */}
+          {isSuperAdmin && (
+            <div style={{ paddingTop: '1.5rem', borderTop: '1.5px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <ShieldCheckIcon size={16} color="#dc2626" />
+                  <span>Nhật Ký Kiểm Toán Cán Bộ (Chỉ Super Admin):</span>
+                </h3>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '0.2rem 0.5rem', borderRadius: '6px' }}>
+                  Bảo Mật Nội Bộ
+                </span>
               </div>
-            ) : (
-              <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Chưa có nhật ký nào.</p>
-            )}
-          </div>
+
+              {proposal.logs && proposal.logs.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {proposal.logs.map((log) => (
+                    <div
+                      key={log.id}
+                      style={{
+                        background: '#f8fafc',
+                        borderRadius: '10px',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.25rem',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b' }}>
+                        <span>
+                          <strong style={{ color: '#0f172a' }}>{log.actor_name || log.actor_email}</strong> ({log.actor_email})
+                        </span>
+                        <span>{new Date(log.created_at).toLocaleString('vi-VN')}</span>
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#334155' }}>{log.notes}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Chưa có nhật ký nào.</p>
+              )}
+            </div>
+          )}
         </div>
       </main>
     </div>

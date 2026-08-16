@@ -1,0 +1,17 @@
+# Hoạt Động Đoàn PTIT - Nền Tảng Quản Lý & Minh Chứng Hoạt Động Đoàn Hội Học Viện
+
+> Nền tảng quản lý sự kiện, điểm danh bằng mã QR động bảo mật (Anti-Fraud) và cấp minh chứng điểm rèn luyện (ĐRL) cho sinh viên Học viện Công nghệ Bưu chính Viễn thông - Cơ sở tại TP. Hồ Chí Minh (PTIT HCM).
+
+## Các Tính Năng Cốt Lõi
+- **Đăng nhập Google Workspace Học Viện**: Xác thực chính chủ sinh viên và cán bộ Đoàn trường (`@student.ptithcm.edu.vn`, `@ptithcm.edu.vn`).
+- **Check-in QR Động Chống Gian Lận (HMAC-SHA256)**: Mã QR tự động làm mới mỗi 15 giây, ngăn chặn chụp ảnh hoặc chia sẻ từ xa.
+- **Hệ Thống Phê Duyệt Kế Hoạch 3 Bước**:
+  1. Giai đoạn 1: Đoàn Thanh Niên Học Viện (Thẩm định kế hoạch thanh niên).
+  2. Giai đoạn 2: Phòng Công Tác Sinh Viên - CTSV (Thẩm định quy mô & phương án SV).
+  3. Giai đoạn 3: Phòng Quản Trị CSVC & Tổ Chức (Thẩm định & Cấp địa điểm/phòng).
+- **Phân Quyền Đa Tài Khoản**: Super Admin có thể phân quyền cán bộ cho nhiều cá nhân thuộc Đoàn Học Viện, Phòng CTSV, Phòng CSVC và 24 Liên Chi Đoàn / Câu Lạc Bộ.
+- **Tra Cứu & Xuất Minh Chứng ĐRL**: Hỗ trợ Ban cán sự lớp và sinh viên tra cứu lịch sử tham gia sự kiện và xuất file Excel chuẩn.
+
+## Cấu Trúc Đơn Vị
+- Đơn vị chủ quản: Đoàn TNCS Hồ Chí Minh - Học viện Công nghệ Bưu chính Viễn thông (Cơ sở tại TP. Hồ Chí Minh).
+- Hệ thống đơn vị trực thuộc: 24 Liên Chi Đoàn Khoa và Câu Lạc Bộ / Đội / Nhóm.
