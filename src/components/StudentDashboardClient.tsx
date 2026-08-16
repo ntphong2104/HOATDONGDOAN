@@ -236,6 +236,15 @@ export default function StudentDashboardClient({
         </div>
       )}
 
+      {/* Student Personal QR Code */}
+      <section className={styles.qrSection}>
+        <QRCodeDisplay
+          value={user.mssv}
+          studentName={user.full_name}
+          studentClass={user.class_id}
+        />
+      </section>
+
       {/* Button to Scan Event Dynamic QR */}
       <div className={styles.scanEventSection}>
         <button
@@ -249,15 +258,6 @@ export default function StudentDashboardClient({
           Dùng camera điện thoại quét mã QR động đổi liên tục trên máy chiếu/màn hình để tự điểm danh
         </p>
       </div>
-
-      {/* Student Personal QR Code */}
-      <section className={styles.qrSection}>
-        <QRCodeDisplay
-          value={user.mssv}
-          studentName={user.full_name}
-          studentClass={user.class_id}
-        />
-      </section>
 
       {/* Check-in History of Current Student */}
       <section className={styles.historySection}>
