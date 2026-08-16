@@ -25,6 +25,8 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
 
+  const [modalDismissed, setModalDismissed] = useState(false);
+
   // Activate Google One Tap prompt automatically on page load
   useGoogleOneTap(undefined, (isLoading, err) => {
     setLoading(isLoading);
@@ -82,16 +84,78 @@ function LoginContent() {
     }
   };
 
-  let errorMessage = '';
-  if (errorParam === 'invalid_domain')
-    errorMessage = 'Vui lòng sử dụng tài khoản Email Học Viện (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn)';
-  if (errorParam === 'not_registered')
-    errorMessage = 'Tài khoản của bạn chưa được đăng ký trong hệ thống.';
-  if (errorParam === 'auth_failed')
-    errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại.';
+  let modalInfo: { title: string; message: string; type: 'warning' | 'error' } | null = null;
+  if (!modalDismissed) {
+    if (errorParam === 'invalid_domain') {
+      modalInfo = {
+        title: 'Yêu Cầu Email Học Viện',
+        message: 'Vui lòng sử dụng tài khoản Email Học Viện (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn) để đăng nhập vào hệ thống.',
+        type: 'warning',
+      };
+    } else if (errorParam === 'not_registered') {
+      modalInfo = {
+        title: 'Tài Khoản Chưa Được Đăng Ký',
+        message: 'Tài khoản Email của bạn chưa có trong danh sách sinh viên / ban ngành. Vui lòng liên hệ Đoàn Trường để được hỗ trợ cấp quyền.',
+        type: 'error',
+      };
+    } else if (errorParam === 'auth_failed') {
+      modalInfo = {
+        title: 'Đăng Nhập Thất Bại',
+        message: 'Không thể xác thực tài khoản Google. Vui lòng thử lại hoặc chọn tài khoản khác.',
+        type: 'error',
+      };
+    } else if (oneTapError) {
+      modalInfo = {
+        title: 'Thông Báo Đăng Nhập',
+        message: oneTapError,
+        type: 'warning',
+      };
+    }
+  }
+
+  const closeModal = () => {
+    setModalDismissed(true);
+    setOneTapError(null);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', '/login');
+    }
+  };
 
   return (
     <div className={styles.container}>
+      {/* POPUP MODAL THÔNG BÁO */}
+      {modalInfo && (
+        <div className={styles.modalOverlay} onClick={closeModal}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div
+              className={styles.modalIconBox}
+              style={{
+                background: modalInfo.type === 'warning' ? '#fef3c7' : '#fee2e2',
+                color: modalInfo.type === 'warning' ? '#d97706' : '#dc2626',
+              }}
+            >
+              {modalInfo.type === 'warning' ? (
+                <YouthUnionIcon size={28} color="#d97706" />
+              ) : (
+                <ShieldCheckIcon size={28} color="#dc2626" />
+              )}
+            </div>
+            <h3 className={styles.modalTitle}>{modalInfo.title}</h3>
+            <p className={styles.modalMessage}>{modalInfo.message}</p>
+            <button
+              type="button"
+              className={styles.modalConfirmBtn}
+              onClick={closeModal}
+              style={{
+                background: modalInfo.type === 'warning' ? '#d97706' : '#2563eb',
+              }}
+            >
+              Đã hiểu & Thử lại
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className={styles.card}>
         <div
           className={styles.logoArea}
@@ -103,10 +167,6 @@ function LoginContent() {
         <p className={styles.subtitle}>
           Học Viện Công Nghệ Bưu Chính Viễn Thông Cơ Sở Tại TP. Hồ Chí Minh
         </p>
-
-        {(errorMessage || oneTapError) && (
-          <div className={styles.error}>{errorMessage || oneTapError}</div>
-        )}
 
         {/* Official Standard Google Sign-In Button */}
         <div>
