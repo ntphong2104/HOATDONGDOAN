@@ -492,7 +492,7 @@ export default function ProposalsListPage() {
                         </div>
                       )}
 
-                      {(tier === 'super_admin' || tier === 'youth_union' || isSuperAdmin) && (
+                      {(tier === 'super_admin' || tier === 'youth_union') && (
                         <div onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
