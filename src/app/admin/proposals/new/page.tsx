@@ -96,6 +96,9 @@ export default function NewProposalPage() {
     message?: string;
   }>({ hasChecked: false, conflict: false });
 
+  // Whether the user is Super Admin (can pick any unit) or locked to their own
+  const [lockedUnit, setLockedUnit] = useState<string | null>(null);
+
   // Auto-detect logged-in user unit
   useEffect(() => {
     fetch('/api/me')
@@ -103,14 +106,56 @@ export default function NewProposalPage() {
       .then((data) => {
         if (data.success && data.data) {
           setCurrentUser(data.data);
-          if (data.data.full_name) {
-            const name = data.data.full_name;
+          const isSA = data.data.tier === 'super_admin' || data.data.isSuperAdmin;
+          const email = (data.data.email || '').toLowerCase();
+
+          if (!isSA) {
+            // Import unit mapping and match by email
             const allUnits = OFFICIAL_UNITS.flatMap((g) => g.items);
-            const matched = allUnits.find(
-              (u) => name.toLowerCase().includes(u.toLowerCase()) || u.toLowerCase().includes(name.toLowerCase())
-            );
-            if (matched) {
-              setOrganizationUnit(matched);
+
+            // Build email → unit name mapping
+            const EMAIL_TO_UNIT: Record<string, string> = {
+              'doanthanhnien@ptithcm.edu.vn': 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
+              'lcdcntt@student.ptithcm.edu.vn': 'LCĐ Khoa Công nghệ Thông tin',
+              'lcdcndpt@student.ptithcm.edu.vn': 'LCĐ Công nghệ Đa phương tiện',
+              'lcdattt@student.ptithcm.edu.vn': 'LCĐ An toàn Thông tin',
+              'lcdvt@student.ptithcm.edu.vn': 'LCĐ Khoa Viễn thông',
+              'lcddt@student.ptithcm.edu.vn': 'LCĐ Khoa Điện tử',
+              'lcdqtkd@student.ptithcm.edu.vn': 'LCĐ Khoa Quản trị Kinh doanh',
+              'lcdmkt@student.ptithcm.edu.vn': 'LCĐ Marketing',
+              'lcdketoan@student.ptithcm.edu.vn': 'LCĐ Kế toán',
+              'clb.itmc@student.ptithcm.edu.vn': 'CLB ITMC',
+              'clb.antoanthongtin@student.ptithcm.edu.vn': 'CLB An toàn Thông tin',
+              'clb.tienganh@student.ptithcm.edu.vn': 'CLB Tiếng Anh',
+              'doivannghe@student.ptithcm.edu.vn': 'Đội Văn Nghệ',
+              'clb.guitar@student.ptithcm.edu.vn': 'CLB Guitar',
+              'doisinhvientinhnguyen@student.ptithcm.edu.vn': 'Đội Sinh Viên Tình Nguyện',
+              'clb.ketnoi@student.ptithcm.edu.vn': 'CLB Kết Nối',
+              'clb.truyenthongcmc@student.ptithcm.edu.vn': 'CLB C.MC',
+              'clb.37dosinhvien@student.ptithcm.edu.vn': 'CLB 37 Độ Sinh viên',
+              'clb.bma@student.ptithcm.edu.vn': 'CLB BMA',
+              'clb.bongchuyen@student.ptithcm.edu.vn': 'CLB Bóng Chuyền',
+              'clbbongda@student.ptithcm.edu.vn': 'CLB Bóng Đá',
+              'clb.bongro@student.ptithcm.edu.vn': 'CLB Bóng Rổ',
+              'clb.vovinam@student.ptithcm.edu.vn': 'CLB VOVINAM',
+              'clb.covua@student.ptithcm.edu.vn': 'CLB Cờ',
+              'clb.caulong@student.ptithcm.edu.vn': 'CLB Cầu Lông',
+            };
+
+            const matchedByEmail = EMAIL_TO_UNIT[email];
+            if (matchedByEmail) {
+              setOrganizationUnit(matchedByEmail);
+              setLockedUnit(matchedByEmail);
+            } else {
+              // Fallback: try matching by full_name
+              const name = data.data.full_name || '';
+              const matched = allUnits.find(
+                (u) => name.toLowerCase().includes(u.toLowerCase()) || u.toLowerCase().includes(name.toLowerCase())
+              );
+              if (matched) {
+                setOrganizationUnit(matched);
+                setLockedUnit(matched);
+              }
             }
           }
         }
@@ -364,33 +409,56 @@ export default function NewProposalPage() {
                 <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
                   Đơn vị / Chi đoàn tổ chức <span style={{ color: '#ef4444' }}>*</span>
                 </label>
-                <select
-                  value={organizationUnit}
-                  onChange={(e) => setOrganizationUnit(e.target.value)}
-                  style={{
-                    padding: '0.85rem 1rem',
-                    border: '1.5px solid #cbd5e1',
-                    borderRadius: '12px',
-                    fontSize: '0.95rem',
-                    color: '#0f172a',
-                    background: '#f8fafc',
-                    outline: 'none',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    cursor: 'pointer',
-                  }}
-                  required
-                >
-                  {OFFICIAL_UNITS.map((group) => (
-                    <optgroup key={group.group} label={group.group}>
-                      {group.items.map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+                {lockedUnit ? (
+                  <select
+                    value={organizationUnit}
+                    disabled
+                    style={{
+                      padding: '0.85rem 1rem',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '12px',
+                      fontSize: '0.95rem',
+                      color: '#0f172a',
+                      background: '#e2e8f0',
+                      outline: 'none',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      cursor: 'not-allowed',
+                      fontWeight: 600,
+                    }}
+                    required
+                  >
+                    <option value={lockedUnit}>{lockedUnit}</option>
+                  </select>
+                ) : (
+                  <select
+                    value={organizationUnit}
+                    onChange={(e) => setOrganizationUnit(e.target.value)}
+                    style={{
+                      padding: '0.85rem 1rem',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '12px',
+                      fontSize: '0.95rem',
+                      color: '#0f172a',
+                      background: '#f8fafc',
+                      outline: 'none',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      cursor: 'pointer',
+                    }}
+                    required
+                  >
+                    {OFFICIAL_UNITS.map((group) => (
+                      <optgroup key={group.group} label={group.group}>
+                        {group.items.map((unit) => (
+                          <option key={unit} value={unit}>
+                            {unit}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
           </div>
