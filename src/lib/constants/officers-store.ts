@@ -75,6 +75,7 @@ function getStoreFilePath(): string {
 }
 
 function loadFromFile(): OfficerRoleItem[] | null {
+  if (process.env.NODE_ENV === 'test') return null;
   try {
     const filePath = getStoreFilePath();
     if (fs.existsSync(filePath)) {
@@ -89,6 +90,7 @@ function loadFromFile(): OfficerRoleItem[] | null {
 }
 
 function saveToFile(list: OfficerRoleItem[]) {
+  if (process.env.NODE_ENV === 'test') return;
   try {
     const filePath = getStoreFilePath();
     const dir = path.dirname(filePath);
