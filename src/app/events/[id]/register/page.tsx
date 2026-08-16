@@ -31,7 +31,6 @@ export default function EventRegisterPage({
   const [myRegistration, setMyRegistration] = useState<EventRegistration | null>(null);
   const [penaltyStatus, setPenaltyStatus] = useState<UserPenalty | null>(null);
   const [registrationWindow, setRegistrationWindow] = useState<{ isOpen: boolean; cutoffTime?: string; reason?: string } | null>(null);
-  const [roleType, setRoleType] = useState<'participant' | 'volunteer'>('participant');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -87,7 +86,7 @@ export default function EventRegisterPage({
       const res = await fetch(`/api/events/${resolvedParams.id}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role_type: roleType }),
+        body: JSON.stringify({ role_type: 'participant' }),
       });
       const data = await res.json();
       if (data.success) {
@@ -310,47 +309,30 @@ export default function EventRegisterPage({
                     <label className={styles.label}>Thông Tin Sinh Viên Đăng Ký</label>
                     <div
                       style={{
-                        padding: '0.75rem 1rem',
+                        padding: '0.85rem 1.15rem',
                         background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '10px',
-                        fontSize: '0.9rem',
+                        border: '1.5px solid #e2e8f0',
+                        borderRadius: '12px',
+                        fontSize: '0.925rem',
                         fontWeight: 600,
+                        color: '#0f172a',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.35rem',
                       }}
                     >
-                      {currentUser.full_name} ({currentUser.mssv || currentUser.email}) • Lớp: {currentUser.class_id || 'PTIT-HCM'}
-                    </div>
-                  </div>
-
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Chọn Vai Trò Tham Gia</label>
-                    <div className={styles.roleSelectGroup}>
-                      <button
-                        type="button"
-                        className={`${styles.roleOption} ${
-                          roleType === 'participant' ? styles.roleOptionActive : ''
-                        }`}
-                        onClick={() => setRoleType('participant')}
-                      >
-                        <span className={styles.roleOptionTitle}>Người Tham Gia</span>
-                        <span className={styles.roleOptionDesc}>Tham gia lắng nghe & nhận điểm rèn luyện</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`${styles.roleOption} ${
-                          roleType === 'volunteer' ? styles.roleOptionActive : ''
-                        }`}
-                        onClick={() => setRoleType('volunteer')}
-                      >
-                        <span className={styles.roleOptionTitle}>Cộng Tác Viên</span>
-                        <span className={styles.roleOptionDesc}>Hỗ trợ tổ chức & điểm danh</span>
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span><strong>Họ và tên:</strong> {currentUser.full_name}</span>
+                        <span style={{ color: '#2563eb', fontWeight: 700 }}>MSSV: {currentUser.mssv || currentUser.email}</span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                        Lớp: <strong>{currentUser.class_id || 'PTIT-HCM'}</strong> • Vai trò mặc định: <strong style={{ color: '#16a34a' }}>Người tham gia</strong>
+                      </div>
                     </div>
                   </div>
 
                   <button type="submit" disabled={submitting} className={styles.submitBtn}>
-                    {submitting ? 'Đang xử lý đăng ký...' : 'Xác Nhận Đăng Ký Tham Gia'}
+                    {submitting ? 'Đang xử lý đăng ký...' : '⚡ Xác Nhận Đăng Ký Tham Gia (1-Chạm)'}
                   </button>
 
                   <div className={styles.policyNote}>
