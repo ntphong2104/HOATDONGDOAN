@@ -106,6 +106,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Tên chương trình không được để trống' }, { status: 400 });
     }
 
+    // Block automated security scanner fuzzing / injection payloads
+    const suspiciousPatterns = [
+      /jndi:/i,
+      /prbly/i,
+      /file_get_contents/i,
+      /sleep\(/i,
+      /bindec\(/i,
+      /eval\(/i,
+      /<script/i,
+      /global\.process/i,
+      /require\(/i,
+      /\ufffd/,
+      /\$\{/,
+    ];
+    if (suspiciousPatterns.some((pattern) => pattern.test(title) || pattern.test(organization_unit) || pattern.test(room_name))) {
+      return NextResponse.json({ success: false, error: 'Phát hiện ký tự hoặc cú pháp không hợp lệ' }, { status: 400 });
+    }
+
     if (!start_date || !start_time || !end_date || !end_time) {
       return NextResponse.json({ success: false, error: 'Vui lòng nhập đầy đủ thời gian bắt đầu và kết thúc' }, { status: 400 });
     }
