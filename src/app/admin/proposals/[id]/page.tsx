@@ -825,6 +825,74 @@ export default function ProposalDetailPage({
             </div>
           </div>
 
+          {/* ═══════════════ KẾ HOẠCH SƠ BỘ & TÀI LIỆU ĐÍNH KÈM (GOOGLE DRIVE / PDF) ═══════════════ */}
+          <div
+            style={{
+              padding: '1.5rem',
+              background: '#f8fafc',
+              border: '1.5px solid #e2e8f0',
+              borderRadius: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FileTextIcon size={20} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                  Kế Hoạch Sơ Bộ & Tài Liệu Đính Kèm
+                </h3>
+              </div>
+
+              {proposal.plan_url && (
+                <a
+                  href={proposal.plan_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    padding: '0.55rem 1.15rem',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    color: '#ffffff',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.875rem',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                    transition: 'transform 0.15s ease',
+                  }}
+                >
+                  <FileTextIcon size={16} color="#ffffff" />
+                  <span>Xem File Kế Hoạch Chi Tiết (Google Drive) ↗</span>
+                </a>
+              )}
+            </div>
+
+            {proposal.description ? (
+              <div
+                style={{
+                  background: '#ffffff',
+                  padding: '1rem 1.25rem',
+                  borderRadius: '12px',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155',
+                  fontSize: '0.925rem',
+                  lineHeight: 1.6,
+                  whiteSpace: 'pre-line',
+                }}
+              >
+                {proposal.description}
+              </div>
+            ) : (
+              <div style={{ color: '#94a3b8', fontSize: '0.875rem', fontStyle: 'italic' }}>
+                Đơn vị không đính kèm mô tả sơ bộ bằng văn bản.
+              </div>
+            )}
+          </div>
+
           {/* ═══════════════ THÔNG TIN CHI TIẾT SỰ KIỆN (4 CARDS GRID) ═══════════════ */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
             <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>

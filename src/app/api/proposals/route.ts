@@ -91,6 +91,8 @@ export async function POST(req: Request) {
     const {
       title,
       organization_unit = 'Liên Chi Đoàn',
+      description = '',
+      plan_url = '',
       start_date,
       start_time,
       end_date,
@@ -101,6 +103,22 @@ export async function POST(req: Request) {
       room_id = null,
       room_name = 'Không mượn',
     } = body;
+
+    // Sanitize description and plan_url
+    const sanitizedDescription = description ? sanitizeInput(String(description).slice(0, 5000)) : null;
+    let sanitizedPlanUrl: string | null = null;
+    if (plan_url && typeof plan_url === 'string' && plan_url.trim()) {
+      let rawUrl = plan_url.trim();
+      if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+        rawUrl = `https://${rawUrl}`;
+      }
+      try {
+        const parsed = new URL(rawUrl);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          sanitizedPlanUrl = parsed.toString();
+        }
+      } catch {}
+    }
 
     // ── Server-side: enforce organization_unit for non-super-admin ──
     const isPrivileged =
@@ -197,31 +215,48 @@ export async function POST(req: Request) {
     );
 
     // Insert proposal
-    const { data: newProposal, error: insertErr } = await supabase
+    let insertPayload: any = {
+      title: sanitizedTitle,
+      created_by: auth.email,
+      organization_unit: sanitizeInput(finalOrganizationUnit) || 'Liên Chi Đoàn',
+      description: sanitizedDescription,
+      plan_url: sanitizedPlanUrl,
+      start_date,
+      start_time,
+      end_date,
+      end_time,
+      start_datetime: startDatetime.toISOString(),
+      end_datetime: endDatetime.toISOString(),
+      participant_count: participants,
+      volunteer_count: volunteers,
+      organizer_count: organizers,
+      total_count: totalCount,
+      room_id: room_id || null,
+      room_name: room_name || 'Không mượn',
+      requires_ctsv_approval: requiresCtsv,
+      requires_facility_approval: requiresFacility,
+      current_stage: 'youth_union',
+      status: 'pending',
+    };
+
+    let { data: newProposal, error: insertErr } = await supabase
       .from('event_proposals')
-      .insert({
-        title: sanitizedTitle,
-        created_by: auth.email,
-        organization_unit: sanitizeInput(finalOrganizationUnit) || 'Liên Chi Đoàn',
-        start_date,
-        start_time,
-        end_date,
-        end_time,
-        start_datetime: startDatetime.toISOString(),
-        end_datetime: endDatetime.toISOString(),
-        participant_count: participants,
-        volunteer_count: volunteers,
-        organizer_count: organizers,
-        total_count: totalCount,
-        room_id: room_id || null,
-        room_name: room_name || 'Không mượn',
-        requires_ctsv_approval: requiresCtsv,
-        requires_facility_approval: requiresFacility,
-        current_stage: 'youth_union',
-        status: 'pending',
-      })
+      .insert(insertPayload)
       .select()
       .single();
+
+    // Fallback if schema doesn't yet have description/plan_url columns in live DB
+    if (insertErr && (insertErr.message?.includes('description') || insertErr.message?.includes('plan_url'))) {
+      delete insertPayload.description;
+      delete insertPayload.plan_url;
+      const retry = await supabase
+        .from('event_proposals')
+        .insert(insertPayload)
+        .select()
+        .single();
+      newProposal = retry.data;
+      insertErr = retry.error;
+    }
 
     if (insertErr) {
       return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });

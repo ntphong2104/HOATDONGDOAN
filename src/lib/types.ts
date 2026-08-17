@@ -235,7 +235,8 @@ export interface EventProposal {
   requires_facility_approval: boolean;
   current_stage: ProposalStage;
   status: ProposalStatus;
-  rejection_reason?: string | null;
+  description?: string | null;
+  plan_url?: string | null;
   created_event_id?: string | null;
   ratingSummary?: UnitRatingSummary;
   eventRatings?: UnitRating[];

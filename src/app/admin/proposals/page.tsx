@@ -440,6 +440,25 @@ export default function ProposalsListPage() {
                       <BuildingIcon size={14} color="#64748b" />
                       <span>{item.room_name || 'Hội trường / Phòng họp'}</span>
                     </span>
+
+                    {item.plan_url && (
+                      <a
+                        href={item.plan_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className={styles.metaChip}
+                        style={{
+                          background: '#eff6ff',
+                          color: '#2563eb',
+                          border: '1px solid #bfdbfe',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <span>📄 File Kế Hoạch ↗</span>
+                      </a>
+                    )}
                   </div>
 
                   <div className={styles.cardFooter}>

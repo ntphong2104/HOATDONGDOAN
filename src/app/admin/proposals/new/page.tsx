@@ -14,6 +14,7 @@ import {
   CheckCircleIcon,
   BuildingIcon,
   AlertTriangleIcon,
+  FileTextIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS, OFFICIAL_UNIT_GROUPS, resolveUnitForUser } from '@/lib/constants/units';
 import type { Room } from '@/lib/types';
@@ -51,6 +52,9 @@ export default function NewProposalPage() {
 
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [selectedRoomName, setSelectedRoomName] = useState('Không mượn');
+
+  const [description, setDescription] = useState('');
+  const [planUrl, setPlanUrl] = useState('');
 
   // Conflict state
   const [checkingConflict, setCheckingConflict] = useState(false);
@@ -193,6 +197,8 @@ export default function NewProposalPage() {
         body: JSON.stringify({
           title,
           organization_unit: organizationUnit,
+          description,
+          plan_url: planUrl,
           start_date: startDate,
           start_time: startTime,
           end_date: endDate,
@@ -676,7 +682,111 @@ export default function NewProposalPage() {
             )}
           </div>
 
-          {/* ═══════════════ MỤC 4: QUY TRÌNH PHÊ DUYỆT TỰ ĐỘNG ═══════════════ */}
+          {/* ═══════════════ MỤC 4: KẾ HOẠCH SƠ BỘ & TÀI LIỆU ĐÍNH KÈM (GOOGLE DRIVE / PDF) ═══════════════ */}
+          <div className={styles.sectionCard}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.85rem',
+                marginBottom: '1.5rem',
+                paddingBottom: '1rem',
+                borderBottom: '1.5px solid #f1f5f9',
+              }}
+            >
+              <div
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FileTextIcon size={20} color="#0284c7" />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  4. Kế Hoạch Sơ Bộ & Tài Liệu Đính Kèm (Tùy chọn)
+                </h2>
+                <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.15rem 0 0' }}>
+                  Tóm tắt nội dung chương trình và đính kèm link file kế hoạch hoàn chỉnh để các phòng ban thẩm định
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Mô tả sơ bộ */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Tóm tắt mục đích & Kế hoạch sơ bộ:</span>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Không bắt buộc</span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="VD: Hội thảo nhằm trang bị cho sinh viên kỹ năng ứng dụng AI trong học tập và việc làm. Chương trình gồm 3 phần: 1. Khai mạc & phát biểu; 2. Thuyết trình chuyên đề; 3. Q&A và mini game..."
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '12px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.925rem',
+                    color: '#0f172a',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.5,
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease',
+                  }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = '#2563eb')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = '#cbd5e1')}
+                />
+              </div>
+
+              {/* Link file Google Drive / PDF */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Link File Kế Hoạch Chi Tiết (Google Drive / PDF / Docx):</span>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Không bắt buộc</span>
+                </label>
+                <input
+                  type="url"
+                  value={planUrl}
+                  onChange={(e) => setPlanUrl(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/... hoặc link tài liệu kế hoạch"
+                  className={styles.inputField}
+                  style={{ width: '100%' }}
+                />
+
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    background: '#f8fafc',
+                    border: '1px dashed #cbd5e1',
+                    fontSize: '0.8rem',
+                    color: '#64748b',
+                    lineHeight: 1.45,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.45rem',
+                  }}
+                >
+                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>💡</span>
+                  <span>
+                    <strong>Mẹo:</strong> Hãy dán đường link chia sẻ từ Google Drive ở chế độ <i>"Bất kỳ ai có liên kết đều có thể xem"</i>. Hệ thống chỉ lưu đường dẫn URL, giúp bạn linh hoạt cập nhật nội dung file trên Drive bất kỳ lúc nào mà không cần nộp lại đơn.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ═══════════════ MỤC 5: QUY TRÌNH PHÊ DUYỆT TỰ ĐỘNG ═══════════════ */}
           <div
             style={{
               background: '#ffffff',
@@ -711,7 +821,7 @@ export default function NewProposalPage() {
               </div>
               <div>
                 <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                  4. Quy Trình Phê Duyệt Tự Động (Đoàn TN → CTSV → Phòng Tổ Chức)
+                  5. Quy Trình Phê Duyệt Tự Động (Đoàn TN → CTSV → Phòng Tổ Chức)
                 </h2>
                 <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.2rem 0 0' }}>
                   Kế hoạch sẽ được gửi trình Đoàn Thanh Niên duyệt trước, sau đó tự động chuyển sang CTSV và Phòng Tổ Chức.

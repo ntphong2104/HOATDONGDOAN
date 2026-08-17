@@ -1923,13 +1923,39 @@ function SuperAdminContent() {
                               >
                                 {p.title}
                               </Link>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#64748b' }}>
-                                <span style={{ fontWeight: 600, color: '#334155' }}>{p.organization_unit}</span>
-                                <span style={{ color: '#cbd5e1' }}>•</span>
-                                <span>{p.created_by}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#64748b' }}>
+                                  <span style={{ fontWeight: 600, color: '#334155' }}>{p.organization_unit}</span>
+                                  <span style={{ color: '#cbd5e1' }}>•</span>
+                                  <span>{p.created_by}</span>
+                                  {p.plan_url && (
+                                    <>
+                                      <span style={{ color: '#cbd5e1' }}>•</span>
+                                      <a
+                                        href={p.plan_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.2rem',
+                                          color: '#2563eb',
+                                          fontWeight: 700,
+                                          textDecoration: 'none',
+                                          background: '#eff6ff',
+                                          border: '1px solid #bfdbfe',
+                                          borderRadius: '6px',
+                                          padding: '1px 6px',
+                                          fontSize: '0.75rem',
+                                        }}
+                                      >
+                                        <span>📄 File Kế Hoạch ↗</span>
+                                      </a>
+                                    </>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </td>
+                            </td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem' }}>
                               <span style={{ fontWeight: 600, color: '#0f172a' }}>
