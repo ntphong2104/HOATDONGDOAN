@@ -131,8 +131,8 @@ export default function DynamicEventQRModal({
             ) : (
               <QRCodeSVG
                 value={token}
-                size={280}
-                level="H"
+                size={300}
+                level="M"
                 includeMargin={true}
               />
             )}

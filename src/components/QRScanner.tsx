@@ -137,6 +137,9 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
     try {
       if (!scannerRef.current) {
         scannerRef.current = new Html5Qrcode(scannerId, {
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
           verbose: false,
         });
       }
@@ -147,14 +150,26 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         } catch {}
       }
 
-      // Full-frame recognition (BIDV banking style)
+      // Responsive scanning box covering 82% of viewfinder
+      const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const qrboxSize = Math.floor(minEdge * 0.82);
+        return { width: qrboxSize, height: qrboxSize };
+      };
+
       const config = {
-        fps: 20,
+        fps: 25, // High frame rate for rapid recognition
+        qrbox: qrboxFunction,
         aspectRatio: 1.0,
+        videoConstraints: {
+          facingMode: { ideal: facingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
       };
 
       await scannerRef.current.start(
-        { facingMode: facingMode === 'environment' ? 'environment' : 'user' },
+        { facingMode },
         config,
         (decodedText) => {
           if (!isPausedRef.current && scanCallbackRef.current) {
