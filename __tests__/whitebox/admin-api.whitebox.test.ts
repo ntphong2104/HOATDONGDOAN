@@ -397,7 +397,9 @@ describe('Admin API Routes Whitebox Tests', () => {
 
     it('GET success', async () => {
       mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { mssv: 'N22' }, error: null }); // user
-      mockBuilder.then.mockImplementationOnce((resolve) => resolve({ data: [{ id: 1, events: { event_name: 'E1' } }], error: null })); // checkins
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ id: 1, events: { event_name: 'E1' } }], error: null })) // checkins
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null })); // attendedRegs
       mockBuilder.maybeSingle.mockResolvedValueOnce({ data: null, error: null }); // penalty
 
       const req = new NextRequest('http://localhost?mssv=N22');
@@ -425,7 +427,9 @@ describe('Admin API Routes Whitebox Tests', () => {
 
     it('GET success', async () => {
       mockBuilder.single.mockResolvedValueOnce({ data: { mssv: 'N22' }, error: null }); // user
-      mockBuilder.then.mockImplementationOnce((resolve) => resolve({ data: [{ id: 1, events: { event_name: 'E1' } }], error: null })); // checkins
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ id: 1, events: { event_name: 'E1' } }], error: null })) // checkins
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null })); // attendedRegs
       mockBuilder.single.mockResolvedValueOnce({ data: null, error: null }); // penalty
 
       const req = new NextRequest('http://localhost');
@@ -457,6 +461,13 @@ describe('Admin API Routes Whitebox Tests', () => {
   });
 
   describe('Export All GET', () => {
+    beforeEach(() => {
+      mockBuilder.single.mockReset();
+      mockBuilder.single.mockResolvedValue({ data: {}, error: null });
+      mockBuilder.then.mockReset();
+      mockBuilder.then.mockImplementation((resolve) => resolve({ data: [], error: null }));
+    });
+
     it('GET 401', async () => {
       mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null }, error: null });
       const res = await getExportAll();
@@ -464,12 +475,14 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('GET 403', async () => {
+      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } }, error: null });
       mockBuilder.single.mockResolvedValueOnce({ data: null, error: null });
       const res = await getExportAll();
       expect(res.status).toBe(403);
     });
 
     it('GET success', async () => {
+      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } }, error: null });
       mockBuilder.single.mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null });
       mockBuilder.then.mockImplementationOnce((resolve) => resolve({ 
         data: [{ mssv: 'N22', users: { full_name: 'A', class_id: 'C1' }, events: { event_name: 'E1', semester: 'S1' } }], 
@@ -480,6 +493,7 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('GET 500', async () => {
+      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } }, error: null });
       mockBuilder.single.mockRejectedValueOnce(new Error('err'));
       const res = await getExportAll();
       expect(res.status).toBe(500);
