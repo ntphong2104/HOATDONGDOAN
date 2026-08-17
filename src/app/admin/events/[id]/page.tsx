@@ -82,26 +82,29 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         setEvent(eventData);
       }
 
-      const res = await fetch(`/api/events/${resolvedParams.id}/checkins`);
-      const checkinsData = await res.json();
+      const [checkinsRes, rolesRes, regRes, ratingRes] = await Promise.all([
+        fetch(`/api/events/${resolvedParams.id}/checkins`),
+        fetch(`/api/events/${resolvedParams.id}/roles`),
+        fetch(`/api/events/${resolvedParams.id}/register`),
+        fetch(`/api/events/${resolvedParams.id}/ratings`),
+      ]);
+
+      const [checkinsData, rolesData, regData, ratingData] = await Promise.all([
+        checkinsRes.json().catch(() => ({ success: false })),
+        rolesRes.json().catch(() => ({ success: false })),
+        regRes.json().catch(() => ({ success: false })),
+        ratingRes.json().catch(() => ({ success: false })),
+      ]);
+
       if (checkinsData.success) {
-        setCheckins(checkinsData.data);
+        setCheckins(checkinsData.data || []);
       }
-
-      const rolesRes = await fetch(`/api/events/${resolvedParams.id}/roles`);
-      const rolesData = await rolesRes.json();
       if (rolesData.success) {
-        setRoles(rolesData.data);
+        setRoles(rolesData.data || []);
       }
-
-      const regRes = await fetch(`/api/events/${resolvedParams.id}/register`);
-      const regData = await regRes.json();
       if (regData.success && regData.data?.allRegistrations) {
-        setRegistrations(regData.data.allRegistrations);
+        setRegistrations(regData.data.allRegistrations || []);
       }
-
-      const ratingRes = await fetch(`/api/events/${resolvedParams.id}/ratings`);
-      const ratingData = await ratingRes.json();
       if (ratingData.success) {
         setRatings(ratingData.data || []);
       }
