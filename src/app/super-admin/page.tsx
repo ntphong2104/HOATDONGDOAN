@@ -169,14 +169,16 @@ function SuperAdminContent() {
   }, []);
 
   useEffect(() => {
-    fetchStats();
-    fetchEvents();
-    fetchStudents();
-    fetchProposals();
-    fetchOfficers();
-    fetchRooms();
-    fetchPenalties();
-    fetchDelegates();
+    // Primary critical data (load first for instant UI response)
+    Promise.all([fetchStats(), fetchEvents(), fetchProposals()]).catch((e) => console.error(e));
+    // Secondary data
+    Promise.all([
+      fetchStudents(),
+      fetchOfficers(),
+      fetchRooms(),
+      fetchPenalties(),
+      fetchDelegates(),
+    ]).catch((e) => console.error(e));
   }, []);
 
   const fetchOfficers = async () => {
@@ -1351,12 +1353,12 @@ function SuperAdminContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {eventsLoading ? (
+                    {eventsLoading && proposalsLoading ? (
                       <tr>
                         <td colSpan={4} className={styles.emptyState} style={{ padding: '3.5rem 1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: '#64748b' }}>
                             <div className={styles.tableSpinner}></div>
-                            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Đang tải danh sách sự kiện...</span>
+                            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Đang tải danh sách sự kiện & kế hoạch...</span>
                           </div>
                         </td>
                       </tr>

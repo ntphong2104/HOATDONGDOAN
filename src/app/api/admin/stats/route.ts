@@ -11,10 +11,17 @@ export async function GET() {
   }
 
   const supabase = await createClient();
-  const { count: eventsCount } = await supabase.from('events').select('*', { count: 'exact', head: true });
-  const { count: checkinsCount } = await supabase.from('check_ins').select('*', { count: 'exact', head: true });
-  const { count: attendedCount } = await supabase.from('event_registrations').select('*', { count: 'exact', head: true }).eq('attended', true);
-  const { count: studentsCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
+  const [
+    { count: eventsCount },
+    { count: checkinsCount },
+    { count: attendedCount },
+    { count: studentsCount },
+  ] = await Promise.all([
+    supabase.from('events').select('*', { count: 'exact', head: true }),
+    supabase.from('check_ins').select('*', { count: 'exact', head: true }),
+    supabase.from('event_registrations').select('*', { count: 'exact', head: true }).eq('attended', true),
+    supabase.from('users').select('*', { count: 'exact', head: true }),
+  ]);
 
   const totalCheckins = Math.max(checkinsCount || 0, attendedCount || 0);
 
