@@ -52,7 +52,7 @@ export default function DualLogos({
       {showText && (
         <div className={styles.textGroup}>
           <span className={styles.schoolName}>HỌC VIỆN CÔNG NGHỆ BƯU CHÍNH VIỄN THÔNG</span>
-          <span className={styles.orgName}>ĐOÀN THANH NIÊN - HỘI SINH VIÊN</span>
+          <span className={styles.orgName}>ĐOÀN THANH NIÊN</span>
         </div>
       )}
     </div>

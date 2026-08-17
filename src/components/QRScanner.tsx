@@ -24,7 +24,7 @@ export default function QRScanner({
   onClose,
   isPaused = false,
   title = 'Quét mã QR',
-  subtitle = 'Quét mã QR để điểm danh sự kiện, ghi nhận hoạt động Đoàn - Hội',
+  subtitle = 'Quét mã QR để điểm danh sự kiện Đoàn Thanh Niên',
   showBottomAction = false,
   bottomActionText = 'Đóng máy quét',
   onBottomAction,
@@ -310,11 +310,9 @@ export default function QRScanner({
       <div className={styles.topGuidance}>
         <p className={styles.guidanceText}>{subtitle}</p>
         <div className={styles.brandStrip}>
-          <span>PTIT</span>
+          <span>HỌC VIỆN CÔNG NGHỆ BƯU CHÍNH VIỄN THÔNG</span>
           <span className={styles.brandDot}>•</span>
           <span>ĐOÀN THANH NIÊN</span>
-          <span className={styles.brandDot}>•</span>
-          <span>HỘI SINH VIÊN</span>
         </div>
       </div>
 

@@ -90,7 +90,7 @@ export default function StudentSelfScannerModal({
               onClose={onClose}
               isPaused={isProcessing}
               title="Quét mã QR"
-              subtitle="Quét mã QR để điểm danh sự kiện, ghi nhận hoạt động Đoàn - Hội"
+              subtitle="Quét mã QR để điểm danh sự kiện Đoàn Thanh Niên"
               showBottomAction={true}
               bottomActionText="Đóng máy quét"
               onBottomAction={onClose}
