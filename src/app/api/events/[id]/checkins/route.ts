@@ -88,7 +88,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         full_name: r.full_name || r.mssv,
         class_id: r.class_id || '',
         participate_role: r.role_type === 'volunteer' ? 'Cộng tác viên' : 'Người tham gia',
-        checked_by: 'Mã QR Động (Tự quét)',
+        checked_by: 'Cổng Đăng Ký Trực Tuyến',
         checkin_time: r.created_at || new Date().toISOString(),
       });
     }

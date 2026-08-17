@@ -1008,9 +1008,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   render: (val: string) => {
                     const raw = String(val || '').trim();
                     const isManual = raw.includes('thủ công') || raw.includes('manual');
-                    const isSelf = !isManual && (raw.includes('Tự quét') || raw.includes('QR Động') || raw.includes('self') || raw === '');
+                    const isOnlineReg = raw.includes('Đăng Ký Trực Tuyến') || raw.includes('Cổng Đăng Ký');
+                    const isSelf = raw.includes('Tự quét') || raw.includes('QR Động') || raw.includes('self');
+                    const isEmail = raw.includes('@');
 
                     if (isManual) {
+                      const manualBy = raw.includes('(') ? raw.replace('Điểm danh thủ công', '').replace(/[()]/g, '').trim() : '';
                       return (
                         <span
                           style={{
@@ -1029,7 +1032,55 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           title={raw}
                         >
                           <ShieldCheckIcon size={14} color="#7e22ce" />
-                          <span>Điểm danh thủ công</span>
+                          <span>{manualBy ? `Thủ công: ${manualBy.split('@')[0]}` : 'Điểm danh thủ công'}</span>
+                        </span>
+                      );
+                    }
+
+                    if (isOnlineReg) {
+                      return (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: '#f0f9ff',
+                            border: '1px solid #bae6fd',
+                            color: '#0369a1',
+                            padding: '3px 9px',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={raw}
+                        >
+                          <UsersIcon size={14} color="#0369a1" />
+                          <span>Đăng ký trực tuyến</span>
+                        </span>
+                      );
+                    }
+
+                    if (isEmail) {
+                      return (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: '#f0fdf4',
+                            border: '1px solid #bbf7d0',
+                            color: '#15803d',
+                            padding: '3px 9px',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={raw}
+                        >
+                          <UserIcon size={14} color="#15803d" />
+                          <span>{raw}</span>
                         </span>
                       );
                     }
@@ -1057,27 +1108,23 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       );
                     }
 
-                    // Otherwise scanned by an officer/checker
-                    const officerName = raw.includes('@') ? raw.split('@')[0] : raw;
                     return (
                       <span
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '5px',
-                          background: '#f0fdf4',
-                          border: '1px solid #bbf7d0',
-                          color: '#15803d',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          color: '#475569',
                           padding: '3px 9px',
                           borderRadius: '6px',
                           fontSize: '0.8rem',
-                          fontWeight: 700,
+                          fontWeight: 600,
                           whiteSpace: 'nowrap',
                         }}
-                        title={raw}
                       >
-                        <UserIcon size={14} color="#15803d" />
-                        <span>Cán bộ: {officerName}</span>
+                        {raw || '—'}
                       </span>
                     );
                   },
