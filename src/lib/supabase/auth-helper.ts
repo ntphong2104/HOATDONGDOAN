@@ -119,15 +119,22 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   const isYouthUnion =
     explicitTier === 'youth_union' ||
-    assignedOfficerRole?.role_tier === 'youth_union';
+    assignedOfficerRole?.role_tier === 'youth_union' ||
+    lowerEmail === 'doanthanhnien@ptithcm.edu.vn' ||
+    lowerEmail.includes('doanthanhnien') ||
+    lowerEmail.includes('doanhv');
 
   const isCtsv =
     explicitTier === 'ctsv' ||
-    assignedOfficerRole?.role_tier === 'ctsv';
+    assignedOfficerRole?.role_tier === 'ctsv' ||
+    lowerEmail === 'ctsv@ptithcm.edu.vn' ||
+    lowerEmail.includes('phongctsv');
 
   const isFacility =
     explicitTier === 'facility' ||
-    assignedOfficerRole?.role_tier === 'facility';
+    assignedOfficerRole?.role_tier === 'facility' ||
+    lowerEmail === 'quantri@ptithcm.edu.vn' ||
+    lowerEmail.includes('phongquantri');
 
   const isEventAdmin =
     isSuperAdmin ||
