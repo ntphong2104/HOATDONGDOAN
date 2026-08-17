@@ -82,6 +82,9 @@ export async function POST(req: Request) {
   }
 
   const todayStr = new Date().toISOString().split('T')[0];
+  if (event_date && event_date < todayStr) {
+    return NextResponse.json({ success: false, error: '🚫 Ngày tổ chức sự kiện không thể ở trong quá khứ! Vui lòng chọn ngày hiện tại hoặc tương lai.' }, { status: 400 });
+  }
   const supabase = await createClient();
   const isAutoApproved = auth.isSuperAdmin;
   const initialStatus = isAutoApproved ? 'active' : 'pending';

@@ -149,24 +149,36 @@ describe('Proposals API Routes', () => {
     it('validates invalid date logic (end < start)', async () => {
       const req = createReq('/api/proposals', 'POST', {
         title: 'Test',
-        start_date: '2025-01-02', start_time: '10:00',
-        end_date: '2025-01-01', end_time: '10:00'
+        start_date: '2029-01-02', start_time: '10:00',
+        end_date: '2029-01-01', end_time: '10:00'
       });
       const res = await postProposals(req);
       expect(res.status).toBe(400);
     });
 
+    it('rejects past date proposals', async () => {
+      const req = createReq('/api/proposals', 'POST', {
+        title: 'Past Event',
+        start_date: '2020-01-01', start_time: '10:00',
+        end_date: '2020-01-01', end_time: '12:00'
+      });
+      const res = await postProposals(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('không thể ở trong quá khứ');
+    });
+
     it('detects room conflicts', async () => {
       // Return a conflict when querying for room
       mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({
-        data: [{ id: 1, title: 'Conflict Event', start_datetime: '2025-01-01T10:00:00Z' }],
+        data: [{ id: 1, title: 'Conflict Event', start_datetime: '2029-01-01T10:00:00Z' }],
         error: null
       }));
 
       const req = createReq('/api/proposals', 'POST', {
         title: 'Test',
-        start_date: '2025-01-01', start_time: '10:00',
-        end_date: '2025-01-01', end_time: '12:00',
+        start_date: '2029-01-01', start_time: '10:00',
+        end_date: '2029-01-01', end_time: '12:00',
         room_id: 'room1',
         room_name: 'Room 1'
       });
@@ -185,8 +197,8 @@ describe('Proposals API Routes', () => {
 
       const req = createReq('/api/proposals', 'POST', {
         title: 'Success Event',
-        start_date: '2025-01-01', start_time: '10:00',
-        end_date: '2025-01-01', end_time: '12:00',
+        start_date: '2029-01-01', start_time: '10:00',
+        end_date: '2029-01-01', end_time: '12:00',
         participant_count: 50,
       });
       const res = await postProposals(req);
@@ -202,7 +214,7 @@ describe('Proposals API Routes', () => {
       mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })); // no conflict
       mockSupabaseQuery.single.mockResolvedValueOnce({ data: null, error: { message: 'db error' } });
       const req = createReq('/api/proposals', 'POST', {
-        title: 'Test', start_date: '2025-01-01', start_time: '10:00', end_date: '2025-01-01', end_time: '12:00'
+        title: 'Test', start_date: '2029-01-01', start_time: '10:00', end_date: '2029-01-01', end_time: '12:00'
       });
       const res = await postProposals(req);
       expect(res.status).toBe(500);

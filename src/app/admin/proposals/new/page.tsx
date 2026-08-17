@@ -171,8 +171,17 @@ export default function NewProposalPage() {
     const startDatetime = new Date(`${startDate}T${startTime}`);
     const endDatetime = new Date(`${endDate}T${endTime}`);
 
+    // Reject past date events (allow 5 min buffer for clock precision)
+    const now = new Date();
+    const minAllowedTime = new Date(now.getTime() - 5 * 60 * 1000);
+
+    if (startDatetime < minAllowedTime) {
+      setErrorMessage('🚫 Thời gian bắt đầu sự kiện không thể ở trong quá khứ! Vui lòng chọn ngày và giờ hiện tại hoặc tương lai.');
+      return;
+    }
+
     if (endDatetime <= startDatetime) {
-      setErrorMessage('Thời gian kết thúc phải sau thời gian bắt đầu');
+      setErrorMessage('🚫 Thời gian kết thúc phải diễn ra sau thời gian bắt đầu!');
       return;
     }
 
@@ -402,6 +411,7 @@ export default function NewProposalPage() {
                 <input
                   type="date"
                   required
+                  min={getVNDate()}
                   value={startDate}
                   onChange={(e) => {
                     setStartDate(e.target.value);
@@ -432,6 +442,7 @@ export default function NewProposalPage() {
                 <input
                   type="date"
                   required
+                  min={startDate || getVNDate()}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className={styles.inputField}

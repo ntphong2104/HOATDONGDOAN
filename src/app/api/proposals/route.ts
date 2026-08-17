@@ -150,8 +150,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Định dạng ngày giờ không hợp lệ' }, { status: 400 });
     }
 
+    // Reject past date events (allow 10 min buffer for server clock differences)
+    const now = new Date();
+    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+    if (startDatetime < tenMinutesAgo) {
+      return NextResponse.json({
+        success: false,
+        error: '🚫 Thời gian bắt đầu sự kiện không thể ở trong quá khứ! Vui lòng chọn ngày và giờ hiện tại hoặc tương lai.'
+      }, { status: 400 });
+    }
+
     if (endDatetime <= startDatetime) {
-      return NextResponse.json({ success: false, error: 'Thời gian kết thúc phải sau thời gian bắt đầu' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '🚫 Thời gian kết thúc phải diễn ra sau thời gian bắt đầu' }, { status: 400 });
     }
 
     const participants = Math.max(0, parseInt(String(participant_count), 10) || 0);
