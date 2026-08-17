@@ -76,8 +76,16 @@ function SuperAdminContent() {
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [penaltiesLoading, setPenaltiesLoading] = useState(true);
   const [delegatesLoading, setDelegatesLoading] = useState(true);
-  const [proposalStatusFilter, setProposalStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
   const [eventStatusFilter, setEventStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
+  const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
 
   // Form states for Officer Role Management
   const [officerEmail, setOfficerEmail] = useState('');
@@ -223,16 +231,16 @@ function SuperAdminContent() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        showToast(data.message || 'Phân quyền cán bộ thành công!', 'success');
         setOfficerEmail('');
         setOfficerFullName('');
         setOfficerNotes('');
         fetchOfficers();
       } else {
-        alert(data.error || 'Lỗi phân quyền cán bộ');
+        showToast(data.error || 'Lỗi phân quyền cán bộ', 'error');
       }
     } catch (e) {
-      alert('Lỗi kết nối máy chủ');
+      showToast('Lỗi kết nối máy chủ', 'error');
     } finally {
       setGrantingOfficer(false);
     }
@@ -240,7 +248,7 @@ function SuperAdminContent() {
 
   const revokeOfficerRole = async (officer: any) => {
     if (officer.isRootAdmin || officer.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn') {
-      alert('BẢO VỆ BẤT BIẾN: Không thể thu hồi quyền của Super Admin Gốc của hệ thống!');
+      showToast('BẢO VỆ BẤT BIẾN: Không thể thu hồi quyền của Super Admin Gốc!', 'error');
       return;
     }
 
@@ -280,14 +288,14 @@ function SuperAdminContent() {
       );
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        showToast(data.message || 'Đã thu hồi quyền cán bộ', 'info');
         fetchOfficers();
       } else {
-        alert(data.error || 'Lỗi thu hồi quyền');
+        showToast(data.error || 'Lỗi thu hồi quyền', 'error');
         fetchOfficers();
       }
     } catch (e) {
-      alert('Lỗi kết nối máy chủ');
+      showToast('Lỗi kết nối máy chủ', 'error');
       fetchOfficers();
     }
   };
@@ -592,15 +600,15 @@ function SuperAdminContent() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        showToast(data.message || 'Cấp quyền tra cứu ĐRL thành công!', 'success');
         setGrantMssv('');
         setGrantNotes('');
         fetchDelegates();
       } else {
-        alert(data.error || 'Lỗi cấp quyền');
+        showToast(data.error || 'Lỗi cấp quyền', 'error');
       }
     } catch (e) {
-      alert('Lỗi kết nối máy chủ');
+      showToast('Lỗi kết nối máy chủ', 'error');
     } finally {
       setGranting(false);
     }
@@ -612,13 +620,13 @@ function SuperAdminContent() {
       const res = await fetch(`/api/admin/delegates?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        showToast(data.message || 'Đã thu hồi quyền', 'info');
         fetchDelegates();
       } else {
-        alert(data.error || 'Lỗi thu hồi');
+        showToast(data.error || 'Lỗi thu hồi', 'error');
       }
     } catch (e) {
-      alert('Lỗi kết nối');
+      showToast('Lỗi kết nối', 'error');
     }
   };
 
@@ -642,9 +650,9 @@ function SuperAdminContent() {
         setNewRoomCapacity(100);
         setNewRoomLocation('');
         fetchRooms();
-        alert('Đã thêm phòng mới thành công!');
+        showToast('Đã thêm phòng mới thành công!', 'success');
       } else {
-        alert(data.error || 'Lỗi thêm phòng');
+        showToast(data.error || 'Lỗi thêm phòng', 'error');
       }
     } catch (err) {
       console.error(err);
@@ -674,13 +682,13 @@ function SuperAdminContent() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Đã cập nhật thông tin phòng thành công!');
+        showToast('Đã cập nhật thông tin phòng thành công!', 'success');
         fetchRooms();
       } else {
-        alert(data.error || 'Lỗi cập nhật');
+        showToast(data.error || 'Lỗi cập nhật', 'error');
       }
     } catch (err) {
-      alert('Lỗi kết nối');
+      showToast('Lỗi kết nối', 'error');
     }
   };
 
@@ -690,9 +698,10 @@ function SuperAdminContent() {
       const res = await fetch(`/api/rooms/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
+        showToast('Đã xóa phòng thành công', 'info');
         fetchRooms();
       } else {
-        alert(data.error || 'Lỗi xóa phòng');
+        showToast(data.error || 'Lỗi xóa phòng', 'error');
       }
     } catch (err) {
       console.error(err);
@@ -708,15 +717,15 @@ function SuperAdminContent() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(data.message || 'Đã duyệt thành công!');
+        showToast(data.message || 'Đã duyệt kế hoạch thành công!', 'success');
         fetchProposals();
         fetchEvents();
         fetchStats();
       } else {
-        alert(data.error || 'Lỗi duyệt');
+        showToast(data.error || 'Lỗi duyệt kế hoạch', 'error');
       }
     } catch (err) {
-      alert('Lỗi kết nối');
+      showToast('Lỗi kết nối máy chủ', 'error');
     }
   };
 
@@ -732,13 +741,13 @@ function SuperAdminContent() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Đã từ chối kế hoạch');
+        showToast('Đã từ chối kế hoạch và giải phóng phòng', 'info');
         fetchProposals();
       } else {
-        alert(data.error || 'Lỗi từ chối');
+        showToast(data.error || 'Lỗi từ chối kế hoạch', 'error');
       }
     } catch (err) {
-      alert('Lỗi kết nối');
+      showToast('Lỗi kết nối máy chủ', 'error');
     }
   };
 
@@ -751,6 +760,7 @@ function SuperAdminContent() {
         body: JSON.stringify({ status: nextStatus }),
       });
       if (res.ok) {
+        showToast(`Đã ${nextStatus === 'active' ? 'mở' : 'đóng'} sự kiện thành công!`, 'success');
         fetchEvents();
       }
     } catch (err) {
@@ -773,13 +783,13 @@ function SuperAdminContent() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Gán quyền thành công!');
+        showToast('Gán quyền thành công!', 'success');
         fetchEvents();
       } else {
-        alert(data.error || 'Không thể gán quyền');
+        showToast(data.error || 'Không thể gán quyền', 'error');
       }
     } catch (err) {
-      alert('Lỗi kết nối');
+      showToast('Lỗi kết nối', 'error');
     }
   };
 
@@ -791,12 +801,13 @@ function SuperAdminContent() {
       });
       const data = await res.json();
       if (data.success) {
+        showToast('Đã thu hồi quyền thành công', 'info');
         fetchEvents();
       } else {
-        alert(data.error || 'Lỗi thu hồi quyền');
+        showToast(data.error || 'Lỗi thu hồi quyền', 'error');
       }
     } catch (err) {
-      alert('Lỗi kết nối');
+      showToast('Lỗi kết nối', 'error');
     }
   };
 
@@ -811,19 +822,110 @@ function SuperAdminContent() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert(`Đã xóa thành công sự kiện "${eventName}"!`);
+        showToast(`Đã xóa thành công sự kiện "${eventName}" và giải phóng phòng!`, 'info');
         fetchEvents();
         fetchStats();
       } else {
-        alert(data.message || data.error || 'Không thể xóa sự kiện');
+        showToast(data.message || data.error || 'Không thể xóa sự kiện', 'error');
       }
     } catch (err: any) {
-      alert(`Đã xảy ra lỗi: ${err.message || 'Lỗi kết nối'}`);
+      showToast(`Đã xảy ra lỗi: ${err.message || 'Lỗi kết nối'}`, 'error');
     }
   };
 
   return (
     <div className={styles.container}>
+      {/* FLOATING TOAST NOTIFICATION CONTAINER FOR MOBILE & DESKTOP */}
+      {toasts.length > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '1.25rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 999999,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem',
+            width: '90%',
+            maxWidth: '440px',
+            pointerEvents: 'none',
+          }}
+        >
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              style={{
+                pointerEvents: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                padding: '0.85rem 1.15rem',
+                borderRadius: '12px',
+                background:
+                  toast.type === 'success'
+                    ? '#0f172a'
+                    : toast.type === 'error'
+                    ? '#7f1d1d'
+                    : '#1e293b',
+                color: '#ffffff',
+                border:
+                  toast.type === 'success'
+                    ? '1.5px solid #22c55e'
+                    : toast.type === 'error'
+                    ? '1.5px solid #ef4444'
+                    : '1.5px solid #38bdf8',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background:
+                      toast.type === 'success'
+                        ? '#22c55e'
+                        : toast.type === 'error'
+                        ? '#ef4444'
+                        : '#38bdf8',
+                    color: '#ffffff',
+                    fontSize: '0.8rem',
+                    fontWeight: 900,
+                    flexShrink: 0,
+                  }}
+                >
+                  {toast.type === 'success' ? '✓' : toast.type === 'error' ? '!' : 'i'}
+                </span>
+                <span>{toast.message}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  cursor: 'pointer',
+                  fontSize: '1.1rem',
+                  padding: '0 0.25rem',
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Header
         showBack={false}
         title="BẢNG QUẢN TRỊ TOÀN TRƯỜNG"
@@ -3372,7 +3474,7 @@ function SuperAdminContent() {
                     : (OFFICIAL_UNITS.find(u => u.code === selectedUnitCode)?.email || customEmail.trim().toLowerCase());
                   
                   if (!finalEmail) {
-                    alert('Vui lòng nhập hoặc chọn email đơn vị');
+                    showToast('Vui lòng nhập hoặc chọn email đơn vị', 'error');
                     return;
                   }
 
@@ -3385,14 +3487,14 @@ function SuperAdminContent() {
                     });
                     const data = await res.json();
                     if (data.success) {
-                      alert('Gán quyền thành công!');
+                      showToast('Gán quyền Admin đơn vị thành công!', 'success');
                       setAssignModalEvent(null);
                       fetchEvents();
                     } else {
-                      alert(data.error || 'Không thể gán quyền');
+                      showToast(data.error || 'Không thể gán quyền', 'error');
                     }
                   } catch (err) {
-                    alert('Lỗi kết nối máy chủ');
+                    showToast('Lỗi kết nối máy chủ', 'error');
                   } finally {
                     setSubmittingRole(false);
                   }
