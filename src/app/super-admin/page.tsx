@@ -487,10 +487,10 @@ function SuperAdminContent() {
       const eventsRes = await fetch('/api/events');
       const eventsData = await eventsRes.json();
       if (eventsData.success) {
-        setEvents(eventsData.data);
+        setEvents(Array.isArray(eventsData.data) ? eventsData.data : []);
       }
     } catch (err) {
-      console.error(err);
+      console.error('fetchEvents error:', err);
     } finally {
       setEventsLoading(false);
     }
@@ -501,10 +501,10 @@ function SuperAdminContent() {
       const res = await fetch('/api/proposals');
       const data = await res.json();
       if (data.success && data.data) {
-        setProposals(data.data);
+        setProposals(Array.isArray(data.data) ? data.data : []);
       }
     } catch (err) {
-      console.error(err);
+      console.error('fetchProposals error:', err);
     } finally {
       setProposalsLoading(false);
     }

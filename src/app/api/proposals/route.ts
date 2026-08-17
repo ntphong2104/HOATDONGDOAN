@@ -5,6 +5,7 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { calculateProposalStages } from '@/lib/utils/proposal-logic';
 import { sanitizeInput } from '@/lib/security/sanitizer';
 import { resolveUnitForUser } from '@/lib/constants/units';
+import { summarizeUnitRatings } from '@/lib/utils/rating-logic';
 
 export async function GET(req: Request) {
   const auth = await getAuthContext();
@@ -59,8 +60,6 @@ export async function GET(req: Request) {
   const { data: allRatings } = await supabase
     .from('unit_ratings')
     .select('*');
-
-  const { summarizeUnitRatings } = await import('@/lib/utils/rating-logic');
 
   const proposalsWithRatings = (proposals || []).map((prop) => {
     const summary = summarizeUnitRatings(allRatings || [], prop.organization_unit || 'Đơn vị tổ chức');
