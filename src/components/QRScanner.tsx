@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ArrowLeftIcon, FlashlightIcon, ImageIcon, QRIcon } from '@/components/icons';
 import styles from './QRScanner.module.css';
@@ -196,8 +197,8 @@ export default function QRScanner({
         undefined
       );
 
-      // Check capabilities
-      setTimeout(() => {
+      // Check capabilities & auto-enable continuous focus
+      setTimeout(async () => {
         const track = getVideoTrack();
         if (track && typeof track.getCapabilities === 'function') {
           const caps: any = track.getCapabilities();
@@ -207,8 +208,13 @@ export default function QRScanner({
           if (caps.torch) {
             setSupportsTorch(true);
           }
+          if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+            try {
+              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] });
+            } catch {}
+          }
         }
-      }, 500);
+      }, 400);
     } catch (err) {
       console.error('Failed to start camera scanner:', err);
       setHasCameraError(true);
@@ -320,9 +326,16 @@ export default function QRScanner({
           <div className={`${styles.corner} ${styles.bottomLeft}`}></div>
           <div className={`${styles.corner} ${styles.bottomRight}`}></div>
 
-          {/* Golden Center Emblem / Star Pulse */}
+          {/* Glowing Center PTIT Emblem */}
           <div className={styles.centerEmblem}>
-            <span style={{ fontSize: '1.4rem' }}>⭐</span>
+            <Image
+              src="/logos/logo-ptit.png"
+              alt="Logo PTIT"
+              width={40}
+              height={40}
+              priority
+              className={styles.centerEmblemImg}
+            />
           </div>
 
           <div className={styles.scanLaser}></div>
