@@ -34,6 +34,13 @@ export async function GET() {
       if (demoUser && demoUser.email) {
         try {
           const supabase = await createClient();
+
+          let assignedOfficerRole: any = null;
+          try {
+            const roles = await getStoredOfficerRoles(supabase);
+            assignedOfficerRole = roles.find((r) => r.email.toLowerCase() === demoUser.email.toLowerCase());
+          } catch {}
+
           let eventRoles: any = [];
           try {
             const res = await supabase
@@ -90,10 +97,19 @@ export async function GET() {
             }
           }
 
+          const tier: UserTier = assignedOfficerRole?.role_tier || demoUser.tier || 'user';
+          const isSuperAdmin = tier === 'super_admin' || demoUser.isSuperAdmin || demoUser.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn';
+          const isEventAdmin = isSuperAdmin || tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'event_admin' || managed_events.length > 0;
+
           return NextResponse.json({
             success: true,
             data: {
               ...demoUser,
+              tier,
+              isSuperAdmin,
+              isEventAdmin,
+              unit_name: assignedOfficerRole?.unit_name || demoUser.unit_name,
+              unit_code: assignedOfficerRole?.unit_code || demoUser.unit_code,
               managed_events,
             },
           }, { headers: noCacheHeaders });
@@ -187,8 +203,6 @@ export async function GET() {
       email.toLowerCase().startsWith('clb') ||
       email.toLowerCase().startsWith('doi') ||
       assignedOfficerRole?.role_tier === 'event_admin';
-      email.toLowerCase().startsWith('clb') ||
-      email.toLowerCase().startsWith('doi');
 
     const isEventAdmin =
       isSuperAdmin ||
