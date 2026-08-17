@@ -39,7 +39,7 @@ export async function GET(request: Request) {
         participate_role,
         created_at,
         events (
-          id,
+          event_id,
           event_name,
           event_date,
           start_time,
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     }
 
     // Also fetch attended event registrations
-    const { data: attendedRegs } = await supabase
+    const { data: attendedRegs, error: regErr } = await supabase
       .from('event_registrations')
       .select(`
         id,
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
         role_type,
         created_at,
         events (
-          id,
+          event_id,
           event_name,
           event_date,
           start_time,
@@ -75,6 +75,10 @@ export async function GET(request: Request) {
       `)
       .eq('mssv', cleanMssv)
       .eq('attended', true);
+
+    if (regErr) {
+      console.error('Attended regs fetch error:', regErr);
+    }
 
     const historyMap = new Map<string, any>();
 

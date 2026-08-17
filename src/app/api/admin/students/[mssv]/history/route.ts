@@ -37,7 +37,7 @@ export async function GET(
         participate_role,
         created_at,
         events (
-          id,
+          event_id,
           event_name,
           event_date,
           start_time,
@@ -62,7 +62,7 @@ export async function GET(
         role_type,
         created_at,
         events (
-          id,
+          event_id,
           event_name,
           event_date,
           start_time,
