@@ -78,29 +78,6 @@ export async function middleware(request: NextRequest) {
         );
       }
 
-      // Role authorization checks
-      if (pathname.startsWith('/super-admin') && demoUser.tier !== 'super_admin') {
-        return addSecurityHeaders(NextResponse.redirect(new URL('/', request.url)));
-      }
-      if (
-        pathname.startsWith('/admin') &&
-        demoUser.tier !== 'super_admin' &&
-        demoUser.tier !== 'event_admin' &&
-        demoUser.tier !== 'youth_union' &&
-        demoUser.tier !== 'ctsv' &&
-        demoUser.tier !== 'facility'
-      ) {
-        return addSecurityHeaders(NextResponse.redirect(new URL('/', request.url)));
-      }
-      if (
-        pathname.startsWith('/scanner') &&
-        demoUser.tier !== 'super_admin' &&
-        demoUser.tier !== 'event_admin' &&
-        demoUser.tier !== 'checker'
-      ) {
-        return addSecurityHeaders(NextResponse.redirect(new URL('/', request.url)));
-      }
-
       return addSecurityHeaders(NextResponse.next());
     }
   }
@@ -186,10 +163,6 @@ export async function middleware(request: NextRequest) {
         }
       }
 
-      // Restrict /super-admin to real super admins
-      if (pathname.startsWith('/super-admin') && !isSuperAdmin) {
-        return addSecurityHeaders(NextResponse.redirect(new URL('/', request.url)));
-      }
     }
   } catch (err) {
     if (!isPublicRoute) {
