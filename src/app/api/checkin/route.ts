@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizeInput } from '@/lib/security/sanitizer';
-import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import type { CheckInRequest } from '@/lib/types';
 
@@ -65,6 +65,15 @@ export async function POST(req: Request) {
         supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', event_id).then(() => {});
       }
       return NextResponse.json({ success: false, error: 'Bad Request', message: 'Sự kiện đã đóng hoặc đã kết thúc điểm danh (quá 1 giờ sau khi kết thúc)' }, { status: 400 });
+    }
+
+    if (!isSuperOrEventAdmin && typeof isEventTooEarlyForCheckin === 'function' && isEventTooEarlyForCheckin(event, Date.now(), 15)) {
+      const earliestTime = (typeof getEarliestCheckinTime === 'function' ? getEarliestCheckinTime(event, 15) : null) || '15 phút trước giờ diễn ra';
+      return NextResponse.json({
+        success: false,
+        error: 'Bad Request',
+        message: `⏳ Chưa đến giờ điểm danh! Cổng điểm danh sẽ tự động mở lúc ${earliestTime} (trước giờ bắt đầu 15 phút).`,
+      }, { status: 400 });
     }
 
     if (!event) {

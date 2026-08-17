@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { verifyDynamicToken } from '@/lib/utils/dynamic-qr';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
-import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 
 export async function POST(req: Request) {
@@ -107,6 +107,14 @@ export async function POST(req: Request) {
         supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', eventId).then(() => {});
       }
       return NextResponse.json({ success: false, error: 'Sự kiện này đã kết thúc và quá hạn điểm danh (sau 1 giờ từ khi kết thúc)' }, { status: 400 });
+    }
+
+    if (typeof isEventTooEarlyForCheckin === 'function' && isEventTooEarlyForCheckin(event, Date.now(), 15)) {
+      const earliestTime = (typeof getEarliestCheckinTime === 'function' ? getEarliestCheckinTime(event, 15) : null) || '15 phút trước giờ diễn ra';
+      return NextResponse.json({
+        success: false,
+        error: `⏳ Chưa đến giờ điểm danh! Cổng điểm danh sẽ tự động mở lúc ${earliestTime} (trước giờ bắt đầu 15 phút).`,
+      }, { status: 400 });
     }
 
     // Check if student has registered for this event

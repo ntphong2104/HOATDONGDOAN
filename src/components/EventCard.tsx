@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './EventCard.module.css';
 import { CalendarIcon, ClockIcon, UsersIcon } from '@/components/icons';
-import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, getEventLifecycleState } from '@/lib/utils/event-logic';
 import { Event } from '@/lib/types';
 
 interface EventCardProps {
@@ -10,12 +10,17 @@ interface EventCardProps {
 }
 
 export default function EventCard({ event, onClick }: EventCardProps) {
-  const isPast = isEventPastDeadline(event);
+  const isPast = typeof isEventPastDeadline === 'function' ? isEventPastDeadline(event) : false;
   const rawStatus = event.status || 'closed';
   const status = isPast ? 'closed' : rawStatus;
+  const lifecycle = typeof getEventLifecycleState === 'function' ? getEventLifecycleState(event) : (status === 'active' ? 'active' : 'closed');
 
   const statusLabel =
-    status === 'active'
+    status === 'closed' || isPast
+      ? 'Đã đóng'
+      : lifecycle === 'upcoming'
+      ? 'Sắp diễn ra'
+      : status === 'active'
       ? 'Đang mở'
       : status === 'pending'
       ? 'Chờ duyệt'
@@ -24,7 +29,11 @@ export default function EventCard({ event, onClick }: EventCardProps) {
       : 'Đã đóng';
 
   const statusClass =
-    status === 'active'
+    status === 'closed' || isPast
+      ? styles.closed
+      : lifecycle === 'upcoming'
+      ? styles.pending
+      : status === 'active'
       ? styles.active
       : status === 'pending'
       ? styles.pending

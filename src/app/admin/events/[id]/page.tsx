@@ -22,7 +22,7 @@ import {
   TrashIcon,
 } from '@/components/icons';
 import type { Event, EventRole, CheckinExportRow, EventRegistration } from '@/lib/types';
-import { isEventPastDeadline, isEventScheduleExpired } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin } from '@/lib/utils/event-logic';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import styles from './page.module.css';
 
@@ -434,9 +434,71 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </p>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ color: event.status === 'active' ? '#16a34a' : '#dc2626', fontWeight: 700, fontSize: '0.9rem' }}>
-              {event.status === 'active' ? '● Đang mở điểm danh' : '● Đã đóng sự kiện'}
-            </span>
+            {(() => {
+              const lifecycleState = getEventLifecycleState(event);
+              const earliestTime = getEarliestCheckinTime(event, 15);
+
+              if (lifecycleState === 'upcoming') {
+                return (
+                  <span
+                    style={{
+                      color: '#b45309',
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      background: '#fef3c7',
+                      border: '1.5px solid #fde68a',
+                      padding: '0.35rem 0.85rem',
+                      borderRadius: '10px',
+                    }}
+                  >
+                    <span>⏳ Sắp diễn ra (Mở điểm danh lúc {earliestTime || 'trước 15p'})</span>
+                  </span>
+                );
+              }
+
+              if (lifecycleState === 'active') {
+                return (
+                  <span
+                    style={{
+                      color: '#15803d',
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      background: '#dcfce7',
+                      border: '1.5px solid #86efac',
+                      padding: '0.35rem 0.85rem',
+                      borderRadius: '10px',
+                    }}
+                  >
+                    <span>● Đang mở điểm danh</span>
+                  </span>
+                );
+              }
+
+              return (
+                <span
+                  style={{
+                    color: '#dc2626',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    background: '#fee2e2',
+                    border: '1.5px solid #fca5a5',
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '10px',
+                  }}
+                >
+                  <span>● Đã đóng sự kiện</span>
+                </span>
+              );
+            })()}
             {event.status === 'active' ? (
               <button
                 type="button"

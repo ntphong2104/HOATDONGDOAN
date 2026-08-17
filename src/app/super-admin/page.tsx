@@ -30,7 +30,7 @@ import {
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
 import { isSameUnit } from '@/lib/utils/rating-logic';
-import { getEffectiveEventStatus, isEventPastDeadline } from '@/lib/utils/event-logic';
+import { getEffectiveEventStatus, isEventPastDeadline, getEventLifecycleState, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import type { Event, User, EventProposal, Room, UserPenalty, UserTier } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -1634,14 +1634,47 @@ function SuperAdminContent() {
                                   {(() => {
                                     const isPast = isEventPastDeadline(event);
                                     const effectiveStatus = getEffectiveEventStatus(event);
+                                    const lifecycle = getEventLifecycleState(event);
+                                    const earliest = getEarliestCheckinTime(event, 15);
+
                                     return (
                                       <button
                                         onClick={() => toggleEventStatus(event.event_id, effectiveStatus)}
-                                        className={`${styles.statusBadge} ${effectiveStatus === 'active' ? styles.statusActive : styles.statusClosed}`}
-                                        title={isPast ? 'Sự kiện đã hết thời gian (tự động đóng sau 1 giờ)' : 'Nhấn để Bật/Tắt trạng thái sự kiện'}
+                                        className={`${styles.statusBadge} ${
+                                          lifecycle === 'upcoming'
+                                            ? styles.statusPending
+                                            : effectiveStatus === 'active'
+                                            ? styles.statusActive
+                                            : styles.statusClosed
+                                        }`}
+                                        style={
+                                          lifecycle === 'upcoming'
+                                            ? { background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
+                                            : undefined
+                                        }
+                                        title={
+                                          lifecycle === 'upcoming'
+                                            ? `Sắp diễn ra lúc ${event.start_time?.slice(0, 5)}. Cổng mở lúc ${earliest}. Nhấn để đóng sự kiện.`
+                                            : isPast
+                                            ? 'Sự kiện đã hết thời gian (tự động đóng sau 1 giờ)'
+                                            : 'Nhấn để Bật/Tắt trạng thái sự kiện'
+                                        }
                                       >
-                                        <span className={effectiveStatus === 'active' ? styles.dotActive : styles.dotClosed}></span>
-                                        {effectiveStatus === 'active' ? 'Đang mở' : 'Đã đóng'}
+                                        <span
+                                          className={
+                                            lifecycle === 'upcoming'
+                                              ? styles.dotPending
+                                              : effectiveStatus === 'active'
+                                              ? styles.dotActive
+                                              : styles.dotClosed
+                                          }
+                                          style={lifecycle === 'upcoming' ? { background: '#f59e0b' } : undefined}
+                                        ></span>
+                                        {lifecycle === 'upcoming'
+                                          ? `Sắp diễn ra (${earliest || '15p'})`
+                                          : effectiveStatus === 'active'
+                                          ? 'Đang mở'
+                                          : 'Đã đóng'}
                                       </button>
                                     );
                                   })()}

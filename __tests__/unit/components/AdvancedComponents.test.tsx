@@ -51,11 +51,11 @@ describe('Unit Tests: Additional UI Components', () => {
       checkin_count: 142,
     };
 
-    test('renders event details and active status', () => {
+    test('renders event details and status', () => {
       render(<EventCard event={mockEvent} />);
       expect(screen.getByText('Ngày Hội Sinh Viên 2026')).toBeInTheDocument();
       expect(screen.getByText('20/10/2026')).toBeInTheDocument();
-      expect(screen.getByText('Đang mở')).toBeInTheDocument();
+      expect(screen.getByText(/Sắp diễn ra|Đang mở/)).toBeInTheDocument();
       expect(screen.getByText('142')).toBeInTheDocument();
     });
 
