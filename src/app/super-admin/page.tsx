@@ -25,6 +25,7 @@ import {
   MenuIcon,
   SidebarIcon,
   TrashIcon,
+  QrCodeIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
@@ -3748,8 +3749,8 @@ function SuperAdminContent() {
                           checked={selectedRoleType === 'checker'}
                           onChange={() => setSelectedRoleType('checker')}
                         />
-                        <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#1e40af' }}>
-                          📱 CTV Quét Mã
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem', color: '#1e40af' }}>
+                          <QrCodeIcon size={15} color="#1e40af" /> CTV Quét Mã
                         </span>
                       </div>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '1.5rem' }}>

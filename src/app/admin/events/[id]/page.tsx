@@ -17,6 +17,7 @@ import {
   SettingsIcon,
   CloseIcon,
   QrCodeIcon,
+  UserIcon,
   StarIcon,
   TrashIcon,
 } from '@/components/icons';
@@ -1039,7 +1040,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
+                          gap: '5px',
                           background: '#f8fafc',
                           border: '1px solid #e2e8f0',
                           color: '#475569',
@@ -1050,7 +1051,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {isSelf ? '📱 Tự quét QR' : `👤 ${val}`}
+                        {isSelf ? (
+                          <>
+                            <QrCodeIcon size={14} color="#2563eb" />
+                            <span>Tự quét QR</span>
+                          </>
+                        ) : (
+                          <>
+                            <UserIcon size={14} color="#64748b" />
+                            <span>{val}</span>
+                          </>
+                        )}
                       </span>
                     );
                   },

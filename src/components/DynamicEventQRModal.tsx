@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { CloseIcon, LockIcon, SpinnerIcon } from '@/components/icons';
+import { CloseIcon, LockIcon, SpinnerIcon, QrCodeIcon } from '@/components/icons';
 import type { ParticipateRole } from '@/lib/types';
 import styles from './DynamicEventQRModal.module.css';
 
@@ -143,8 +143,11 @@ export default function DynamicEventQRModal({
             <span>Mã bảo mật chống gian lận — Tự động đổi mới mỗi 10 giây</span>
           </div>
 
-          <div className={styles.instructions}>
-            📱 Sinh viên mở ứng dụng ➔ Bấm <strong>"Quét mã sự kiện"</strong> để ghi nhận vai trò <strong>{roleLabel}</strong>.
+          <div className={styles.instructions} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+            <QrCodeIcon size={16} color="#2563eb" />
+            <span>
+              Sinh viên mở ứng dụng ➔ Bấm <strong>"Quét mã sự kiện"</strong> để ghi nhận vai trò <strong>{roleLabel}</strong>.
+            </span>
           </div>
         </div>
       </div>
