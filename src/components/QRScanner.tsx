@@ -2,18 +2,36 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { CameraFlipIcon, FlashlightIcon } from '@/components/icons';
+import { ArrowLeftIcon, FlashlightIcon, ImageIcon, QRIcon } from '@/components/icons';
 import styles from './QRScanner.module.css';
 
 interface QRScannerProps {
   onScan?: (mssv: string) => void;
   onScanSuccess?: (mssv: string) => void;
+  onClose?: () => void;
   isPaused?: boolean;
+  title?: string;
+  subtitle?: string;
+  showBottomAction?: boolean;
+  bottomActionText?: string;
+  onBottomAction?: () => void;
 }
 
-export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: QRScannerProps) {
+export default function QRScanner({
+  onScan,
+  onScanSuccess,
+  onClose,
+  isPaused = false,
+  title = 'Quét mã QR',
+  subtitle = 'Quét mã QR để điểm danh sự kiện, ghi nhận hoạt động Đoàn - Hội',
+  showBottomAction = false,
+  bottomActionText = 'Đóng máy quét',
+  onBottomAction,
+}: QRScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [hasCameraError, setHasCameraError] = useState(false);
 
@@ -23,7 +41,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
   const [supportsTorch, setSupportsTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
 
-  // Tap-to-focus point
+  // Tap-to-focus indicator
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
 
   const isPausedRef = useRef(isPaused);
@@ -89,7 +107,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
 
     if (pxX !== undefined && pxY !== undefined) {
       setFocusPoint({ x: pxX, y: pxY });
-      setTimeout(() => setFocusPoint(null), 850);
+      setTimeout(() => setFocusPoint(null), 750);
     }
 
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -150,15 +168,14 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         } catch {}
       }
 
-      // Responsive scanning box covering 82% of viewfinder
       const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
         const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-        const qrboxSize = Math.floor(minEdge * 0.82);
+        const qrboxSize = Math.floor(minEdge * 0.85);
         return { width: qrboxSize, height: qrboxSize };
       };
 
       const config = {
-        fps: 25, // High frame rate for rapid recognition
+        fps: 25,
         qrbox: qrboxFunction,
         aspectRatio: 1.0,
         videoConstraints: {
@@ -210,15 +227,28 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
     };
   }, [facingMode]);
 
+  // Handle Photo Scan from Album ("Chọn từ ảnh")
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !scannerRef.current) return;
+
+    try {
+      const decodedText = await scannerRef.current.scanFile(file, false);
+      if (decodedText && scanCallbackRef.current) {
+        scanCallbackRef.current(decodedText);
+      }
+    } catch (err) {
+      alert('Không tìm thấy mã QR hợp lệ trong ảnh này. Vui lòng chọn ảnh khác.');
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleTap = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     triggerFocus(e.clientX - rect.left, e.clientY - rect.top);
-  };
-
-  const toggleCamera = () => {
-    setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
-    setZoomLevel(1);
-    setIsTorchOn(false);
   };
 
   return (
@@ -229,37 +259,37 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
     >
       <div id="qr-reader-viewport" className={styles.viewport}></div>
 
-      {/* Tap Focus Ring Indicator */}
-      {focusPoint && (
-        <div
-          className={styles.focusRing}
-          style={{ top: `${focusPoint.y}px`, left: `${focusPoint.x}px` }}
-        />
-      )}
+      {/* Hidden file input for "Chọn từ ảnh" */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleImageUpload}
+      />
 
-      {/* Top Floating Controls: Camera Flip & Flashlight */}
-      <div className={styles.topControls}>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleCamera();
-          }}
-          className={styles.controlButton}
-          title="Đổi camera trước / sau"
-          aria-label="Đổi camera"
-        >
-          <CameraFlipIcon size={20} />
-        </button>
+      {/* Top Header: Back Button, Title, Flashlight (BIDV Style) */}
+      <div className={styles.topHeader} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.headerLeft}>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className={styles.iconButton}
+              title="Quay lại"
+              aria-label="Quay lại"
+            >
+              <ArrowLeftIcon size={20} />
+            </button>
+          )}
+          <h2 className={styles.headerTitle}>{title}</h2>
+        </div>
 
         {supportsTorch ? (
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleTorch();
-            }}
-            className={`${styles.controlButton} ${isTorchOn ? styles.torchActive : ''}`}
+            onClick={toggleTorch}
+            className={`${styles.iconButton} ${isTorchOn ? styles.torchActive : ''}`}
             title="Bật/Tắt đèn Flash"
             aria-label="Đèn Flash"
           >
@@ -270,48 +300,100 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         )}
       </div>
 
-      {/* BIDV Style Center Viewfinder Mask */}
+      {/* Top Guidance & Brand Strip */}
+      <div className={styles.topGuidance}>
+        <p className={styles.guidanceText}>{subtitle}</p>
+        <div className={styles.brandStrip}>
+          <span>PTIT</span>
+          <span className={styles.brandDot}>•</span>
+          <span>ĐOÀN THANH NIÊN</span>
+          <span className={styles.brandDot}>•</span>
+          <span>HỘI SINH VIÊN</span>
+        </div>
+      </div>
+
+      {/* BIDV Style Center Reticle (Vignette Mask + Yellow Brackets + Pulse Flower) */}
       <div className={styles.viewfinderOverlay}>
         <div className={styles.reticleBox}>
           <div className={`${styles.corner} ${styles.topLeft}`}></div>
           <div className={`${styles.corner} ${styles.topRight}`}></div>
           <div className={`${styles.corner} ${styles.bottomLeft}`}></div>
           <div className={`${styles.corner} ${styles.bottomRight}`}></div>
+
+          {/* Golden Center Emblem / Star Pulse */}
+          <div className={styles.centerEmblem}>
+            <span style={{ fontSize: '1.4rem' }}>⭐</span>
+          </div>
+
           <div className={styles.scanLaser}></div>
         </div>
       </div>
 
-      {/* Bottom Floating Controls: 1x, 2x Zoom Pills & Helper Text */}
-      <div
-        className={styles.bottomControls}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={styles.zoomPillsContainer}>
-          <button
-            type="button"
-            className={`${styles.zoomPill} ${zoomLevel <= 1.2 ? styles.zoomPillActive : ''}`}
+      {/* Tap Focus Ring Indicator */}
+      {focusPoint && (
+        <div
+          className={styles.focusRing}
+          style={{ top: `${focusPoint.y}px`, left: `${focusPoint.x}px` }}
+        />
+      )}
+
+      {/* BIDV Bottom Action Bar */}
+      <div className={styles.bottomSection} onClick={(e) => e.stopPropagation()}>
+        {/* "Chọn từ ảnh" Button (BIDV Style) */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className={styles.galleryButton}
+        >
+          <ImageIcon size={18} />
+          <span>Chọn từ ảnh</span>
+        </button>
+
+        {/* Minimalist Zoom Slider: (— O ════ +) */}
+        <div className={styles.sliderWrapper}>
+          <span
+            className={styles.sliderIcon}
             onClick={() => applyZoom(1)}
+            style={{ cursor: 'pointer' }}
           >
-            1x
-          </button>
-          <button
-            type="button"
-            className={`${styles.zoomPill} ${zoomLevel > 1.2 ? styles.zoomPillActive : ''}`}
-            onClick={() => applyZoom(2)}
+            —
+          </span>
+          <input
+            type="range"
+            min={1}
+            max={maxZoom}
+            step={0.1}
+            value={zoomLevel}
+            onChange={(e) => applyZoom(parseFloat(e.target.value))}
+            className={styles.zoomSlider}
+            aria-label="Thanh phóng to camera"
+          />
+          <span
+            className={styles.sliderIcon}
+            onClick={() => applyZoom(maxZoom)}
+            style={{ cursor: 'pointer' }}
           >
-            2x
-          </button>
+            +
+          </span>
         </div>
 
-        <span className={styles.helperText}>
-          Di chuyển camera đến mã QR để quét
-        </span>
+        {/* Bottom Action Pill (e.g. "Tạo QR nhận tiền" in BIDV -> "Đóng máy quét") */}
+        {showBottomAction && (
+          <button
+            type="button"
+            onClick={onBottomAction || onClose}
+            className={styles.bottomActionPill}
+          >
+            <QRIcon size={20} />
+            <span>{bottomActionText}</span>
+          </button>
+        )}
       </div>
 
       {/* Paused state */}
       {isPaused && (
         <div className={styles.pausedOverlay}>
-          <span>Đang xử lý kết quả...</span>
+          <span>Đang ghi nhận điểm danh...</span>
         </div>
       )}
 
@@ -324,13 +406,13 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
             onClick={startScanner}
             style={{
               marginTop: '0.85rem',
-              padding: '0.5rem 1rem',
+              padding: '0.5rem 1.25rem',
               background: '#ffffff',
               color: '#dc2626',
               border: 'none',
-              borderRadius: '8px',
+              borderRadius: '20px',
               fontWeight: 700,
-              fontSize: '0.85rem',
+              fontSize: '0.9rem',
               cursor: 'pointer',
             }}
           >

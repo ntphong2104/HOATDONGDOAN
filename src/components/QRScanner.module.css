@@ -1,22 +1,23 @@
 .scannerContainer {
   position: relative;
   width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  border-radius: 20px;
+  height: 100%;
+  min-height: 520px;
+  background-color: #050811;
   overflow: hidden;
-  background-color: #000000;
-  aspect-ratio: 3/4;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
   user-select: none;
   touch-action: manipulation;
 }
 
 .viewport {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,7 +27,7 @@
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.15s ease-out;
 }
 
 /* Hide Html5Qrcode default ugly shaded region and borders */
@@ -38,7 +39,101 @@
   border: none !important;
 }
 
-/* ──── BIDV / Banking Style Viewfinder Mask ──── */
+/* ──── BIDV Top Header & Navigation ──── */
+.topHeader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.2) 70%, transparent 100%);
+  pointer-events: auto;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.iconButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.iconButton:active {
+  transform: scale(0.92);
+}
+
+.torchActive {
+  background: #f59e0b !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.7);
+  border-color: #fde047 !important;
+}
+
+.headerTitle {
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* ──── BIDV Top Guidance & Brand Strip ──── */
+.topGuidance {
+  position: absolute;
+  top: 4.25rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  z-index: 20;
+  text-align: center;
+  pointer-events: none;
+}
+
+.guidanceText {
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  margin: 0 0 0.5rem 0;
+  opacity: 0.95;
+}
+
+.brandStrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 0.725rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.brandDot {
+  opacity: 0.4;
+}
+
+/* ──── BIDV Center Viewfinder (Vignette & Yellow Corner Box) ──── */
 .viewfinderOverlay {
   position: absolute;
   inset: 0;
@@ -51,20 +146,20 @@
 
 .reticleBox {
   position: relative;
-  width: 250px;
-  height: 250px;
-  max-width: 72vw;
-  max-height: 72vw;
-  border-radius: 24px;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  width: 270px;
+  height: 270px;
+  max-width: 76vw;
+  max-height: 76vw;
+  border-radius: 20px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.48);
 }
 
-/* Crisp White Rounded Corner Brackets */
+/* Yellow / Gold Corner Brackets (Exact BIDV Style) */
 .corner {
   position: absolute;
-  width: 28px;
-  height: 28px;
-  border-color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-color: #f59e0b;
   border-style: solid;
 }
 
@@ -72,57 +167,84 @@
   top: 0;
   left: 0;
   border-width: 3.5px 0 0 3.5px;
-  border-top-left-radius: 20px;
+  border-top-left-radius: 16px;
 }
 
 .topRight {
   top: 0;
   right: 0;
   border-width: 3.5px 3.5px 0 0;
-  border-top-right-radius: 20px;
+  border-top-right-radius: 16px;
 }
 
 .bottomLeft {
   bottom: 0;
   left: 0;
   border-width: 0 0 3.5px 3.5px;
-  border-bottom-left-radius: 20px;
+  border-bottom-left-radius: 16px;
 }
 
 .bottomRight {
   bottom: 0;
   right: 0;
   border-width: 0 3.5px 3.5px 0;
-  border-bottom-right-radius: 20px;
+  border-bottom-right-radius: 16px;
 }
 
-/* BIDV Glowing Laser Scanning Animation */
+/* Center Emblem / Flower in BIDV */
+.centerEmblem {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, transparent 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: emblemPulse 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes emblemPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.85);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 1;
+  }
+}
+
+/* BIDV Smooth Laser */
 .scanLaser {
   position: absolute;
-  left: 6px;
-  right: 6px;
+  left: 8px;
+  right: 8px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #22c55e 30%, #4ade80 50%, #22c55e 70%, transparent);
-  box-shadow: 0 0 8px #4ade80, 0 0 16px rgba(74, 222, 128, 0.6);
+  background: linear-gradient(90deg, transparent, #f59e0b 30%, #fde047 50%, #f59e0b 70%, transparent);
+  box-shadow: 0 0 8px #f59e0b, 0 0 16px rgba(245, 158, 11, 0.8);
   border-radius: 2px;
   animation: scanLaser 2.2s ease-in-out infinite alternate;
 }
 
 @keyframes scanLaser {
   0% {
-    top: 6px;
-    opacity: 0.4;
+    top: 8px;
+    opacity: 0.3;
   }
   50% {
     opacity: 1;
   }
   100% {
-    top: calc(100% - 8px);
-    opacity: 0.4;
+    top: calc(100% - 10px);
+    opacity: 0.3;
   }
 }
 
-/* ──── Tap-to-Focus Ring (iPhone / Banking Style) ──── */
+/* ──── Tap-to-Focus Ring ──── */
 .focusRing {
   position: absolute;
   width: 56px;
@@ -131,28 +253,17 @@
   border-radius: 8px;
   pointer-events: none;
   transform: translate(-50%, -50%);
-  animation: focusPop 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: focusPop 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   z-index: 25;
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
-}
-
-.focusRing::before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  width: 2px;
-  height: 4px;
-  background: #facc15;
-  transform: translateX(-50%);
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
 }
 
 @keyframes focusPop {
   0% {
     opacity: 0.2;
-    transform: translate(-50%, -50%) scale(1.4);
+    transform: translate(-50%, -50%) scale(1.35);
   }
-  30% {
+  35% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(0.95);
   }
@@ -166,111 +277,143 @@
   }
 }
 
-/* ──── Floating Minimalist Controls (Top Bar) ──── */
-.topControls {
+/* ──── BIDV Bottom Action Bar (Photo Gallery, Slider, Bottom Action) ──── */
+.bottomSection {
   position: absolute;
-  top: 1rem;
-  left: 1rem;
-  right: 1rem;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  pointer-events: auto;
-}
-
-.controlButton {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.controlButton:active {
-  transform: scale(0.92);
-}
-
-.torchActive {
-  background: #eab308 !important;
-  color: #0f172a !important;
-  box-shadow: 0 0 12px rgba(234, 179, 8, 0.6);
-  border-color: #fde047 !important;
-}
-
-/* ──── Bottom Controls (Zoom Pills & Guidance Text) ──── */
-.bottomControls {
-  position: absolute;
-  bottom: 1.25rem;
-  left: 1rem;
-  right: 1rem;
-  z-index: 30;
+  bottom: 1.5rem;
+  left: 1.25rem;
+  right: 1.25rem;
+  z-index: 25;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.65rem;
+  gap: 1.15rem;
   pointer-events: auto;
 }
 
-.zoomPillsContainer {
+/* "Chọn từ ảnh" Pill Button (BIDV Style) */
+.galleryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 0.55rem 1.25rem;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.galleryButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.galleryButton:active {
+  transform: scale(0.96);
+}
+
+/* BIDV Smooth Zoom Slider (— O ——— +) */
+.sliderWrapper {
+  width: 85%;
+  max-width: 280px;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: 0.25rem 0.4rem;
-  border-radius: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  gap: 0.75rem;
 }
 
-.zoomPill {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.85rem;
+.sliderIcon {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.1rem;
   font-weight: 700;
-  padding: 0.3rem 0.85rem;
-  border-radius: 20px;
+  user-select: none;
+}
+
+.zoomSlider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  outline: none;
   cursor: pointer;
-  transition: all 0.18s ease;
 }
 
-.zoomPillActive {
-  background: #2563eb !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.5);
+.zoomSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: transform 0.1s ease;
 }
 
-.helperText {
+.zoomSlider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.zoomSlider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+/* Bottom Glassmorphism Action Pill */
+.bottomActionPill {
+  width: 100%;
+  max-width: 360px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: #ffffff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-  letter-spacing: 0.015em;
-  opacity: 0.9;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
+.bottomActionPill:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.bottomActionPill:active {
+  transform: scale(0.98);
+}
+
+/* ──── Paused & Error States ──── */
 .pausedOverlay, .errorOverlay {
   position: absolute;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(6px);
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1rem;
   z-index: 40;
   text-align: center;
   padding: 1.5rem;

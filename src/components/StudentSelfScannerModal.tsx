@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import QRScanner from '@/components/QRScanner';
-import { CloseIcon, CheckCircleIcon, AlertTriangleIcon } from '@/components/icons';
+import { CheckCircleIcon, AlertTriangleIcon } from '@/components/icons';
 import { audioService } from '@/lib/utils/audio';
 import styles from './StudentSelfScannerModal.module.css';
 
@@ -81,24 +81,26 @@ export default function StudentSelfScannerModal({
   };
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={styles.overlay}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.header}>
-          <h3 className={styles.title}>Quét Mã QR Sự Kiện</h3>
-          <button onClick={onClose} className={styles.closeButton} title="Đóng">
-            <CloseIcon size={18} />
-          </button>
-        </div>
-
         {!result ? (
           <div className={styles.scannerContainer}>
-            <QRScanner onScanSuccess={handleScan} isPaused={isProcessing} />
+            <QRScanner
+              onScanSuccess={handleScan}
+              onClose={onClose}
+              isPaused={isProcessing}
+              title="Quét mã QR"
+              subtitle="Quét mã QR để điểm danh sự kiện, ghi nhận hoạt động Đoàn - Hội"
+              showBottomAction={true}
+              bottomActionText="Đóng máy quét"
+              onBottomAction={onClose}
+            />
           </div>
         ) : (
           <div className={styles.resultBox}>
             {result.status === 'success' && (
               <>
-                <CheckCircleIcon size={56} color="#16a34a" />
+                <CheckCircleIcon size={64} color="#16a34a" />
                 <h4 className={styles.successTitle}>{result.message}</h4>
                 {result.eventName && <p className={styles.eventInfo}>Sự kiện: {result.eventName}</p>}
                 <button onClick={handleDone} className={styles.doneButton}>
@@ -109,9 +111,11 @@ export default function StudentSelfScannerModal({
 
             {result.status === 'duplicate' && (
               <>
-                <AlertTriangleIcon size={56} color="#d97706" />
-                <h4 style={{ color: '#d97706', margin: 0, fontWeight: 700 }}>Đã Điểm Danh Trước Đó</h4>
-                <p style={{ color: '#64748b', fontSize: '0.9rem' }}>{result.message}</p>
+                <AlertTriangleIcon size={64} color="#d97706" />
+                <h4 style={{ color: '#d97706', margin: 0, fontWeight: 800, fontSize: '1.25rem' }}>
+                  Đã Điểm Danh Trước Đó
+                </h4>
+                <p style={{ color: '#64748b', fontSize: '0.95rem' }}>{result.message}</p>
                 <button onClick={handleDone} className={styles.doneButton}>
                   Đóng
                 </button>
@@ -120,10 +124,10 @@ export default function StudentSelfScannerModal({
 
             {result.status === 'error' && (
               <>
-                <AlertTriangleIcon size={56} color="#dc2626" />
+                <AlertTriangleIcon size={64} color="#dc2626" />
                 <h4 className={styles.errorTitle}>Điểm Danh Thất Bại</h4>
-                <p style={{ color: '#64748b', fontSize: '0.9rem' }}>{result.message}</p>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <p style={{ color: '#64748b', fontSize: '0.95rem' }}>{result.message}</p>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                   <button onClick={handleRetry} className={styles.doneButton} style={{ background: '#475569' }}>
                     Quét lại
                   </button>
