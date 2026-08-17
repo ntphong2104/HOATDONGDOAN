@@ -1619,7 +1619,7 @@ function SuperAdminContent() {
                                         }}
                                         title={`Xóa sự kiện "${event.event_name}"`}
                                       >
-                                        <Trash2Icon size={14} />
+                                        <TrashIcon size={14} />
                                         <span>Xóa</span>
                                       </button>
                                     </div>
