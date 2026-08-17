@@ -63,6 +63,12 @@ describe('Whitebox Tests: Admin & Event API Routes', () => {
             delete: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
           };
         }
+        if (table === 'event_proposals') {
+          return {
+            update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+            delete: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+          };
+        }
         if (table === 'users') {
           return {
             select: jest.fn().mockReturnThis(),
