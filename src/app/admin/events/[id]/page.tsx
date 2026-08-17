@@ -783,7 +783,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           />
         )}
 
-        {event.status === 'active' && (
+        {/* Stat Cards (Always visible for grading and fraud verification) */}
         <div className={styles.statsGrid}>
           <StatCard
             title="Người tham gia"
@@ -807,9 +807,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             subtitle="Điều phối chương trình"
           />
         </div>
-        )}
 
-        {event.status === 'active' && (
+        {/* Quản lý CTV Quét Mã (Checker) */}
+        {(isPrivileged || isEventCreator) && (
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
@@ -846,10 +846,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         </section>
         )}
 
-        {event.status !== 'active' && isSuperAdmin && (
+        {/* Bổ sung điểm danh thủ công (Đoàn Học Viện & Super Admin) */}
+        {isPrivileged && (
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Bổ sung điểm danh thủ công (Super Admin)</h2>
+              <h2 className={styles.sectionTitle}>Bổ sung điểm danh thủ công (Đoàn Học Viện / Super Admin)</h2>
             </div>
             <form onSubmit={handleManualCheckin} className={styles.addForm} style={{ marginBottom: '1rem' }}>
               <input 
