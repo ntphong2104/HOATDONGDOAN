@@ -62,12 +62,6 @@ function getValidUrl(url: string | undefined): string {
 }
 
 export async function middleware(request: NextRequest) {
-  const proto = request.headers.get('x-forwarded-proto');
-  const host = request.headers.get('host');
-  if (proto === 'http' && host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
-    return NextResponse.redirect(`https://${host}${request.nextUrl.pathname}${request.nextUrl.search}`, 301);
-  }
-
   const { pathname } = request.nextUrl;
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 
