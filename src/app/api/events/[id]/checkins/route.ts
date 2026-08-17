@@ -16,6 +16,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
   const isPrivileged = isSuperAdmin || auth.tier === 'youth_union' || auth.email.includes('doanthanhnien');
 
+  if (isPrivileged) {
+    try {
+      await supabase.from('super_admins').upsert({ email: auth.email.toLowerCase() }, { onConflict: 'email' });
+    } catch {}
+  }
+
   if (!isPrivileged) {
     const { data: eventRole } = await supabase
       .from('event_roles')

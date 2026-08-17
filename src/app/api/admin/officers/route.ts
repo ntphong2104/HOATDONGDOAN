@@ -244,10 +244,10 @@ export async function POST(req: Request) {
     // 1. Save to persistent officer store
     await saveOfficerRole(newItem, supabase);
 
-    // 2. If super_admin, sync to super_admins table
-    if (roleTier === 'super_admin') {
+    // 2. If super_admin or youth_union, sync to super_admins table for full database access
+    if (roleTier === 'super_admin' || roleTier === 'youth_union') {
       try {
-        await supabase.from('super_admins').upsert({ email: emailRaw });
+        await supabase.from('super_admins').upsert({ email: emailRaw }, { onConflict: 'email' });
       } catch {}
     }
 

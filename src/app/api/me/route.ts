@@ -190,7 +190,15 @@ export async function GET() {
       email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn';
 
     const isYouthUnion =
-      assignedOfficerRole?.role_tier === 'youth_union';
+      assignedOfficerRole?.role_tier === 'youth_union' ||
+      email.toLowerCase().includes('doanthanhnien') ||
+      email.toLowerCase() === 'doanthanhnien@ptithcm.edu.vn';
+
+    if ((isSuperAdmin || isYouthUnion) && typeof supabase.from('super_admins')?.upsert === 'function') {
+      try {
+        await supabase.from('super_admins').upsert({ email }, { onConflict: 'email' });
+      } catch {}
+    }
 
     const isCtsv =
       assignedOfficerRole?.role_tier === 'ctsv';
