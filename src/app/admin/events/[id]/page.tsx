@@ -867,20 +867,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <div className={styles.tabContainer}>
               <button
                 type="button"
                 onClick={() => setActiveTab('checkins')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: activeTab === 'checkins' ? '#2563eb' : '#f1f5f9',
-                  color: activeTab === 'checkins' ? '#ffffff' : '#475569',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                }}
+                className={`${styles.tabButton} ${activeTab === 'checkins' ? styles.tabButtonActive : styles.tabButtonInactive}`}
               >
                 ✓ Đã Điểm Danh ({checkins.length})
               </button>
@@ -888,16 +879,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <button
                 type="button"
                 onClick={() => setActiveTab('registrations')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: activeTab === 'registrations' ? '#2563eb' : '#f1f5f9',
-                  color: activeTab === 'registrations' ? '#ffffff' : '#475569',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                }}
+                className={`${styles.tabButton} ${activeTab === 'registrations' ? styles.tabButtonActive : styles.tabButtonInactive}`}
               >
                 Danh Sách Đăng Ký ({registrations.length})
               </button>
@@ -905,16 +887,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <button
                 type="button"
                 onClick={() => setActiveTab('noshow')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: activeTab === 'noshow' ? '#2563eb' : '#f1f5f9',
-                  color: activeTab === 'noshow' ? '#ffffff' : '#475569',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                }}
+                className={`${styles.tabButton} ${activeTab === 'noshow' ? styles.tabButtonActive : styles.tabButtonInactive}`}
               >
                 Chưa Điểm Danh ({registrations.filter(r => !r.attended).length})
               </button>
@@ -923,16 +896,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 <button
                   type="button"
                   onClick={() => setActiveTab('ratings')}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    border: 'none',
-                    borderRadius: '8px',
-                    background: activeTab === 'ratings' ? '#2563eb' : '#f1f5f9',
-                    color: activeTab === 'ratings' ? '#ffffff' : '#475569',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                  }}
+                  className={`${styles.tabButton} ${activeTab === 'ratings' ? styles.tabButtonActive : styles.tabButtonInactive}`}
                 >
                   {isApproverRole
                     ? `Đánh Giá Sự Kiện (${ratings.length})`
@@ -942,11 +906,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {activeTab === 'checkins' && (
-              <ExcelExportButton
-                fetchUrl={`/api/events/${resolvedParams.id}/checkins`}
-                filename={`DiemDanh_${event.event_name.replace(/\s+/g, '_')}`}
-                label="Xuất File Excel"
-              />
+              <div className={styles.excelExportWrapper}>
+                <ExcelExportButton
+                  fetchUrl={`/api/events/${resolvedParams.id}/checkins`}
+                  filename={`DiemDanh_${event.event_name.replace(/\s+/g, '_')}`}
+                  label="Xuất File Excel"
+                />
+              </div>
             )}
           </div>
 

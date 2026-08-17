@@ -192,6 +192,55 @@
   font-size: 0.9rem;
 }
 
+.tabContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px 0;
+  max-width: 100%;
+  flex-wrap: nowrap;
+}
+
+.tabContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.tabButton {
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.tabButtonActive {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+.tabButtonInactive {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.tabButtonInactive:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.excelExportWrapper {
+  flex-shrink: 0;
+}
+
 @media (max-width: 640px) {
   .main {
     padding: 1.25rem 1rem 3rem 1rem;
@@ -206,6 +255,23 @@
   .section {
     padding: 1.25rem 1rem;
     border-radius: 12px;
+  }
+  .sectionHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .tabContainer {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .excelExportWrapper {
+    width: 100%;
+  }
+  .excelExportWrapper button {
+    width: 100%;
+    justify-content: center;
   }
 }
 
