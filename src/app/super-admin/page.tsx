@@ -1273,7 +1273,7 @@ function SuperAdminContent() {
                   type="button"
                   onClick={() => setEventStatusFilter('all')}
                   style={{
-                    padding: '0.4rem 0.85rem',
+                    padding: '0.4rem 0.9rem',
                     borderRadius: '20px',
                     border: '1.5px solid',
                     borderColor: eventStatusFilter === 'all' ? '#2563eb' : '#e2e8f0',
@@ -1291,7 +1291,7 @@ function SuperAdminContent() {
                   type="button"
                   onClick={() => setEventStatusFilter('pending')}
                   style={{
-                    padding: '0.4rem 0.85rem',
+                    padding: '0.4rem 0.9rem',
                     borderRadius: '20px',
                     border: '1.5px solid',
                     borderColor: eventStatusFilter === 'pending' ? '#d97706' : '#fed7aa',
@@ -1303,13 +1303,13 @@ function SuperAdminContent() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  ⏳ Chờ duyệt ({pendingProposals.length})
+                  Chờ duyệt ({pendingProposals.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setEventStatusFilter('active')}
                   style={{
-                    padding: '0.4rem 0.85rem',
+                    padding: '0.4rem 0.9rem',
                     borderRadius: '20px',
                     border: '1.5px solid',
                     borderColor: eventStatusFilter === 'active' ? '#16a34a' : '#bbf7d0',
@@ -1321,13 +1321,13 @@ function SuperAdminContent() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  🟢 Đang mở ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'active').length})
+                  Đang mở ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'active').length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setEventStatusFilter('closed')}
                   style={{
-                    padding: '0.4rem 0.85rem',
+                    padding: '0.4rem 0.9rem',
                     borderRadius: '20px',
                     border: '1.5px solid',
                     borderColor: eventStatusFilter === 'closed' ? '#475569' : '#e2e8f0',
@@ -1339,7 +1339,7 @@ function SuperAdminContent() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  📁 Đã đóng ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'closed').length})
+                  Đã đóng ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'closed').length})
                 </button>
               </div>
               <div className={styles.tableWrapper}>
@@ -1347,9 +1347,9 @@ function SuperAdminContent() {
                   <thead>
                     <tr>
                       <th>Tên sự kiện</th>
-                      <th>Thời gian</th>
+                      <th>Thời gian & Địa điểm</th>
                       <th>Trạng thái</th>
-                      <th>Ban quản trị sự kiện</th>
+                      <th>Ban quản trị & Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1394,8 +1394,8 @@ function SuperAdminContent() {
                                     <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>➔</span>
                                   </Link>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.775rem', color: '#64748b' }}>
-                                    <span style={{ padding: '0.15rem 0.45rem', background: '#ffedd5', color: '#9a3412', borderRadius: '4px', fontWeight: 800 }}>
-                                      🏛️ {p.organization_unit}
+                                    <span style={{ padding: '0.15rem 0.5rem', background: '#ffedd5', color: '#9a3412', borderRadius: '4px', fontWeight: 700 }}>
+                                      {p.organization_unit}
                                     </span>
                                     <span>•</span>
                                     <span>{p.created_by}</span>
@@ -1408,7 +1408,7 @@ function SuperAdminContent() {
                                     {new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time?.slice(0, 5)} - {p.end_time?.slice(0, 5)})
                                   </span>
                                   <span style={{ color: '#475569' }}>
-                                    📍 {p.room_name || 'Hội trường / Phòng họp'} • 👥 {p.total_count} người
+                                    {p.room_name || 'Hội trường / Phòng họp'} • {p.total_count} người
                                   </span>
                                 </div>
                               </td>
@@ -1417,18 +1417,17 @@ function SuperAdminContent() {
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '0.35rem',
                                     padding: '0.35rem 0.75rem',
                                     background: '#fffbeb',
                                     color: '#b45309',
                                     border: '1.5px solid #fde68a',
                                     borderRadius: '20px',
                                     fontSize: '0.78rem',
-                                    fontWeight: 800,
+                                    fontWeight: 700,
                                     whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  ⏳ {getStageLabel(p.current_stage)}
+                                  {getStageLabel(p.current_stage)}
                                 </span>
                               </td>
                               <td onClick={(e) => e.stopPropagation()}>
@@ -1447,7 +1446,7 @@ function SuperAdminContent() {
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    ⚡ Duyệt cấp này
+                                    Duyệt cấp này
                                   </button>
                                   <button
                                     type="button"
