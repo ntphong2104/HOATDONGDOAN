@@ -122,7 +122,7 @@ export default function DataTable({
               paginatedData.map((row, rowIndex) => (
                 <tr key={rowIndex}>
                   {activeColumns.map((col) => (
-                    <td key={col.key}>
+                    <td key={col.key} data-label={col.label}>
                       {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '-')}
                     </td>
                   ))}
