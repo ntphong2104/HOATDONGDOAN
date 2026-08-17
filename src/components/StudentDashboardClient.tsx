@@ -51,6 +51,7 @@ export default function StudentDashboardClient({
   const [selectedClassmate, setSelectedClassmate] = useState<any | null>(null);
   const [classmateHistory, setClassmateHistory] = useState<any | null>(null);
   const [loadingClassmateHistory, setLoadingClassmateHistory] = useState(false);
+  const [classmateHistoryError, setClassmateHistoryError] = useState<string | null>(null);
 
   const fetchHistory = async () => {
     try {
@@ -97,14 +98,18 @@ export default function StudentDashboardClient({
     setSelectedClassmate(student);
     setLoadingClassmateHistory(true);
     setClassmateHistory(null);
+    setClassmateHistoryError(null);
     try {
       const res = await fetch(`/api/me/class-lookup/history?mssv=${encodeURIComponent(student.mssv)}`);
       const data = await res.json();
       if (data.success && data.data) {
         setClassmateHistory(data.data);
+      } else {
+        setClassmateHistoryError(data.error || 'Không thể tải minh chứng của sinh viên');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setClassmateHistoryError('Lỗi kết nối máy chủ khi tải minh chứng');
     } finally {
       setLoadingClassmateHistory(false);
     }
@@ -396,7 +401,20 @@ export default function StudentDashboardClient({
             <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
               {loadingClassmateHistory ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                  Đang tải minh chứng tham gia sự kiện của {selectedClassmate.full_name}...
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.5rem' }}>
+                    Đang tải dữ liệu minh chứng...
+                  </div>
+                  <div>Vui lòng chờ trong giây lát.</div>
+                </div>
+              ) : classmateHistoryError ? (
+                <div style={{ padding: '2rem 1.5rem', textAlign: 'center', background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '14px', color: '#b91c1c' }}>
+                  <div style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>⚠️</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.35rem' }}>
+                    {classmateHistoryError}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#7f1d1d' }}>
+                    Vui lòng liên hệ Đoàn Trường nếu bạn cần cấp lại quyền Ban cán sự lớp.
+                  </div>
                 </div>
               ) : classmateHistory ? (
                 <>

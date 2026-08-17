@@ -12,22 +12,28 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const now = new Date().toISOString();
 
-    // Verify active delegation
-    const { data: delegate } = await supabase
-      .from('class_delegates')
-      .select('*')
-      .or(`email.eq.${auth.email},mssv.eq.${auth.email.split('@')[0].toUpperCase()}`)
-      .eq('is_active', true)
-      .gt('expires_at', now)
-      .order('expires_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const isElevated = auth.isSuperAdmin || (auth.tier && auth.tier !== 'user');
+    let delegateClassId: string | null = null;
 
-    if (!delegate) {
-      return NextResponse.json(
-        { success: false, error: 'Quyền tra cứu Ban cán sự lớp của bạn đã hết hạn' },
-        { status: 403 }
-      );
+    if (!isElevated) {
+      // Verify active delegation for student delegates
+      const { data: delegate } = await supabase
+        .from('class_delegates')
+        .select('*')
+        .or(`email.eq.${auth.email},mssv.eq.${auth.email.split('@')[0].toUpperCase()}`)
+        .eq('is_active', true)
+        .gt('expires_at', now)
+        .order('expires_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!delegate) {
+        return NextResponse.json(
+          { success: false, error: 'Quyền tra cứu Ban cán sự lớp của bạn đã hết hạn' },
+          { status: 403 }
+        );
+      }
+      delegateClassId = delegate.class_id;
     }
 
     const { searchParams } = new URL(request.url);
@@ -39,34 +45,34 @@ export async function GET(request: Request) {
 
     const cleanMssv = decodeURIComponent(mssv).trim().toUpperCase();
 
-    // Security Check: Verify that target student belongs to the SAME class as delegate
+    // Fetch target student profile
     const { data: targetStudent, error: studentErr } = await supabase
       .from('users')
-      .select('*')
+      .select('mssv, full_name, class_id, email')
       .eq('mssv', cleanMssv)
       .maybeSingle();
 
-    if (studentErr || !targetStudent) {
-      return NextResponse.json({ success: false, error: 'Không tìm thấy sinh viên' }, { status: 404 });
+    // Class boundary check for class delegates
+    if (delegateClassId && targetStudent?.class_id) {
+      if (targetStudent.class_id.trim().toUpperCase() !== delegateClassId.trim().toUpperCase()) {
+        return NextResponse.json(
+          { success: false, error: `Bạn chỉ có quyền tra cứu sinh viên trong lớp ${delegateClassId}` },
+          { status: 403 }
+        );
+      }
     }
 
-    if (targetStudent.class_id !== delegate.class_id) {
-      return NextResponse.json(
-        { success: false, error: `Bạn chỉ có quyền tra cứu sinh viên trong lớp ${delegate.class_id}` },
-        { status: 403 }
-      );
-    }
-
-    // Fetch check-ins
+    // Fetch check-in records for this MSSV
     const { data: checkIns, error: checkInErr } = await supabase
       .from('check_ins')
       .select(`
         id,
         event_id,
+        mssv,
         participate_role,
         created_at,
         events (
-          id,
+          event_id,
           event_name,
           event_date,
           start_time,
@@ -79,7 +85,8 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false });
 
     if (checkInErr) {
-      return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+      console.error('Error fetching check-ins for delegate lookup:', checkInErr);
+      return NextResponse.json({ success: false, error: 'Lỗi khi tải lịch sử điểm danh' }, { status: 500 });
     }
 
     const formattedHistory = (checkIns || []).map((ci: any) => ({
@@ -98,12 +105,18 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        student: targetStudent,
+        student: {
+          mssv: cleanMssv,
+          full_name: targetStudent?.full_name || cleanMssv,
+          class_id: targetStudent?.class_id || delegateClassId || '',
+          email: targetStudent?.email || `${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn`,
+        },
         total_attended: formattedHistory.length,
         history: formattedHistory,
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    console.error('Unexpected error in class-lookup history:', err);
+    return NextResponse.json({ success: false, error: err.message || 'Lỗi hệ thống' }, { status: 500 });
   }
 }
