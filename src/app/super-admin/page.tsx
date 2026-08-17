@@ -77,6 +77,7 @@ function SuperAdminContent() {
   const [penaltiesLoading, setPenaltiesLoading] = useState(true);
   const [delegatesLoading, setDelegatesLoading] = useState(true);
   const [proposalStatusFilter, setProposalStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
+  const [eventStatusFilter, setEventStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
 
   // Form states for Officer Role Management
   const [officerEmail, setOfficerEmail] = useState('');
@@ -1210,253 +1211,134 @@ function SuperAdminContent() {
         {/* TAB 1: QUẢN LÝ SỰ KIỆN */}
         {activeTab === 'events' && (
           <div className={styles.tabContent}>
-            {/* ⚡ HỒ SƠ / KẾ HOẠCH MỚI CẦN PHÊ DUYỆT */}
-            {pendingProposals.length > 0 && (
-              <section className={styles.section} style={{ border: '2px solid #fdba74', background: '#fffaf5', marginBottom: '1.75rem', borderRadius: '16px' }}>
-                <div className={styles.sectionHeader} style={{ borderBottom: '1px solid #fed7aa', paddingBottom: '0.85rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: '#ea580c' }}></span>
-                      <h2 className={styles.sectionTitle} style={{ color: '#9a3412', fontSize: '1.15rem' }}>
-                        Hồ Sơ Đề Xuất Mới Cần Phê Duyệt ({pendingProposals.length})
-                      </h2>
-                    </div>
-                    <p className={styles.sectionSubtitle} style={{ color: '#c2410c' }}>
-                      Kế hoạch mới do các đơn vị nộp — Super Admin có thể duyệt nhanh hoặc theo dõi tiến trình phê duyệt các cấp
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => switchTab('proposals')}
-                      style={{
-                        padding: '0.45rem 0.85rem',
-                        background: '#ffffff',
-                        border: '1px solid #fed7aa',
-                        color: '#c2410c',
-                        borderRadius: '8px',
-                        fontSize: '0.825rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Xem toàn bộ hồ sơ ({proposals.length})
-                    </button>
-                    <Link
-                      href="/admin/proposals/new"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        padding: '0.45rem 0.9rem',
-                        background: '#ea580c',
-                        color: '#ffffff',
-                        borderRadius: '8px',
-                        fontSize: '0.825rem',
-                        fontWeight: 700,
-                        textDecoration: 'none',
-                      }}
-                    >
-                      <PlusIcon size={15} />
-                      <span>Trình Kế Hoạch Mới</span>
-                    </Link>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                  {pendingProposals.map((p) => (
-                    <div
-                      key={p.id}
-                      style={{
-                        background: '#ffffff',
-                        border: '1.5px solid #fed7aa',
-                        borderRadius: '12px',
-                        padding: '1.1rem 1.25rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.85rem',
-                        boxShadow: '0 2px 6px rgba(234, 88, 12, 0.06)',
-                      }}
-                    >
-                      {/* Header row */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
-                            <span style={{ padding: '0.2rem 0.6rem', background: '#ffedd5', color: '#9a3412', borderRadius: '6px', fontSize: '0.775rem', fontWeight: 800 }}>
-                              🏛️ {p.organization_unit}
-                            </span>
-                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                              Người nộp: <strong>{p.created_by}</strong>
-                            </span>
-                          </div>
-                          <Link
-                            href={`/admin/proposals/${p.id}`}
-                            style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e3a8a', textDecoration: 'none' }}
-                          >
-                            {p.title} ➔
-                          </Link>
-                        </div>
-
-                        {/* Status Badge */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span
-                            style={{
-                              padding: '0.35rem 0.85rem',
-                              background: '#fef3c7',
-                              color: '#92400e',
-                              border: '1px solid #fde68a',
-                              borderRadius: '20px',
-                              fontSize: '0.8rem',
-                              fontWeight: 800,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.35rem',
-                            }}
-                          >
-                            ⏳ {getStageLabel(p.current_stage)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Details row */}
-                      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.85rem', color: '#334155', background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '8px' }}>
-                        <span>🕒 <strong>Thời gian:</strong> {new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time?.slice(0, 5)} - {p.end_time?.slice(0, 5)})</span>
-                        <span>📍 <strong>Địa điểm:</strong> {p.room_name || 'Hội trường / Phòng họp'}</span>
-                        <span>👥 <strong>Quy mô:</strong> {p.total_count} người ({p.participant_count} SV, {p.volunteer_count} CTV, {p.organizer_count} BTC)</span>
-                      </div>
-
-                      {/* Stepper & Action buttons */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.25rem' }}>
-                        {/* Visual Stages */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem' }}>
-                          <span style={{ fontWeight: 700, color: '#64748b', marginRight: '0.25rem' }}>Tiến trình:</span>
-                          <span style={{
-                            padding: '0.2rem 0.5rem',
-                            borderRadius: '6px',
-                            background: p.current_stage === 'youth_union' ? '#ea580c' : '#dcfce7',
-                            color: p.current_stage === 'youth_union' ? '#ffffff' : '#15803d',
-                            fontWeight: 700,
-                          }}>
-                            {p.current_stage === 'youth_union' ? '▶ 1. Đoàn Trường' : '✓ 1. Đoàn Trường'}
-                          </span>
-                          <span style={{ color: '#cbd5e1' }}>➔</span>
-                          <span style={{
-                            padding: '0.2rem 0.5rem',
-                            borderRadius: '6px',
-                            background: p.current_stage === 'ctsv' ? '#ea580c' : (p.current_stage === 'youth_union' ? '#f1f5f9' : '#dcfce7'),
-                            color: p.current_stage === 'ctsv' ? '#ffffff' : (p.current_stage === 'youth_union' ? '#94a3b8' : '#15803d'),
-                            fontWeight: 700,
-                          }}>
-                            {p.current_stage === 'ctsv' ? '▶ 2. CTSV' : (p.current_stage === 'youth_union' ? '2. CTSV' : '✓ 2. CTSV')}
-                          </span>
-                          {p.requires_facility_approval && (
-                            <>
-                              <span style={{ color: '#cbd5e1' }}>➔</span>
-                              <span style={{
-                                padding: '0.2rem 0.5rem',
-                                borderRadius: '6px',
-                                background: p.current_stage === 'facility' ? '#ea580c' : (p.current_stage === 'approved' ? '#dcfce7' : '#f1f5f9'),
-                                color: p.current_stage === 'facility' ? '#ffffff' : (p.current_stage === 'approved' ? '#15803d' : '#94a3b8'),
-                                fontWeight: 700,
-                              }}>
-                                {p.current_stage === 'facility' ? '▶ 3. CSVC' : (p.current_stage === 'approved' ? '✓ 3. CSVC' : '3. CSVC')}
-                              </span>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Action buttons */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => approveProposal(p.id)}
-                            style={{
-                              padding: '0.45rem 0.9rem',
-                              background: '#16a34a',
-                              color: '#ffffff',
-                              border: 'none',
-                              borderRadius: '8px',
-                              fontSize: '0.825rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.35rem',
-                            }}
-                          >
-                            <span>⚡ Phê Duyệt Cấp Này</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => rejectProposal(p.id)}
-                            style={{
-                              padding: '0.45rem 0.8rem',
-                              background: '#fef2f2',
-                              color: '#dc2626',
-                              border: '1px solid #fecaca',
-                              borderRadius: '8px',
-                              fontSize: '0.825rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Từ Chối
-                          </button>
-                          <Link
-                            href={`/admin/proposals/${p.id}`}
-                            style={{
-                              padding: '0.45rem 0.85rem',
-                              background: '#eff6ff',
-                              color: '#2563eb',
-                              border: '1px solid #bfdbfe',
-                              borderRadius: '8px',
-                              fontSize: '0.825rem',
-                              fontWeight: 700,
-                              textDecoration: 'none',
-                            }}
-                          >
-                            Xem Hồ Sơ ➔
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Danh sách sự kiện */}
+            {/* Danh sách sự kiện & kế hoạch */}
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
                 <div>
                   <h2 className={styles.sectionTitle}>
                     <CalendarIcon size={20} color="#2563eb" />
-                    Danh sách sự kiện toàn trường ({filteredEvents.length})
+                    Danh Sách Sự Kiện & Kế Hoạch Toàn Trường ({pendingProposals.length + filteredEvents.length})
                   </h2>
                   {selectedUnitFilter && (
                     <p className={styles.sectionSubtitle}>
-                      Đang lọc hiển thị các sự kiện do: <strong style={{ color: '#2563eb' }}>{selectedUnitFilter}</strong> tổ chức
+                      Đang lọc hiển thị theo đơn vị: <strong style={{ color: '#2563eb' }}>{selectedUnitFilter}</strong>
                     </p>
                   )}
                 </div>
-                {selectedUnitFilter && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedUnitFilter(null)}
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  {selectedUnitFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUnitFilter(null)}
+                      style={{
+                        background: '#eff6ff',
+                        border: '1.5px solid #bfdbfe',
+                        color: '#2563eb',
+                        borderRadius: '8px',
+                        padding: '0.4rem 0.85rem',
+                        fontSize: '0.825rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Bỏ lọc đơn vị (Xem tất cả)
+                    </button>
+                  )}
+                  <Link
+                    href="/admin/proposals/new"
                     style={{
-                      background: '#eff6ff',
-                      border: '1.5px solid #bfdbfe',
-                      color: '#2563eb',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      padding: '0.5rem 1rem',
+                      background: '#2563eb',
+                      color: '#ffffff',
                       borderRadius: '8px',
-                      padding: '0.4rem 0.85rem',
-                      fontSize: '0.825rem',
+                      fontSize: '0.85rem',
                       fontWeight: 700,
-                      cursor: 'pointer',
+                      textDecoration: 'none',
                     }}
                   >
-                    Bỏ lọc đơn vị (Xem tất cả)
-                  </button>
-                )}
+                    <PlusIcon size={16} />
+                    <span>Trình Kế Hoạch Mới</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Bộ lọc trạng thái kiểu Pills (Tất cả, Chờ duyệt, Đang mở, Đã đóng) */}
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem', marginBottom: '1.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setEventStatusFilter('all')}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    borderColor: eventStatusFilter === 'all' ? '#2563eb' : '#e2e8f0',
+                    background: eventStatusFilter === 'all' ? '#2563eb' : '#ffffff',
+                    color: eventStatusFilter === 'all' ? '#ffffff' : '#475569',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Tất cả ({pendingProposals.length + filteredEvents.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEventStatusFilter('pending')}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    borderColor: eventStatusFilter === 'pending' ? '#d97706' : '#fed7aa',
+                    background: eventStatusFilter === 'pending' ? '#d97706' : '#fffbeb',
+                    color: eventStatusFilter === 'pending' ? '#ffffff' : '#b45309',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  ⏳ Chờ duyệt ({pendingProposals.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEventStatusFilter('active')}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    borderColor: eventStatusFilter === 'active' ? '#16a34a' : '#bbf7d0',
+                    background: eventStatusFilter === 'active' ? '#16a34a' : '#f0fdf4',
+                    color: eventStatusFilter === 'active' ? '#ffffff' : '#15803d',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  🟢 Đang mở ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'active').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEventStatusFilter('closed')}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    borderColor: eventStatusFilter === 'closed' ? '#475569' : '#e2e8f0',
+                    background: eventStatusFilter === 'closed' ? '#475569' : '#f8fafc',
+                    color: eventStatusFilter === 'closed' ? '#ffffff' : '#64748b',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  📁 Đã đóng ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'closed').length})
+                </button>
               </div>
               <div className={styles.tableWrapper}>
                 <table className={styles.table}>
@@ -1478,143 +1360,284 @@ function SuperAdminContent() {
                           </div>
                         </td>
                       </tr>
-                    ) : filteredEvents.length === 0 ? (
-                      <tr><td colSpan={4} className={styles.emptyState}>Không có sự kiện nào {selectedUnitFilter ? `của đơn vị ${selectedUnitFilter}` : ''}</td></tr>
                     ) : (
-                      filteredEvents.map((event) => (
-                        <tr
-                          key={event.event_id}
-                          onClick={() => router.push(`/admin/events/${event.event_id}`)}
-                          className={styles.clickableRow}
-                          title="Bấm vào dòng này để mở trang quản trị sự kiện"
-                        >
-                          <td>
-                            <Link
-                              href={`/admin/events/${event.event_id}`}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.4rem',
-                                color: '#1e40af',
-                                fontWeight: 800,
-                                fontSize: '0.975rem',
-                                textDecoration: 'none',
-                              }}
-                              className={styles.eventName}
-                              onClick={(e) => e.stopPropagation()}
+                      <>
+                        {/* 1. HỒ SƠ CHỜ DUYỆT (Khi chọn filter 'all' hoặc 'pending') */}
+                        {(eventStatusFilter === 'all' || eventStatusFilter === 'pending') &&
+                          pendingProposals.map((p) => (
+                            <tr
+                              key={`prop-${p.id}`}
+                              style={{ background: '#fffdfa' }}
+                              className={styles.clickableRow}
+                              onClick={() => router.push(`/admin/proposals/${p.id}`)}
+                              title="Bấm vào để xem hồ sơ kế hoạch"
                             >
-                              <span>{event.event_name}</span>
-                              <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>➔</span>
-                            </Link>
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                              <span style={{ fontWeight: 600, color: '#0f172a' }}>{event.event_date ? new Date(event.event_date).toLocaleDateString('vi-VN') : 'Hôm nay'}</span>
-                              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                {event.start_time?.slice(0, 5)} - {event.end_time?.slice(0, 5) || '22:00'}
-                              </span>
-                            </div>
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            {(() => {
-                              const isPast = isEventPastDeadline(event);
-                              const effectiveStatus = getEffectiveEventStatus(event);
-                              return (
-                                <button
-                                  onClick={() => toggleEventStatus(event.event_id, effectiveStatus)}
-                                  className={`${styles.statusBadge} ${effectiveStatus === 'active' ? styles.statusActive : styles.statusClosed}`}
-                                  title={isPast ? 'Sự kiện đã hết thời gian (tự động đóng sau 1 giờ)' : 'Nhấn để Bật/Tắt trạng thái sự kiện'}
-                                >
-                                  <span className={effectiveStatus === 'active' ? styles.dotActive : styles.dotClosed}></span>
-                                  {effectiveStatus === 'active' ? 'Đang mở' : 'Đã đóng'}
-                                </button>
-                              );
-                            })()}
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', width: '100%' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
-                                {(event as any).event_roles && (event as any).event_roles.length > 0 ? (
-                                  (event as any).event_roles.map((r: any) => (
-                                    <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.775rem', color: '#1e40af' }}>
-                                      {r.email}
-                                      <button 
-                                        onClick={() => removeAdmin(event.event_id, r.id, r.email)} 
-                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 'bold', padding: '0 2px' }} 
-                                        title="Thu hồi quyền"
-                                      >
-                                        ×
-                                      </button>
+                              <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                  <Link
+                                    href={`/admin/proposals/${p.id}`}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.4rem',
+                                      color: '#1e40af',
+                                      fontWeight: 800,
+                                      fontSize: '0.975rem',
+                                      textDecoration: 'none',
+                                    }}
+                                    className={styles.eventName}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <span>{p.title}</span>
+                                    <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>➔</span>
+                                  </Link>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.775rem', color: '#64748b' }}>
+                                    <span style={{ padding: '0.15rem 0.45rem', background: '#ffedd5', color: '#9a3412', borderRadius: '4px', fontWeight: 800 }}>
+                                      🏛️ {p.organization_unit}
                                     </span>
-                                  ))
-                                ) : (
-                                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Chưa gán</span>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setAssignModalEvent(event);
-                                    setSelectedUnitCode('LCD_CNTT');
-                                    const defaultUnit = OFFICIAL_UNITS.find((u) => u.code === 'LCD_CNTT');
-                                    setCustomEmail(defaultUnit ? defaultUnit.email : '');
-                                    setSelectedRoleType('event_admin');
-                                  }}
-                                  className={styles.actionButton}
-                                >
-                                  Gán Admin Đơn Vị
-                                </button>
-                              </div>
-
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                                <Link
-                                  href={`/admin/events/${event.event_id}`}
+                                    <span>•</span>
+                                    <span>{p.created_by}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.825rem' }}>
+                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                                    {new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time?.slice(0, 5)} - {p.end_time?.slice(0, 5)})
+                                  </span>
+                                  <span style={{ color: '#475569' }}>
+                                    📍 {p.room_name || 'Hội trường / Phòng họp'} • 👥 {p.total_count} người
+                                  </span>
+                                </div>
+                              </td>
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <span
                                   style={{
-                                    padding: '0.45rem 0.85rem',
-                                    borderRadius: '8px',
-                                    border: '1.5px solid #bfdbfe',
-                                    background: '#eff6ff',
-                                    color: '#1d4ed8',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 700,
-                                    textDecoration: 'none',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '0.35rem',
-                                    transition: 'all 0.15s ease',
+                                    padding: '0.35rem 0.75rem',
+                                    background: '#fffbeb',
+                                    color: '#b45309',
+                                    border: '1.5px solid #fde68a',
+                                    borderRadius: '20px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 800,
+                                    whiteSpace: 'nowrap',
                                   }}
-                                  title={`Vào trang quản trị sự kiện "${event.event_name}"`}
                                 >
-                                  <span>Vào Sự Kiện</span>
-                                  <span>➔</span>
-                                </Link>
+                                  ⏳ {getStageLabel(p.current_stage)}
+                                </span>
+                              </td>
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => approveProposal(p.id)}
+                                    style={{
+                                      padding: '0.4rem 0.75rem',
+                                      background: '#16a34a',
+                                      color: '#ffffff',
+                                      border: 'none',
+                                      borderRadius: '8px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    ⚡ Duyệt cấp này
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => rejectProposal(p.id)}
+                                    style={{
+                                      padding: '0.4rem 0.75rem',
+                                      background: '#fef2f2',
+                                      color: '#dc2626',
+                                      border: '1px solid #fecaca',
+                                      borderRadius: '8px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Từ chối
+                                  </button>
+                                  <Link
+                                    href={`/admin/proposals/${p.id}`}
+                                    style={{
+                                      padding: '0.4rem 0.75rem',
+                                      background: '#eff6ff',
+                                      color: '#2563eb',
+                                      border: '1px solid #bfdbfe',
+                                      borderRadius: '8px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 700,
+                                      textDecoration: 'none',
+                                    }}
+                                  >
+                                    Xem Hồ Sơ ➔
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteEvent(event.event_id, event.event_name)}
-                                  style={{
-                                    padding: '0.45rem 0.8rem',
-                                    borderRadius: '8px',
-                                    border: '1.5px solid #fecaca',
-                                    background: '#fff1f2',
-                                    color: '#e11d48',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.35rem',
-                                    transition: 'all 0.15s ease',
-                                  }}
-                                  title={`Xóa vĩnh viễn sự kiện "${event.event_name}"`}
-                                >
-                                  <TrashIcon size={14} color="#e11d48" />
-                                  <span>Xóa</span>
-                                </button>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                        {/* 2. SỰ KIỆN ĐÃ DUYỆT (Khi chọn filter 'all', 'active', hoặc 'closed') */}
+                        {eventStatusFilter !== 'pending' &&
+                          filteredEvents
+                            .filter((event) => {
+                              if (eventStatusFilter === 'active') return getEffectiveEventStatus(event) === 'active';
+                              if (eventStatusFilter === 'closed') return getEffectiveEventStatus(event) === 'closed';
+                              return true;
+                            })
+                            .map((event) => (
+                              <tr
+                                key={event.event_id}
+                                onClick={() => router.push(`/admin/events/${event.event_id}`)}
+                                className={styles.clickableRow}
+                                title="Bấm vào dòng này để mở trang quản trị sự kiện"
+                              >
+                                <td>
+                                  <Link
+                                    href={`/admin/events/${event.event_id}`}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.4rem',
+                                      color: '#1e40af',
+                                      fontWeight: 800,
+                                      fontSize: '0.975rem',
+                                      textDecoration: 'none',
+                                    }}
+                                    className={styles.eventName}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <span>{event.event_name}</span>
+                                    <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>➔</span>
+                                  </Link>
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{event.event_date ? new Date(event.event_date).toLocaleDateString('vi-VN') : 'Hôm nay'}</span>
+                                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                      {event.start_time?.slice(0, 5)} - {event.end_time?.slice(0, 5) || '22:00'}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  {(() => {
+                                    const isPast = isEventPastDeadline(event);
+                                    const effectiveStatus = getEffectiveEventStatus(event);
+                                    return (
+                                      <button
+                                        onClick={() => toggleEventStatus(event.event_id, effectiveStatus)}
+                                        className={`${styles.statusBadge} ${effectiveStatus === 'active' ? styles.statusActive : styles.statusClosed}`}
+                                        title={isPast ? 'Sự kiện đã hết thời gian (tự động đóng sau 1 giờ)' : 'Nhấn để Bật/Tắt trạng thái sự kiện'}
+                                      >
+                                        <span className={effectiveStatus === 'active' ? styles.dotActive : styles.dotClosed}></span>
+                                        {effectiveStatus === 'active' ? 'Đang mở' : 'Đã đóng'}
+                                      </button>
+                                    );
+                                  })()}
+                                </td>
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', width: '100%' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
+                                      {(event as any).event_roles && (event as any).event_roles.length > 0 ? (
+                                        (event as any).event_roles.map((r: any) => (
+                                          <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.775rem', color: '#1e40af' }}>
+                                            {r.email}
+                                            <button 
+                                              onClick={() => removeAdmin(event.event_id, r.id, r.email)} 
+                                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 'bold', padding: '0 2px' }} 
+                                              title="Thu hồi quyền"
+                                            >
+                                              ×
+                                            </button>
+                                          </span>
+                                        ))
+                                      ) : (
+                                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Chưa gán</span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setAssignModalEvent(event);
+                                          setSelectedUnitCode('LCD_CNTT');
+                                          const defaultUnit = OFFICIAL_UNITS.find((u) => u.code === 'LCD_CNTT');
+                                          setCustomEmail(defaultUnit ? defaultUnit.email : '');
+                                          setSelectedRoleType('event_admin');
+                                        }}
+                                        className={styles.actionButton}
+                                      >
+                                        Gán Admin Đơn Vị
+                                      </button>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                      <Link
+                                        href={`/admin/events/${event.event_id}`}
+                                        style={{
+                                          padding: '0.45rem 0.85rem',
+                                          borderRadius: '8px',
+                                          border: '1.5px solid #bfdbfe',
+                                          background: '#eff6ff',
+                                          color: '#1d4ed8',
+                                          fontSize: '0.8rem',
+                                          fontWeight: 700,
+                                          textDecoration: 'none',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.35rem',
+                                          transition: 'all 0.15s ease',
+                                        }}
+                                        title={`Vào trang quản trị sự kiện "${event.event_name}"`}
+                                      >
+                                        <span>Vào Sự Kiện</span>
+                                        <span>➔</span>
+                                      </Link>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteEvent(event.event_id, event.event_name)}
+                                        style={{
+                                          padding: '0.45rem 0.8rem',
+                                          borderRadius: '8px',
+                                          border: '1.5px solid #fecaca',
+                                          background: '#fff1f2',
+                                          color: '#dc2626',
+                                          fontSize: '0.8rem',
+                                          fontWeight: 700,
+                                          cursor: 'pointer',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.35rem',
+                                          transition: 'all 0.15s ease',
+                                        }}
+                                        title={`Xóa sự kiện "${event.event_name}"`}
+                                      >
+                                        <Trash2Icon size={14} />
+                                        <span>Xóa</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+
+                        {/* Empty state check across both pendingProposals and filteredEvents */}
+                        {((eventStatusFilter === 'pending' && pendingProposals.length === 0) ||
+                          (eventStatusFilter === 'active' && filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'active').length === 0) ||
+                          (eventStatusFilter === 'closed' && filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'closed').length === 0) ||
+                          (eventStatusFilter === 'all' && pendingProposals.length === 0 && filteredEvents.length === 0)) && (
+                          <tr>
+                            <td colSpan={4} className={styles.emptyState}>
+                              Không có sự kiện hoặc kế hoạch nào {selectedUnitFilter ? `của đơn vị ${selectedUnitFilter}` : ''} phù hợp bộ lọc
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     )}
                   </tbody>
                 </table>
