@@ -81,7 +81,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
 
   const triggerFocus = useCallback(async (customX?: number, customY?: number) => {
     setIsFocusing(true);
-    setTimeout(() => setIsFocusing(false), 900);
+    setTimeout(() => setIsFocusing(false), 800);
 
     const container = containerRef.current;
     let pxX = customX;
@@ -95,13 +95,12 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
 
     if (pxX !== undefined && pxY !== undefined) {
       setFocusPoint({ x: pxX, y: pxY });
-      setTimeout(() => setFocusPoint(null), 900);
+      setTimeout(() => setFocusPoint(null), 800);
     }
 
-    // Haptic vibration feedback on mobile
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
       try {
-        navigator.vibrate(35);
+        navigator.vibrate(30);
       } catch {}
     }
 
@@ -109,44 +108,18 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
     if (track && typeof track.applyConstraints === 'function') {
       try {
         const caps: any = track.getCapabilities ? track.getCapabilities() : {};
-        const focusModes: string[] = caps.focusMode || [];
-
-        const normX = container && pxX !== undefined ? pxX / container.clientWidth : 0.5;
-        const normY = container && pxY !== undefined ? pxY / container.clientHeight : 0.5;
-
-        const advancedObj: any = {};
-
-        if (focusModes.includes('continuous')) {
-          advancedObj.focusMode = 'continuous';
-        } else if (focusModes.includes('auto')) {
-          advancedObj.focusMode = 'auto';
-        }
-
-        if (caps.pointsOfInterest) {
-          advancedObj.pointsOfInterest = [{ x: normX, y: normY }];
-        }
-
-        if (Object.keys(advancedObj).length > 0) {
-          await track.applyConstraints({ advanced: [advancedObj] });
-        } else if (caps.zoom) {
-          // iOS / WebKit camera ISP focus trigger: micro zoom nudge forces hardware ISP to refocus
-          const curZoom = zoomLevel;
-          const delta = curZoom >= (caps.zoom.max || 5) ? -0.05 : 0.05;
-          await track.applyConstraints({ advanced: [{ zoom: curZoom + delta } as any] });
-          await new Promise((r) => setTimeout(r, 80));
-          await track.applyConstraints({ advanced: [{ zoom: curZoom } as any] });
+        if (caps.focusMode && Array.isArray(caps.focusMode)) {
+          if (caps.focusMode.includes('continuous')) {
+            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] });
+          } else if (caps.focusMode.includes('auto')) {
+            await track.applyConstraints({ advanced: [{ focusMode: 'auto' } as any] });
+          }
         }
       } catch (err) {
-        console.warn('Hardware focus cycle failed, applying software enhancement:', err);
+        console.warn('Focus constraint not supported:', err);
       }
     }
-
-    // Enhance video frame contrast for projection screens / low light
-    const videoEl = document.querySelector('#qr-reader-viewport video') as HTMLVideoElement | null;
-    if (videoEl) {
-      videoEl.style.filter = 'contrast(1.12) brightness(1.03) saturate(1.05)';
-    }
-  }, [getVideoTrack, zoomLevel]);
+  }, [getVideoTrack]);
 
   const toggleTorch = useCallback(async () => {
     const track = getVideoTrack();
@@ -163,72 +136,6 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
     }
   }, [isTorchOn, getVideoTrack]);
 
-  // Touch gesture handling: Pinch-to-zoom, single tap-to-focus, double-tap zoom
-  const touchStateRef = useRef<{
-    initialDist: number;
-    initialZoom: number;
-    startTime: number;
-    startX: number;
-    startY: number;
-    lastTapTime: number;
-  }>({
-    initialDist: 0,
-    initialZoom: 1,
-    startTime: 0,
-    startX: 0,
-    startY: 0,
-    lastTapTime: 0,
-  });
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      touchStateRef.current.initialDist = dist;
-      touchStateRef.current.initialZoom = zoomLevel;
-    } else if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      const rect = e.currentTarget.getBoundingClientRect();
-      touchStateRef.current.initialDist = 0;
-      touchStateRef.current.startX = touch.clientX - rect.left;
-      touchStateRef.current.startY = touch.clientY - rect.top;
-      touchStateRef.current.startTime = Date.now();
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2 && touchStateRef.current.initialDist > 0) {
-      const newDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const factor = newDist / touchStateRef.current.initialDist;
-      const targetZoom = Math.max(minZoom, Math.min(maxZoom, touchStateRef.current.initialZoom * factor));
-      applyZoom(Math.round(targetZoom * 10) / 10);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    const { startX, startY, startTime, initialDist, lastTapTime } = touchStateRef.current;
-    const now = Date.now();
-    const duration = now - startTime;
-
-    if (initialDist === 0 && duration < 250) {
-      // Check double tap
-      if (now - lastTapTime < 300) {
-        // Toggle 2.5x / 1x zoom
-        applyZoom(zoomLevel > 1.8 ? 1 : 2.5);
-        touchStateRef.current.lastTapTime = 0;
-      } else {
-        // Single tap -> Trigger focus
-        triggerFocus(startX, startY);
-        touchStateRef.current.lastTapTime = now;
-      }
-    }
-  };
-
   const startScanner = async () => {
     const scannerId = 'qr-reader-viewport';
     setHasCameraError(false);
@@ -236,10 +143,6 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
     try {
       if (!scannerRef.current) {
         scannerRef.current = new Html5Qrcode(scannerId, {
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true,
-          },
           verbose: false,
         });
       }
@@ -250,27 +153,20 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         } catch {}
       }
 
-      // Responsive wide scanning area (85% of viewfinder)
       const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
         const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-        const qrboxSize = Math.floor(minEdge * 0.88);
+        const qrboxSize = Math.floor(minEdge * 0.85);
         return { width: qrboxSize, height: qrboxSize };
       };
 
       const config = {
-        fps: 25, // High frame rate for instant recognition
+        fps: 20,
         qrbox: qrboxFunction,
-        aspectRatio: 0.75,
-        videoConstraints: {
-          facingMode: { ideal: facingMode },
-          width: { min: 720, ideal: 1920, max: 3840 },
-          height: { min: 720, ideal: 1080, max: 2160 },
-          advanced: [{ focusMode: 'continuous' } as any],
-        },
+        aspectRatio: 1.0,
       };
 
       await scannerRef.current.start(
-        { facingMode },
+        { facingMode: facingMode === 'environment' ? 'environment' : 'user' },
         config,
         (decodedText) => {
           if (!isPausedRef.current && scanCallbackRef.current) {
@@ -280,7 +176,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         undefined
       );
 
-      // Check camera capabilities after start
+      // Check zoom / torch capabilities
       setTimeout(() => {
         const track = getVideoTrack();
         if (track && typeof track.getCapabilities === 'function') {
@@ -297,8 +193,6 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
             setSupportsTorch(true);
           }
         }
-        // Initial autofocus kick
-        triggerFocus();
       }, 500);
     } catch (err) {
       console.error('Failed to start camera scanner:', err);
@@ -310,21 +204,18 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
     let isMounted = true;
     startScanner();
 
-    // Auto-focus heartbeat every 5 seconds to prevent camera lens locking
-    const focusInterval = setInterval(() => {
-      if (isMounted && !isPausedRef.current && scannerRef.current?.isScanning) {
-        triggerFocus();
-      }
-    }, 5000);
-
     return () => {
       isMounted = false;
-      clearInterval(focusInterval);
       if (scannerRef.current && scannerRef.current.isScanning) {
         scannerRef.current.stop().catch(() => {});
       }
     };
   }, [facingMode]);
+
+  const handleTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    triggerFocus(e.clientX - rect.left, e.clientY - rect.top);
+  };
 
   const toggleCamera = () => {
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
@@ -336,13 +227,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
     <div
       ref={containerRef}
       className={styles.scannerContainer}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onClick={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        triggerFocus(e.clientX - rect.left, e.clientY - rect.top);
-      }}
+      onClick={handleTap}
     >
       <div id="qr-reader-viewport" className={styles.viewport}></div>
 
@@ -388,7 +273,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
           <FocusIcon size={20} />
         </button>
 
-        <div className={styles.qualityBadge}>HD • 25 FPS</div>
+        <div className={styles.qualityBadge}>HD • 20 FPS</div>
 
         {supportsTorch ? (
           <button
@@ -423,7 +308,6 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
       <div
         className={styles.bottomControls}
         onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
       >
         <div className={styles.zoomPillsContainer}>
           {[1, 2, 3, 5].map((preset) => (
@@ -456,7 +340,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         </div>
 
         <span className={styles.helperText}>
-          Chạm để lấy nét • Chạm 2 lần để phóng 2.5x • Vuốt 2 ngón tay zoom
+          Chạm màn hình để lấy nét • Chọn 2x / 3x để quét từ xa
         </span>
       </div>
 

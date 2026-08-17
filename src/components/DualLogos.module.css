@@ -103,3 +103,22 @@
   font-weight: 700;
   color: #facc15;
 }
+
+@media (max-width: 640px) {
+  .sm .logoWrapper {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 1px;
+  }
+  .sm .logoImg {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px;
+    min-height: 22px;
+  }
+  .logosGroup {
+    gap: 0.3rem;
+  }
+}
