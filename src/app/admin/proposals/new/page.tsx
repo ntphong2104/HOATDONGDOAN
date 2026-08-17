@@ -15,51 +15,9 @@ import {
   BuildingIcon,
   AlertTriangleIcon,
 } from '@/components/icons';
+import { OFFICIAL_UNITS, resolveUnitForUser } from '@/lib/constants/units';
 import type { Room } from '@/lib/types';
 import styles from './page.module.css';
-
-export const OFFICIAL_UNITS = [
-  {
-    group: '── ĐOÀN THANH NIÊN HỌC VIỆN ──',
-    items: [
-      'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
-    ],
-  },
-  {
-    group: '── 8 LIÊN CHI ĐOÀN (LCĐ) ──',
-    items: [
-      'LCĐ Khoa Công nghệ Thông tin',
-      'LCĐ Công nghệ Đa phương tiện',
-      'LCĐ An toàn Thông tin',
-      'LCĐ Khoa Viễn thông',
-      'LCĐ Khoa Điện tử',
-      'LCĐ Khoa Quản trị Kinh doanh',
-      'LCĐ Marketing',
-      'LCĐ Kế toán',
-    ],
-  },
-  {
-    group: '── 16 CÂU LẠC BỘ / ĐỘI / NHÓM ──',
-    items: [
-      'CLB ITMC',
-      'CLB An toàn Thông tin',
-      'CLB Tiếng Anh',
-      'Đội Văn Nghệ',
-      'CLB Guitar',
-      'Đội Sinh Viên Tình Nguyện',
-      'CLB Kết Nối',
-      'CLB C.MC',
-      'CLB 37 Độ Sinh viên',
-      'CLB BMA',
-      'CLB Bóng Chuyền',
-      'CLB Bóng Đá',
-      'CLB Bóng Rổ',
-      'CLB VOVINAM',
-      'CLB Cờ',
-      'CLB Cầu Lông',
-    ],
-  },
-];
 
 export default function NewProposalPage() {
   const router = useRouter();
@@ -112,66 +70,18 @@ export default function NewProposalPage() {
       .then((data) => {
         if (data.success && data.data) {
           setCurrentUser(data.data);
-          const isSA = data.data.tier === 'super_admin' || data.data.isSuperAdmin;
-          const isYouthUnion = data.data.tier === 'youth_union' || email.includes('doanthanhnien');
-          const isPrivileged = isSA || isYouthUnion;
-
-          if (isYouthUnion) {
-            // Default to Đoàn Trường but allow picking any of the 24 units
-            setOrganizationUnit('Đoàn TNCS Học Viện Cơ Sở TP.HCM');
+          const resolved = resolveUnitForUser(data.data);
+          setOrganizationUnit(resolved.unitName);
+          if (resolved.isLocked) {
+            setLockedUnit(resolved.unitName);
+          } else {
             setLockedUnit(null);
-          } else if (!isPrivileged) {
-            // Import unit mapping and match by email
-            const allUnits = OFFICIAL_UNITS.flatMap((g) => g.items);
-
-            // Build email → unit name mapping
-            const EMAIL_TO_UNIT: Record<string, string> = {
-              'doanthanhnien@ptithcm.edu.vn': 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
-              'lcdcntt@student.ptithcm.edu.vn': 'LCĐ Khoa Công nghệ Thông tin',
-              'lcdcndpt@student.ptithcm.edu.vn': 'LCĐ Công nghệ Đa phương tiện',
-              'lcdattt@student.ptithcm.edu.vn': 'LCĐ An toàn Thông tin',
-              'lcdvt@student.ptithcm.edu.vn': 'LCĐ Khoa Viễn thông',
-              'lcddt@student.ptithcm.edu.vn': 'LCĐ Khoa Điện tử',
-              'lcdqtkd@student.ptithcm.edu.vn': 'LCĐ Khoa Quản trị Kinh doanh',
-              'lcdmkt@student.ptithcm.edu.vn': 'LCĐ Marketing',
-              'lcdketoan@student.ptithcm.edu.vn': 'LCĐ Kế toán',
-              'clb.itmc@student.ptithcm.edu.vn': 'CLB ITMC',
-              'clb.antoanthongtin@student.ptithcm.edu.vn': 'CLB An toàn Thông tin',
-              'clb.tienganh@student.ptithcm.edu.vn': 'CLB Tiếng Anh',
-              'doivannghe@student.ptithcm.edu.vn': 'Đội Văn Nghệ',
-              'clb.guitar@student.ptithcm.edu.vn': 'CLB Guitar',
-              'doisinhvientinhnguyen@student.ptithcm.edu.vn': 'Đội Sinh Viên Tình Nguyện',
-              'clb.ketnoi@student.ptithcm.edu.vn': 'CLB Kết Nối',
-              'clb.truyenthongcmc@student.ptithcm.edu.vn': 'CLB C.MC',
-              'clb.37dosinhvien@student.ptithcm.edu.vn': 'CLB 37 Độ Sinh viên',
-              'clb.bma@student.ptithcm.edu.vn': 'CLB BMA',
-              'clb.bongchuyen@student.ptithcm.edu.vn': 'CLB Bóng Chuyền',
-              'clbbongda@student.ptithcm.edu.vn': 'CLB Bóng Đá',
-              'clb.bongro@student.ptithcm.edu.vn': 'CLB Bóng Rổ',
-              'clb.vovinam@student.ptithcm.edu.vn': 'CLB VOVINAM',
-              'clb.covua@student.ptithcm.edu.vn': 'CLB Cờ',
-              'clb.caulong@student.ptithcm.edu.vn': 'CLB Cầu Lông',
-            };
-
-            const matchedByEmail = EMAIL_TO_UNIT[email];
-            if (matchedByEmail) {
-              setOrganizationUnit(matchedByEmail);
-              setLockedUnit(matchedByEmail);
-            } else {
-              // Fallback: try matching by full_name
-              const name = data.data.full_name || '';
-              const matched = allUnits.find(
-                (u) => name.toLowerCase().includes(u.toLowerCase()) || u.toLowerCase().includes(name.toLowerCase())
-              );
-              if (matched) {
-                setOrganizationUnit(matched);
-                setLockedUnit(matched);
-              }
-            }
           }
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('Failed to detect user unit:', err);
+      });
   }, []);
 
   // Fetch available rooms
@@ -412,14 +322,20 @@ export default function NewProposalPage() {
                   Đơn vị / Chi đoàn tổ chức <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 {lockedUnit ? (
-                  <select
-                    value={organizationUnit}
-                    disabled
-                    className={styles.selectField}
-                    required
-                  >
-                    <option value={lockedUnit}>{lockedUnit}</option>
-                  </select>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <select
+                      value={organizationUnit}
+                      disabled
+                      className={styles.selectField}
+                      style={{ background: '#f8fafc', color: '#1e293b', fontWeight: 600, cursor: 'not-allowed', opacity: 0.95 }}
+                      required
+                    >
+                      <option value={lockedUnit}>{lockedUnit}</option>
+                    </select>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      🔒 <i>Đơn vị được cố định theo tài khoản đăng nhập ({currentUser?.email || 'LCĐ/CLB'}).</i>
+                    </span>
+                  </div>
                 ) : (
                   <select
                     value={organizationUnit}

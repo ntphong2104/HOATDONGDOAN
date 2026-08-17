@@ -120,6 +120,8 @@ export interface SessionUser {
   class_id: string;
   tier: UserTier;
   avatar_url?: string;
+  unit_name?: string;
+  unit_code?: string;
   managed_events: ManagedEvent[];
 }
 

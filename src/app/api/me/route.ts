@@ -308,6 +308,8 @@ export async function GET() {
       class_id: resolvedUser.class_id,
       tier,
       avatar_url: avatarUrl,
+      unit_name: assignedOfficerRole?.unit_name,
+      unit_code: assignedOfficerRole?.unit_code,
       managed_events
     };
 
