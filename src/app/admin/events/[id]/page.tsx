@@ -208,7 +208,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       const res = await fetch('/api/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mssv: manualMSSV.trim(), event_id: event?.event_id, participate_role: 'participant' }),
+        body: JSON.stringify({
+          mssv: manualMSSV.trim(),
+          event_id: event?.event_id,
+          participate_role: 'participant',
+          checked_by: `Điểm danh thủ công (${currentUser?.email || 'Super Admin'})`,
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -1000,34 +1005,78 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   key: 'checked_by',
                   label: 'Hình thức / Người quét',
                   render: (val: string) => {
-                    const isSelf = !val || val.includes('Tự quét') || val.includes('QR Động');
+                    const raw = String(val || '').trim();
+                    const isManual = raw.includes('thủ công') || raw.includes('manual');
+                    const isSelf = !isManual && (raw.includes('Tự quét') || raw.includes('QR Động') || raw.includes('self') || raw === '');
+
+                    if (isManual) {
+                      return (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: '#faf5ff',
+                            border: '1px solid #e9d5ff',
+                            color: '#7e22ce',
+                            padding: '3px 9px',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={raw}
+                        >
+                          <ShieldCheckIcon size={14} color="#7e22ce" />
+                          <span>Điểm danh thủ công</span>
+                        </span>
+                      );
+                    }
+
+                    if (isSelf) {
+                      return (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            color: '#1d4ed8',
+                            padding: '3px 9px',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <QrCodeIcon size={14} color="#2563eb" />
+                          <span>Sinh viên tự quét QR</span>
+                        </span>
+                      );
+                    }
+
+                    // Otherwise scanned by an officer/checker
+                    const officerName = raw.includes('@') ? raw.split('@')[0] : raw;
                     return (
                       <span
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '5px',
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          color: '#475569',
+                          background: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          color: '#15803d',
                           padding: '3px 9px',
                           borderRadius: '6px',
                           fontSize: '0.8rem',
-                          fontWeight: 600,
+                          fontWeight: 700,
                           whiteSpace: 'nowrap',
                         }}
+                        title={raw}
                       >
-                        {isSelf ? (
-                          <>
-                            <QrCodeIcon size={14} color="#2563eb" />
-                            <span>Tự quét QR</span>
-                          </>
-                        ) : (
-                          <>
-                            <UserIcon size={14} color="#64748b" />
-                            <span>{val}</span>
-                          </>
-                        )}
+                        <UserIcon size={14} color="#15803d" />
+                        <span>Cán bộ: {officerName}</span>
                       </span>
                     );
                   },

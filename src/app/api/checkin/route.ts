@@ -86,7 +86,7 @@ export async function POST(req: Request) {
         mssv,
         event_id,
         participate_role,
-        checked_by: userEmail
+        checked_by: body.checked_by || userEmail
       });
 
     if (error) {
