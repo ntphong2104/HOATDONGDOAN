@@ -38,10 +38,15 @@ function LoginContent() {
 
   const handleLogin = async () => {
     setLoading(true);
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+    const secureOrigin = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')
+      ? currentOrigin
+      : currentOrigin.replace(/^http:\/\//, 'https://');
+
     const callbackUrl =
       redirectParam && redirectParam.startsWith('/')
-        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectParam)}`
-        : `${window.location.origin}/auth/callback`;
+        ? `${secureOrigin}/auth/callback?next=${encodeURIComponent(redirectParam)}`
+        : `${secureOrigin}/auth/callback`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
