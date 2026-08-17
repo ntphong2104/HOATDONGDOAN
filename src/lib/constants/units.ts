@@ -2,46 +2,181 @@
 // src/lib/constants/units.ts — Official Units & Mapping
 // ════════════════════════════════════════════
 
-export const OFFICIAL_UNITS = [
+export interface OfficialUnit {
+  code: string;
+  name: string;
+  type: string;
+  email: string;
+}
+
+export const OFFICIAL_UNITS: OfficialUnit[] = [
+  // Đoàn Trường
+  {
+    code: 'BCH_DOAN',
+    name: 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
+    type: 'Đoàn Thanh Niên',
+    email: 'doanthanhnien@ptithcm.edu.vn',
+  },
+  // 8 LCĐs
+  {
+    code: 'LCD_CNTT',
+    name: 'LCĐ Khoa Công nghệ Thông tin',
+    type: 'Liên Chi Đoàn (LCĐ)',
+    email: 'lcdcntt@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'LCD_CNDPT',
+    name: 'LCĐ Công nghệ Đa phương tiện',
+    type: 'Liên Chi Đoàn (LCĐ)',
+    email: 'lcdcndpt@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'LCD_ATTT',
+    name: 'LCĐ An toàn Thông tin',
+    type: 'Liên Chi Đoàn (LCĐ)',
+    email: 'lcdattt@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'LCD_VT',
+    name: 'LCĐ Khoa Viễn thông',
+    type: 'Liên Chi Đoàn (LCĐ)',
+    email: 'lcdvt@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'LCD_DT',
+    name: 'LCĐ Khoa Điện tử',
+    type: 'Liên Chi Đoàn (LCĐ)',
+    email: 'lcddt@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'LCD_QTKD',
+    name: 'LCĐ Khoa Quản trị Kinh doanh',
+    type: 'Liên Chi Đoàn (LCĐ)',
+    email: 'lcdqtkd@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'LCD_MKT',
+    name: 'LCĐ Marketing',
+    type: 'Liên Chi Đoàn (LCĐ)',
+    email: 'lcdmkt@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'LCD_KT',
+    name: 'LCĐ Kế toán',
+    type: 'Liên Chi Đoàn (LCĐ)',
+    email: 'lcdketoan@student.ptithcm.edu.vn',
+  },
+  // 16 CLB / Đội / Nhóm
+  {
+    code: 'CLB_ITMC',
+    name: 'CLB ITMC',
+    type: 'Câu Lạc Bộ Học Thuật',
+    email: 'clb.itmc@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_ATTT',
+    name: 'CLB An toàn Thông tin',
+    type: 'Câu Lạc Bộ Học Thuật',
+    email: 'clb.antoanthongtin@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_TA',
+    name: 'CLB Tiếng Anh',
+    type: 'Câu Lạc Bộ Kỹ Năng',
+    email: 'clb.tienganh@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'DOI_VN',
+    name: 'Đội Văn Nghệ',
+    type: 'Đội / Nhóm Văn Thể',
+    email: 'doivannghe@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_GUITAR',
+    name: 'CLB Guitar',
+    type: 'Câu Lạc Bộ Văn Thể',
+    email: 'clb.guitar@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'DOI_SVTN',
+    name: 'Đội Sinh Viên Tình Nguyện',
+    type: 'Đội / Nhóm Tình Nguyện',
+    email: 'doisinhvientinhnguyen@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_KETNOI',
+    name: 'CLB Kết Nối',
+    type: 'Câu Lạc Bộ Kỹ Năng',
+    email: 'clb.ketnoi@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_CMC',
+    name: 'CLB C.MC',
+    type: 'Câu Lạc Bộ Truyền Thông',
+    email: 'clb.truyenthongcmc@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_37DO',
+    name: 'CLB 37 Độ Sinh viên',
+    type: 'Câu Lạc Bộ Kỹ Năng',
+    email: 'clb.37dosinhvien@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_BMA',
+    name: 'CLB BMA',
+    type: 'Câu Lạc Bộ Học Thuật',
+    email: 'clb.bma@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_BONGCHUYEN',
+    name: 'CLB Bóng Chuyền',
+    type: 'Câu Lạc Bộ Thể Thao',
+    email: 'clb.bongchuyen@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_BONGDA',
+    name: 'CLB Bóng Đá',
+    type: 'Câu Lạc Bộ Thể Thao',
+    email: 'clbbongda@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_BONGRO',
+    name: 'CLB Bóng Rổ',
+    type: 'Câu Lạc Bộ Thể Thao',
+    email: 'clb.bongro@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_VOVINAM',
+    name: 'CLB VOVINAM',
+    type: 'Câu Lạc Bộ Thể Thao',
+    email: 'clb.vovinam@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_CO',
+    name: 'CLB Cờ',
+    type: 'Câu Lạc Bộ Thể Thao',
+    email: 'clb.covua@student.ptithcm.edu.vn',
+  },
+  {
+    code: 'CLB_CAULONG',
+    name: 'CLB Cầu Lông',
+    type: 'Câu Lạc Bộ Thể Thao',
+    email: 'clb.caulong@student.ptithcm.edu.vn',
+  },
+];
+
+export const OFFICIAL_UNIT_GROUPS = [
   {
     group: '── ĐOÀN THANH NIÊN HỌC VIỆN ──',
-    items: [
-      'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
-    ],
+    items: OFFICIAL_UNITS.filter((u) => u.type.includes('Đoàn')).map((u) => u.name),
   },
   {
     group: '── 8 LIÊN CHI ĐOÀN (LCĐ) ──',
-    items: [
-      'LCĐ Khoa Công nghệ Thông tin',
-      'LCĐ Công nghệ Đa phương tiện',
-      'LCĐ An toàn Thông tin',
-      'LCĐ Khoa Viễn thông',
-      'LCĐ Khoa Điện tử',
-      'LCĐ Khoa Quản trị Kinh doanh',
-      'LCĐ Marketing',
-      'LCĐ Kế toán',
-    ],
+    items: OFFICIAL_UNITS.filter((u) => u.type.includes('LCĐ')).map((u) => u.name),
   },
   {
     group: '── 16 CÂU LẠC BỘ / ĐỘI / NHÓM ──',
-    items: [
-      'CLB ITMC',
-      'CLB An toàn Thông tin',
-      'CLB Tiếng Anh',
-      'Đội Văn Nghệ',
-      'CLB Guitar',
-      'Đội Sinh Viên Tình Nguyện',
-      'CLB Kết Nối',
-      'CLB C.MC',
-      'CLB 37 Độ Sinh viên',
-      'CLB BMA',
-      'CLB Bóng Chuyền',
-      'CLB Bóng Đá',
-      'CLB Bóng Rổ',
-      'CLB VOVINAM',
-      'CLB Cờ',
-      'CLB Cầu Lông',
-    ],
+    items: OFFICIAL_UNITS.filter((u) => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map((u) => u.name),
   },
 ];
 
@@ -132,7 +267,6 @@ export function resolveUnitForUser(user: {
   }
 
   // 3. Fallback: match prefix in email
-  const allUnits = OFFICIAL_UNITS.flatMap((g) => g.items);
   if (email.includes('cntt')) return { unitName: 'LCĐ Khoa Công nghệ Thông tin', isLocked: true };
   if (email.includes('cndpt') || email.includes('dpt')) return { unitName: 'LCĐ Công nghệ Đa phương tiện', isLocked: true };
   if (email.includes('attt')) return { unitName: 'LCĐ An toàn Thông tin', isLocked: true };
@@ -158,9 +292,9 @@ export function resolveUnitForUser(user: {
 
   // 4. Try matching full_name
   const name = (user.full_name || '').toLowerCase();
-  const matched = allUnits.find((u) => name.includes(u.toLowerCase()) || u.toLowerCase().includes(name));
+  const matched = OFFICIAL_UNITS.find((u) => name.includes(u.name.toLowerCase()) || u.name.toLowerCase().includes(name));
   if (matched) {
-    return { unitName: matched, isLocked: true };
+    return { unitName: matched.name, isLocked: true };
   }
 
   // Default fallback

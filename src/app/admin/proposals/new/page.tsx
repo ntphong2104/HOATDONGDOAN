@@ -15,7 +15,7 @@ import {
   BuildingIcon,
   AlertTriangleIcon,
 } from '@/components/icons';
-import { OFFICIAL_UNITS, resolveUnitForUser } from '@/lib/constants/units';
+import { OFFICIAL_UNITS, OFFICIAL_UNIT_GROUPS, resolveUnitForUser } from '@/lib/constants/units';
 import type { Room } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -352,7 +352,7 @@ export default function NewProposalPage() {
                     className={styles.selectField}
                     required
                   >
-                    {OFFICIAL_UNITS.map((group) => (
+                    {OFFICIAL_UNIT_GROUPS.map((group) => (
                       <optgroup key={group.group} label={group.group}>
                         {group.items.map((unit) => (
                           <option key={unit} value={unit}>
