@@ -30,7 +30,7 @@ import { OFFICIAL_UNITS } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
 import { isSameUnit } from '@/lib/utils/rating-logic';
 import { getEffectiveEventStatus, isEventPastDeadline } from '@/lib/utils/event-logic';
-import type { Event, User, EventProposal, Room, UserPenalty } from '@/lib/types';
+import type { Event, User, EventProposal, Room, UserPenalty, UserTier } from '@/lib/types';
 import styles from './page.module.css';
 
 type SuperAdminTab = 'events' | 'proposals' | 'officers' | 'rooms' | 'units' | 'students' | 'delegates' | 'blacklist' | 'settings';
@@ -77,6 +77,7 @@ function SuperAdminContent() {
   const [penaltiesLoading, setPenaltiesLoading] = useState(true);
   const [delegatesLoading, setDelegatesLoading] = useState(true);
   const [eventStatusFilter, setEventStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
+  const [proposalStatusFilter, setProposalStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
   const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -2002,7 +2003,42 @@ function SuperAdminContent() {
                                       whiteSpace: 'nowrap',
                                     }}
                                   >
-                                    Từ ch        {/* TAB: CÁN BỘ & PHÂN QUYỀN ĐA TÀI KHOẢN */}
+                                    Từ chối
+                                  </button>
+                                </>
+                              )}
+                              <Link
+                                href={`/admin/proposals/${p.id}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  padding: '0.4rem 0.75rem',
+                                  background: '#eff6ff',
+                                  color: '#2563eb',
+                                  border: '1px solid #bfdbfe',
+                                  borderRadius: '8px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 700,
+                                  textDecoration: 'none',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                Xem tiến độ ➔
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* TAB: CÁN BỘ & PHÂN QUYỀN ĐA TÀI KHOẢN */}
         {activeTab === 'officers' && (
           <div className={styles.tabContent}>
             {/* Header & Stat Summary */}
@@ -3763,7 +3799,7 @@ function SuperAdminContent() {
             </div>
           </div>
         )}
-          </div>
+        </div>
       </main>
     </div>
   );
