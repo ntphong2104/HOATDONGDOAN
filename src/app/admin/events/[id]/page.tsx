@@ -73,29 +73,32 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         return;
       }
 
-      const { data: eventData } = await supabase
-        .from('events')
-        .select('*')
-        .eq('event_id', resolvedParams.id)
-        .single();
-      
-      if (eventData) {
-        setEvent(eventData);
-      }
-
-      const [checkinsRes, rolesRes, regRes, ratingRes] = await Promise.all([
+      const [eventRes, checkinsRes, rolesRes, regRes, ratingRes] = await Promise.all([
+        fetch(`/api/events/${resolvedParams.id}`),
         fetch(`/api/events/${resolvedParams.id}/checkins`),
         fetch(`/api/events/${resolvedParams.id}/roles`),
         fetch(`/api/events/${resolvedParams.id}/register`),
         fetch(`/api/events/${resolvedParams.id}/ratings`),
       ]);
 
-      const [checkinsData, rolesData, regData, ratingData] = await Promise.all([
+      const [eventData, checkinsData, rolesData, regData, ratingData] = await Promise.all([
+        eventRes.json().catch(() => ({ success: false })),
         checkinsRes.json().catch(() => ({ success: false })),
         rolesRes.json().catch(() => ({ success: false })),
         regRes.json().catch(() => ({ success: false })),
         ratingRes.json().catch(() => ({ success: false })),
       ]);
+
+      if (eventData.success && eventData.data) {
+        setEvent(eventData.data);
+      } else {
+        const { data: directEvent } = await supabase
+          .from('events')
+          .select('*')
+          .eq('event_id', resolvedParams.id)
+          .single();
+        if (directEvent) setEvent(directEvent);
+      }
 
       if (checkinsData.success) {
         setCheckins(checkinsData.data || []);
@@ -324,8 +327,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     (r: any) => r.email?.toLowerCase() === currentUser?.email?.toLowerCase()
   );
 
-  // Authorization: super admin, youth union, event creator or assigned role can view
-  const hasEventAccess = isSuperAdmin || isYouthUnion || isEventCreator || hasEventRole;
+  // Authorization: super admin, youth union, event creator, assigned role or officer can view
+  const hasEventAccess = isSuperAdmin || isYouthUnion || isPrivileged || isEventCreator || hasEventRole || Boolean(currentUser?.isEventAdmin) || (currentUser?.tier && currentUser?.tier !== 'user');
 
   const handleToggleEventStatus = async () => {
     if (!event) return;
