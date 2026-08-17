@@ -33,6 +33,7 @@ export async function GET(req: Request) {
     .select('id, title, start_datetime, end_datetime, organization_unit, status')
     .eq('room_id', roomId)
     .neq('status', 'rejected')
+    .neq('status', 'deleted')
     .lt('start_datetime', endDate.toISOString())
     .gt('end_datetime', startDate.toISOString());
 

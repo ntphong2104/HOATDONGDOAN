@@ -178,6 +178,7 @@ export async function POST(req: Request) {
         .select('id, title, start_datetime, end_datetime')
         .eq('room_id', room_id)
         .neq('status', 'rejected')
+        .neq('status', 'deleted')
         .lt('start_datetime', endDatetime.toISOString())
         .gt('end_datetime', startDatetime.toISOString());
 
