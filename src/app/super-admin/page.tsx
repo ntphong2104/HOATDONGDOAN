@@ -299,6 +299,14 @@ function SuperAdminContent() {
     });
   }, [events, selectedUnitFilter]);
 
+  const pendingProposals = React.useMemo(() => {
+    let list = proposals.filter((p) => p.status === 'pending');
+    if (selectedUnitFilter) {
+      list = list.filter((p) => isSameUnit(p.organization_unit, selectedUnitFilter));
+    }
+    return list;
+  }, [proposals, selectedUnitFilter]);
+
   const getProposalDisplayStatus = React.useCallback((p: EventProposal) => {
     if (p.status === 'rejected') {
       return {
@@ -1202,6 +1210,221 @@ function SuperAdminContent() {
         {/* TAB 1: QUẢN LÝ SỰ KIỆN */}
         {activeTab === 'events' && (
           <div className={styles.tabContent}>
+            {/* ⚡ HỒ SƠ / KẾ HOẠCH MỚI CẦN PHÊ DUYỆT */}
+            {pendingProposals.length > 0 && (
+              <section className={styles.section} style={{ border: '2px solid #fdba74', background: '#fffaf5', marginBottom: '1.75rem', borderRadius: '16px' }}>
+                <div className={styles.sectionHeader} style={{ borderBottom: '1px solid #fed7aa', paddingBottom: '0.85rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: '#ea580c' }}></span>
+                      <h2 className={styles.sectionTitle} style={{ color: '#9a3412', fontSize: '1.15rem' }}>
+                        Hồ Sơ Đề Xuất Mới Cần Phê Duyệt ({pendingProposals.length})
+                      </h2>
+                    </div>
+                    <p className={styles.sectionSubtitle} style={{ color: '#c2410c' }}>
+                      Kế hoạch mới do các đơn vị nộp — Super Admin có thể duyệt nhanh hoặc theo dõi tiến trình phê duyệt các cấp
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => switchTab('proposals')}
+                      style={{
+                        padding: '0.45rem 0.85rem',
+                        background: '#ffffff',
+                        border: '1px solid #fed7aa',
+                        color: '#c2410c',
+                        borderRadius: '8px',
+                        fontSize: '0.825rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Xem toàn bộ hồ sơ ({proposals.length})
+                    </button>
+                    <Link
+                      href="/admin/proposals/new"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        padding: '0.45rem 0.9rem',
+                        background: '#ea580c',
+                        color: '#ffffff',
+                        borderRadius: '8px',
+                        fontSize: '0.825rem',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <PlusIcon size={15} />
+                      <span>Trình Kế Hoạch Mới</span>
+                    </Link>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                  {pendingProposals.map((p) => (
+                    <div
+                      key={p.id}
+                      style={{
+                        background: '#ffffff',
+                        border: '1.5px solid #fed7aa',
+                        borderRadius: '12px',
+                        padding: '1.1rem 1.25rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.85rem',
+                        boxShadow: '0 2px 6px rgba(234, 88, 12, 0.06)',
+                      }}
+                    >
+                      {/* Header row */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                            <span style={{ padding: '0.2rem 0.6rem', background: '#ffedd5', color: '#9a3412', borderRadius: '6px', fontSize: '0.775rem', fontWeight: 800 }}>
+                              🏛️ {p.organization_unit}
+                            </span>
+                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                              Người nộp: <strong>{p.created_by}</strong>
+                            </span>
+                          </div>
+                          <Link
+                            href={`/admin/proposals/${p.id}`}
+                            style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e3a8a', textDecoration: 'none' }}
+                          >
+                            {p.title} ➔
+                          </Link>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span
+                            style={{
+                              padding: '0.35rem 0.85rem',
+                              background: '#fef3c7',
+                              color: '#92400e',
+                              border: '1px solid #fde68a',
+                              borderRadius: '20px',
+                              fontSize: '0.8rem',
+                              fontWeight: 800,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                            }}
+                          >
+                            ⏳ {getStageLabel(p.current_stage)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Details row */}
+                      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.85rem', color: '#334155', background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '8px' }}>
+                        <span>🕒 <strong>Thời gian:</strong> {new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time?.slice(0, 5)} - {p.end_time?.slice(0, 5)})</span>
+                        <span>📍 <strong>Địa điểm:</strong> {p.room_name || 'Hội trường / Phòng họp'}</span>
+                        <span>👥 <strong>Quy mô:</strong> {p.total_count} người ({p.participant_count} SV, {p.volunteer_count} CTV, {p.organizer_count} BTC)</span>
+                      </div>
+
+                      {/* Stepper & Action buttons */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.25rem' }}>
+                        {/* Visual Stages */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem' }}>
+                          <span style={{ fontWeight: 700, color: '#64748b', marginRight: '0.25rem' }}>Tiến trình:</span>
+                          <span style={{
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '6px',
+                            background: p.current_stage === 'youth_union' ? '#ea580c' : '#dcfce7',
+                            color: p.current_stage === 'youth_union' ? '#ffffff' : '#15803d',
+                            fontWeight: 700,
+                          }}>
+                            {p.current_stage === 'youth_union' ? '▶ 1. Đoàn Trường' : '✓ 1. Đoàn Trường'}
+                          </span>
+                          <span style={{ color: '#cbd5e1' }}>➔</span>
+                          <span style={{
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '6px',
+                            background: p.current_stage === 'ctsv' ? '#ea580c' : (p.current_stage === 'youth_union' ? '#f1f5f9' : '#dcfce7'),
+                            color: p.current_stage === 'ctsv' ? '#ffffff' : (p.current_stage === 'youth_union' ? '#94a3b8' : '#15803d'),
+                            fontWeight: 700,
+                          }}>
+                            {p.current_stage === 'ctsv' ? '▶ 2. CTSV' : (p.current_stage === 'youth_union' ? '2. CTSV' : '✓ 2. CTSV')}
+                          </span>
+                          {p.requires_facility_approval && (
+                            <>
+                              <span style={{ color: '#cbd5e1' }}>➔</span>
+                              <span style={{
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '6px',
+                                background: p.current_stage === 'facility' ? '#ea580c' : (p.current_stage === 'approved' ? '#dcfce7' : '#f1f5f9'),
+                                color: p.current_stage === 'facility' ? '#ffffff' : (p.current_stage === 'approved' ? '#15803d' : '#94a3b8'),
+                                fontWeight: 700,
+                              }}>
+                                {p.current_stage === 'facility' ? '▶ 3. CSVC' : (p.current_stage === 'approved' ? '✓ 3. CSVC' : '3. CSVC')}
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => approveProposal(p.id)}
+                            style={{
+                              padding: '0.45rem 0.9rem',
+                              background: '#16a34a',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '0.825rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                            }}
+                          >
+                            <span>⚡ Phê Duyệt Cấp Này</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => rejectProposal(p.id)}
+                            style={{
+                              padding: '0.45rem 0.8rem',
+                              background: '#fef2f2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
+                              borderRadius: '8px',
+                              fontSize: '0.825rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Từ Chối
+                          </button>
+                          <Link
+                            href={`/admin/proposals/${p.id}`}
+                            style={{
+                              padding: '0.45rem 0.85rem',
+                              background: '#eff6ff',
+                              color: '#2563eb',
+                              border: '1px solid #bfdbfe',
+                              borderRadius: '8px',
+                              fontSize: '0.825rem',
+                              fontWeight: 700,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            Xem Hồ Sơ ➔
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Danh sách sự kiện */}
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
