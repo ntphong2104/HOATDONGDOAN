@@ -23,8 +23,12 @@ export async function GET() {
     const supabase = await createClient();
     const officerMap = new Map<string, OfficerRoleItem>();
 
-    // 1. Always seed Root Super Admin
-    officerMap.set(`root-${ROOT_SUPER_ADMIN}`, {
+    const makeKey = (email: string, tier: string, unit: string = '') =>
+      `${email.toLowerCase().trim()}-${tier.trim()}-${(unit || '').trim()}`;
+
+    // 1. Always seed Root Super Admin with standard key
+    const rootKey = makeKey(ROOT_SUPER_ADMIN, 'super_admin', 'BCH_DOAN');
+    officerMap.set(rootKey, {
       id: 'root-1',
       email: ROOT_SUPER_ADMIN,
       role_tier: 'super_admin',
@@ -40,7 +44,22 @@ export async function GET() {
     try {
       const stored = await getStoredOfficerRoles(supabase);
       for (const r of stored) {
-        officerMap.set(`${r.email.toLowerCase()}-${r.role_tier}-${r.unit_code || ''}`, r);
+        const key = makeKey(r.email, r.role_tier, r.unit_code || 'BCH_DOAN');
+        if (r.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase()) {
+          officerMap.set(rootKey, {
+            ...officerMap.get(rootKey)!,
+            ...r,
+            id: 'root-1',
+            email: ROOT_SUPER_ADMIN,
+            role_tier: 'super_admin',
+            unit_code: 'BCH_DOAN',
+            unit_name: 'Ban Quản Trị Toàn Trường',
+            full_name: 'Nguyễn Thanh Phong',
+            notes: 'Super Admin Gốc (Root Admin)',
+          });
+        } else if (!officerMap.has(key)) {
+          officerMap.set(key, r);
+        }
       }
     } catch (e) {
       console.warn('Failed to load stored officer roles:', e);
@@ -51,8 +70,9 @@ export async function GET() {
       const { data: superAdmins } = await supabase.from('super_admins').select('email, created_at');
       if (superAdmins) {
         for (const sa of superAdmins) {
-          const emailLower = sa.email.toLowerCase();
-          const key = `${emailLower}-super_admin-BCH_DOAN`;
+          const emailLower = sa.email.toLowerCase().trim();
+          if (emailLower === ROOT_SUPER_ADMIN.toLowerCase()) continue; // already seeded
+          const key = makeKey(emailLower, 'super_admin', 'BCH_DOAN');
           if (!officerMap.has(key)) {
             officerMap.set(key, {
               id: `sa-${emailLower}`,
@@ -77,10 +97,10 @@ export async function GET() {
         .select('id, email, role_type, created_at, event_id, events(event_name)');
       if (eventRoles) {
         for (const er of eventRoles) {
-          const emailLower = er.email.toLowerCase();
+          const emailLower = er.email.toLowerCase().trim();
           const roleTier: UserTier = 'event_admin';
           const eventName = (er.events as any)?.event_name || `Sự kiện #${er.event_id}`;
-          const key = `${emailLower}-event_admin-${er.event_id}`;
+          const key = makeKey(emailLower, roleTier, `event-${er.event_id}`);
           if (!officerMap.has(key)) {
             officerMap.set(key, {
               id: String(er.id || `er-${emailLower}-${er.event_id}`),
@@ -103,14 +123,15 @@ export async function GET() {
     try {
       const { data: allUsers } = await supabase.from('users').select('email, full_name, mssv, class_id, tier');
       if (allUsers) {
-        userMap = new Map(allUsers.map((u: any) => [u.email.toLowerCase(), u]));
+        userMap = new Map(allUsers.map((u: any) => [u.email.toLowerCase().trim(), u]));
 
         // Check if any users have elevated tier in users table
         for (const u of allUsers) {
           if (u.tier && u.tier !== 'user') {
-            const emailLower = u.email.toLowerCase();
-            const key = `${emailLower}-${u.tier}`;
-            if (!Array.from(officerMap.values()).some((o) => o.email.toLowerCase() === emailLower && o.role_tier === u.tier)) {
+            const emailLower = u.email.toLowerCase().trim();
+            if (emailLower === ROOT_SUPER_ADMIN.toLowerCase()) continue;
+            const key = makeKey(emailLower, u.tier, 'BCH_DOAN');
+            if (!Array.from(officerMap.values()).some((o) => o.email.toLowerCase().trim() === emailLower && o.role_tier === u.tier)) {
               officerMap.set(key, {
                 id: `user-${emailLower}-${u.tier}`,
                 email: emailLower,
@@ -129,13 +150,13 @@ export async function GET() {
     } catch {}
 
     const allOfficers = Array.from(officerMap.values()).map((r) => {
-      const u = userMap.get(r.email.toLowerCase());
+      const u = userMap.get(r.email.toLowerCase().trim());
       return {
         ...r,
         full_name: r.full_name || u?.full_name || r.email.split('@')[0],
         mssv: u?.mssv || '',
         class_id: u?.class_id || '',
-        isRootAdmin: r.email.toLowerCase() === ROOT_SUPER_ADMIN,
+        isRootAdmin: r.email.toLowerCase().trim() === ROOT_SUPER_ADMIN.toLowerCase(),
       };
     });
 
