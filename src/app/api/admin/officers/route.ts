@@ -21,18 +21,114 @@ export async function GET() {
     }
 
     const supabase = await createClient();
-    const roles = await getStoredOfficerRoles(supabase);
+    const officerMap = new Map<string, OfficerRoleItem>();
 
-    // Populate full_name from users table if missing
-    let userMap = new Map<string, any>();
+    // 1. Always seed Root Super Admin
+    officerMap.set(`root-${ROOT_SUPER_ADMIN}`, {
+      id: 'root-1',
+      email: ROOT_SUPER_ADMIN,
+      role_tier: 'super_admin',
+      unit_code: 'BCH_DOAN',
+      unit_name: 'Ban Quản Trị Toàn Trường',
+      full_name: 'Nguyễn Thanh Phong',
+      notes: 'Super Admin Gốc (Root Admin)',
+      created_by: 'System',
+      created_at: '2026-01-01T00:00:00.000Z',
+    });
+
+    // 2. Fetch Stored Officer Roles
     try {
-      const { data: allUsers } = await supabase.from('users').select('email, full_name, mssv, class_id');
-      if (allUsers) {
-        userMap = new Map((allUsers || []).map((u: any) => [u.email.toLowerCase(), u]));
+      const stored = await getStoredOfficerRoles(supabase);
+      for (const r of stored) {
+        officerMap.set(`${r.email.toLowerCase()}-${r.role_tier}-${r.unit_code || ''}`, r);
+      }
+    } catch (e) {
+      console.warn('Failed to load stored officer roles:', e);
+    }
+
+    // 3. Fetch from super_admins table
+    try {
+      const { data: superAdmins } = await supabase.from('super_admins').select('email, created_at');
+      if (superAdmins) {
+        for (const sa of superAdmins) {
+          const emailLower = sa.email.toLowerCase();
+          const key = `${emailLower}-super_admin-BCH_DOAN`;
+          if (!officerMap.has(key)) {
+            officerMap.set(key, {
+              id: `sa-${emailLower}`,
+              email: emailLower,
+              role_tier: 'super_admin',
+              unit_code: 'BCH_DOAN',
+              unit_name: 'Ban Quản Trị Toàn Trường',
+              full_name: emailLower.split('@')[0],
+              notes: 'Super Admin Hệ Thống',
+              created_by: 'Super Admin',
+              created_at: sa.created_at || new Date().toISOString(),
+            });
+          }
+        }
       }
     } catch {}
 
-    const enrichedRoles = roles.map((r) => {
+    // 4. Fetch from event_roles table (Admins / Checkers của các sự kiện)
+    try {
+      const { data: eventRoles } = await supabase
+        .from('event_roles')
+        .select('id, email, role_type, created_at, event_id, events(event_name)');
+      if (eventRoles) {
+        for (const er of eventRoles) {
+          const emailLower = er.email.toLowerCase();
+          const roleTier: UserTier = 'event_admin';
+          const eventName = (er.events as any)?.event_name || `Sự kiện #${er.event_id}`;
+          const key = `${emailLower}-event_admin-${er.event_id}`;
+          if (!officerMap.has(key)) {
+            officerMap.set(key, {
+              id: String(er.id || `er-${emailLower}-${er.event_id}`),
+              email: emailLower,
+              role_tier: roleTier,
+              unit_code: 'LCD_CLB',
+              unit_name: eventName,
+              full_name: emailLower.split('@')[0],
+              notes: er.role_type === 'event_admin' ? `Admin sự kiện: ${eventName}` : `CTV quét mã sự kiện: ${eventName}`,
+              created_by: 'Ban Tổ Chức',
+              created_at: er.created_at || new Date().toISOString(),
+            });
+          }
+        }
+      }
+    } catch {}
+
+    // 5. Populate user profile details (full_name, mssv, class_id)
+    let userMap = new Map<string, any>();
+    try {
+      const { data: allUsers } = await supabase.from('users').select('email, full_name, mssv, class_id, tier');
+      if (allUsers) {
+        userMap = new Map(allUsers.map((u: any) => [u.email.toLowerCase(), u]));
+
+        // Check if any users have elevated tier in users table
+        for (const u of allUsers) {
+          if (u.tier && u.tier !== 'user') {
+            const emailLower = u.email.toLowerCase();
+            const key = `${emailLower}-${u.tier}`;
+            if (!Array.from(officerMap.values()).some((o) => o.email.toLowerCase() === emailLower && o.role_tier === u.tier)) {
+              officerMap.set(key, {
+                id: `user-${emailLower}-${u.tier}`,
+                email: emailLower,
+                role_tier: u.tier,
+                unit_code: u.tier === 'super_admin' ? 'BCH_DOAN' : 'BCH_DOAN',
+                unit_name: u.tier === 'super_admin' ? 'Ban Quản Trị Toàn Trường' : 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
+                full_name: u.full_name || emailLower.split('@')[0],
+                notes: `Phân quyền cấp ${u.tier.toUpperCase()}`,
+                created_by: 'Hệ Thống',
+                created_at: new Date().toISOString(),
+              });
+            }
+          }
+        }
+      }
+    } catch {}
+
+    const allOfficers = Array.from(officerMap.values()).map((r) => {
       const u = userMap.get(r.email.toLowerCase());
       return {
         ...r,
@@ -43,7 +139,16 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ success: true, data: enrichedRoles });
+    // Sort: Root Super Admin first, then Super Admins, then newer officers
+    allOfficers.sort((a, b) => {
+      if (a.isRootAdmin) return -1;
+      if (b.isRootAdmin) return 1;
+      if (a.role_tier === 'super_admin' && b.role_tier !== 'super_admin') return -1;
+      if (b.role_tier === 'super_admin' && a.role_tier !== 'super_admin') return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    return NextResponse.json({ success: true, data: allOfficers });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message || 'Lỗi hệ thống' }, { status: 500 });
   }
@@ -115,14 +220,20 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     };
 
+    // 1. Save to persistent officer store
     await saveOfficerRole(newItem, supabase);
 
-    // If role is super_admin, also sync to super_admins table
+    // 2. If super_admin, sync to super_admins table
     if (roleTier === 'super_admin') {
       try {
         await supabase.from('super_admins').upsert({ email: emailRaw });
       } catch {}
     }
+
+    // 3. Update users table tier so the user immediately has the new permissions
+    try {
+      await supabase.from('users').update({ tier: roleTier }).eq('email', emailRaw);
+    } catch {}
 
     return NextResponse.json({
       success: true,
@@ -167,14 +278,31 @@ export async function DELETE(req: Request) {
 
     const supabase = await createClient();
 
+    // 1. Remove from stored officer roles
     await removeOfficerRole(emailRaw, roleTier, id, supabase);
 
-    // If revoked super_admin, also remove from super_admins table
+    // 2. If revoked super_admin, remove from super_admins table
     if (roleTier === 'super_admin' || !roleTier) {
       try {
         await supabase.from('super_admins').delete().ilike('email', emailRaw);
       } catch {}
     }
+
+    // 3. If event_admin, remove from event_roles table if matching id
+    if (id && !id.startsWith('off-') && !id.startsWith('sa-') && !id.startsWith('user-')) {
+      try {
+        await supabase.from('event_roles').delete().eq('id', id);
+      } catch {}
+    } else {
+      try {
+        await supabase.from('event_roles').delete().ilike('email', emailRaw);
+      } catch {}
+    }
+
+    // 4. Reset user tier to 'user' in users table if no other officer role remains
+    try {
+      await supabase.from('users').update({ tier: 'user' }).eq('email', emailRaw);
+    } catch {}
 
     return NextResponse.json({
       success: true,
