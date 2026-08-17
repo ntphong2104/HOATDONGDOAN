@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { CameraFlipIcon, FlashlightIcon, FocusIcon, ZoomInIcon, ZoomOutIcon } from '@/components/icons';
+import { Html5Qrcode } from 'html5-qrcode';
+import { CameraFlipIcon, FlashlightIcon } from '@/components/icons';
 import styles from './QRScanner.module.css';
 
 interface QRScannerProps {
@@ -19,14 +19,11 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
 
   // Zoom and Torch states
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [minZoom, setMinZoom] = useState(1);
-  const [maxZoom, setMaxZoom] = useState(5);
-  const [zoomStep, setZoomStep] = useState(0.1);
+  const [maxZoom, setMaxZoom] = useState(3);
   const [supportsTorch, setSupportsTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
-  const [isFocusing, setIsFocusing] = useState(false);
 
-  // Focus touch effect
+  // Tap-to-focus point
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
 
   const isPausedRef = useRef(isPaused);
@@ -68,7 +65,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
       }
     }
 
-    // Digital Zoom Fallback (CSS scaling on video element)
+    // Digital Zoom fallback (CSS scaling on video element)
     const videoEl = document.querySelector('#qr-reader-viewport video') as HTMLVideoElement | null;
     if (videoEl) {
       if (!hardwareApplied && clampedLevel > 1) {
@@ -80,9 +77,6 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
   }, [maxZoom, getVideoTrack]);
 
   const triggerFocus = useCallback(async (customX?: number, customY?: number) => {
-    setIsFocusing(true);
-    setTimeout(() => setIsFocusing(false), 800);
-
     const container = containerRef.current;
     let pxX = customX;
     let pxY = customY;
@@ -95,7 +89,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
 
     if (pxX !== undefined && pxY !== undefined) {
       setFocusPoint({ x: pxX, y: pxY });
-      setTimeout(() => setFocusPoint(null), 800);
+      setTimeout(() => setFocusPoint(null), 850);
     }
 
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -116,7 +110,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
           }
         }
       } catch (err) {
-        console.warn('Focus constraint not supported:', err);
+        console.warn('Focus constraint error:', err);
       }
     }
   }, [getVideoTrack]);
@@ -153,15 +147,9 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         } catch {}
       }
 
-      const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
-        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-        const qrboxSize = Math.floor(minEdge * 0.85);
-        return { width: qrboxSize, height: qrboxSize };
-      };
-
+      // Full-frame recognition (BIDV banking style)
       const config = {
         fps: 20,
-        qrbox: qrboxFunction,
         aspectRatio: 1.0,
       };
 
@@ -176,18 +164,13 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         undefined
       );
 
-      // Check zoom / torch capabilities
+      // Check capabilities
       setTimeout(() => {
         const track = getVideoTrack();
         if (track && typeof track.getCapabilities === 'function') {
           const caps: any = track.getCapabilities();
           if (caps.zoom) {
-            setMinZoom(caps.zoom.min || 1);
-            setMaxZoom(caps.zoom.max || 5);
-            setZoomStep(caps.zoom.step || 0.1);
-          } else {
-            setMaxZoom(4);
-            setMinZoom(1);
+            setMaxZoom(Math.min(caps.zoom.max || 3, 4));
           }
           if (caps.torch) {
             setSupportsTorch(true);
@@ -239,7 +222,7 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         />
       )}
 
-      {/* Top Controls: Camera Flip, Focus Button, Flashlight */}
+      {/* Top Floating Controls: Camera Flip & Flashlight */}
       <div className={styles.topControls}>
         <button
           type="button"
@@ -253,27 +236,6 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         >
           <CameraFlipIcon size={20} />
         </button>
-
-        {/* Dedicated Focus Button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            triggerFocus();
-          }}
-          className={`${styles.controlButton} ${isFocusing ? styles.torchActive : ''}`}
-          title="Lấy nét camera ngay"
-          aria-label="Lấy nét"
-          style={{
-            background: isFocusing ? '#eab308' : 'rgba(15, 23, 42, 0.75)',
-            color: isFocusing ? '#0f172a' : '#facc15',
-            borderColor: isFocusing ? '#fde047' : 'rgba(250, 204, 21, 0.3)',
-          }}
-        >
-          <FocusIcon size={20} />
-        </button>
-
-        <div className={styles.qualityBadge}>HD • 20 FPS</div>
 
         {supportsTorch ? (
           <button
@@ -289,12 +251,12 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
             <FlashlightIcon size={20} />
           </button>
         ) : (
-          <div style={{ width: 44 }} />
+          <div style={{ width: 40 }} />
         )}
       </div>
 
-      {/* Center Reticle / Aim Frame with Laser */}
-      <div className={styles.overlayFrame}>
+      {/* BIDV Style Center Viewfinder Mask */}
+      <div className={styles.viewfinderOverlay}>
         <div className={styles.reticleBox}>
           <div className={`${styles.corner} ${styles.topLeft}`}></div>
           <div className={`${styles.corner} ${styles.topRight}`}></div>
@@ -304,43 +266,30 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
         </div>
       </div>
 
-      {/* Bottom Controls: Zoom Preset Pills & Slider */}
+      {/* Bottom Floating Controls: 1x, 2x Zoom Pills & Helper Text */}
       <div
         className={styles.bottomControls}
         onClick={(e) => e.stopPropagation()}
       >
         <div className={styles.zoomPillsContainer}>
-          {[1, 2, 3, 5].map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              className={`${styles.zoomPill} ${
-                Math.abs(zoomLevel - preset) < 0.2 ? styles.zoomPillActive : ''
-              }`}
-              onClick={() => applyZoom(preset)}
-            >
-              {preset}x
-            </button>
-          ))}
-        </div>
-
-        <div className={styles.zoomSliderWrapper}>
-          <ZoomOutIcon size={16} color="#94a3b8" />
-          <input
-            type="range"
-            min={minZoom}
-            max={maxZoom}
-            step={zoomStep}
-            value={zoomLevel}
-            onChange={(e) => applyZoom(parseFloat(e.target.value))}
-            className={styles.zoomSlider}
-            aria-label="Thanh trượt phóng to camera"
-          />
-          <ZoomInIcon size={16} color="#94a3b8" />
+          <button
+            type="button"
+            className={`${styles.zoomPill} ${zoomLevel <= 1.2 ? styles.zoomPillActive : ''}`}
+            onClick={() => applyZoom(1)}
+          >
+            1x
+          </button>
+          <button
+            type="button"
+            className={`${styles.zoomPill} ${zoomLevel > 1.2 ? styles.zoomPillActive : ''}`}
+            onClick={() => applyZoom(2)}
+          >
+            2x
+          </button>
         </div>
 
         <span className={styles.helperText}>
-          Chạm màn hình để lấy nét • Chọn 2x / 3x để quét từ xa
+          Di chuyển camera đến mã QR để quét
         </span>
       </div>
 
@@ -377,4 +326,3 @@ export default function QRScanner({ onScan, onScanSuccess, isPaused = false }: Q
     </div>
   );
 }
-
