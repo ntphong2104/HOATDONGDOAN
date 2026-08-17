@@ -310,6 +310,7 @@ describe('Admin API Routes Whitebox Tests', () => {
       mockBuilder.then
         .mockImplementationOnce((resolve) => resolve({ count: 10, error: null }))
         .mockImplementationOnce((resolve) => resolve({ count: 20, error: null }))
+        .mockImplementationOnce((resolve) => resolve({ count: 5, error: null }))
         .mockImplementationOnce((resolve) => resolve({ count: 30, error: null }));
       const res = await getStats();
       expect(res.status).toBe(200);
