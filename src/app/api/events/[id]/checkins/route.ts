@@ -54,13 +54,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 
-  // Also query attended registrations for complete data consistency
-  const { data: attendedRegistrations } = await supabase
-    .from('event_registrations')
-    .select('mssv, full_name, class_id, role_type, created_at')
-    .eq('event_id', resolvedParams.id)
-    .eq('attended', true);
-
   const checkinsMap = new Map<string, any>();
 
   (checkins || []).forEach((c: any) => {
@@ -77,19 +70,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             : 'Người tham gia',
         checked_by: c.checked_by || 'Mã QR Động (Tự quét)',
         checkin_time: c.created_at,
-      });
-    }
-  });
-
-  (attendedRegistrations || []).forEach((r: any) => {
-    if (!checkinsMap.has(r.mssv)) {
-      checkinsMap.set(r.mssv, {
-        mssv: r.mssv,
-        full_name: r.full_name || r.mssv,
-        class_id: r.class_id || '',
-        participate_role: r.role_type === 'volunteer' ? 'Cộng tác viên' : 'Người tham gia',
-        checked_by: 'Cổng Đăng Ký Trực Tuyến',
-        checkin_time: r.created_at || new Date().toISOString(),
       });
     }
   });
