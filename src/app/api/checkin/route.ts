@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizeInput } from '@/lib/security/sanitizer';
 import { isEventPastDeadline } from '@/lib/utils/event-logic';
@@ -8,7 +8,8 @@ import type { CheckInRequest } from '@/lib/types';
 
 export async function POST(req: Request) {
   const auth = await getAuthContext();
-  const supabase = await createClient();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
   let userEmail = auth?.email;
   if (!userEmail) {
