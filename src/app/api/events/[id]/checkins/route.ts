@@ -64,19 +64,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const checkinsMap = new Map<string, any>();
 
   (checkins || []).forEach((c: any) => {
-    checkinsMap.set(c.mssv, {
-      mssv: c.mssv,
-      full_name: c.users?.full_name || c.mssv,
-      class_id: c.users?.class_id || '',
-      participate_role:
-        c.participate_role === 'volunteer'
-          ? 'Cộng tác viên'
-          : c.participate_role === 'organizer'
-          ? 'Ban tổ chức'
-          : 'Người tham gia',
-      checked_by: c.checked_by || 'Mã QR Động (Tự quét)',
-      checkin_time: c.created_at,
-    });
+    if (!checkinsMap.has(c.mssv)) {
+      checkinsMap.set(c.mssv, {
+        mssv: c.mssv,
+        full_name: c.users?.full_name || c.mssv,
+        class_id: c.users?.class_id || '',
+        participate_role:
+          c.participate_role === 'volunteer'
+            ? 'Cộng tác viên'
+            : c.participate_role === 'organizer'
+            ? 'Ban tổ chức'
+            : 'Người tham gia',
+        checked_by: c.checked_by || 'Mã QR Động (Tự quét)',
+        checkin_time: c.created_at,
+      });
+    }
   });
 
   (attendedRegistrations || []).forEach((r: any) => {
