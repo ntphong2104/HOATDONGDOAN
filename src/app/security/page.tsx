@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { getStoredProposals } from '@/lib/constants/proposals-store';
+import { getHandoverRegistryFromDb } from '@/lib/constants/handover-store';
 import Header from '@/components/Header';
 import SecurityDashboardClient from './SecurityDashboardClient';
 import type { SessionUser, EventProposal } from '@/lib/types';
@@ -66,6 +67,11 @@ export default async function SecurityPage() {
     console.warn('Could not fetch proposals from DB in security page:', err);
   }
 
+  let handoverDb: any = {};
+  try {
+    handoverDb = await getHandoverRegistryFromDb(supabase);
+  } catch {}
+
   const stored = getStoredProposals()
     .filter((p) => p.status === 'approved' && p.room_name && p.room_name !== 'Không mượn')
     .sort((a, b) => (a.start_datetime || '').localeCompare(b.start_datetime || ''));
@@ -75,17 +81,28 @@ export default async function SecurityPage() {
     const storedMap = new Map(stored.map(s => [s.id, s]));
     finalProposals = dbProposals.map(p => {
       const local = storedMap.get(p.id);
+      const dbHandover = handoverDb[p.id];
       return {
         ...p,
-        key_status: p.key_status || local?.key_status || 'pending',
-        key_handed_at: p.key_handed_at || local?.key_handed_at || null,
-        key_handed_by: p.key_handed_by || local?.key_handed_by || null,
-        key_returned_at: p.key_returned_at || local?.key_returned_at || null,
-        key_returned_by: p.key_returned_by || local?.key_returned_by || null,
+        key_status: dbHandover?.key_status || p.key_status || local?.key_status || 'pending',
+        key_handed_at: dbHandover?.key_handed_at || p.key_handed_at || local?.key_handed_at || null,
+        key_handed_by: dbHandover?.key_handed_by || p.key_handed_by || local?.key_handed_by || null,
+        key_returned_at: dbHandover?.key_returned_at || p.key_returned_at || local?.key_returned_at || null,
+        key_returned_by: dbHandover?.key_returned_by || p.key_returned_by || local?.key_returned_by || null,
       };
     });
   } else {
-    finalProposals = stored;
+    finalProposals = stored.map(p => {
+      const dbHandover = handoverDb[p.id];
+      return {
+        ...p,
+        key_status: dbHandover?.key_status || p.key_status || 'pending',
+        key_handed_at: dbHandover?.key_handed_at || p.key_handed_at || null,
+        key_handed_by: dbHandover?.key_handed_by || p.key_handed_by || null,
+        key_returned_at: dbHandover?.key_returned_at || p.key_returned_at || null,
+        key_returned_by: dbHandover?.key_returned_by || p.key_returned_by || null,
+      };
+    });
   }
 
   const sessionUser: SessionUser = {

@@ -7,6 +7,7 @@ import { sanitizeInput } from '@/lib/security/sanitizer';
 import { resolveUnitForUser } from '@/lib/constants/units';
 import { summarizeUnitRatings } from '@/lib/utils/rating-logic';
 import { getStoredProposals, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
+import { getHandoverRegistryFromDb } from '@/lib/constants/handover-store';
 import type { EventProposal } from '@/lib/types';
 
 export async function GET(req: Request) {
@@ -57,20 +58,26 @@ export async function GET(req: Request) {
     }
 
     if (!error && proposals) {
+      let handoverDb: any = {};
+      try {
+        handoverDb = await getHandoverRegistryFromDb(supabase);
+      } catch {}
+
       const stored = getStoredProposals();
       const storedMap = new Map(stored.map(s => [s.id, s]));
 
       const { data: allRatings } = await supabase.from('unit_ratings').select('*');
       const proposalsWithRatings = proposals.map((prop) => {
         const local = storedMap.get(prop.id);
+        const dbHandover = handoverDb[prop.id];
         const summary = summarizeUnitRatings(allRatings || [], prop.organization_unit || 'Đơn vị tổ chức');
         return {
           ...prop,
-          key_status: prop.key_status || local?.key_status || 'pending',
-          key_handed_at: prop.key_handed_at || local?.key_handed_at || null,
-          key_handed_by: prop.key_handed_by || local?.key_handed_by || null,
-          key_returned_at: prop.key_returned_at || local?.key_returned_at || null,
-          key_returned_by: prop.key_returned_by || local?.key_returned_by || null,
+          key_status: dbHandover?.key_status || prop.key_status || local?.key_status || 'pending',
+          key_handed_at: dbHandover?.key_handed_at || prop.key_handed_at || local?.key_handed_at || null,
+          key_handed_by: dbHandover?.key_handed_by || prop.key_handed_by || local?.key_handed_by || null,
+          key_returned_at: dbHandover?.key_returned_at || prop.key_returned_at || local?.key_returned_at || null,
+          key_returned_by: dbHandover?.key_returned_by || prop.key_returned_by || local?.key_returned_by || null,
           ratingSummary: summary,
         };
       });
