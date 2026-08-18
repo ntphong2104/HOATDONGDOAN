@@ -371,7 +371,7 @@ export function resolveUnitForUser(user: {
 const CUSTOM_UNITS_KEY = 'custom_units_registry';
 
 export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit[]> {
-  if (!supabase) return [];
+  if (!supabase) return OFFICIAL_UNITS;
   try {
     const { data } = await supabase
       .from('system_settings')
@@ -379,21 +379,22 @@ export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit
       .eq('key', CUSTOM_UNITS_KEY)
       .maybeSingle();
 
-    if (data?.value && Array.isArray(data.value)) {
+    if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
       return data.value as OfficialUnit[];
     } else {
-      // Initialize row so it appears in Supabase system_settings table
+      // Pre-seed all official units directly into Supabase DB
       await supabase.from('system_settings').upsert({
         key: CUSTOM_UNITS_KEY,
-        value: [],
+        value: OFFICIAL_UNITS,
         updated_by: 'System',
         updated_at: new Date().toISOString(),
       });
+      return OFFICIAL_UNITS;
     }
   } catch (err) {
     console.warn('Could not load custom units from DB:', err);
   }
-  return [];
+  return OFFICIAL_UNITS;
 }
 
 export async function saveCustomUnitsToDb(
