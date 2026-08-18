@@ -68,6 +68,8 @@ function saveToFile(list: OfficerRoleItem[]) {
   } catch {}
 }
 
+const OFFICER_SETTINGS_KEY = 'officer_roles_registry';
+
 export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRoleItem[]> {
   // 1. Try Supabase officer_roles table first if available
   if (supabase) {
@@ -77,7 +79,7 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && tableData && Array.isArray(tableData)) {
+      if (!error && tableData && Array.isArray(tableData) && tableData.length > 0) {
         // Table exists and query was successful!
         const mapped = tableData.map((d: any) => ({
           id: String(d.id),
@@ -92,7 +94,7 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
         }));
 
         // Always ensure Root Super Admin is present
-        if (!mapped.some((m) => m.email === ROOT_SUPER_ADMIN)) {
+        if (!mapped.some((m) => m.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase())) {
           mapped.unshift(DEFAULT_OFFICERS[0]);
         }
 
@@ -102,21 +104,48 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
         return mapped;
       }
     } catch {}
+
+    // 2. Try Supabase system_settings table (key = 'officer_roles_registry')
+    try {
+      const { data: settingsData } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', OFFICER_SETTINGS_KEY)
+        .maybeSingle();
+
+      if (settingsData?.value && Array.isArray(settingsData.value)) {
+        const mapped = settingsData.value as OfficerRoleItem[];
+        if (!mapped.some((m) => m.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase())) {
+          mapped.unshift(DEFAULT_OFFICERS[0]);
+        }
+        inMemoryOfficers = mapped;
+        saveToFile(mapped);
+        return mapped;
+      } else {
+        // Auto-seed default officers to system_settings so it appears in DB
+        await supabase.from('system_settings').upsert({
+          key: OFFICER_SETTINGS_KEY,
+          value: DEFAULT_OFFICERS,
+          updated_at: new Date().toISOString(),
+          updated_by: 'System',
+        });
+      }
+    } catch {}
   }
 
-  // 2. Try in-memory cache
+  // 3. Try in-memory cache
   if (inMemoryOfficers && inMemoryOfficers.length > 0) {
     return inMemoryOfficers;
   }
 
-  // 3. Try reading from server local file storage
+  // 4. Try reading from server local file storage
   const fromFile = loadFromFile();
   if (fromFile && Array.isArray(fromFile)) {
     inMemoryOfficers = fromFile;
     return fromFile;
   }
 
-  // 4. Initial seed
+  // 5. Initial seed
   const initial = [...DEFAULT_OFFICERS];
   inMemoryOfficers = initial;
   saveToFile(initial);
@@ -134,6 +163,7 @@ export async function saveOfficerRole(officer: OfficerRoleItem, supabase?: any):
   saveToFile(updated);
 
   if (supabase) {
+    // 1. Try upserting to officer_roles table
     try {
       await supabase.from('officer_roles').upsert({
         email: officer.email,
@@ -143,6 +173,16 @@ export async function saveOfficerRole(officer: OfficerRoleItem, supabase?: any):
         full_name: officer.full_name,
         notes: officer.notes,
         created_by: officer.created_by,
+      });
+    } catch {}
+
+    // 2. Also save to system_settings for 100% cloud persistence
+    try {
+      await supabase.from('system_settings').upsert({
+        key: OFFICER_SETTINGS_KEY,
+        value: updated,
+        updated_at: new Date().toISOString(),
+        updated_by: officer.created_by || 'Super Admin',
       });
     } catch {}
   }
@@ -162,7 +202,7 @@ export async function removeOfficerRole(email: string, roleTier?: string, id?: s
   });
 
   // Ensure root admin cannot be deleted
-  if (!updated.some((o) => o.email.toLowerCase() === ROOT_SUPER_ADMIN)) {
+  if (!updated.some((o) => o.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase())) {
     updated.unshift(DEFAULT_OFFICERS[0]);
   }
 
@@ -170,6 +210,7 @@ export async function removeOfficerRole(email: string, roleTier?: string, id?: s
   saveToFile(updated);
 
   if (supabase) {
+    // 1. Try deleting from officer_roles table
     try {
       if (id && !id.startsWith('off-') && !id.startsWith('root-') && !id.startsWith('default-')) {
         await supabase.from('officer_roles').delete().eq('id', id);
@@ -178,6 +219,16 @@ export async function removeOfficerRole(email: string, roleTier?: string, id?: s
         if (roleTier) q = q.eq('role_tier', roleTier);
         await q;
       }
+    } catch {}
+
+    // 2. Also update system_settings
+    try {
+      await supabase.from('system_settings').upsert({
+        key: OFFICER_SETTINGS_KEY,
+        value: updated,
+        updated_at: new Date().toISOString(),
+        updated_by: 'Super Admin',
+      });
     } catch {}
   }
 }

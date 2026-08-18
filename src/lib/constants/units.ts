@@ -381,6 +381,14 @@ export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit
 
     if (data?.value && Array.isArray(data.value)) {
       return data.value as OfficialUnit[];
+    } else {
+      // Initialize row so it appears in Supabase system_settings table
+      await supabase.from('system_settings').upsert({
+        key: CUSTOM_UNITS_KEY,
+        value: [],
+        updated_by: 'System',
+        updated_at: new Date().toISOString(),
+      });
     }
   } catch (err) {
     console.warn('Could not load custom units from DB:', err);
