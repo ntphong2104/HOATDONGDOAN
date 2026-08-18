@@ -33,6 +33,9 @@ export default async function HomePage({
     if (auth.tier === 'event_admin' || auth.isEventAdmin) {
       redirect('/admin');
     }
+    if (auth.tier === 'security') {
+      redirect('/security');
+    }
     if (auth.tier === 'checker') {
       redirect('/scanner');
     }

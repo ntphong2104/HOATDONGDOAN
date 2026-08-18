@@ -111,6 +111,7 @@ export type UserTier =
   | 'youth_union' // Đoàn Thanh Niên Học Viện
   | 'ctsv'        // Phòng Công Tác Sinh Viên
   | 'facility'    // Phòng Quản Trị CSVC & Thiết Bị
+  | 'security'    // Tổ Bảo Vệ (Bàn Giao & Quản Lý Chìa Khóa Phòng)
   | 'super_admin';
 
 export interface SessionUser {
@@ -119,6 +120,10 @@ export interface SessionUser {
   full_name: string;
   class_id: string;
   tier: UserTier;
+  isSuperAdmin?: boolean;
+  isEventAdmin?: boolean;
+  isChecker?: boolean;
+  isSecurity?: boolean;
   avatar_url?: string;
   unit_name?: string;
   unit_code?: string;
@@ -182,18 +187,7 @@ export interface EventWithCount extends Event {
   checkin_count: number;
 }
 
-// ──── Export row ────
-export interface CheckinExportRow {
-  stt: number;
-  mssv: string;
-  full_name: string;
-  class_id: string;
-  participate_role: string;
-  checked_by: string;
-  checkin_time: string;
-}
-
-// ──── Room & Facility Entities ────
+// ──── Room & Facility Management Entities ────
 export interface Room {
   id: string;
   room_name: string;
@@ -237,6 +231,11 @@ export interface EventProposal {
   status: ProposalStatus;
   description?: string | null;
   plan_url?: string | null;
+  key_status?: 'pending' | 'handed_over' | 'returned';
+  key_handed_at?: string | null;
+  key_handed_by?: string | null;
+  key_returned_at?: string | null;
+  key_returned_by?: string | null;
   created_event_id?: string | null;
   ratingSummary?: UnitRatingSummary;
   eventRatings?: UnitRating[];

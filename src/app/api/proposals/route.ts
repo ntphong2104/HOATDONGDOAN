@@ -26,10 +26,13 @@ export async function GET(req: Request) {
     auth.tier === 'youth_union' ||
     auth.tier === 'ctsv' ||
     auth.tier === 'facility' ||
+    auth.tier === 'security' ||
     auth.email.includes('doanthanhnien') ||
     auth.email.includes('ctsv') ||
     auth.email.includes('quantri') ||
-    auth.email.includes('csvc');
+    auth.email.includes('csvc') ||
+    auth.email.includes('baove') ||
+    auth.email.includes('security');
 
   let query = supabase
     .from('event_proposals')

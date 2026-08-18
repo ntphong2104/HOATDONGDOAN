@@ -61,6 +61,17 @@ const DEFAULT_OFFICERS: OfficerRoleItem[] = [
     created_by: 'System',
     created_at: '2026-01-01T00:00:00.000Z',
   },
+  {
+    id: 'default-security',
+    email: 'baove@ptithcm.edu.vn',
+    role_tier: 'security',
+    unit_code: 'TO_BAO_VE',
+    unit_name: 'Tổ Bảo Vệ & Quản Lý Chìa Khóa Cơ Sở Vật Chất',
+    full_name: 'Tổ Bảo Vệ Học Viện',
+    notes: 'Bộ phận kiểm tra phê duyệt & bàn giao chìa khóa phòng/hội trường',
+    created_by: 'System',
+    created_at: '2026-01-01T00:00:00.000Z',
+  },
 ];
 
 // In-memory runtime cache

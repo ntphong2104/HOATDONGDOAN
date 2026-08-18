@@ -30,6 +30,7 @@ export interface AuthContext {
   isSuperAdmin: boolean;
   isEventAdmin: boolean;
   isChecker: boolean;
+  isSecurity: boolean;
   tier: UserTier;
 }
 
@@ -85,14 +86,16 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     const isYouthUnion = explicitTier === 'youth_union' || lowerEmail.includes('doanthanhnien');
     const isCtsv = explicitTier === 'ctsv' || lowerEmail.includes('phongctsv');
     const isFacility = explicitTier === 'facility' || lowerEmail.includes('phongquantri');
+    const isSecurity = explicitTier === 'security' || lowerEmail.includes('baove') || lowerEmail.includes('security');
     const isEventAdmin = isSuperAdmin || isYouthUnion || isCtsv || isFacility || explicitTier === 'event_admin';
-    const isChecker = isEventAdmin || explicitTier === 'checker';
+    const isChecker = isEventAdmin || isSecurity || explicitTier === 'checker';
 
     return {
       email,
       isSuperAdmin,
       isEventAdmin,
       isChecker,
+      isSecurity,
       tier: explicitTier,
     };
   }
@@ -164,6 +167,13 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     lowerEmail === 'quantri@ptithcm.edu.vn' ||
     lowerEmail.includes('phongquantri');
 
+  const isSecurity =
+    explicitTier === 'security' ||
+    assignedOfficerRole?.role_tier === 'security' ||
+    lowerEmail === 'baove@ptithcm.edu.vn' ||
+    lowerEmail.includes('baove') ||
+    lowerEmail.includes('security');
+
   const isEventAdmin =
     isSuperAdmin ||
     isYouthUnion ||
@@ -178,6 +188,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   const isChecker =
     isSuperAdmin ||
     isSubAdminUnit ||
+    isSecurity ||
     (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) ||
     explicitTier === 'checker';
 
@@ -190,6 +201,8 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     tier = 'ctsv';
   } else if (isFacility) {
     tier = 'facility';
+  } else if (isSecurity) {
+    tier = 'security';
   } else if (isEventAdmin) {
     tier = 'event_admin';
   } else if (isChecker) {
@@ -201,6 +214,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     isSuperAdmin,
     isEventAdmin,
     isChecker,
+    isSecurity,
     tier,
   };
 }

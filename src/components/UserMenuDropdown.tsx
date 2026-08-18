@@ -128,6 +128,8 @@ export default function UserMenuDropdown({
       ? 'Phòng CTSV (Phê Duyệt)'
       : tier === 'facility'
       ? 'Phòng CSVC (Phê Duyệt)'
+      : tier === 'security'
+      ? 'Tổ Bảo Vệ (Bàn Giao Chìa Khóa)'
       : tier === 'event_admin'
       ? 'Admin Sự Kiện (LCĐ / CLB)'
       : tier === 'checker'
@@ -277,6 +279,22 @@ export default function UserMenuDropdown({
                     <ShieldCheckIcon size={16} />
                   </div>
                   <span>Bảng Quản Trị Toàn Trường</span>
+                </Link>
+              </li>
+            )}
+
+            {/* If Security or Super Admin or Facility */}
+            {(tier === 'security' || tier === 'super_admin' || tier === 'facility' || Boolean(currentUser?.isSecurity)) && (
+              <li>
+                <Link
+                  href="/security"
+                  className={styles.menuItem}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <div className={styles.menuItemIcon} style={{ color: '#059669', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span>🔑</span>
+                  </div>
+                  <span>Sổ Trực Bàn Giao Chìa Khóa</span>
                 </Link>
               </li>
             )}

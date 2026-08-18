@@ -216,10 +216,23 @@ export async function GET() {
     }
 
     const isCtsv =
-      assignedOfficerRole?.role_tier === 'ctsv';
+      assignedOfficerRole?.role_tier === 'ctsv' ||
+      email.toLowerCase() === 'ctsv@ptithcm.edu.vn' ||
+      email.toLowerCase().includes('phongctsv') ||
+      email.toLowerCase().includes('ctsv');
 
     const isFacility =
-      assignedOfficerRole?.role_tier === 'facility';
+      assignedOfficerRole?.role_tier === 'facility' ||
+      email.toLowerCase() === 'quantri@ptithcm.edu.vn' ||
+      email.toLowerCase().includes('quantri') ||
+      email.toLowerCase().includes('phongquantri') ||
+      email.toLowerCase().includes('csvc');
+
+    const isSecurity =
+      assignedOfficerRole?.role_tier === 'security' ||
+      email.toLowerCase() === 'baove@ptithcm.edu.vn' ||
+      email.toLowerCase().includes('baove') ||
+      email.toLowerCase().includes('security');
 
     const isSubAdminUnit =
       email.toLowerCase().startsWith('lcd') ||
@@ -240,6 +253,7 @@ export async function GET() {
     const isChecker =
       isSuperAdmin ||
       isSubAdminUnit ||
+      isSecurity ||
       (eventRoles?.some(r => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false);
 
     let tier: UserTier = 'user';
@@ -247,6 +261,7 @@ export async function GET() {
     else if (isYouthUnion) tier = 'youth_union';
     else if (isCtsv) tier = 'ctsv';
     else if (isFacility) tier = 'facility';
+    else if (isSecurity) tier = 'security';
     else if (isEventAdmin) tier = 'event_admin';
     else if (isChecker) tier = 'checker';
 
@@ -289,7 +304,7 @@ export async function GET() {
     }
 
     // If not a registered student and not any admin/approver role
-    if (!userRecord && !isSuperAdmin && !isEventAdmin && !isChecker && tier === 'user') {
+    if (!userRecord && !isSuperAdmin && !isEventAdmin && !isChecker && !isSecurity && tier === 'user') {
       return NextResponse.json({ success: false, error: 'Not Found', message: 'Tài khoản chưa được đăng ký trong hệ thống' }, { status: 404 });
     }
 
@@ -297,6 +312,7 @@ export async function GET() {
       youth_union: { mssv: 'DOAN-HV', name: 'Đ/c Bí Thư Đoàn Học Viện', classId: 'BCH-DOAN' },
       ctsv: { mssv: 'PHONG-CTSV', name: 'Phòng Công Tác Sinh Viên (CTSV)', classId: 'PHONG-BAN' },
       facility: { mssv: 'PHONG-CSVC', name: 'Phòng Quản Trị CSVC & Tổ Chức', classId: 'PHONG-BAN' },
+      security: { mssv: 'TO-BAOVE', name: 'Tổ Bảo Vệ (Bàn Giao Chìa Khóa)', classId: 'TO-BAO-VE' },
       super_admin: { mssv: 'SUPER_ADMIN', name: 'Super Admin Đoàn Trường', classId: 'SUPER-ADMIN' },
       event_admin: { mssv: 'EVENT_ADMIN', name: 'Admin Sự Kiện', classId: 'BAN-TO-CHUC' },
     };
