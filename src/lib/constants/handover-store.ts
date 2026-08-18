@@ -21,8 +21,14 @@ export async function getHandoverRegistryFromDb(supabase: SupabaseClient): Promi
       .eq('key', SETTINGS_KEY)
       .maybeSingle();
 
-    if (data?.value && typeof data.value === 'object') {
-      return data.value as HandoverRegistry;
+    if (data?.value) {
+      let parsed = data.value;
+      if (typeof parsed === 'string') {
+        try { parsed = JSON.parse(parsed); } catch {}
+      }
+      if (parsed && typeof parsed === 'object') {
+        return parsed as HandoverRegistry;
+      }
     }
   } catch (err) {
     console.warn('Could not read handover registry from system_settings:', err);
@@ -34,7 +40,7 @@ export async function saveHandoverRecordToDb(
   supabase: SupabaseClient,
   proposalId: string,
   record: HandoverRecord,
-  actorEmail: string
+  actorEmail?: string
 ): Promise<HandoverRegistry> {
   let currentRegistry: HandoverRegistry = {};
   try {
@@ -53,8 +59,7 @@ export async function saveHandoverRecordToDb(
   try {
     await supabase.from('system_settings').upsert({
       key: SETTINGS_KEY,
-      value: updatedRegistry,
-      updated_by: actorEmail,
+      value: JSON.stringify(updatedRegistry),
       updated_at: new Date().toISOString(),
     });
   } catch (err) {

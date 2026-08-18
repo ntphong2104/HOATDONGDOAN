@@ -379,18 +379,25 @@ export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit
       .eq('key', CUSTOM_UNITS_KEY)
       .maybeSingle();
 
-    if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
-      return data.value as OfficialUnit[];
-    } else {
-      // Pre-seed all official units directly into Supabase DB
-      await supabase.from('system_settings').upsert({
-        key: CUSTOM_UNITS_KEY,
-        value: OFFICIAL_UNITS,
-        updated_by: 'System',
-        updated_at: new Date().toISOString(),
-      });
-      return OFFICIAL_UNITS;
+    if (data?.value) {
+      let parsed = data.value;
+      if (typeof parsed === 'string') {
+        try {
+          parsed = JSON.parse(parsed);
+        } catch {}
+      }
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed as OfficialUnit[];
+      }
     }
+
+    // Pre-seed all official units directly into Supabase DB
+    await supabase.from('system_settings').upsert({
+      key: CUSTOM_UNITS_KEY,
+      value: JSON.stringify(OFFICIAL_UNITS),
+      updated_at: new Date().toISOString(),
+    });
+    return OFFICIAL_UNITS;
   } catch (err) {
     console.warn('Could not load custom units from DB:', err);
   }
@@ -400,13 +407,12 @@ export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit
 export async function saveCustomUnitsToDb(
   supabase: any,
   units: OfficialUnit[],
-  actorEmail: string
+  actorEmail?: string
 ): Promise<OfficialUnit[]> {
   try {
     await supabase.from('system_settings').upsert({
       key: CUSTOM_UNITS_KEY,
-      value: units,
-      updated_by: actorEmail,
+      value: JSON.stringify(units),
       updated_at: new Date().toISOString(),
     });
   } catch (err) {

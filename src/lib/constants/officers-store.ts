@@ -113,23 +113,30 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
         .eq('key', OFFICER_SETTINGS_KEY)
         .maybeSingle();
 
-      if (settingsData?.value && Array.isArray(settingsData.value)) {
-        const mapped = settingsData.value as OfficerRoleItem[];
-        if (!mapped.some((m) => m.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase())) {
-          mapped.unshift(DEFAULT_OFFICERS[0]);
+      if (settingsData?.value) {
+        let parsed = settingsData.value;
+        if (typeof parsed === 'string') {
+          try {
+            parsed = JSON.parse(parsed);
+          } catch {}
         }
-        inMemoryOfficers = mapped;
-        saveToFile(mapped);
-        return mapped;
-      } else {
-        // Auto-seed default officers to system_settings so it appears in DB
-        await supabase.from('system_settings').upsert({
-          key: OFFICER_SETTINGS_KEY,
-          value: DEFAULT_OFFICERS,
-          updated_at: new Date().toISOString(),
-          updated_by: 'System',
-        });
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const mapped = parsed as OfficerRoleItem[];
+          if (!mapped.some((m) => m.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase())) {
+            mapped.unshift(DEFAULT_OFFICERS[0]);
+          }
+          inMemoryOfficers = mapped;
+          saveToFile(mapped);
+          return mapped;
+        }
       }
+
+      // Auto-seed default officers to system_settings so it appears in DB
+      await supabase.from('system_settings').upsert({
+        key: OFFICER_SETTINGS_KEY,
+        value: JSON.stringify(DEFAULT_OFFICERS),
+        updated_at: new Date().toISOString(),
+      });
     } catch {}
   }
 
@@ -180,9 +187,8 @@ export async function saveOfficerRole(officer: OfficerRoleItem, supabase?: any):
     try {
       await supabase.from('system_settings').upsert({
         key: OFFICER_SETTINGS_KEY,
-        value: updated,
+        value: JSON.stringify(updated),
         updated_at: new Date().toISOString(),
-        updated_by: officer.created_by || 'Super Admin',
       });
     } catch {}
   }
@@ -225,9 +231,8 @@ export async function removeOfficerRole(email: string, roleTier?: string, id?: s
     try {
       await supabase.from('system_settings').upsert({
         key: OFFICER_SETTINGS_KEY,
-        value: updated,
+        value: JSON.stringify(updated),
         updated_at: new Date().toISOString(),
-        updated_by: 'Super Admin',
       });
     } catch {}
   }
