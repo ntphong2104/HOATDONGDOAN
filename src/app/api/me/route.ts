@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
+import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officers-store';
 import { parseDemoCookie } from '@/lib/supabase/auth-helper';
 import type { SessionUser, UserTier } from '@/lib/types';
 
@@ -189,63 +189,36 @@ export async function GET() {
     } catch {}
 
     const isSuperAdmin =
+      email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase() ||
       !!superAdmin ||
-      assignedOfficerRole?.role_tier === 'super_admin' ||
-      email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn';
+      assignedOfficerRole?.role_tier === 'super_admin';
 
     const isYouthUnion =
-      assignedOfficerRole?.role_tier === 'youth_union' ||
-      email.toLowerCase().includes('doanthanhnien') ||
-      email.toLowerCase() === 'doanthanhnien@ptithcm.edu.vn';
-
-    if ((isSuperAdmin || isYouthUnion) && typeof adminClient.from('super_admins')?.upsert === 'function') {
-      try {
-        await adminClient.from('super_admins').upsert({ email }, { onConflict: 'email' });
-      } catch {}
-    }
+      assignedOfficerRole?.role_tier === 'youth_union';
 
     const isCtsv =
-      assignedOfficerRole?.role_tier === 'ctsv' ||
-      email.toLowerCase() === 'ctsv@ptithcm.edu.vn' ||
-      email.toLowerCase().includes('phongctsv') ||
-      email.toLowerCase().includes('ctsv');
+      assignedOfficerRole?.role_tier === 'ctsv';
 
     const isFacility =
-      assignedOfficerRole?.role_tier === 'facility' ||
-      email.toLowerCase() === 'quantri@ptithcm.edu.vn' ||
-      email.toLowerCase().includes('quantri') ||
-      email.toLowerCase().includes('phongquantri') ||
-      email.toLowerCase().includes('tchc') ||
-      email.toLowerCase().includes('tchcqt') ||
-      email.toLowerCase().includes('csvc');
+      assignedOfficerRole?.role_tier === 'facility';
 
     const isSecurity =
-      assignedOfficerRole?.role_tier === 'security' ||
-      email.toLowerCase() === 'baove@ptithcm.edu.vn' ||
-      email.toLowerCase().includes('baove') ||
-      email.toLowerCase().includes('security');
-
-    const isSubAdminUnit =
-      email.toLowerCase().startsWith('lcd') ||
-      email.toLowerCase().startsWith('clb') ||
-      email.toLowerCase().startsWith('doi') ||
-      assignedOfficerRole?.role_tier === 'event_admin';
+      assignedOfficerRole?.role_tier === 'security';
 
     const isEventAdmin =
       isSuperAdmin ||
       isYouthUnion ||
       isCtsv ||
       isFacility ||
-      isSubAdminUnit ||
       assignedOfficerRole?.role_tier === 'event_admin' ||
-      (eventRoles?.some(r => r.role_type === 'event_admin') ?? false) ||
+      (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
       createdEvents.length > 0;
 
     const isChecker =
       isSuperAdmin ||
-      isSubAdminUnit ||
       isSecurity ||
-      (eventRoles?.some(r => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false);
+      assignedOfficerRole?.role_tier === 'checker' ||
+      (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false);
 
     let tier: UserTier = 'user';
     if (isSuperAdmin) tier = 'super_admin';

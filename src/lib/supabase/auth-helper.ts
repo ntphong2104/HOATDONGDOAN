@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from './server';
-import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
+import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officers-store';
 import type { UserTier } from '@/lib/types';
 import crypto from 'crypto';
 
@@ -169,46 +169,32 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   const isSubAdminUnit = lowerEmail.startsWith('lcd') || lowerEmail.startsWith('clb') || lowerEmail.startsWith('doi');
 
   const isSuperAdmin =
+    lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
     !!superAdmin ||
-    explicitTier === 'super_admin' ||
     assignedOfficerRole?.role_tier === 'super_admin' ||
-    lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
+    explicitTier === 'super_admin';
 
   const isYouthUnion =
-    explicitTier === 'youth_union' ||
     assignedOfficerRole?.role_tier === 'youth_union' ||
-    lowerEmail === 'doanthanhnien@ptithcm.edu.vn' ||
-    lowerEmail.includes('doanthanhnien') ||
-    lowerEmail.includes('doanhv');
+    explicitTier === 'youth_union';
 
   const isCtsv =
-    explicitTier === 'ctsv' ||
     assignedOfficerRole?.role_tier === 'ctsv' ||
-    lowerEmail === 'ctsv@ptithcm.edu.vn' ||
-    lowerEmail.includes('phongctsv');
+    explicitTier === 'ctsv';
 
   const isFacility =
-    explicitTier === 'facility' ||
     assignedOfficerRole?.role_tier === 'facility' ||
-    lowerEmail === 'quantri@ptithcm.edu.vn' ||
-    lowerEmail.includes('phongquantri') ||
-    lowerEmail.includes('tchc') ||
-    lowerEmail.includes('tchcqt') ||
-    lowerEmail.includes('csvc');
+    explicitTier === 'facility';
 
   const isSecurity =
-    explicitTier === 'security' ||
     assignedOfficerRole?.role_tier === 'security' ||
-    lowerEmail === 'baove@ptithcm.edu.vn' ||
-    lowerEmail.includes('baove') ||
-    lowerEmail.includes('security');
+    explicitTier === 'security';
 
   const isEventAdmin =
     isSuperAdmin ||
     isYouthUnion ||
     isCtsv ||
     isFacility ||
-    isSubAdminUnit ||
     hasCreatedEvents ||
     assignedOfficerRole?.role_tier === 'event_admin' ||
     (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
@@ -216,8 +202,8 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   const isChecker =
     isSuperAdmin ||
-    isSubAdminUnit ||
     isSecurity ||
+    assignedOfficerRole?.role_tier === 'checker' ||
     (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) ||
     explicitTier === 'checker';
 
