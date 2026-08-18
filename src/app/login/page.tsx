@@ -156,40 +156,27 @@ function LoginContent() {
           <span>Chỉ chấp nhận đuôi <strong>@student.ptithcm.edu.vn</strong> & <strong>@ptithcm.edu.vn</strong></span>
         </div>
 
-        {/* Thông tin hỗ trợ và chính sách phân quyền bảo mật */}
+        {/* Thông tin liên hệ hỗ trợ */}
         <div
           style={{
-            marginTop: '2rem',
-            padding: '1rem',
+            marginTop: '1.75rem',
+            padding: '0.75rem 1rem',
             background: '#f8fafc',
             border: '1px solid #e2e8f0',
-            borderRadius: '12px',
+            borderRadius: '10px',
             fontSize: '0.8rem',
             color: '#475569',
-            lineHeight: 1.55,
-            textAlign: 'left',
+            lineHeight: 1.5,
+            textAlign: 'center',
           }}
         >
-          <div
-            style={{
-              fontWeight: 800,
-              color: '#1e3a8a',
-              marginBottom: '0.4rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              fontSize: '0.8rem',
-            }}
+          <span>Mọi thắc mắc hoặc cần cấp quyền, vui lòng liên hệ <strong>BCH Đoàn Thanh niên</strong>: </span>
+          <a
+            href="mailto:doantn@ptithcm.edu.vn"
+            style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}
           >
-            <ShieldCheckIcon size={16} color="#1e3a8a" />
-            <span>HỆ THỐNG PHÂN QUYỀN BẢO MẬT TẬP TRUNG</span>
-          </div>
-          <p style={{ margin: '0 0 0.5rem 0', color: '#64748b', fontSize: '0.76rem' }}>
-            Tài khoản chức vụ (Đoàn Trường, CTSV, TC-HC-QT, Tổ Bảo Vệ, Ban Chủ Nhiệm Khoa, LCĐ/CLB) được phân quyền bởi <strong>Super Admin Gốc</strong> và tự động nhận diện theo Email Học Viện.
-          </p>
-          <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.5rem', fontSize: '0.75rem', color: '#475569' }}>
-            Liên hệ hỗ trợ: <a href="mailto:doantn@ptithcm.edu.vn" style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}>doantn@ptithcm.edu.vn</a>
-          </div>
+            doantn@ptithcm.edu.vn
+          </a>
         </div>
       </div>
     </div>
