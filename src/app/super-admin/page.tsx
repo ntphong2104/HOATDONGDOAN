@@ -430,6 +430,26 @@ function SuperAdminContent() {
     }
   };
 
+  const deleteAllEvents = async () => {
+    if (!confirm('CẢNH BÁO NGUY HIỂM: Bạn có chắc chắn muốn XÓA SẠCH TOÀN BỘ SỰ KIỆN và dữ liệu check-in trong hệ thống? Hành động này không thể hoàn tác!')) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/events/delete-all', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'Đã xóa sạch toàn bộ sự kiện', 'success');
+        fetchEvents();
+        fetchProposals();
+        fetchOfficers();
+      } else {
+        showToast(data.error || 'Lỗi xóa sự kiện', 'error');
+      }
+    } catch {
+      showToast('Lỗi kết nối máy chủ', 'error');
+    }
+  };
+
   const filteredEvents = React.useMemo(() => {
     if (!selectedUnitFilter) return events;
     return events.filter((ev) => {
@@ -1443,6 +1463,29 @@ function SuperAdminContent() {
                       }}
                     >
                       Bỏ lọc đơn vị (Xem tất cả)
+                    </button>
+                  )}
+                  {events.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={deleteAllEvents}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.5rem 0.85rem',
+                        background: '#fee2e2',
+                        color: '#b91c1c',
+                        border: '1px solid #fecaca',
+                        borderRadius: '8px',
+                        fontSize: '0.825rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <TrashIcon size={15} color="#b91c1c" />
+                      <span>Xóa Hết Sự Kiện ({events.length})</span>
                     </button>
                   )}
                   <Link
