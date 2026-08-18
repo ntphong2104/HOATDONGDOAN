@@ -9,6 +9,14 @@ import {
   CheckCircleIcon,
   SearchIcon,
   PlusIcon,
+  KeyIcon,
+  RefreshIcon,
+  BuildingIcon,
+  UserIcon,
+  FileTextIcon,
+  ExternalLinkIcon,
+  RotateCcwIcon,
+  InboxIcon,
 } from '@/components/icons';
 import type { EventProposal, SessionUser } from '@/lib/types';
 import styles from './page.module.css';
@@ -54,12 +62,12 @@ export default function SecurityDashboardClient({
 
     if (action === 'handover') {
       const confirmed = window.confirm(
-        `🔑 BÀN GIAO CHÌA KHÓA:\n\nXác nhận bàn giao chìa khóa phòng "${proposal.room_name}" cho đại diện chương trình "${proposal.title}"?`
+        `Xác nhận bàn giao chìa khóa phòng "${proposal.room_name}" cho đại diện chương trình "${proposal.title}"?`
       );
       if (!confirmed) return;
     } else if (action === 'return') {
       const confirmed = window.confirm(
-        `📥 NHẬN LẠI CHÌA KHÓA:\n\nXác nhận đã nhận lại chìa khóa phòng "${proposal.room_name}" từ chương trình "${proposal.title}"?`
+        `Xác nhận đã nhận lại chìa khóa phòng "${proposal.room_name}" từ chương trình "${proposal.title}"?`
       );
       if (!confirmed) return;
     }
@@ -182,7 +190,8 @@ export default function SecurityDashboardClient({
       <div className={styles.banner}>
         <div className={styles.bannerLeft}>
           <h1 className={styles.bannerTitle}>
-            <span>🛡️</span> SỔ TRỰC BÀN GIAO CHÌA KHÓA PHÒNG
+            <ShieldCheckIcon size={26} color="#ffffff" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px' }} />
+            SỔ TRỰC BÀN GIAO CHÌA KHÓA PHÒNG
           </h1>
           <p className={styles.bannerSubtitle}>
             Căn cứ danh sách các đơn mượn phòng / hội trường đã được <strong>phê duyệt đầy đủ</strong> (Đoàn Trường, CTSV, Phòng. TC-HC-QT) để bàn giao chìa khóa cho sinh viên.
@@ -193,7 +202,8 @@ export default function SecurityDashboardClient({
           className={styles.refreshButton}
           title="Tải lại dữ liệu mới nhất"
         >
-          🔄 Làm mới dữ liệu
+          <RefreshIcon size={16} style={{ marginRight: '6px' }} />
+          Làm mới dữ liệu
         </button>
       </div>
 
@@ -206,24 +216,24 @@ export default function SecurityDashboardClient({
           </span>
         </div>
         <div className={styles.statCard} style={{ borderColor: '#fde68a' }}>
-          <span className={styles.statLabel} style={{ color: '#b45309' }}>
-            ⏳ Chưa bàn giao chìa
+          <span className={styles.statLabel} style={{ color: '#b45309', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <ClockIcon size={14} color="#b45309" /> Chưa bàn giao chìa
           </span>
           <span className={styles.statValue} style={{ color: '#d97706' }}>
             {stats.pending}
           </span>
         </div>
         <div className={styles.statCard} style={{ borderColor: '#a7f3d0' }}>
-          <span className={styles.statLabel} style={{ color: '#047857' }}>
-            🟢 Đang mượn chìa
+          <span className={styles.statLabel} style={{ color: '#047857', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <KeyIcon size={14} color="#047857" /> Đang mượn chìa
           </span>
           <span className={styles.statValue} style={{ color: '#059669' }}>
             {stats.handedOver}
           </span>
         </div>
         <div className={styles.statCard} style={{ borderColor: '#cbd5e1' }}>
-          <span className={styles.statLabel} style={{ color: '#475569' }}>
-            ✓ Đã trả chìa khóa
+          <span className={styles.statLabel} style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <CheckCircleIcon size={14} color="#475569" /> Đã trả chìa khóa
           </span>
           <span className={styles.statValue} style={{ color: '#334155' }}>
             {stats.returned}
@@ -286,7 +296,7 @@ export default function SecurityDashboardClient({
       {/* List of Approved Room Loans */}
       {filteredProposals.length === 0 ? (
         <div className={styles.emptyState}>
-          <div style={{ fontSize: '2.5rem' }}>🏢</div>
+          <BuildingIcon size={44} color="#94a3b8" style={{ marginBottom: '12px' }} />
           <h3 className={styles.emptyStateTitle}>Không có lịch mượn phòng nào</h3>
           <p style={{ margin: 0, fontSize: '0.875rem' }}>
             {dateFilter === 'today'
@@ -305,24 +315,24 @@ export default function SecurityDashboardClient({
                 {/* Header */}
                 <div className={styles.roomCardHeader}>
                   <div className={styles.roomBadge}>
-                    <span>🏢</span>
+                    <BuildingIcon size={16} color="#1d4ed8" />
                     <span>{item.room_name}</span>
                   </div>
 
                   <div>
                     {keyStatus === 'pending' && (
                       <span className={`${styles.keyStatusBadge} ${styles.statusPending}`}>
-                        <span>🟡</span> Chưa bàn giao chìa khóa
+                        <ClockIcon size={14} color="#d97706" /> Chưa bàn giao chìa khóa
                       </span>
                     )}
                     {keyStatus === 'handed_over' && (
                       <span className={`${styles.keyStatusBadge} ${styles.statusHandedOver}`}>
-                        <span>🟢</span> Đang mượn (Giao lúc {formatTimeHHmm(item.key_handed_at)})
+                        <KeyIcon size={14} color="#059669" /> Đang mượn (Giao lúc {formatTimeHHmm(item.key_handed_at)})
                       </span>
                     )}
                     {keyStatus === 'returned' && (
                       <span className={`${styles.keyStatusBadge} ${styles.statusReturned}`}>
-                        <span>✓</span> Đã nhận lại chìa (Lúc {formatTimeHHmm(item.key_returned_at)})
+                        <CheckCircleIcon size={14} color="#16a34a" /> Đã nhận lại chìa (Lúc {formatTimeHHmm(item.key_returned_at)})
                       </span>
                     )}
                   </div>
@@ -335,7 +345,7 @@ export default function SecurityDashboardClient({
                     <h3 className={styles.eventTitle}>{item.title}</h3>
                     <div className={styles.metaList}>
                       <div className={styles.metaItem}>
-                        <span className={styles.metaItemIcon}>⏰</span>
+                        <ClockIcon size={15} color="#64748b" />
                         <span>
                           Thời gian:{' '}
                           <strong className={styles.timeHighlight}>
@@ -344,7 +354,7 @@ export default function SecurityDashboardClient({
                         </span>
                       </div>
                       <div className={styles.metaItem}>
-                        <span className={styles.metaItemIcon}>📅</span>
+                        <CalendarIcon size={15} color="#64748b" />
                         <span>
                           Ngày mượn:{' '}
                           <strong className={styles.metaHighlight}>
@@ -353,14 +363,14 @@ export default function SecurityDashboardClient({
                         </span>
                       </div>
                       <div className={styles.metaItem}>
-                        <span className={styles.metaItemIcon}>👥</span>
+                        <UsersIcon size={15} color="#64748b" />
                         <span>
                           Quy mô dự kiến:{' '}
                           <strong>{item.total_count || item.participant_count} người</strong>
                         </span>
                       </div>
                       <div className={styles.metaItem}>
-                        <span className={styles.metaItemIcon}>🏛️</span>
+                        <BuildingIcon size={15} color="#64748b" />
                         <span>
                           Đơn vị tổ chức: <strong>{item.organization_unit || 'Đoàn - Hội PTIT'}</strong>
                         </span>
@@ -370,14 +380,17 @@ export default function SecurityDashboardClient({
 
                   {/* Right: Borrower Representative Info & Verification */}
                   <div className={styles.borrowerCard}>
-                    <span className={styles.borrowerTitle}>👤 Người đại diện mượn phòng</span>
+                    <span className={styles.borrowerTitle} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <UserIcon size={14} color="#475569" /> Người đại diện mượn phòng
+                    </span>
                     <span className={styles.borrowerName}>{item.created_by}</span>
                     <span className={styles.borrowerMeta}>
                       Tình trạng phê duyệt: <strong style={{ color: '#16a34a' }}>✓ Đã duyệt 100% (Đủ điều kiện nhận chìa)</strong>
                     </span>
                     {item.description && (
                       <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: '#475569', background: '#ffffff', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                        📝 <em>{item.description.length > 90 ? item.description.slice(0, 90) + '...' : item.description}</em>
+                        <FileTextIcon size={13} color="#64748b" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />
+                        <em>{item.description.length > 90 ? item.description.slice(0, 90) + '...' : item.description}</em>
                       </div>
                     )}
                   </div>
@@ -392,8 +405,11 @@ export default function SecurityDashboardClient({
                         target="_blank"
                         rel="noopener noreferrer"
                         className={styles.planLink}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
-                        📄 Xem File Kế Hoạch Đính Kèm (PDF / Drive) ↗
+                        <FileTextIcon size={14} color="#2563eb" />
+                        <span>Xem File Kế Hoạch Đính Kèm</span>
+                        <ExternalLinkIcon size={13} color="#2563eb" />
                       </a>
                     ) : (
                       <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
@@ -408,8 +424,9 @@ export default function SecurityDashboardClient({
                         className={styles.btnHandover}
                         disabled={isProcessing}
                         onClick={() => handleKeyAction(item.id, 'handover')}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
-                        <span>🔑</span>
+                        <KeyIcon size={16} color="#ffffff" />
                         <span>Đã bàn giao chìa khóa</span>
                       </button>
                     )}
@@ -420,8 +437,9 @@ export default function SecurityDashboardClient({
                           className={styles.btnReturn}
                           disabled={isProcessing}
                           onClick={() => handleKeyAction(item.id, 'return')}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                         >
-                          <span>📥</span>
+                          <CheckCircleIcon size={16} color="#ffffff" />
                           <span>Đã nhận lại chìa khóa</span>
                         </button>
                         <button
@@ -429,8 +447,10 @@ export default function SecurityDashboardClient({
                           disabled={isProcessing}
                           onClick={() => handleKeyAction(item.id, 'reset')}
                           title="Hoàn tác về trạng thái Chưa bàn giao"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         >
-                          Hoàn tác
+                          <RotateCcwIcon size={13} />
+                          <span>Hoàn tác</span>
                         </button>
                       </>
                     )}
@@ -441,8 +461,10 @@ export default function SecurityDashboardClient({
                         disabled={isProcessing}
                         onClick={() => handleKeyAction(item.id, 'handover')}
                         title="Bấm để chuyển lại trạng thái Đang mượn nếu cần"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >
-                        Đổi trạng thái
+                        <RotateCcwIcon size={13} />
+                        <span>Đổi trạng thái</span>
                       </button>
                     )}
                   </div>

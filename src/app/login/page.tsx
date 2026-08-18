@@ -14,6 +14,7 @@ import {
   CalendarIcon,
   CheckCircleIcon,
   GoogleIcon,
+  KeyIcon,
 } from '@/components/icons';
 import DualLogos from '@/components/DualLogos';
 import styles from './login.module.css';
@@ -342,7 +343,7 @@ function LoginContent() {
               style={{ background: '#ecfdf5', borderColor: '#a7f3d0' }}
             >
               <span className={styles.demoBtnTitle}>
-                <span style={{ fontSize: '1rem' }}>🔑</span>
+                <KeyIcon size={15} color="#059669" />
                 Tổ Bảo Vệ
               </span>
               <span className={styles.demoBtnDesc}>Sổ Giao Chìa Khóa</span>

@@ -26,6 +26,7 @@ import {
   SidebarIcon,
   TrashIcon,
   QrCodeIcon,
+  KeyIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
@@ -2473,7 +2474,7 @@ function SuperAdminContent() {
                                   </span>
                                 ) : officer.role_tier === 'security' ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ecfdf5', color: '#047857', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <span>🔑</span>
+                                    <KeyIcon size={14} color="#047857" />
                                     <span>Tổ Bảo Vệ</span>
                                   </span>
                                 ) : (
@@ -2578,7 +2579,7 @@ function SuperAdminContent() {
                               </span>
                             ) : officer.role_tier === 'security' ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#ecfdf5', color: '#047857', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <span>🔑</span> Tổ Bảo Vệ
+                                <KeyIcon size={12} color="#047857" /> Tổ Bảo Vệ
                               </span>
                             ) : (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.72rem', fontWeight: 800 }}>

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
+import { getStoredProposals } from '@/lib/constants/proposals-store';
 import Header from '@/components/Header';
 import SecurityDashboardClient from './SecurityDashboardClient';
 import type { SessionUser, EventProposal } from '@/lib/types';
@@ -65,94 +66,27 @@ export default async function SecurityPage() {
     console.warn('Could not fetch proposals from DB in security page:', err);
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const tomorrowDate = new Date();
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+  const stored = getStoredProposals()
+    .filter((p) => p.status === 'approved' && p.room_name && p.room_name !== 'Không mượn')
+    .sort((a, b) => (a.start_datetime || '').localeCompare(b.start_datetime || ''));
 
-  const mockApprovedProposals: EventProposal[] = [
-    {
-      id: 'mock-prop-01',
-      title: 'Tập Huấn Kỹ Năng Cán Bộ Đoàn - Hội Năm 2026',
-      created_by: 'doanthanhnien@ptithcm.edu.vn',
-      organization_unit: 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
-      start_date: todayStr,
-      start_time: '07:30',
-      end_date: todayStr,
-      end_time: '11:30',
-      start_datetime: `${todayStr}T07:30:00.000Z`,
-      end_datetime: `${todayStr}T11:30:00.000Z`,
-      participant_count: 120,
-      volunteer_count: 10,
-      organizer_count: 10,
-      total_count: 140,
-      room_name: 'Hội trường 2A08',
-      requires_ctsv_approval: true,
-      requires_facility_approval: true,
-      current_stage: 'approved',
-      status: 'approved',
-      key_status: 'pending',
-      description: 'Chương trình tập huấn công tác phong trào & nghiệp vụ điểm danh sinh viên.',
-      plan_url: 'https://drive.google.com/file/d/sample-kehoach-doan/view',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 'mock-prop-02',
-      title: 'Workshop Lập Trình AI & Phát Triển Ứng Dụng Web',
-      created_by: 'clb.itmc@student.ptithcm.edu.vn',
-      organization_unit: 'CLB ITMC',
-      start_date: todayStr,
-      start_time: '13:30',
-      end_date: todayStr,
-      end_time: '17:00',
-      start_datetime: `${todayStr}T13:30:00.000Z`,
-      end_datetime: `${todayStr}T17:00:00.000Z`,
-      participant_count: 85,
-      volunteer_count: 5,
-      organizer_count: 10,
-      total_count: 100,
-      room_name: 'Phòng Hội Thảo 2B12',
-      requires_ctsv_approval: true,
-      requires_facility_approval: true,
-      current_stage: 'approved',
-      status: 'approved',
-      key_status: 'handed_over',
-      key_handed_at: `${todayStr}T13:15:00.000Z`,
-      key_handed_by: 'baove@ptithcm.edu.vn',
-      description: 'Chia sẻ kiến thức AI thực chiến và các công cụ lập trình mới nhất.',
-      plan_url: 'https://drive.google.com/file/d/sample-workshop-itmc/view',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 'mock-prop-03',
-      title: 'Giải Bóng Đá Mini Chào Tân Sinh Viên Khóa 2026',
-      created_by: 'clbbongda@student.ptithcm.edu.vn',
-      organization_unit: 'CLB Bóng Đá PTIT',
-      start_date: tomorrowStr,
-      start_time: '08:00',
-      end_date: tomorrowStr,
-      end_time: '11:00',
-      start_datetime: `${tomorrowStr}T08:00:00.000Z`,
-      end_datetime: `${tomorrowStr}T11:00:00.000Z`,
-      participant_count: 60,
-      volunteer_count: 8,
-      organizer_count: 6,
-      total_count: 74,
-      room_name: 'Sân Vận Động Đa Năng',
-      requires_ctsv_approval: true,
-      requires_facility_approval: true,
-      current_stage: 'approved',
-      status: 'approved',
-      key_status: 'pending',
-      description: 'Giải đấu giao lưu thể thao tân sinh viên các khoa.',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ];
-
-  const finalProposals = dbProposals.length > 0 ? dbProposals : mockApprovedProposals;
+  let finalProposals: EventProposal[] = [];
+  if (dbProposals.length > 0) {
+    const storedMap = new Map(stored.map(s => [s.id, s]));
+    finalProposals = dbProposals.map(p => {
+      const local = storedMap.get(p.id);
+      return {
+        ...p,
+        key_status: p.key_status || local?.key_status || 'pending',
+        key_handed_at: p.key_handed_at || local?.key_handed_at || null,
+        key_handed_by: p.key_handed_by || local?.key_handed_by || null,
+        key_returned_at: p.key_returned_at || local?.key_returned_at || null,
+        key_returned_by: p.key_returned_by || local?.key_returned_by || null,
+      };
+    });
+  } else {
+    finalProposals = stored;
+  }
 
   const sessionUser: SessionUser = {
     mssv: 'TO-BAOVE',

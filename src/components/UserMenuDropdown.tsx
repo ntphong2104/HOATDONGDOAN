@@ -14,6 +14,7 @@ import {
   CalendarIcon,
   YouthUnionIcon,
   UsersIcon,
+  KeyIcon,
 } from '@/components/icons';
 import type { SessionUser } from '@/lib/types';
 import styles from './UserMenuDropdown.module.css';
@@ -292,8 +293,8 @@ export default function UserMenuDropdown({
                   className={styles.menuItem}
                   onClick={() => setIsOpen(false)}
                 >
-                  <div className={styles.menuItemIcon} style={{ color: '#059669', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span>🔑</span>
+                  <div className={styles.menuItemIcon} style={{ color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <KeyIcon size={16} color="#059669" />
                   </div>
                   <span>Sổ Trực Bàn Giao Chìa Khóa</span>
                 </Link>

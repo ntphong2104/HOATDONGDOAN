@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
+import { getStoredProposalById, saveProposalToStore } from '@/lib/constants/proposals-store';
 
 export async function POST(req: Request) {
   try {
@@ -76,29 +77,41 @@ export async function POST(req: Request) {
       };
     }
 
-    const { data, error } = await supabase
-      .from('event_proposals')
-      .update(updatePayload)
-      .eq('id', proposal_id)
-      .select()
-      .single();
+    let returnData: any = null;
 
-    if (error) {
-      console.warn('Failed to update key status in event_proposals:', error.message);
-      // Fallback: return success with simulated response if column not created yet in DB
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: proposal_id,
-          ...updatePayload,
-        },
-        message: action === 'handover' ? 'Đã ghi nhận bàn giao chìa khóa thành công' : 'Đã ghi nhận nhận lại chìa khóa thành công',
+    try {
+      const { data, error } = await supabase
+        .from('event_proposals')
+        .update(updatePayload)
+        .eq('id', proposal_id)
+        .select()
+        .single();
+
+      if (!error && data) {
+        returnData = data;
+      }
+    } catch {}
+
+    // Also update local persistent store
+    const storedProp = getStoredProposalById(proposal_id);
+    if (storedProp) {
+      const updated = saveProposalToStore({
+        ...storedProp,
+        ...updatePayload,
       });
+      if (!returnData) returnData = updated;
+    }
+
+    if (!returnData) {
+      returnData = {
+        id: proposal_id,
+        ...updatePayload,
+      };
     }
 
     return NextResponse.json({
       success: true,
-      data,
+      data: returnData,
       message: action === 'handover' ? 'Đã ghi nhận bàn giao chìa khóa thành công' : 'Đã ghi nhận nhận lại chìa khóa thành công',
     });
   } catch (err: any) {

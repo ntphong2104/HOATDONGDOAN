@@ -54,16 +54,19 @@ interface ProposalStoreData {
 let inMemoryData: ProposalStoreData | null = null;
 
 function loadStore(): ProposalStoreData {
-  if (inMemoryData) return inMemoryData;
   try {
     if (fs.existsSync(STORE_PATH)) {
       const content = fs.readFileSync(STORE_PATH, 'utf8');
-      inMemoryData = JSON.parse(content);
-      return inMemoryData!;
+      const parsed = JSON.parse(content);
+      if (parsed && Array.isArray(parsed.proposals)) {
+        inMemoryData = parsed;
+        return parsed;
+      }
     }
   } catch (e) {
-    console.warn('Failed to load .proposals_store.json, using defaults:', e);
+    console.warn('Failed to load .proposals_store.json, using fallback:', e);
   }
+  if (inMemoryData) return inMemoryData;
   inMemoryData = { proposals: INITIAL_PROPOSALS, logs: INITIAL_LOGS };
   saveStore(inMemoryData);
   return inMemoryData;

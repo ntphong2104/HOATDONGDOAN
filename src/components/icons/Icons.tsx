@@ -450,4 +450,38 @@ export const TrashIcon = createIcon(
   </>
 );
 
+export const KeyIcon = createIcon(
+  'KeyIcon',
+  <>
+    <path d="M21 2l-2 2m-1.5 1.5L16 7l-2-2-4 4 1.5 1.5-2 2-1.5-1.5L6 13l-4 4v4h4l4-4 2 2 2-2-1.5-1.5L16 11l2 2 1.5-1.5L21 13l2-2-2-2z" />
+    <circle cx="7.5" cy="16.5" r="1.5" />
+  </>
+);
+
+export const ExternalLinkIcon = createIcon(
+  'ExternalLinkIcon',
+  <>
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </>
+);
+
+export const RotateCcwIcon = createIcon(
+  'RotateCcwIcon',
+  <>
+    <polyline points="1 4 1 10 7 10" />
+    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+  </>
+);
+
+export const InboxIcon = createIcon(
+  'InboxIcon',
+  <>
+    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+    <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+  </>
+);
+
+
 

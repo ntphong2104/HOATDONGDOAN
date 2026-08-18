@@ -56,13 +56,23 @@ export async function GET(req: Request) {
       query = query.eq('status', status);
     }
 
-    const { data: proposals, error } = await query;
-
     if (!error && proposals) {
+      const stored = getStoredProposals();
+      const storedMap = new Map(stored.map(s => [s.id, s]));
+
       const { data: allRatings } = await supabase.from('unit_ratings').select('*');
       const proposalsWithRatings = proposals.map((prop) => {
+        const local = storedMap.get(prop.id);
         const summary = summarizeUnitRatings(allRatings || [], prop.organization_unit || 'Đơn vị tổ chức');
-        return { ...prop, ratingSummary: summary };
+        return {
+          ...prop,
+          key_status: prop.key_status || local?.key_status || 'pending',
+          key_handed_at: prop.key_handed_at || local?.key_handed_at || null,
+          key_handed_by: prop.key_handed_by || local?.key_handed_by || null,
+          key_returned_at: prop.key_returned_at || local?.key_returned_at || null,
+          key_returned_by: prop.key_returned_by || local?.key_returned_by || null,
+          ratingSummary: summary,
+        };
       });
       return NextResponse.json({ success: true, data: proposalsWithRatings });
     }
