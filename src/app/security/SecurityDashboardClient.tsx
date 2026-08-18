@@ -123,9 +123,9 @@ export default function SecurityDashboardClient({
     }
   };
 
-  // Filtered list
+  // Filtered and Smartly Sorted list
   const filteredProposals = useMemo(() => {
-    return proposals.filter((p) => {
+    const list = proposals.filter((p) => {
       // 1. Date Filter
       const pStartDate = p.start_date || (p.start_datetime ? p.start_datetime.split('T')[0] : '');
       if (dateFilter === 'today' && pStartDate !== todayStr) {
@@ -151,6 +151,39 @@ export default function SecurityDashboardClient({
       }
 
       return true;
+    });
+
+    // Smart Sort: Lịch gần nhất / sắp tới hiện lên trên, lịch đã qua để xuống dưới
+    return list.sort((a, b) => {
+      const dateA = a.start_date || (a.start_datetime ? a.start_datetime.split('T')[0] : '');
+      const dateB = b.start_date || (b.start_datetime ? b.start_datetime.split('T')[0] : '');
+
+      const isPastA = dateA < todayStr;
+      const isPastB = dateB < todayStr;
+
+      // 1. Lịch hôm nay & sắp tới lên trước (-1), Lịch đã qua xuống dưới (1)
+      if (!isPastA && isPastB) return -1;
+      if (isPastA && !isPastB) return 1;
+
+      // 2. Nếu cùng là lịch sắp tới: Cái nào gần thời điểm hiện tại nhất thì lên đầu (tăng dần theo thời gian)
+      if (!isPastA && !isPastB) {
+        const timeA = a.start_datetime
+          ? new Date(a.start_datetime).getTime()
+          : new Date(`${dateA}T${a.start_time || '00:00'}`).getTime();
+        const timeB = b.start_datetime
+          ? new Date(b.start_datetime).getTime()
+          : new Date(`${dateB}T${b.start_time || '00:00'}`).getTime();
+        return timeA - timeB;
+      }
+
+      // 3. Nếu cùng là lịch đã qua: Cái nào mới diễn ra gần đây nhất thì ở trên của nhóm đã qua (giảm dần)
+      const timeA = a.start_datetime
+        ? new Date(a.start_datetime).getTime()
+        : new Date(`${dateA}T${a.start_time || '00:00'}`).getTime();
+      const timeB = b.start_datetime
+        ? new Date(b.start_datetime).getTime()
+        : new Date(`${dateB}T${b.start_time || '00:00'}`).getTime();
+      return timeB - timeA;
     });
   }, [proposals, dateFilter, customDate, searchQuery, todayStr, tomorrowStr]);
 
@@ -260,7 +293,7 @@ export default function SecurityDashboardClient({
             className={`${styles.dateTab} ${dateFilter === 'all' ? styles.dateTabActive : ''}`}
             onClick={() => setDateFilter('all')}
           >
-            Tất cả lịch sắp tới
+            Tất cả lịch
           </button>
           <button
             className={`${styles.dateTab} ${dateFilter === 'custom' ? styles.dateTabActive : ''}`}
@@ -360,6 +393,16 @@ export default function SecurityDashboardClient({
                           <strong className={styles.metaHighlight}>
                             {formatDateVi(item.start_date || item.start_datetime?.split('T')[0])}
                           </strong>
+                          {(item.start_date || item.start_datetime?.split('T')[0]) === todayStr && (
+                            <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: '#16a34a', fontWeight: 800, background: '#dcfce7', padding: '1px 6px', borderRadius: '4px' }}>
+                              Hôm nay
+                            </span>
+                          )}
+                          {(item.start_date || item.start_datetime?.split('T')[0]) && (item.start_date || item.start_datetime?.split('T')[0])! < todayStr && (
+                            <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, background: '#f1f5f9', padding: '1px 6px', borderRadius: '4px' }}>
+                              Đã diễn ra
+                            </span>
+                          )}
                         </span>
                       </div>
                       <div className={styles.metaItem}>
