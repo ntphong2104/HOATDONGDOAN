@@ -403,13 +403,9 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
           created_at: d.created_at || new Date().toISOString(),
         }));
 
-        // Merge all official unit accounts if not already present
-        const existingKeys = new Set(mapped.map((m) => `${m.email.toLowerCase()}-${m.role_tier}`));
-        for (const def of DEFAULT_OFFICERS) {
-          const k = `${def.email.toLowerCase()}-${def.role_tier}`;
-          if (!existingKeys.has(k)) {
-            mapped.push(def);
-          }
+        // Always ensure Root Super Admin is present
+        if (!mapped.some((m) => m.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase())) {
+          mapped.unshift(DEFAULT_OFFICERS[0]);
         }
 
         // Cache in memory and file
@@ -436,12 +432,8 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
         }
         if (Array.isArray(parsed) && parsed.length > 0) {
           const mapped = parsed as OfficerRoleItem[];
-          const existingKeys = new Set(mapped.map((m) => `${m.email.toLowerCase()}-${m.role_tier}`));
-          for (const def of DEFAULT_OFFICERS) {
-            const k = `${def.email.toLowerCase()}-${def.role_tier}`;
-            if (!existingKeys.has(k)) {
-              mapped.push(def);
-            }
+          if (!mapped.some((m) => m.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase())) {
+            mapped.unshift(DEFAULT_OFFICERS[0]);
           }
           inMemoryOfficers = mapped;
           saveToFile(mapped);
@@ -449,7 +441,7 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
         }
       }
 
-      // Auto-seed default officers to system_settings so it appears in DB
+      // Auto-seed default officers to system_settings only when completely empty
       await supabase.from('system_settings').upsert({
         key: OFFICER_SETTINGS_KEY,
         value: JSON.stringify(DEFAULT_OFFICERS),
