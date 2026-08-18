@@ -90,7 +90,7 @@ describe('/api/checkin/self additional branches', () => {
     mockRateLimit.mockReturnValue({ allowed: true, remaining: 4, resetInSeconds: 10, limit: 5 });
     mockDeadline.mockReturnValue(false);
 
-    (cookies().get as jest.Mock).mockReturnValue({ value: JSON.stringify({ email: 'n22dccn001@student.ptithcm.edu.vn' }) });
+    (cookies().get as jest.Mock).mockReturnValue({ value: JSON.stringify({ email: 'n22dccn001@student.ptithcm.edu.vn', tier: 'user' }) });
   });
 
   test('returns 503 during maintenance mode', async () => {

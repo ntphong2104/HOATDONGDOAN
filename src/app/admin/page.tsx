@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import Header from '@/components/Header';
 import AdminDashboardClient from './AdminDashboardClient';
@@ -22,7 +22,7 @@ export default async function AdminEventsPage() {
     redirect('/');
   }
 
-  const supabase = await createClient();
+  const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
 
   // Fetch events for admin
   let eventsQuery = supabase.from('events').select('*').order('created_at', { ascending: false });
@@ -32,7 +32,7 @@ export default async function AdminEventsPage() {
     const { data: eventRoles } = await supabase
       .from('event_roles')
       .select('event_id')
-      .eq('email', auth.email)
+      .ilike('email', auth.email)
       .eq('role_type', 'event_admin');
 
     const roleEventIds = (eventRoles || []).map((r) => r.event_id);

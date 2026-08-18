@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { verifyDynamicToken } from '@/lib/utils/dynamic-qr';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
@@ -9,11 +10,27 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 export async function POST(req: Request) {
   try {
     const auth = await getAuthContext();
-    if (!auth?.email) {
-      return NextResponse.json({ success: false, error: 'Vui lòng đăng nhập để điểm danh' }, { status: 401 });
+    let email = auth?.email || null;
+
+    if (!email) {
+      try {
+        const cookieStore = await cookies();
+        const demoCookie = cookieStore.get('demo_session');
+        if (demoCookie?.value) {
+          try {
+            const parsed = JSON.parse(demoCookie.value);
+            email = parsed?.email || null;
+          } catch {
+            const parsed = JSON.parse(decodeURIComponent(demoCookie.value));
+            email = parsed?.email || null;
+          }
+        }
+      } catch {}
     }
 
-    const email = auth.email;
+    if (!email) {
+      return NextResponse.json({ success: false, error: 'Vui lòng đăng nhập để điểm danh' }, { status: 401 });
+    }
     const supabase = await createAdminClient();
 
     // Rate Limiting: Max 5 attempts per 10 seconds per student to prevent spam / brute-force

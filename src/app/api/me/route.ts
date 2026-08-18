@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
 import type { SessionUser, UserTier } from '@/lib/types';
 
@@ -33,7 +33,7 @@ export async function GET() {
       }
       if (demoUser && demoUser.email) {
         try {
-          const supabase = await createClient();
+          const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
 
           let assignedOfficerRole: any = null;
           try {
@@ -100,6 +100,7 @@ export async function GET() {
           const tier: UserTier = assignedOfficerRole?.role_tier || demoUser.tier || 'user';
           const isSuperAdmin = tier === 'super_admin' || demoUser.isSuperAdmin || demoUser.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn';
           const isEventAdmin = isSuperAdmin || tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'event_admin' || managed_events.length > 0;
+          const isChecker = isEventAdmin || tier === 'checker' || demoUser.isChecker;
 
           return NextResponse.json({
             success: true,
@@ -108,6 +109,7 @@ export async function GET() {
               tier,
               isSuperAdmin,
               isEventAdmin,
+              isChecker,
               unit_name: assignedOfficerRole?.unit_name || demoUser.unit_name,
               unit_code: assignedOfficerRole?.unit_code || demoUser.unit_code,
               managed_events,
@@ -123,6 +125,8 @@ export async function GET() {
   }
 
   const supabase = await createClient();
+  const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : supabase) || supabase;
+
   let email: string | null = null;
   let authMetadata: any = null;
 
@@ -147,7 +151,7 @@ export async function GET() {
   }
   
   try {
-    const { data: user } = await supabase
+    const { data: user } = await adminClient
       .from('users')
       .select('mssv, full_name, class_id')
       .eq('email', email)
@@ -155,11 +159,13 @@ export async function GET() {
 
     let superAdmin = null;
     try {
-      const res = await supabase.from('super_admins').select('email').eq('email', email).single();
+      const q = adminClient.from('super_admins').select('email');
+      const res = typeof q.ilike === 'function' ? await q.ilike('email', email).maybeSingle() : (typeof q.eq === 'function' ? await q.eq('email', email).single() : null);
       superAdmin = res?.data || null;
     } catch {
       try {
-        const res = await supabase.from('super_admins').select('email').eq('email', email);
+        const q = adminClient.from('super_admins').select('email');
+        const res = typeof q.eq === 'function' ? await q.eq('email', email) : null;
         superAdmin = Array.isArray(res?.data) ? res.data[0] : res?.data;
       } catch {}
     }
@@ -167,21 +173,30 @@ export async function GET() {
     // Check dynamic officer_roles via persistent store
     let assignedOfficerRole: any = null;
     try {
-      const roles = await getStoredOfficerRoles(supabase);
+      const roles = await getStoredOfficerRoles(adminClient);
       assignedOfficerRole = roles.find((r) => r.email.toLowerCase() === email.toLowerCase());
     } catch {}
 
     let eventRoles: any = [];
     try {
-      const res = await supabase
+      const q = adminClient
         .from('event_roles')
         .select(`
           event_id,
           role_type,
           events (event_name, status, is_active, event_date, start_time, end_time)
-        `)
-        .eq('email', email);
+        `);
+      const res = typeof q.ilike === 'function' ? await q.ilike('email', email) : (typeof q.eq === 'function' ? await q.eq('email', email) : null);
       eventRoles = res?.data || [];
+    } catch {}
+
+    let createdEvents: any = [];
+    try {
+      const q = adminClient
+        .from('events')
+        .select('event_id, event_name, status, is_active, event_date, start_time, end_time');
+      const res = typeof q.ilike === 'function' ? await q.ilike('created_by', email) : (typeof q.eq === 'function' ? await q.eq('created_by', email) : null);
+      if (res?.data) createdEvents = res.data;
     } catch {}
 
     const isSuperAdmin =
@@ -194,9 +209,9 @@ export async function GET() {
       email.toLowerCase().includes('doanthanhnien') ||
       email.toLowerCase() === 'doanthanhnien@ptithcm.edu.vn';
 
-    if ((isSuperAdmin || isYouthUnion) && typeof supabase.from('super_admins')?.upsert === 'function') {
+    if ((isSuperAdmin || isYouthUnion) && typeof adminClient.from('super_admins')?.upsert === 'function') {
       try {
-        await supabase.from('super_admins').upsert({ email }, { onConflict: 'email' });
+        await adminClient.from('super_admins').upsert({ email }, { onConflict: 'email' });
       } catch {}
     }
 
@@ -219,7 +234,8 @@ export async function GET() {
       isFacility ||
       isSubAdminUnit ||
       assignedOfficerRole?.role_tier === 'event_admin' ||
-      (eventRoles?.some(r => r.role_type === 'event_admin') ?? false);
+      (eventRoles?.some(r => r.role_type === 'event_admin') ?? false) ||
+      createdEvents.length > 0;
 
     const isChecker =
       isSuperAdmin ||
@@ -252,8 +268,8 @@ export async function GET() {
       }
 
       try {
-        if (supabase.from('users')?.upsert) {
-          await supabase.from('users').upsert(
+        if (adminClient.from('users')?.upsert) {
+          await adminClient.from('users').upsert(
             {
               mssv: username,
               email,
@@ -295,7 +311,7 @@ export async function GET() {
 
     let managed_events: any[] = [];
     if (isSuperAdmin) {
-      const { data: allEvents } = await supabase
+      const { data: allEvents } = await adminClient
         .from('events')
         .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
         .order('created_at', { ascending: false });
@@ -311,16 +327,37 @@ export async function GET() {
         end_time: e.end_time,
       }));
     } else {
-      managed_events = (eventRoles || []).map((r: any) => ({
-        event_id: r.event_id,
-        event_name: r.events?.event_name || 'Không rõ',
-        role_type: r.role_type,
-        status: (r.events as any)?.status,
-        is_active: (r.events as any)?.is_active,
-        event_date: (r.events as any)?.event_date,
-        start_time: (r.events as any)?.start_time,
-        end_time: (r.events as any)?.end_time,
-      }));
+      const seenEventIds = new Set<string>();
+      for (const r of eventRoles || []) {
+        if (r.event_id && !seenEventIds.has(r.event_id)) {
+          managed_events.push({
+            event_id: r.event_id,
+            event_name: r.events?.event_name || 'Không rõ',
+            role_type: r.role_type,
+            status: (r.events as any)?.status,
+            is_active: (r.events as any)?.is_active,
+            event_date: (r.events as any)?.event_date,
+            start_time: (r.events as any)?.start_time,
+            end_time: (r.events as any)?.end_time,
+          });
+          seenEventIds.add(r.event_id);
+        }
+      }
+      for (const ce of createdEvents) {
+        if (ce.event_id && !seenEventIds.has(ce.event_id)) {
+          managed_events.push({
+            event_id: ce.event_id,
+            event_name: ce.event_name,
+            role_type: 'event_admin',
+            status: ce.status,
+            is_active: ce.is_active,
+            event_date: ce.event_date,
+            start_time: ce.start_time,
+            end_time: ce.end_time,
+          });
+          seenEventIds.add(ce.event_id);
+        }
+      }
     }
 
     const sessionUser: SessionUser = {
@@ -329,6 +366,9 @@ export async function GET() {
       full_name: resolvedUser.full_name,
       class_id: resolvedUser.class_id,
       tier,
+      isSuperAdmin,
+      isEventAdmin,
+      isChecker,
       avatar_url: avatarUrl,
       unit_name: assignedOfficerRole?.unit_name,
       unit_code: assignedOfficerRole?.unit_code,

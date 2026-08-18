@@ -1,5 +1,4 @@
-import { cookies } from 'next/headers';
-import { createClient } from './server';
+import { createClient, createAdminClient } from './server';
 import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
 import type { UserTier } from '@/lib/types';
 import crypto from 'crypto';
@@ -80,32 +79,61 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     return null;
   }
 
+  if (explicitTier) {
+    const lowerEmail = email.toLowerCase();
+    const isSuperAdmin = explicitTier === 'super_admin' || lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
+    const isYouthUnion = explicitTier === 'youth_union' || lowerEmail.includes('doanthanhnien');
+    const isCtsv = explicitTier === 'ctsv' || lowerEmail.includes('phongctsv');
+    const isFacility = explicitTier === 'facility' || lowerEmail.includes('phongquantri');
+    const isEventAdmin = isSuperAdmin || isYouthUnion || isCtsv || isFacility || explicitTier === 'event_admin';
+    const isChecker = isEventAdmin || explicitTier === 'checker';
+
+    return {
+      email,
+      isSuperAdmin,
+      isEventAdmin,
+      isChecker,
+      tier: explicitTier,
+    };
+  }
+
+  const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : null) || supabase;
+
   // Check super_admins table
   let superAdmin: any = null;
   try {
-    const { data } = await supabase
-      .from('super_admins')
-      .select('email')
-      .ilike('email', email)
-      .maybeSingle();
+    const q = adminClient.from('super_admins').select('email');
+    const { data } = typeof q.ilike === 'function'
+      ? await q.ilike('email', email).maybeSingle()
+      : await q.eq('email', email).maybeSingle();
     superAdmin = data;
   } catch {}
 
   // Check dynamic officer_roles via persistent store
   let assignedOfficerRole: any = null;
   try {
-    const roles = await getStoredOfficerRoles(supabase);
+    const roles = await getStoredOfficerRoles(adminClient);
     assignedOfficerRole = roles.find((r) => r.email.toLowerCase() === email.toLowerCase());
   } catch {}
 
   // Check event_roles table
   let eventRoles: any = [];
   try {
-    const { data } = await supabase
-      .from('event_roles')
-      .select('role_type')
-      .ilike('email', email);
+    const q = adminClient.from('event_roles').select('role_type');
+    const { data } = typeof q.ilike === 'function'
+      ? await q.ilike('email', email)
+      : await q.eq('email', email);
     eventRoles = data || [];
+  } catch {}
+
+  // Check if created any events
+  let hasCreatedEvents = false;
+  try {
+    const q = adminClient.from('events').select('event_id');
+    const { data } = typeof q.ilike === 'function'
+      ? await q.ilike('created_by', email).limit(1)
+      : await q.eq('created_by', email).limit(1);
+    hasCreatedEvents = Boolean(data && data.length > 0);
   } catch {}
 
   const lowerEmail = email.toLowerCase();
@@ -142,6 +170,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     isCtsv ||
     isFacility ||
     isSubAdminUnit ||
+    hasCreatedEvents ||
     assignedOfficerRole?.role_tier === 'event_admin' ||
     (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
     explicitTier === 'event_admin';

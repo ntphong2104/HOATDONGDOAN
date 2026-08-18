@@ -282,7 +282,7 @@ export default function UserMenuDropdown({
             )}
 
             {/* If Event Admin or Super Admin */}
-            {(tier === 'super_admin' || tier === 'event_admin') && (
+            {(tier === 'super_admin' || tier === 'event_admin' || Boolean(currentUser?.isEventAdmin) || Boolean(currentUser?.isSuperAdmin) || Boolean(currentUser?.managed_events && currentUser.managed_events.length > 0)) && (
               <>
                 <li>
                   <Link
@@ -313,7 +313,7 @@ export default function UserMenuDropdown({
 
             {/* If Checker or above (not pure approver) */}
             {!isPureApprover &&
-              (tier === 'super_admin' || tier === 'event_admin' || tier === 'checker') && (
+              (tier === 'super_admin' || tier === 'event_admin' || tier === 'checker' || Boolean(currentUser?.isChecker) || Boolean(currentUser?.isEventAdmin) || Boolean(currentUser?.isSuperAdmin) || Boolean(currentUser?.managed_events && currentUser.managed_events.length > 0)) && (
                 <li>
                   <Link
                     href="/scanner"

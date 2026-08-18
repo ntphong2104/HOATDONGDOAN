@@ -76,7 +76,10 @@ export default async function HomePage({
     full_name: user.full_name,
     class_id: user.class_id,
     email: auth.email,
-    tier: 'user',
+    tier: auth.tier,
+    isSuperAdmin: auth.isSuperAdmin,
+    isEventAdmin: auth.isEventAdmin,
+    isChecker: auth.isChecker,
     managed_events: [],
   };
 
