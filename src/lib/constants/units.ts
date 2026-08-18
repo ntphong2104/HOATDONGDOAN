@@ -9,11 +9,11 @@ export interface OfficialUnit {
   email: string;
 }
 
-// 8 Khoa Đào Tạo của Học Viện
+// 5 Khoa Đào Tạo của Học Viện Cơ Sở TP.HCM
 export const ACADEMIC_FACULTIES: OfficialUnit[] = [
   {
     code: 'KHOA_CNTT',
-    name: 'Khoa Công Nghệ Thông Tin 1',
+    name: 'Khoa Công Nghệ Thông Tin 2',
     type: 'Khoa Đào Tạo',
     email: 'khoacntt@ptithcm.edu.vn',
   },
@@ -40,24 +40,6 @@ export const ACADEMIC_FACULTIES: OfficialUnit[] = [
     name: 'Khoa Cơ Bản 2',
     type: 'Khoa Đào Tạo',
     email: 'khoacoban@ptithcm.edu.vn',
-  },
-  {
-    code: 'KHOA_CNDPT',
-    name: 'Khoa Đa Phương Tiện',
-    type: 'Khoa Đào Tạo',
-    email: 'khoadpt@ptithcm.edu.vn',
-  },
-  {
-    code: 'KHOA_TCKT',
-    name: 'Khoa Tài Chính Kế Toán 2',
-    type: 'Khoa Đào Tạo',
-    email: 'khoakt@ptithcm.edu.vn',
-  },
-  {
-    code: 'KHOA_ATTT',
-    name: 'Khoa An Toàn Thông Tin',
-    type: 'Khoa Đào Tạo',
-    email: 'khoaattt@ptithcm.edu.vn',
   },
 ];
 
@@ -374,6 +356,7 @@ const CUSTOM_UNITS_KEY = 'custom_units_registry';
 const NON_STUDENT_UNIT_CODES = new Set([
   'KHOA_CNTT',
   'KHOA_DT',
+  'KHOA_VT',
   'KHOA_CB',
   'KHOA_QTKD',
   'BCH_DOAN',

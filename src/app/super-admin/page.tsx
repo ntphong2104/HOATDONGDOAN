@@ -2406,7 +2406,7 @@ function SuperAdminContent() {
                         boxSizing: 'border-box',
                       }}
                     >
-                      <optgroup label="🏢 Khoa Đào Tạo (8 Khoa)">
+                      <optgroup label="🏢 Khoa Đào Tạo (5 Khoa)">
                         {ACADEMIC_FACULTIES.map((k) => (
                           <option key={k.code} value={k.code}>
                             {k.name} ({k.code})
