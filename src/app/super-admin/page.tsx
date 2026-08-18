@@ -1469,10 +1469,10 @@ function SuperAdminContent() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>Tên sự kiện</th>
-                      <th>Thời gian & Địa điểm</th>
-                      <th>Trạng thái</th>
-                      <th>Ban quản trị & Thao tác</th>
+                      <th style={{ width: '28%', minWidth: '220px' }}>Tên sự kiện / Kế hoạch</th>
+                      <th style={{ width: '20%', minWidth: '170px' }}>Thời gian & Địa điểm</th>
+                      <th style={{ width: '17%', minWidth: '150px' }}>Trạng thái</th>
+                      <th style={{ width: '35%', minWidth: '340px' }}>Ban quản trị & Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1498,7 +1498,7 @@ function SuperAdminContent() {
                               title="Bấm vào để xem hồ sơ kế hoạch"
                             >
                               <td>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                   <Link
                                     href={`/admin/proposals/${p.id}`}
                                     style={{
@@ -1520,17 +1520,15 @@ function SuperAdminContent() {
                                     <span style={{ padding: '0.15rem 0.5rem', background: '#ffedd5', color: '#9a3412', borderRadius: '4px', fontWeight: 700 }}>
                                       {p.organization_unit}
                                     </span>
-                                    <span>•</span>
-                                    <span>{p.created_by}</span>
                                   </div>
                                 </div>
                               </td>
                               <td>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.825rem' }}>
-                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
                                     {new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time?.slice(0, 5)} - {p.end_time?.slice(0, 5)})
                                   </span>
-                                  <span style={{ color: '#475569' }}>
+                                  <span style={{ color: '#475569', fontSize: '0.8rem' }}>
                                     {p.room_name || 'Hội trường / Phòng họp'} • {p.total_count} người
                                   </span>
                                 </div>
@@ -1554,54 +1552,77 @@ function SuperAdminContent() {
                                 </span>
                               </td>
                               <td onClick={(e) => e.stopPropagation()}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => approveProposal(p.id)}
-                                    style={{
-                                      padding: '0.4rem 0.75rem',
-                                      background: '#16a34a',
-                                      color: '#ffffff',
-                                      border: 'none',
-                                      borderRadius: '8px',
-                                      fontSize: '0.8rem',
-                                      fontWeight: 700,
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    Duyệt cấp này
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => rejectProposal(p.id)}
-                                    style={{
-                                      padding: '0.4rem 0.75rem',
-                                      background: '#fef2f2',
-                                      color: '#dc2626',
-                                      border: '1px solid #fecaca',
-                                      borderRadius: '8px',
-                                      fontSize: '0.8rem',
-                                      fontWeight: 700,
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    Từ chối
-                                  </button>
-                                  <Link
-                                    href={`/admin/proposals/${p.id}`}
-                                    style={{
-                                      padding: '0.4rem 0.75rem',
-                                      background: '#eff6ff',
-                                      color: '#2563eb',
-                                      border: '1px solid #bfdbfe',
-                                      borderRadius: '8px',
-                                      fontSize: '0.8rem',
-                                      fontWeight: 700,
-                                      textDecoration: 'none',
-                                    }}
-                                  >
-                                    Xem Hồ Sơ ➔
-                                  </Link>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.775rem', color: '#475569', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {p.created_by}
+                                    </span>
+                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Người lập hồ sơ</span>
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => approveProposal(p.id)}
+                                      style={{
+                                        padding: '0.45rem 0.8rem',
+                                        background: '#16a34a',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        whiteSpace: 'nowrap',
+                                        transition: 'all 0.15s ease',
+                                      }}
+                                    >
+                                      Duyệt
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => rejectProposal(p.id)}
+                                      style={{
+                                        padding: '0.45rem 0.8rem',
+                                        background: '#fff1f2',
+                                        color: '#dc2626',
+                                        border: '1.5px solid #fecaca',
+                                        borderRadius: '8px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        whiteSpace: 'nowrap',
+                                        transition: 'all 0.15s ease',
+                                      }}
+                                    >
+                                      Từ chối
+                                    </button>
+                                    <Link
+                                      href={`/admin/proposals/${p.id}`}
+                                      style={{
+                                        padding: '0.45rem 0.85rem',
+                                        borderRadius: '8px',
+                                        border: '1.5px solid #bfdbfe',
+                                        background: '#eff6ff',
+                                        color: '#1d4ed8',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        textDecoration: 'none',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem',
+                                        whiteSpace: 'nowrap',
+                                        transition: 'all 0.15s ease',
+                                      }}
+                                    >
+                                      <span>Hồ Sơ</span>
+                                      <span>➔</span>
+                                    </Link>
+                                  </div>
                                 </div>
                               </td>
                             </tr>
@@ -1623,29 +1644,38 @@ function SuperAdminContent() {
                                 title="Bấm vào dòng này để mở trang quản trị sự kiện"
                               >
                                 <td>
-                                  <Link
-                                    href={`/admin/events/${event.event_id}`}
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '0.4rem',
-                                      color: '#1e40af',
-                                      fontWeight: 800,
-                                      fontSize: '0.975rem',
-                                      textDecoration: 'none',
-                                    }}
-                                    className={styles.eventName}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <span>{event.event_name}</span>
-                                    <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>➔</span>
-                                  </Link>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <Link
+                                      href={`/admin/events/${event.event_id}`}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                        color: '#1e40af',
+                                        fontWeight: 800,
+                                        fontSize: '0.975rem',
+                                        textDecoration: 'none',
+                                      }}
+                                      className={styles.eventName}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <span>{event.event_name}</span>
+                                      <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>➔</span>
+                                    </Link>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.775rem', color: '#64748b' }}>
+                                      <span style={{ padding: '0.15rem 0.5rem', background: '#eff6ff', color: '#1e40af', borderRadius: '4px', fontWeight: 600 }}>
+                                        Sự kiện chính thức
+                                      </span>
+                                    </div>
+                                  </div>
                                 </td>
                                 <td>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{event.event_date ? new Date(event.event_date).toLocaleDateString('vi-VN') : 'Hôm nay'}</span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.825rem' }}>
+                                    <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                                      {event.event_date ? new Date(event.event_date).toLocaleDateString('vi-VN') : 'Hôm nay'}
+                                    </span>
                                     <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                      {event.start_time?.slice(0, 5)} - {event.end_time?.slice(0, 5) || '22:00'}
+                                      {event.start_time?.slice(0, 5) || '08:00'} - {event.end_time?.slice(0, 5) || '22:00'}
                                     </span>
                                   </div>
                                 </td>
@@ -1699,11 +1729,11 @@ function SuperAdminContent() {
                                   })()}
                                 </td>
                                 <td onClick={(e) => e.stopPropagation()}>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', width: '100%' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                                       {(event as any).event_roles && (event as any).event_roles.length > 0 ? (
                                         (event as any).event_roles.map((r: any) => (
-                                          <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.775rem', color: '#1e40af' }}>
+                                          <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.775rem', color: '#1e40af', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {r.email}
                                             <button 
                                               onClick={() => removeAdmin(event.event_id, r.id, r.email)} 
@@ -1715,7 +1745,7 @@ function SuperAdminContent() {
                                           </span>
                                         ))
                                       ) : (
-                                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Chưa gán</span>
+                                        <span style={{ fontSize: '0.775rem', color: '#94a3b8' }}>Chưa gán Admin</span>
                                       )}
                                       <button
                                         type="button"
@@ -1727,12 +1757,13 @@ function SuperAdminContent() {
                                           setSelectedRoleType('event_admin');
                                         }}
                                         className={styles.actionButton}
+                                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
                                       >
-                                        Gán Admin Đơn Vị
+                                        + Gán Admin Đơn Vị
                                       </button>
                                     </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
                                       <Link
                                         href={`/admin/events/${event.event_id}`}
                                         style={{
@@ -1747,6 +1778,7 @@ function SuperAdminContent() {
                                           display: 'inline-flex',
                                           alignItems: 'center',
                                           gap: '0.35rem',
+                                          whiteSpace: 'nowrap',
                                           transition: 'all 0.15s ease',
                                         }}
                                         title={`Vào trang quản trị sự kiện "${event.event_name}"`}
@@ -1770,6 +1802,7 @@ function SuperAdminContent() {
                                           display: 'inline-flex',
                                           alignItems: 'center',
                                           gap: '0.35rem',
+                                          whiteSpace: 'nowrap',
                                           transition: 'all 0.15s ease',
                                         }}
                                         title={`Xóa sự kiện "${event.event_name}"`}
