@@ -10,56 +10,6 @@ export interface OfficialUnit {
 }
 
 export const OFFICIAL_UNITS: OfficialUnit[] = [
-  // 4 Khoa Đào Tạo (Mượn Phòng Trực Tiếp Chuyển Đến Phòng. TC-HC-QT)
-  {
-    code: 'KHOA_CNTT',
-    name: 'Khoa Công Nghệ Thông Tin',
-    type: 'Khoa Đào Tạo',
-    email: 'khoacntt@ptithcm.edu.vn',
-  },
-  {
-    code: 'KHOA_DT',
-    name: 'Khoa Điện Tử',
-    type: 'Khoa Đào Tạo',
-    email: 'khoadt@ptithcm.edu.vn',
-  },
-  {
-    code: 'KHOA_CB',
-    name: 'Khoa Cơ Bản',
-    type: 'Khoa Đào Tạo',
-    email: 'khoacoban@ptithcm.edu.vn',
-  },
-  {
-    code: 'KHOA_QTKD',
-    name: 'Khoa Quản Trị Kinh Doanh',
-    type: 'Khoa Đào Tạo',
-    email: 'khoaqtkd@ptithcm.edu.vn',
-  },
-  // Đoàn Trường & Các Phòng Ban Chức Năng
-  {
-    code: 'BCH_DOAN',
-    name: 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
-    type: 'Đoàn Thanh Niên',
-    email: 'doanthanhnien@ptithcm.edu.vn',
-  },
-  {
-    code: 'PHONG_CTSV',
-    name: 'Phòng Công Tác Sinh Viên (CTSV)',
-    type: 'Phòng Ban Chức Năng',
-    email: 'ctsv@ptithcm.edu.vn',
-  },
-  {
-    code: 'PHONG_TCHCQT',
-    name: 'Phòng Tổ Chức - Hành Chính - Quản Trị (TC-HC-QT)',
-    type: 'Phòng Ban Chức Năng',
-    email: 'quantri@ptithcm.edu.vn',
-  },
-  {
-    code: 'TO_BAO_VE',
-    name: 'Tổ Bảo Vệ & Quản Lý Chìa Khóa Phòng',
-    type: 'Tổ Bảo Vệ',
-    email: 'baove@ptithcm.edu.vn',
-  },
   // 8 LCĐs
   {
     code: 'LCD_CNTT',
@@ -369,6 +319,16 @@ export function resolveUnitForUser(user: {
 }
 
 const CUSTOM_UNITS_KEY = 'custom_units_registry';
+const NON_STUDENT_UNIT_CODES = new Set([
+  'KHOA_CNTT',
+  'KHOA_DT',
+  'KHOA_CB',
+  'KHOA_QTKD',
+  'BCH_DOAN',
+  'PHONG_CTSV',
+  'PHONG_TCHCQT',
+  'TO_BAO_VE',
+]);
 
 export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit[]> {
   if (!supabase) return OFFICIAL_UNITS;
@@ -387,11 +347,20 @@ export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit
         } catch {}
       }
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed as OfficialUnit[];
+        const filtered = (parsed as OfficialUnit[]).filter(u => !NON_STUDENT_UNIT_CODES.has(u.code));
+        if (filtered.length !== parsed.length) {
+          // Clean up stored units in DB to keep exactly the official student units
+          await supabase.from('system_settings').upsert({
+            key: CUSTOM_UNITS_KEY,
+            value: JSON.stringify(filtered),
+            updated_at: new Date().toISOString(),
+          });
+        }
+        return filtered;
       }
     }
 
-    // Pre-seed all official units directly into Supabase DB
+    // Pre-seed 24 official units directly into Supabase DB
     await supabase.from('system_settings').upsert({
       key: CUSTOM_UNITS_KEY,
       value: JSON.stringify(OFFICIAL_UNITS),

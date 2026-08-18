@@ -3267,7 +3267,7 @@ function SuperAdminContent() {
                 <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: '14px', padding: '1rem' }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e40af' }}>LIÊN CHI ĐOÀN KHOA</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e3a8a', marginTop: '0.25rem' }}>
-                    {unitsList.filter(u => u.type.includes('LCĐ')).length} Đơn vị
+                    {unitsList.filter(u => u.type.includes('LCĐ') || u.code.startsWith('LCD_')).length} Đơn vị
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Quản lý hoạt động Đoàn các Khoa</div>
                 </div>
@@ -3275,7 +3275,7 @@ function SuperAdminContent() {
                 <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '14px', padding: '1rem' }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534' }}>CLB / ĐỘI / NHÓM</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#14532d', marginTop: '0.25rem' }}>
-                    {unitsList.filter(u => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).length} Đơn vị
+                    {unitsList.filter(u => !u.type.includes('LCĐ') && !u.code.startsWith('LCD_')).length} Đơn vị
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Học thuật, văn thể mỹ, tình nguyện</div>
                 </div>
