@@ -9,6 +9,58 @@ export interface OfficialUnit {
   email: string;
 }
 
+// 8 Khoa Đào Tạo của Học Viện
+export const ACADEMIC_FACULTIES: OfficialUnit[] = [
+  {
+    code: 'KHOA_CNTT',
+    name: 'Khoa Công Nghệ Thông Tin 1',
+    type: 'Khoa Đào Tạo',
+    email: 'khoacntt@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_DT',
+    name: 'Khoa Điện Tử 2',
+    type: 'Khoa Đào Tạo',
+    email: 'khoadt@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_VT',
+    name: 'Khoa Viễn Thông 2',
+    type: 'Khoa Đào Tạo',
+    email: 'khoavt@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_QTKD',
+    name: 'Khoa Quản Trị Kinh Doanh 2',
+    type: 'Khoa Đào Tạo',
+    email: 'khoaqtkd@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_CB',
+    name: 'Khoa Cơ Bản 2',
+    type: 'Khoa Đào Tạo',
+    email: 'khoacoban@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_CNDPT',
+    name: 'Khoa Đa Phương Tiện',
+    type: 'Khoa Đào Tạo',
+    email: 'khoadpt@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_TCKT',
+    name: 'Khoa Tài Chính Kế Toán 2',
+    type: 'Khoa Đào Tạo',
+    email: 'khoakt@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_ATTT',
+    name: 'Khoa An Toàn Thông Tin',
+    type: 'Khoa Đào Tạo',
+    email: 'khoaattt@ptithcm.edu.vn',
+  },
+];
+
 export const OFFICIAL_UNITS: OfficialUnit[] = [
   // 8 LCĐs
   {

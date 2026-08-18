@@ -28,7 +28,7 @@ import {
   QrCodeIcon,
   KeyIcon,
 } from '@/components/icons';
-import { OFFICIAL_UNITS, type OfficialUnit } from '@/lib/constants/units';
+import { OFFICIAL_UNITS, ACADEMIC_FACULTIES, type OfficialUnit } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
 import { isSameUnit } from '@/lib/utils/rating-logic';
 import { getEffectiveEventStatus, isEventPastDeadline, getEventLifecycleState, getEarliestCheckinTime } from '@/lib/utils/event-logic';
@@ -332,7 +332,7 @@ function SuperAdminContent() {
             email: customUnitEmail.trim().toLowerCase(),
           };
         } else {
-          const foundUnit = unitsList.find((u) => u.code === officerUnitCode);
+          const foundUnit = [...ACADEMIC_FACULTIES, ...unitsList].find((u) => u.code === officerUnitCode);
           finalUnitName = foundUnit?.name || officerUnitCode;
         }
       }
@@ -2379,7 +2379,7 @@ function SuperAdminContent() {
                     <option value="ctsv">Phòng Công Tác Sinh Viên (CTSV)</option>
                     <option value="facility">Phòng Tổ Chức - Hành Chính - Quản Trị (TC-HC-QT)</option>
                     <option value="security">Tổ Bảo Vệ (Quản Lý & Bàn Giao Chìa Khóa)</option>
-                    <option value="event_admin">Ban Chấp Hành LCĐ / CLB / Khoa</option>
+                    <option value="event_admin">Ban Chủ Nhiệm / Trợ Lý Khoa & Ban Chấp Hành LCĐ / CLB</option>
                     <option value="super_admin">Super Admin (Toàn Quyền Quản Trị)</option>
                   </select>
                 </div>
@@ -2387,7 +2387,7 @@ function SuperAdminContent() {
                 {officerRoleTier === 'event_admin' && (
                   <div>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
-                      Chọn Đơn Vị LCĐ / CLB Phụ Trách *
+                      Chọn Khoa Đào Tạo / Đơn Vị LCĐ / CLB Phụ Trách *
                     </label>
                     <select
                       value={officerUnitCode}
@@ -2406,21 +2406,28 @@ function SuperAdminContent() {
                         boxSizing: 'border-box',
                       }}
                     >
-                      <optgroup label="Liên Chi Đoàn Khoa">
-                        {unitsList.filter(u => u.type.includes('LCĐ')).map((u) => (
+                      <optgroup label="🏢 Khoa Đào Tạo (8 Khoa)">
+                        {ACADEMIC_FACULTIES.map((k) => (
+                          <option key={k.code} value={k.code}>
+                            {k.name} ({k.code})
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="🏛️ Liên Chi Đoàn Khoa (8 LCĐ)">
+                        {unitsList.filter(u => u.type.includes('LCĐ') || u.code.startsWith('LCD_')).map((u) => (
                           <option key={u.code} value={u.code}>
                             {u.name} ({u.code})
                           </option>
                         ))}
                       </optgroup>
-                      <optgroup label="CLB / Đội / Nhóm">
-                        {unitsList.filter(u => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map((u) => (
+                      <optgroup label="🎯 Câu Lạc Bộ / Đội / Nhóm (16 CLB)">
+                        {unitsList.filter(u => !u.type.includes('LCĐ') && !u.code.startsWith('LCD_') && !u.type.includes('Đoàn')).map((u) => (
                           <option key={u.code} value={u.code}>
                             {u.name} ({u.code})
                           </option>
                         ))}
                       </optgroup>
-                      <option value="__NEW_CUSTOM__">➕ Thêm Đơn Vị / LCĐ Mới...</option>
+                      <option value="__NEW_CUSTOM__">➕ Thêm Đơn Vị / LCĐ / Khoa Mới...</option>
                     </select>
                   </div>
                 )}
