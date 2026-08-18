@@ -2427,7 +2427,7 @@ function SuperAdminContent() {
                           </option>
                         ))}
                       </optgroup>
-                      <option value="__NEW_CUSTOM__">+ ➕ Thêm Đơn Vị / LCĐ Mới...</option>
+                      <option value="__NEW_CUSTOM__">➕ Thêm Đơn Vị / LCĐ Mới...</option>
                     </select>
                   </div>
                 )}
