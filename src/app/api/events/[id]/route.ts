@@ -148,22 +148,17 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   }
 
   // Delete all dependent records in cascade order
-  await supabase.from('check_ins').delete().eq('event_id', resolvedParams.id);
-  await supabase.from('event_roles').delete().eq('event_id', resolvedParams.id);
-  await supabase.from('event_ratings').delete().eq('event_id', resolvedParams.id);
-  await supabase.from('event_registrations').delete().eq('event_id', resolvedParams.id);
-  
-  // Free up room immediately by marking linked proposals deleted
-  await supabase
-    .from('event_proposals')
-    .update({ status: 'deleted', updated_at: new Date().toISOString() })
-    .eq('created_event_id', resolvedParams.id);
-  await supabase.from('event_proposals').delete().eq('created_event_id', resolvedParams.id);
+  try { await supabase.from('check_ins').delete().eq('event_id', resolvedParams.id); } catch {}
+  try { await supabase.from('event_roles').delete().eq('event_id', resolvedParams.id); } catch {}
+  try { await supabase.from('event_ratings').delete().eq('event_id', resolvedParams.id); } catch {}
+  try { await supabase.from('event_registrations').delete().eq('event_id', resolvedParams.id); } catch {}
+  try { await supabase.from('event_proposals').delete().eq('created_event_id', resolvedParams.id); } catch {}
 
   const { error } = await supabase.from('events').delete().eq('event_id', resolvedParams.id);
 
   if (error) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    console.error('DELETE /api/events/[id] error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Lỗi xóa sự kiện' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, message: 'Đã xóa sự kiện thành công' });
