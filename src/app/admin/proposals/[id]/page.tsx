@@ -23,7 +23,7 @@ import {
   QrCodeIcon,
   FileTextIcon,
 } from '@/components/icons';
-import { getStageLabel } from '@/lib/utils/proposal-logic';
+import { getStageLabel, isKhoaUnit } from '@/lib/utils/proposal-logic';
 import { getRatingDepartmentLabel } from '@/lib/utils/rating-logic';
 import type { EventProposal, ProposalLog, ProposalStage, SessionUser, UnitRating } from '@/lib/types';
 
@@ -219,6 +219,8 @@ export default function ProposalDetailPage({
     email.includes('doanthanhnien') ||
     email.includes('ctsv') ||
     email.includes('quantri') ||
+    email.includes('tchc') ||
+    email.includes('tchcqt') ||
     email.includes('csvc');
 
   const currentStage = proposal.current_stage;
@@ -231,14 +233,24 @@ export default function ProposalDetailPage({
       canActOnThisStage = true;
     } else if (currentStage === 'ctsv' && (tier === 'ctsv' || email.includes('ctsv'))) {
       canActOnThisStage = true;
-    } else if (currentStage === 'facility' && (tier === 'facility' || email.includes('quantri') || email.includes('csvc'))) {
+    } else if (currentStage === 'facility' && (tier === 'facility' || email.includes('quantri') || email.includes('tchc') || email.includes('tchcqt') || email.includes('csvc'))) {
       canActOnThisStage = true;
     }
   }
 
+  const isDirectFaculty = isKhoaUnit(proposal.organization_unit);
+
   const getStepStatus = (step: ProposalStage) => {
     if (proposal.status === 'rejected') return 'waiting';
     if (proposal.status === 'approved') return 'done';
+
+    if (isDirectFaculty) {
+      if (step === 'youth_union' || step === 'ctsv') return 'skipped';
+      if (step === 'facility') {
+        if (proposal.current_stage === 'facility') return 'current';
+        return 'waiting';
+      }
+    }
 
     const stageOrder: ProposalStage[] = ['youth_union', 'ctsv', 'facility'];
     const currentIdx = stageOrder.indexOf(proposal.current_stage);
@@ -257,7 +269,7 @@ export default function ProposalDetailPage({
   const getStageDepartmentName = (stageName?: string, actorEmail?: string) => {
     if (stageName === 'youth_union' || actorEmail?.includes('doanthanhnien')) return 'Đoàn Thanh Niên Học Viện';
     if (stageName === 'ctsv' || actorEmail?.includes('ctsv')) return 'Phòng Công Tác Sinh Viên (CTSV)';
-    if (stageName === 'facility' || actorEmail?.includes('quantri') || actorEmail?.includes('csvc')) return 'Phòng Quản Trị CSVC & Tổ Chức';
+    if (stageName === 'facility' || actorEmail?.includes('quantri') || actorEmail?.includes('csvc') || actorEmail?.includes('tchc')) return 'Phòng. TC-HC-QT';
     if (stageName === 'super_admin' || actorEmail?.includes('admin')) return 'Super Admin Đoàn Trường';
     return getStageLabel((stageName as ProposalStage) || 'youth_union');
   };
@@ -646,8 +658,9 @@ export default function ProposalDetailPage({
                   justifyContent: 'space-between',
                   padding: '1rem 1.25rem',
                   borderRadius: '14px',
-                  border: getStepStatus('youth_union') === 'done' ? '1.5px solid #86efac' : '1.5px solid #bbf7d0',
-                  background: getStepStatus('youth_union') === 'done' ? '#f0fdf4' : '#ffffff',
+                  border: getStepStatus('youth_union') === 'done' ? '1.5px solid #86efac' : getStepStatus('youth_union') === 'skipped' ? '1.5px solid #e2e8f0' : '1.5px solid #bbf7d0',
+                  background: getStepStatus('youth_union') === 'done' ? '#f0fdf4' : getStepStatus('youth_union') === 'skipped' ? '#f8fafc' : '#ffffff',
+                  opacity: getStepStatus('youth_union') === 'skipped' ? 0.65 : 1,
                   boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
                   flexWrap: 'wrap',
                   gap: '0.5rem',
@@ -659,7 +672,7 @@ export default function ProposalDetailPage({
                       width: '32px',
                       height: '32px',
                       borderRadius: '10px',
-                      background: getStepStatus('youth_union') === 'done' ? '#16a34a' : '#16a34a',
+                      background: getStepStatus('youth_union') === 'done' ? '#16a34a' : getStepStatus('youth_union') === 'skipped' ? '#94a3b8' : '#16a34a',
                       color: '#ffffff',
                       fontWeight: 800,
                       fontSize: '0.9rem',
@@ -668,15 +681,18 @@ export default function ProposalDetailPage({
                       justifyContent: 'center',
                     }}
                   >
-                    {getStepStatus('youth_union') === 'done' ? '✓' : '1'}
+                    {getStepStatus('youth_union') === 'done' ? '✓' : getStepStatus('youth_union') === 'skipped' ? '—' : '1'}
                   </div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
                       1. Đoàn TNCS Học Viện Xét Duyệt
+                      {getStepStatus('youth_union') === 'skipped' && ' — Tự động miễn duyệt (Đơn vị Khoa)'}
                     </div>
                     <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.15rem' }}>
                       {getStepStatus('youth_union') === 'done'
                         ? '✓ Đã xét duyệt nội dung & chấp thuận kế hoạch'
+                        : getStepStatus('youth_union') === 'skipped'
+                        ? 'Đơn vị Khoa mượn phòng được đẩy thẳng tới Phòng. TC-HC-QT'
                         : 'Đang chờ Đoàn TNCS Học Viện xét duyệt kế hoạch...'}
                     </div>
                   </div>
@@ -688,12 +704,12 @@ export default function ProposalDetailPage({
                     fontWeight: 800,
                     padding: '0.3rem 0.75rem',
                     borderRadius: '20px',
-                    background: getStepStatus('youth_union') === 'done' ? '#dcfce7' : '#dcfce7',
-                    color: getStepStatus('youth_union') === 'done' ? '#166534' : '#15803d',
+                    background: getStepStatus('youth_union') === 'done' ? '#dcfce7' : getStepStatus('youth_union') === 'skipped' ? '#f1f5f9' : '#dcfce7',
+                    color: getStepStatus('youth_union') === 'done' ? '#166534' : getStepStatus('youth_union') === 'skipped' ? '#64748b' : '#15803d',
                     textTransform: 'uppercase',
                   }}
                 >
-                  {getStepStatus('youth_union') === 'done' ? 'Đã duyệt' : 'Bắt buộc'}
+                  {getStepStatus('youth_union') === 'done' ? 'Đã duyệt' : getStepStatus('youth_union') === 'skipped' ? 'Miễn duyệt' : 'Bắt buộc'}
                 </span>
               </div>
 
@@ -705,8 +721,9 @@ export default function ProposalDetailPage({
                   justifyContent: 'space-between',
                   padding: '1rem 1.25rem',
                   borderRadius: '14px',
-                  border: getStepStatus('ctsv') === 'done' ? '1.5px solid #86efac' : '1.5px solid #bfdbfe',
-                  background: getStepStatus('ctsv') === 'done' ? '#f0fdf4' : '#ffffff',
+                  border: getStepStatus('ctsv') === 'done' ? '1.5px solid #86efac' : getStepStatus('ctsv') === 'skipped' ? '1.5px solid #e2e8f0' : '1.5px solid #bfdbfe',
+                  background: getStepStatus('ctsv') === 'done' ? '#f0fdf4' : getStepStatus('ctsv') === 'skipped' ? '#f8fafc' : '#ffffff',
+                  opacity: getStepStatus('ctsv') === 'skipped' ? 0.65 : 1,
                   boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
                   flexWrap: 'wrap',
                   gap: '0.5rem',
@@ -727,17 +744,20 @@ export default function ProposalDetailPage({
                       justifyContent: 'center',
                     }}
                   >
-                    {getStepStatus('ctsv') === 'done' ? '✓' : '2'}
+                    {getStepStatus('ctsv') === 'done' ? '✓' : getStepStatus('ctsv') === 'skipped' ? '—' : '2'}
                   </div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
                       2. Phòng Công Tác Sinh Viên (CTSV) Thẩm Định
+                      {getStepStatus('ctsv') === 'skipped' && ' — Tự động miễn duyệt (Đơn vị Khoa)'}
                     </div>
                     <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.15rem' }}>
                       {getStepStatus('ctsv') === 'done'
                         ? '✓ Đã phê duyệt phương án và nội dung sinh viên tham gia'
                         : getStepStatus('ctsv') === 'current'
                         ? 'Đang chờ Phòng CTSV thẩm định phê duyệt...'
+                        : getStepStatus('ctsv') === 'skipped'
+                        ? 'Đơn vị Khoa mượn phòng được đẩy thẳng tới Phòng. TC-HC-QT'
                         : 'Chờ hoàn thành bước 1'}
                     </div>
                   </div>
@@ -754,11 +774,11 @@ export default function ProposalDetailPage({
                     textTransform: 'uppercase',
                   }}
                 >
-                  {getStepStatus('ctsv') === 'done' ? 'Đã duyệt' : getStepStatus('ctsv') === 'current' ? 'Chờ duyệt' : 'Chờ đến lượt'}
+                  {getStepStatus('ctsv') === 'done' ? 'Đã duyệt' : getStepStatus('ctsv') === 'skipped' ? 'Miễn duyệt' : getStepStatus('ctsv') === 'current' ? 'Chờ duyệt' : 'Chờ đến lượt'}
                 </span>
               </div>
 
-              {/* Bước 3: Phòng Tổ Chức / CSVC Cấp Phòng */}
+              {/* Bước 3: Phòng. TC-HC-QT Cấp Phòng */}
               <div
                 style={{
                   display: 'flex',
@@ -793,14 +813,14 @@ export default function ProposalDetailPage({
                   </div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
-                      3. Phòng Tổ Chức Hành Chính / Quản Trị CSVC Cấp Phòng
+                      3. Phòng. TC-HC-QT Cấp Phòng
                       {!proposal.requires_facility_approval && ' — Tự động miễn duyệt (Không mượn phòng)'}
                     </div>
                     <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.15rem' }}>
                       {getStepStatus('facility') === 'done'
                         ? `✓ Đã duyệt cấp phòng "${proposal.room_name}" & Kích hoạt sự kiện`
                         : getStepStatus('facility') === 'current'
-                        ? `Đang chờ Phòng Tổ Chức duyệt cấp địa điểm: ${proposal.room_name}...`
+                        ? `Đang chờ Phòng. TC-HC-QT duyệt cấp địa điểm: ${proposal.room_name}...`
                         : getStepStatus('facility') === 'skipped'
                         ? 'Chương trình không mượn phòng trực tiếp, hoàn tất sau khi CTSV duyệt'
                         : 'Chờ đến lượt'}

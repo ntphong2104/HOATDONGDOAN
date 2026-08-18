@@ -185,7 +185,7 @@ export default function SecurityDashboardClient({
             <span>🛡️</span> SỔ TRỰC BÀN GIAO CHÌA KHÓA PHÒNG
           </h1>
           <p className={styles.bannerSubtitle}>
-            Căn cứ danh sách các đơn mượn phòng / hội trường đã được <strong>phê duyệt đầy đủ</strong> (Đoàn Trường, CTSV, CSVC) để bàn giao chìa khóa cho sinh viên.
+            Căn cứ danh sách các đơn mượn phòng / hội trường đã được <strong>phê duyệt đầy đủ</strong> (Đoàn Trường, CTSV, Phòng. TC-HC-QT) để bàn giao chìa khóa cho sinh viên.
           </p>
         </div>
         <button

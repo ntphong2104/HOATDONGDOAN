@@ -41,7 +41,7 @@ export async function POST(
     canReject = true;
   } else if (currentStage === 'ctsv' && (auth.tier === 'ctsv' || auth.email.includes('ctsv'))) {
     canReject = true;
-  } else if (currentStage === 'facility' && (auth.tier === 'facility' || auth.email.includes('quantri') || auth.email.includes('csvc'))) {
+  } else if (currentStage === 'facility' && (auth.tier === 'facility' || auth.email.includes('quantri') || auth.email.includes('tchc') || auth.email.includes('tchcqt') || auth.email.includes('csvc'))) {
     canReject = true;
   }
 

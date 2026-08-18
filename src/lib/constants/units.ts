@@ -10,6 +10,31 @@ export interface OfficialUnit {
 }
 
 export const OFFICIAL_UNITS: OfficialUnit[] = [
+  // 4 Khoa Đào Tạo (Mượn Phòng Trực Tiếp Chuyển Đến Phòng. TC-HC-QT)
+  {
+    code: 'KHOA_CNTT',
+    name: 'Khoa Công Nghệ Thông Tin',
+    type: 'Khoa Đào Tạo',
+    email: 'khoacntt@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_DT',
+    name: 'Khoa Điện Tử',
+    type: 'Khoa Đào Tạo',
+    email: 'khoadt@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_CB',
+    name: 'Khoa Cơ Bản',
+    type: 'Khoa Đào Tạo',
+    email: 'khoacoban@ptithcm.edu.vn',
+  },
+  {
+    code: 'KHOA_QTKD',
+    name: 'Khoa Quản Trị Kinh Doanh',
+    type: 'Khoa Đào Tạo',
+    email: 'khoaqtkd@ptithcm.edu.vn',
+  },
   // Đoàn Trường
   {
     code: 'BCH_DOAN',
@@ -167,6 +192,10 @@ export const OFFICIAL_UNITS: OfficialUnit[] = [
 
 export const OFFICIAL_UNIT_GROUPS = [
   {
+    group: '── 4 KHOA ĐÀO TẠO (MƯỢN PHÒNG TRỰC TIẾP) ──',
+    items: OFFICIAL_UNITS.filter((u) => u.type.includes('Khoa Đào Tạo')).map((u) => u.name),
+  },
+  {
     group: '── ĐOÀN THANH NIÊN HỌC VIỆN ──',
     items: OFFICIAL_UNITS.filter((u) => u.type.includes('Đoàn')).map((u) => u.name),
   },
@@ -176,11 +205,23 @@ export const OFFICIAL_UNIT_GROUPS = [
   },
   {
     group: '── 16 CÂU LẠC BỘ / ĐỘI / NHÓM ──',
-    items: OFFICIAL_UNITS.filter((u) => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map((u) => u.name),
+    items: OFFICIAL_UNITS.filter((u) => !u.type.includes('LCĐ') && !u.type.includes('Đoàn') && !u.type.includes('Khoa')).map((u) => u.name),
   },
 ];
 
 export const EMAIL_TO_UNIT: Record<string, string> = {
+  // 4 Khoa Đào Tạo
+  'khoacntt@ptithcm.edu.vn': 'Khoa Công Nghệ Thông Tin',
+  'khoa_cntt@ptithcm.edu.vn': 'Khoa Công Nghệ Thông Tin',
+  'khoadt@ptithcm.edu.vn': 'Khoa Điện Tử',
+  'khoa_dt@ptithcm.edu.vn': 'Khoa Điện Tử',
+  'khoadientu@ptithcm.edu.vn': 'Khoa Điện Tử',
+  'khoacoban@ptithcm.edu.vn': 'Khoa Cơ Bản',
+  'khoa_cb@ptithcm.edu.vn': 'Khoa Cơ Bản',
+  'khoacb@ptithcm.edu.vn': 'Khoa Cơ Bản',
+  'khoaqtkd@ptithcm.edu.vn': 'Khoa Quản Trị Kinh Doanh',
+  'khoa_qtkd@ptithcm.edu.vn': 'Khoa Quản Trị Kinh Doanh',
+
   'doanthanhnien@ptithcm.edu.vn': 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
   'bchdoan@ptithcm.edu.vn': 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
   
@@ -267,6 +308,11 @@ export function resolveUnitForUser(user: {
   }
 
   // 3. Fallback: match prefix in email
+  if (email.includes('khoacntt') || email.includes('khoa_cntt')) return { unitName: 'Khoa Công Nghệ Thông Tin', isLocked: true };
+  if (email.includes('khoadt') || email.includes('khoa_dt') || email.includes('khoadientu')) return { unitName: 'Khoa Điện Tử', isLocked: true };
+  if (email.includes('khoacoban') || email.includes('khoa_cb') || email.includes('khoacb')) return { unitName: 'Khoa Cơ Bản', isLocked: true };
+  if (email.includes('khoaqtkd') || email.includes('khoa_qtkd')) return { unitName: 'Khoa Quản Trị Kinh Doanh', isLocked: true };
+
   if (email.includes('cntt')) return { unitName: 'LCĐ Khoa Công nghệ Thông tin', isLocked: true };
   if (email.includes('cndpt') || email.includes('dpt')) return { unitName: 'LCĐ Công nghệ Đa phương tiện', isLocked: true };
   if (email.includes('attt')) return { unitName: 'LCĐ An toàn Thông tin', isLocked: true };

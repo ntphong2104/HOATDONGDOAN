@@ -1546,7 +1546,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               : r.rater_tier === 'ctsv'
                               ? 'Phòng CTSV'
                               : r.rater_tier === 'facility'
-                              ? 'Phòng Quản Trị CSVC'
+                              ? 'Phòng. TC-HC-QT'
                               : 'Super Admin'}
                           </strong>
                           <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '0.5rem' }}>({r.rater_email})</span>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
+import { parseDemoCookie } from '@/lib/supabase/auth-helper';
 import type { SessionUser, UserTier } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -18,19 +19,7 @@ export async function GET() {
     const cookieStore = await cookies();
     const demoCookie = cookieStore.get('demo_session');
     if (demoCookie?.value) {
-      let raw = demoCookie.value.trim();
-      const sigMatch = raw.match(/^(.+)\.[0-9a-fA-F]{64}$/);
-      if (sigMatch) {
-        raw = sigMatch[1];
-      }
-      let demoUser: any = null;
-      try {
-        demoUser = JSON.parse(decodeURIComponent(raw));
-      } catch {
-        try {
-          demoUser = JSON.parse(raw);
-        } catch {}
-      }
+      const demoUser = parseDemoCookie(demoCookie.value);
       if (demoUser && demoUser.email) {
         try {
           const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
@@ -226,6 +215,8 @@ export async function GET() {
       email.toLowerCase() === 'quantri@ptithcm.edu.vn' ||
       email.toLowerCase().includes('quantri') ||
       email.toLowerCase().includes('phongquantri') ||
+      email.toLowerCase().includes('tchc') ||
+      email.toLowerCase().includes('tchcqt') ||
       email.toLowerCase().includes('csvc');
 
     const isSecurity =
@@ -311,7 +302,7 @@ export async function GET() {
     const defaultNames: Record<string, { mssv: string; name: string; classId: string }> = {
       youth_union: { mssv: 'DOAN-HV', name: 'Đ/c Bí Thư Đoàn Học Viện', classId: 'BCH-DOAN' },
       ctsv: { mssv: 'PHONG-CTSV', name: 'Phòng Công Tác Sinh Viên (CTSV)', classId: 'PHONG-BAN' },
-      facility: { mssv: 'PHONG-CSVC', name: 'Phòng Quản Trị CSVC & Tổ Chức', classId: 'PHONG-BAN' },
+      facility: { mssv: 'PHONG-TCHCQT', name: 'Phòng. TC-HC-QT', classId: 'PHONG-BAN' },
       security: { mssv: 'TO-BAOVE', name: 'Tổ Bảo Vệ (Bàn Giao Chìa Khóa)', classId: 'TO-BAO-VE' },
       super_admin: { mssv: 'SUPER_ADMIN', name: 'Super Admin Đoàn Trường', classId: 'SUPER-ADMIN' },
       event_admin: { mssv: 'EVENT_ADMIN', name: 'Admin Sự Kiện', classId: 'BAN-TO-CHUC' },

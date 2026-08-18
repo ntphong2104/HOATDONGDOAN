@@ -1,10 +1,31 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 
 export async function POST(req: Request) {
   try {
-    const auth = await getAuthContext();
+    let auth = await getAuthContext();
+    if (!auth) {
+      try {
+        const cookieStore = await cookies();
+        const demoCookie = cookieStore.get('demo_session');
+        if (demoCookie?.value) {
+          const demoUser = parseDemoCookie(demoCookie.value);
+          if (demoUser?.email) {
+            auth = {
+              email: demoUser.email,
+              isSuperAdmin: demoUser.tier === 'super_admin',
+              isEventAdmin: ['super_admin', 'youth_union', 'ctsv', 'facility', 'event_admin'].includes(demoUser.tier),
+              isChecker: true,
+              isSecurity: demoUser.tier === 'security' || demoUser.email.includes('baove'),
+              tier: demoUser.tier || 'security',
+            };
+          }
+        }
+      } catch {}
+    }
+
     if (!auth) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }

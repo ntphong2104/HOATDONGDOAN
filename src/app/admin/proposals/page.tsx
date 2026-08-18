@@ -97,7 +97,7 @@ export default function ProposalsListPage() {
       : tier === 'ctsv'
       ? 'Phòng Công Tác Sinh Viên (CTSV)'
       : tier === 'facility'
-      ? 'Phòng Quản Trị CSVC & Tổ Chức'
+      ? 'Phòng. TC-HC-QT'
       : tier === 'super_admin'
       ? 'Ban Quản Trị Super Admin'
       : 'Đơn Vị Trình Kế Hoạch';

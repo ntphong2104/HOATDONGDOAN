@@ -6,18 +6,29 @@ const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
 function parseDemoCookie(cookieVal: string): any | null {
   if (!cookieVal) return null;
   try {
-    let raw = cookieVal.trim();
-    // Only strip signature if it matches .[64-hex-chars] at the very end
-    const sigMatch = raw.match(/^(.+)\.[0-9a-fA-F]{64}$/);
-    if (sigMatch) {
-      raw = sigMatch[1];
+    let str = cookieVal.trim();
+    if (str.startsWith('"') && str.endsWith('"')) {
+      str = str.slice(1, -1);
     }
-    try {
-      const user = JSON.parse(decodeURIComponent(raw));
-      if (user && user.email) return user;
-    } catch {
-      const user = JSON.parse(raw);
-      if (user && user.email) return user;
+    const lastDot = str.lastIndexOf('.');
+    if (lastDot !== -1 && str.length - lastDot === 65) {
+      str = str.slice(0, lastDot);
+    }
+
+    for (let i = 0; i < 3; i++) {
+      try {
+        const parsed = JSON.parse(str);
+        if (parsed && typeof parsed === 'object' && (parsed.email || parsed.tier)) {
+          return parsed;
+        }
+      } catch {}
+      try {
+        const next = decodeURIComponent(str);
+        if (next === str) break;
+        str = next;
+      } catch {
+        break;
+      }
     }
   } catch {}
   return null;
@@ -39,6 +50,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 }
 
 const PUBLIC_ROUTES = [
+  '/',
   '/login',
   '/auth/callback',
   '/maintenance',
@@ -63,7 +75,7 @@ function getValidUrl(url: string | undefined): string {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+  const isPublicRoute = pathname === '/' || PUBLIC_ROUTES.some((route) => route !== '/' && pathname.startsWith(route));
 
   // 1. Check Demo Session Cookie
   const demoCookie = request.cookies.get('demo_session');
@@ -73,9 +85,19 @@ export async function middleware(request: NextRequest) {
       if (pathname === '/login') {
         const redirectParam =
           request.nextUrl.searchParams.get('redirect') || request.nextUrl.searchParams.get('next');
-        return addSecurityHeaders(
-          NextResponse.redirect(new URL(redirectParam && redirectParam.startsWith('/') ? redirectParam : '/', request.url))
-        );
+        let target = redirectParam && redirectParam.startsWith('/') && redirectParam !== '/login' ? redirectParam : null;
+        if (!target) {
+          if (demoUser.tier === 'security') target = '/security';
+          else if (demoUser.tier === 'super_admin') target = '/super-admin';
+          else if (demoUser.tier === 'checker') target = '/scanner';
+          else if (['youth_union', 'ctsv', 'facility', 'event_admin'].includes(demoUser.tier)) target = '/admin/proposals';
+          else if (demoUser.tier === 'user') target = '/';
+        }
+        if (target && target !== '/login') {
+          return addSecurityHeaders(
+            NextResponse.redirect(new URL(target, request.url))
+          );
+        }
       }
 
       return addSecurityHeaders(NextResponse.next());
@@ -122,7 +144,7 @@ export async function middleware(request: NextRequest) {
     // If unauthenticated and accessing protected route -> redirect to login with target redirect
     if (!user && !isPublicRoute) {
       const loginUrl = new URL('/login', request.url);
-      if (pathname && pathname !== '/') {
+      if (pathname && pathname !== '/' && pathname !== '/login') {
         const fullTarget = request.nextUrl.search ? `${pathname}${request.nextUrl.search}` : pathname;
         loginUrl.searchParams.set('redirect', fullTarget);
       }
@@ -133,8 +155,9 @@ export async function middleware(request: NextRequest) {
     if (user && pathname === '/login') {
       const redirectParam =
         request.nextUrl.searchParams.get('redirect') || request.nextUrl.searchParams.get('next');
+      const target = redirectParam && redirectParam.startsWith('/') && redirectParam !== '/login' ? redirectParam : '/';
       return addSecurityHeaders(
-        NextResponse.redirect(new URL(redirectParam && redirectParam.startsWith('/') ? redirectParam : '/', request.url))
+        NextResponse.redirect(new URL(target, request.url))
       );
     }
 

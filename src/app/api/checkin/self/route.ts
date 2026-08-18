@@ -5,7 +5,7 @@ import { verifyDynamicToken } from '@/lib/utils/dynamic-qr';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 
 export async function POST(req: Request) {
   try {
@@ -17,13 +17,8 @@ export async function POST(req: Request) {
         const cookieStore = await cookies();
         const demoCookie = cookieStore.get('demo_session');
         if (demoCookie?.value) {
-          try {
-            const parsed = JSON.parse(demoCookie.value);
-            email = parsed?.email || null;
-          } catch {
-            const parsed = JSON.parse(decodeURIComponent(demoCookie.value));
-            email = parsed?.email || null;
-          }
+          const parsed = parseDemoCookie(demoCookie.value);
+          email = parsed?.email || null;
         }
       } catch {}
     }

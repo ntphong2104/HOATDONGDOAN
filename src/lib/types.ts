@@ -110,7 +110,7 @@ export type UserTier =
   | 'event_admin'
   | 'youth_union' // Đoàn Thanh Niên Học Viện
   | 'ctsv'        // Phòng Công Tác Sinh Viên
-  | 'facility'    // Phòng Quản Trị CSVC & Thiết Bị
+  | 'facility'    // Phòng. TC-HC-QT (Quản Trị CSVC & Phòng)
   | 'security'    // Tổ Bảo Vệ (Bàn Giao & Quản Lý Chìa Khóa Phòng)
   | 'super_admin';
 

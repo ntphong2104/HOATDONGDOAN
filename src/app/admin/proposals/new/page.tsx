@@ -17,6 +17,7 @@ import {
   FileTextIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS, OFFICIAL_UNIT_GROUPS, resolveUnitForUser } from '@/lib/constants/units';
+import { isKhoaUnit } from '@/lib/utils/proposal-logic';
 import type { Room } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -162,6 +163,7 @@ export default function NewProposalPage() {
 
   const requiresCtsv = Number(participantCount) > 50;
   const isBorrowing = !!selectedRoomId && selectedRoomName !== 'Không mượn';
+  const isDirectFaculty = isKhoaUnit(organizationUnit);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -821,13 +823,40 @@ export default function NewProposalPage() {
               </div>
               <div>
                 <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                  5. Quy Trình Phê Duyệt Tự Động (Đoàn TN → CTSV → Phòng Tổ Chức)
+                  {isDirectFaculty
+                    ? '5. Luồng Mượn Phòng Trực Tiếp Cấp Khoa ➔ Phòng. TC-HC-QT'
+                    : '5. Quy Trình Phê Duyệt Tự Động (Đoàn TN → CTSV → Phòng. TC-HC-QT)'}
                 </h2>
                 <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.2rem 0 0' }}>
-                  Kế hoạch sẽ được gửi trình Đoàn Thanh Niên duyệt trước, sau đó tự động chuyển sang CTSV và Phòng Tổ Chức.
+                  {isDirectFaculty
+                    ? 'Đơn vị Khoa mượn phòng sẽ được ĐẨY THẲNG sang Phòng. TC-HC-QT (Phòng Tổ Chức) để thẩm định và cấp phòng trực tiếp!'
+                    : 'Kế hoạch sẽ được gửi trình Đoàn Thanh Niên duyệt trước, sau đó tự động chuyển sang CTSV và Phòng. TC-HC-QT.'}
                 </p>
               </div>
             </div>
+
+            {isDirectFaculty && (
+              <div
+                style={{
+                  marginBottom: '1rem',
+                  padding: '0.9rem 1.15rem',
+                  borderRadius: '12px',
+                  background: '#fdf4ff',
+                  border: '1.5px solid #f0abfc',
+                  color: '#86198f',
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontWeight: 700,
+                }}
+              >
+                <span>🏢</span>
+                <span>
+                  <strong>ĐƠN VỊ KHOA ĐÀO TẠO:</strong> Hồ sơ mượn địa điểm của Khoa được rút gọn, miễn qua Đoàn TN & CTSV, chuyển thẳng tới <strong>Phòng. TC-HC-QT</strong>.
+                </span>
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {/* Bước 1 - Đoàn TN */}
@@ -837,10 +866,11 @@ export default function NewProposalPage() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '1rem 1.25rem',
-                  background: '#ffffff',
-                  border: '1.5px solid #bbf7d0',
+                  background: isDirectFaculty ? '#f8fafc' : '#ffffff',
+                  border: isDirectFaculty ? '1.5px solid #e2e8f0' : '1.5px solid #bbf7d0',
                   borderRadius: '14px',
-                  boxShadow: '0 2px 8px rgba(22, 163, 74, 0.06)',
+                  boxShadow: isDirectFaculty ? 'none' : '0 2px 8px rgba(22, 163, 74, 0.06)',
+                  opacity: isDirectFaculty ? 0.6 : 1,
                   flexWrap: 'wrap',
                   gap: '0.5rem',
                 }}
@@ -851,7 +881,7 @@ export default function NewProposalPage() {
                       width: '32px',
                       height: '32px',
                       borderRadius: '10px',
-                      background: '#16a34a',
+                      background: isDirectFaculty ? '#94a3b8' : '#16a34a',
                       color: '#ffffff',
                       fontWeight: 800,
                       fontSize: '0.9rem',
@@ -860,14 +890,16 @@ export default function NewProposalPage() {
                       justifyContent: 'center',
                     }}
                   >
-                    1
+                    {isDirectFaculty ? '—' : '1'}
                   </div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
                       Đoàn TNCS Học Viện Duyệt Kế Hoạch
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
-                      Đoàn Thanh Niên xét duyệt nội dung, mục đích và tính phù hợp của kế hoạch
+                      {isDirectFaculty
+                        ? 'Tự động miễn duyệt (Dành riêng cho Đơn vị Khoa)'
+                        : 'Đoàn Thanh Niên xét duyệt nội dung, mục đích và tính phù hợp của kế hoạch'}
                     </div>
                   </div>
                 </div>
@@ -877,13 +909,13 @@ export default function NewProposalPage() {
                     fontWeight: 800,
                     padding: '0.3rem 0.75rem',
                     borderRadius: '20px',
-                    background: '#dcfce7',
-                    color: '#15803d',
-                    border: '1px solid #bbf7d0',
+                    background: isDirectFaculty ? '#f1f5f9' : '#dcfce7',
+                    color: isDirectFaculty ? '#64748b' : '#15803d',
+                    border: isDirectFaculty ? '1px solid #e2e8f0' : '1px solid #bbf7d0',
                     textTransform: 'uppercase',
                   }}
                 >
-                  Bắt buộc
+                  {isDirectFaculty ? 'Miễn duyệt' : 'Bắt buộc'}
                 </span>
               </div>
 
@@ -894,10 +926,11 @@ export default function NewProposalPage() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '1rem 1.25rem',
-                  background: '#ffffff',
-                  border: '1.5px solid #bfdbfe',
+                  background: isDirectFaculty ? '#f8fafc' : '#ffffff',
+                  border: isDirectFaculty ? '1.5px solid #e2e8f0' : '1.5px solid #bfdbfe',
                   borderRadius: '14px',
-                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.06)',
+                  boxShadow: isDirectFaculty ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.06)',
+                  opacity: isDirectFaculty ? 0.6 : 1,
                   flexWrap: 'wrap',
                   gap: '0.5rem',
                 }}
@@ -908,7 +941,7 @@ export default function NewProposalPage() {
                       width: '32px',
                       height: '32px',
                       borderRadius: '10px',
-                      background: '#2563eb',
+                      background: isDirectFaculty ? '#94a3b8' : '#2563eb',
                       color: '#ffffff',
                       fontWeight: 800,
                       fontSize: '0.9rem',
@@ -917,14 +950,16 @@ export default function NewProposalPage() {
                       justifyContent: 'center',
                     }}
                   >
-                    2
+                    {isDirectFaculty ? '—' : '2'}
                   </div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
                       Phòng Công Tác Sinh Viên (CTSV) Thẩm Định
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
-                      Thẩm định nội dung kế hoạch, quy mô và phương án quản lý sinh viên
+                      {isDirectFaculty
+                        ? 'Tự động miễn duyệt (Dành riêng cho Đơn vị Khoa)'
+                        : 'Thẩm định nội dung kế hoạch, quy mô và phương án quản lý sinh viên'}
                     </div>
                   </div>
                 </div>
@@ -934,28 +969,28 @@ export default function NewProposalPage() {
                     fontWeight: 800,
                     padding: '0.3rem 0.75rem',
                     borderRadius: '20px',
-                    background: '#dbeafe',
-                    color: '#1e40af',
-                    border: '1px solid #bfdbfe',
+                    background: isDirectFaculty ? '#f1f5f9' : '#dbeafe',
+                    color: isDirectFaculty ? '#64748b' : '#1e40af',
+                    border: isDirectFaculty ? '1px solid #e2e8f0' : '1px solid #bfdbfe',
                     textTransform: 'uppercase',
                   }}
                 >
-                  Bắt buộc
+                  {isDirectFaculty ? 'Miễn duyệt' : 'Bắt buộc'}
                 </span>
               </div>
 
-              {/* Bước 3 - Phòng Tổ Chức */}
+              {/* Bước 3 - Phòng. TC-HC-QT */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '1rem 1.25rem',
-                  background: isBorrowing ? '#ffffff' : '#f8fafc',
-                  border: isBorrowing ? '1.5px solid #fed7aa' : '1.5px solid #e2e8f0',
+                  background: isDirectFaculty || isBorrowing ? '#ffffff' : '#f8fafc',
+                  border: isDirectFaculty || isBorrowing ? '1.5px solid #fed7aa' : '1.5px solid #e2e8f0',
                   borderRadius: '14px',
-                  opacity: isBorrowing ? 1 : 0.65,
-                  boxShadow: isBorrowing ? '0 2px 8px rgba(249, 115, 22, 0.08)' : 'none',
+                  opacity: isDirectFaculty || isBorrowing ? 1 : 0.65,
+                  boxShadow: isDirectFaculty || isBorrowing ? '0 2px 8px rgba(249, 115, 22, 0.08)' : 'none',
                   flexWrap: 'wrap',
                   gap: '0.5rem',
                 }}
@@ -966,7 +1001,7 @@ export default function NewProposalPage() {
                       width: '32px',
                       height: '32px',
                       borderRadius: '10px',
-                      background: isBorrowing ? '#ea580c' : '#94a3b8',
+                      background: isDirectFaculty || isBorrowing ? '#ea580c' : '#94a3b8',
                       color: '#ffffff',
                       fontWeight: 800,
                       fontSize: '0.9rem',
@@ -975,14 +1010,16 @@ export default function NewProposalPage() {
                       justifyContent: 'center',
                     }}
                   >
-                    3
+                    {isDirectFaculty ? '✓' : '3'}
                   </div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
-                      Phòng Tổ Chức Hành Chính / Quản Trị Duyệt Cấp Phòng
+                      Phòng. TC-HC-QT Thẩm Định & Cấp Phòng
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
-                      {isBorrowing
+                      {isDirectFaculty
+                        ? `Đẩy thẳng đến Phòng. TC-HC-QT duyệt & bàn giao phòng: ${selectedRoomName}`
+                        : isBorrowing
                         ? `Kích hoạt phê duyệt cấp phòng & bàn giao địa điểm: ${selectedRoomName}`
                         : 'Tự động miễn duyệt (Không mượn phòng học viện)'}
                     </div>
@@ -994,13 +1031,13 @@ export default function NewProposalPage() {
                     fontWeight: 800,
                     padding: '0.3rem 0.75rem',
                     borderRadius: '20px',
-                    background: isBorrowing ? '#ffedd5' : '#f1f5f9',
-                    color: isBorrowing ? '#c2410c' : '#64748b',
-                    border: isBorrowing ? '1px solid #fed7aa' : '1px solid #e2e8f0',
+                    background: isDirectFaculty || isBorrowing ? '#ffedd5' : '#f1f5f9',
+                    color: isDirectFaculty || isBorrowing ? '#c2410c' : '#64748b',
+                    border: isDirectFaculty || isBorrowing ? '1px solid #fed7aa' : '1px solid #e2e8f0',
                     textTransform: 'uppercase',
                   }}
                 >
-                  {isBorrowing ? 'Kích hoạt (Mượn phòng)' : 'Miễn duyệt'}
+                  {isDirectFaculty ? 'Đẩy Thẳng Đến Phòng. TC-HC-QT' : isBorrowing ? 'Kích hoạt (Mượn phòng)' : 'Miễn duyệt'}
                 </span>
               </div>
             </div>
@@ -1020,7 +1057,11 @@ export default function NewProposalPage() {
               disabled={submitting || (selectedRoomId !== '' && conflictResult.conflict)}
               className={styles.submitButton}
             >
-              {submitting ? 'Đang gửi hồ sơ...' : 'Gửi Trình Kế Hoạch Phê Duyệt ➔'}
+              {submitting
+                ? 'Đang gửi hồ sơ...'
+                : isDirectFaculty
+                ? 'Gửi Trực Tiếp Đến Phòng. TC-HC-QT ➔'
+                : 'Gửi Trình Kế Hoạch Phê Duyệt ➔'}
             </button>
           </div>
         </form>

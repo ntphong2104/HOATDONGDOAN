@@ -213,7 +213,7 @@ function SuperAdminContent() {
       let unitName = 'Đoàn TNCS Học Viện Cơ Sở TP.HCM';
       if (officerRoleTier === 'super_admin') unitName = 'Ban Quản Trị Toàn Trường';
       else if (officerRoleTier === 'ctsv') unitName = 'Phòng Công Tác Sinh Viên (CTSV)';
-      else if (officerRoleTier === 'facility') unitName = 'Phòng Quản Trị CSVC & Tổ Chức';
+      else if (officerRoleTier === 'facility') unitName = 'Phòng. TC-HC-QT';
       else if (officerRoleTier === 'event_admin') {
         const foundUnit = OFFICIAL_UNITS.find((u) => u.code === officerUnitCode);
         unitName = foundUnit?.name || officerUnitCode;
@@ -234,7 +234,7 @@ function SuperAdminContent() {
               : officerRoleTier === 'ctsv'
               ? 'PHONG_CTSV'
               : officerRoleTier === 'facility'
-              ? 'PHONG_CSVC'
+              ? 'PHONG_TCHCQT'
               : 'BCH_DOAN',
           unit_name:
             officerRoleTier === 'security'
@@ -242,7 +242,7 @@ function SuperAdminContent() {
               : officerRoleTier === 'ctsv'
               ? 'Phòng Công Tác Sinh Viên (CTSV)'
               : officerRoleTier === 'facility'
-              ? 'Phòng Quản Trị CSVC & Tổ Chức'
+              ? 'Phòng. TC-HC-QT'
               : unitName,
           notes: officerNotes,
         }),
@@ -279,7 +279,7 @@ function SuperAdminContent() {
         : officer.role_tier === 'ctsv'
         ? 'Phòng CTSV'
         : officer.role_tier === 'facility'
-        ? 'Phòng CSVC'
+        ? 'Phòng. TC-HC-QT'
         : officer.role_tier === 'security'
         ? 'Tổ Bảo Vệ'
         : 'Admin Đơn vị LCĐ';
@@ -2144,7 +2144,7 @@ function SuperAdminContent() {
                 </div>
               </div>
               <div className={styles.officerStatCard} style={{ borderColor: '#ffedd5' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#ea580c' }}>Phòng CSVC</span>
+                <span className={styles.officerStatLabel} style={{ color: '#ea580c' }}>Phòng. TC-HC-QT</span>
                 <div className={styles.officerStatValue} style={{ color: '#ea580c' }}>
                   {officers.filter((o) => o.role_tier === 'facility').length}
                 </div>
@@ -2268,7 +2268,7 @@ function SuperAdminContent() {
                   >
                     <option value="youth_union">Đoàn Thanh Niên Học Viện</option>
                     <option value="ctsv">Phòng Công Tác Sinh Viên (CTSV)</option>
-                    <option value="facility">Phòng Quản Trị CSVC & Tổ Chức</option>
+                    <option value="facility">Phòng. TC-HC-QT</option>
                     <option value="security">Tổ Bảo Vệ (Quản Lý & Bàn Giao Chìa Khóa)</option>
                     <option value="event_admin">Ban Chấp Hành LCĐ / CLB</option>
                     <option value="super_admin">Super Admin (Toàn Quyền Quản Trị)</option>
@@ -2377,7 +2377,7 @@ function SuperAdminContent() {
                     { key: 'super_admin', label: `Super Admin (${officers.filter(o => o.role_tier === 'super_admin').length})` },
                     { key: 'youth_union', label: `Đoàn Học Viện (${officers.filter(o => o.role_tier === 'youth_union').length})` },
                     { key: 'ctsv', label: `Phòng CTSV (${officers.filter(o => o.role_tier === 'ctsv').length})` },
-                    { key: 'facility', label: `Phòng CSVC (${officers.filter(o => o.role_tier === 'facility').length})` },
+                    { key: 'facility', label: `Phòng. TC-HC-QT (${officers.filter(o => o.role_tier === 'facility').length})` },
                     { key: 'security', label: `Tổ Bảo Vệ (${officers.filter(o => o.role_tier === 'security').length})` },
                     { key: 'event_admin', label: `LCĐ/CLB (${officers.filter(o => o.role_tier === 'event_admin').length})` },
                   ].map((f) => (
@@ -2469,7 +2469,7 @@ function SuperAdminContent() {
                                 ) : officer.role_tier === 'facility' ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ffedd5', color: '#9a3412', fontSize: '0.78rem', fontWeight: 800 }}>
                                     <BuildingIcon size={14} color="#9a3412" />
-                                    <span>Phòng CSVC</span>
+                                    <span>Phòng. TC-HC-QT</span>
                                   </span>
                                 ) : officer.role_tier === 'security' ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ecfdf5', color: '#047857', fontSize: '0.78rem', fontWeight: 800 }}>
@@ -2574,7 +2574,7 @@ function SuperAdminContent() {
                               </span>
                             ) : officer.role_tier === 'facility' ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#ffedd5', color: '#9a3412', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <BuildingIcon size={12} color="#9a3412" /> Phòng CSVC
+                                <BuildingIcon size={12} color="#9a3412" /> Phòng. TC-HC-QT
                               </span>
                             ) : officer.role_tier === 'security' ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#ecfdf5', color: '#047857', fontSize: '0.72rem', fontWeight: 800 }}>

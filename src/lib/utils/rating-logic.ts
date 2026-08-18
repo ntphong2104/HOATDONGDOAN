@@ -107,7 +107,7 @@ export function getRatingDepartmentLabel(tier: string): string {
     case 'ctsv':
       return 'Phòng Công Tác Sinh Viên (CTSV)';
     case 'facility':
-      return 'Phòng Quản Trị CSVC & Tổ Chức';
+      return 'Phòng. TC-HC-QT';
     case 'super_admin':
       return 'Super Admin Đoàn Trường';
     default:

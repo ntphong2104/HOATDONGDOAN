@@ -127,7 +127,7 @@ export default function UserMenuDropdown({
       : tier === 'ctsv'
       ? 'Phòng CTSV (Phê Duyệt)'
       : tier === 'facility'
-      ? 'Phòng CSVC (Phê Duyệt)'
+      ? 'Phòng. TC-HC-QT (Phê Duyệt)'
       : tier === 'security'
       ? 'Tổ Bảo Vệ (Bàn Giao Chìa Khóa)'
       : tier === 'event_admin'
@@ -223,7 +223,8 @@ export default function UserMenuDropdown({
                   currentUser.mssv !== 'EVENT_ADMIN' &&
                   currentUser.mssv !== 'DOAN-HV' &&
                   currentUser.mssv !== 'PHONG-CTSV' &&
-                  currentUser.mssv !== 'PHONG-CSVC' && (
+                  currentUser.mssv !== 'PHONG-CSVC' &&
+                  currentUser.mssv !== 'PHONG-TCHCQT' && (
                     <span
                       className={styles.tierBadge}
                       style={{ background: '#f1f5f9', color: '#475569' }}

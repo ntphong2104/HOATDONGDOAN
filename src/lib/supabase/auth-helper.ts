@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from './server';
 import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
 import type { UserTier } from '@/lib/types';
@@ -5,21 +6,32 @@ import crypto from 'crypto';
 
 const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
 
-function parseDemoCookie(cookieVal: string): any | null {
+export function parseDemoCookie(cookieVal: string): any | null {
   if (!cookieVal) return null;
   try {
-    let raw = cookieVal.trim();
-    // Only strip signature if it matches .[64-hex-chars] at the very end
-    const sigMatch = raw.match(/^(.+)\.[0-9a-fA-F]{64}$/);
-    if (sigMatch) {
-      raw = sigMatch[1];
+    let str = cookieVal.trim();
+    if (str.startsWith('"') && str.endsWith('"')) {
+      str = str.slice(1, -1);
     }
-    try {
-      const user = JSON.parse(decodeURIComponent(raw));
-      if (user && user.email) return user;
-    } catch {
-      const user = JSON.parse(raw);
-      if (user && user.email) return user;
+    const lastDot = str.lastIndexOf('.');
+    if (lastDot !== -1 && str.length - lastDot === 65) {
+      str = str.slice(0, lastDot);
+    }
+
+    for (let i = 0; i < 3; i++) {
+      try {
+        const parsed = JSON.parse(str);
+        if (parsed && typeof parsed === 'object' && (parsed.email || parsed.tier)) {
+          return parsed;
+        }
+      } catch {}
+      try {
+        const next = decodeURIComponent(str);
+        if (next === str) break;
+        str = next;
+      } catch {
+        break;
+      }
     }
   } catch {}
   return null;
@@ -43,11 +55,25 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     const demoCookie = cookieStore.get('demo_session');
     if (demoCookie?.value) {
       const demoUser = parseDemoCookie(demoCookie.value);
-      if (demoUser?.email) {
-        email = demoUser.email;
-        if (demoUser.tier) {
-          explicitTier = demoUser.tier;
-        }
+      if (demoUser?.email && demoUser.tier) {
+        const lowerEmail = demoUser.email.toLowerCase();
+        const explicitTier = demoUser.tier;
+        const isSuperAdmin = explicitTier === 'super_admin' || lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
+        const isYouthUnion = explicitTier === 'youth_union' || lowerEmail.includes('doanthanhnien');
+        const isCtsv = explicitTier === 'ctsv' || lowerEmail.includes('phongctsv');
+        const isFacility = explicitTier === 'facility' || lowerEmail.includes('phongquantri') || lowerEmail.includes('quantri') || lowerEmail.includes('tchc') || lowerEmail.includes('csvc');
+        const isSecurity = explicitTier === 'security' || lowerEmail.includes('baove') || lowerEmail.includes('security');
+        const isEventAdmin = isSuperAdmin || isYouthUnion || isCtsv || isFacility || explicitTier === 'event_admin';
+        const isChecker = isEventAdmin || isSecurity || explicitTier === 'checker';
+
+        return {
+          email: demoUser.email,
+          isSuperAdmin,
+          isEventAdmin,
+          isChecker,
+          isSecurity,
+          tier: explicitTier,
+        };
       }
     }
   } catch {}
@@ -165,7 +191,10 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     explicitTier === 'facility' ||
     assignedOfficerRole?.role_tier === 'facility' ||
     lowerEmail === 'quantri@ptithcm.edu.vn' ||
-    lowerEmail.includes('phongquantri');
+    lowerEmail.includes('phongquantri') ||
+    lowerEmail.includes('tchc') ||
+    lowerEmail.includes('tchcqt') ||
+    lowerEmail.includes('csvc');
 
   const isSecurity =
     explicitTier === 'security' ||

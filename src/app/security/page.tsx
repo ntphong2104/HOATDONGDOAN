@@ -1,15 +1,36 @@
 export const dynamic = 'force-dynamic';
 
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import Header from '@/components/Header';
 import SecurityDashboardClient from './SecurityDashboardClient';
-import type { SessionUser } from '@/lib/types';
+import type { SessionUser, EventProposal } from '@/lib/types';
 import styles from './page.module.css';
 
 export default async function SecurityPage() {
-  const auth = await getAuthContext();
+  let auth = await getAuthContext();
+  if (!auth) {
+    try {
+      const cookieStore = await cookies();
+      const demoCookie = cookieStore.get('demo_session');
+      if (demoCookie?.value) {
+        const demoUser = parseDemoCookie(demoCookie.value);
+        if (demoUser?.email) {
+          auth = {
+            email: demoUser.email,
+            isSuperAdmin: demoUser.tier === 'super_admin',
+            isEventAdmin: ['super_admin', 'youth_union', 'ctsv', 'facility', 'event_admin'].includes(demoUser.tier),
+            isChecker: true,
+            isSecurity: demoUser.tier === 'security' || demoUser.email.includes('baove'),
+            tier: demoUser.tier || 'security',
+          };
+        }
+      }
+    } catch {}
+  }
+
   if (!auth) {
     redirect('/login');
   }
@@ -23,6 +44,7 @@ export default async function SecurityPage() {
     auth.email.includes('security');
 
   if (!isAuthorized) {
+    console.log('--- SECURITY PAGE: NOT AUTHORIZED, REDIRECTING TO / ---');
     redirect('/');
   }
 

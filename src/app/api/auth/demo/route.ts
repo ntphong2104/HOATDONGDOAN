@@ -7,16 +7,24 @@ import crypto from 'crypto';
 const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
 
 export function signCookie(payload: string): string {
-  const hmac = crypto.createHmac('sha256', COOKIE_SECRET).update(payload).digest('hex');
-  return payload + '.' + hmac;
+  const enc = encodeURIComponent(payload);
+  const hmac = crypto.createHmac('sha256', COOKIE_SECRET).update(enc).digest('hex');
+  return `${enc}.${hmac}`;
 }
 
 export function verifyCookie(signed: string): string | null {
-  const parts = signed.split('.');
-  if (parts.length !== 2) return null;
-  const [payload, signature] = parts;
-  const expectedSignature = crypto.createHmac('sha256', COOKIE_SECRET).update(payload).digest('hex');
-  if (signature === expectedSignature) return payload;
+  const lastDot = signed.lastIndexOf('.');
+  if (lastDot === -1) return null;
+  const enc = signed.slice(0, lastDot);
+  const signature = signed.slice(lastDot + 1);
+  const expectedSignature = crypto.createHmac('sha256', COOKIE_SECRET).update(enc).digest('hex');
+  if (signature === expectedSignature) {
+    try {
+      return decodeURIComponent(enc);
+    } catch {
+      return null;
+    }
+  }
   return null;
 }
 
@@ -266,11 +274,51 @@ export const DEMO_PROFILES: Record<string, SessionUser> = {
     managed_events: [],
   },
   facility: {
-    mssv: 'PHONG-CSVC',
+    mssv: 'PHONG-TCHCQT',
     email: 'phongquantri@ptithcm.edu.vn',
-    full_name: 'Phòng Quản Trị CSVC & Tổ Chức',
+    full_name: 'Phòng. TC-HC-QT',
     class_id: 'PHONG-BAN',
     tier: 'facility',
+    managed_events: [],
+  },
+  khoa_cntt: {
+    mssv: 'KHOA-CNTT',
+    email: 'khoacntt@ptithcm.edu.vn',
+    full_name: 'Khoa Công Nghệ Thông Tin',
+    class_id: 'KHOA-DAOTAO',
+    tier: 'event_admin',
+    unit_name: 'Khoa Công Nghệ Thông Tin',
+    unit_code: 'KHOA_CNTT',
+    managed_events: [],
+  },
+  khoa_dt: {
+    mssv: 'KHOA-DT',
+    email: 'khoadt@ptithcm.edu.vn',
+    full_name: 'Khoa Điện Tử',
+    class_id: 'KHOA-DAOTAO',
+    tier: 'event_admin',
+    unit_name: 'Khoa Điện Tử',
+    unit_code: 'KHOA_DT',
+    managed_events: [],
+  },
+  khoa_cb: {
+    mssv: 'KHOA-CB',
+    email: 'khoacoban@ptithcm.edu.vn',
+    full_name: 'Khoa Cơ Bản',
+    class_id: 'KHOA-DAOTAO',
+    tier: 'event_admin',
+    unit_name: 'Khoa Cơ Bản',
+    unit_code: 'KHOA_CB',
+    managed_events: [],
+  },
+  khoa_qtkd: {
+    mssv: 'KHOA-QTKD',
+    email: 'khoaqtkd@ptithcm.edu.vn',
+    full_name: 'Khoa Quản Trị Kinh Doanh',
+    class_id: 'KHOA-DAOTAO',
+    tier: 'event_admin',
+    unit_name: 'Khoa Quản Trị Kinh Doanh',
+    unit_code: 'KHOA_QTKD',
     managed_events: [],
   },
   security: {
@@ -338,6 +386,7 @@ export async function POST(req: Request) {
 
     if (!targetRedirect || targetRedirect === '/') {
       if (profile.tier === 'checker') redirectUrl = '/scanner';
+      if (profile.tier === 'security') redirectUrl = '/security';
       if (profile.tier === 'event_admin') redirectUrl = '/admin/proposals';
       if (profile.tier === 'youth_union' || profile.tier === 'ctsv' || profile.tier === 'facility') {
         redirectUrl = '/admin/proposals';

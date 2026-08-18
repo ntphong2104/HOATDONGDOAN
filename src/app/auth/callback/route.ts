@@ -115,6 +115,8 @@ export async function GET(request: Request) {
       email.includes('doanthanhnien') ||
       email.includes('ctsv') ||
       email.includes('quantri') ||
+      email.includes('tchc') ||
+      email.includes('tchcqt') ||
       email.includes('csvc')
     ) {
       return NextResponse.redirect(`${origin}/admin/proposals`);

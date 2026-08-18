@@ -41,7 +41,7 @@ export async function POST(
   if (!allowedTiers.includes(auth.tier) && !auth.isSuperAdmin) {
     return NextResponse.json({
       success: false,
-      error: 'Chỉ các cấp Ban ngành (Đoàn, CTSV, CSVC, Super Admin) mới có quyền đánh giá chất lượng sự kiện.',
+      error: 'Chỉ các cấp Ban ngành (Đoàn, CTSV, Phòng. TC-HC-QT, Super Admin) mới có quyền đánh giá chất lượng sự kiện.',
     }, { status: 403 });
   }
 

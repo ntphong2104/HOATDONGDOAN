@@ -237,7 +237,7 @@ function LoginContent() {
             >
               <span className={styles.demoBtnTitle}>
                 <SettingsIcon size={16} color="#c026d3" />
-                3. Phòng CSVC
+                3. Phòng. TC-HC-QT
               </span>
               <span className={styles.demoBtnDesc}>Duyệt Bước 3 (Cấp phòng)</span>
             </button>
@@ -258,18 +258,18 @@ function LoginContent() {
           </div>
         </div>
 
-        {/* NHÓM 2: 24 ĐƠN VỊ LCĐ & CLB / ĐỘI / NHÓM (ADMIN NHỎ) */}
+        {/* NHÓM 2: 4 KHOA & 24 ĐƠN VỊ LCĐ, CLB / ĐỘI / NHÓM */}
         <div className={styles.demoSection} style={{ marginBottom: '1.25rem' }}>
           <span className={styles.demoLabel} style={{ color: '#2563eb', fontWeight: 700 }}>
-            Tài khoản 24 Đơn vị LCĐ & CLB (Admin Đơn Vị):
+            Tài khoản Khoa Đào Tạo, LCĐ & CLB (Admin Đơn Vị):
           </span>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
             <label htmlFor="subAdminSelect" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', border: 0 }}>
-              Chọn Đơn vị LCĐ & CLB
+              Chọn Đơn vị Khoa / LCĐ / CLB
             </label>
             <select
               id="subAdminSelect"
-              aria-label="Chọn Đơn vị LCĐ & CLB để đăng nhập"
+              aria-label="Chọn Đơn vị Khoa / LCĐ / CLB để đăng nhập"
               defaultValue=""
               style={{
                 flex: 1,
@@ -289,8 +289,15 @@ function LoginContent() {
               }}
             >
               <option value="" disabled>
-                -- Chọn Đơn vị LCĐ & CLB để đăng nhập ngay --
+                -- Chọn Đơn vị Khoa / LCĐ / CLB để đăng nhập ngay --
               </option>
+              <optgroup label="── 4 KHOA ĐÀO TẠO (MƯỢN PHÒNG TRỰC TIẾP) ──">
+                <option value="khoa_cntt">1. Khoa Công Nghệ Thông Tin (khoacntt@...)</option>
+                <option value="khoa_dt">2. Khoa Điện Tử (khoadt@...)</option>
+                <option value="khoa_cb">3. Khoa Cơ Bản (khoacoban@...)</option>
+                <option value="khoa_qtkd">4. Khoa Quản Trị Kinh Doanh (khoaqtkd@...)</option>
+              </optgroup>
+
               <optgroup label="── 8 LIÊN CHI ĐOÀN (LCĐ) ──">
                 <option value="lcdcntt">1. LCĐ Khoa Công nghệ Thông tin (lcdcntt@...)</option>
                 <option value="lcdcndpt">2. LCĐ Công nghệ Đa phương tiện (lcdcndpt@...)</option>
