@@ -55,9 +55,9 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     const demoCookie = cookieStore.get('demo_session');
     if (demoCookie?.value) {
       const demoUser = parseDemoCookie(demoCookie.value);
-      if (demoUser?.email && demoUser.tier) {
+      if (demoUser?.email) {
         const lowerEmail = demoUser.email.toLowerCase();
-        const explicitTier = demoUser.tier;
+        const explicitTier = (demoUser.tier || 'user') as UserTier;
         const isSuperAdmin = explicitTier === 'super_admin' || lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
         const isYouthUnion = explicitTier === 'youth_union' || lowerEmail.includes('doanthanhnien');
         const isCtsv = explicitTier === 'ctsv' || lowerEmail.includes('phongctsv');

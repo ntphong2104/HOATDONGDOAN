@@ -81,25 +81,7 @@ export async function middleware(request: NextRequest) {
   const demoCookie = request.cookies.get('demo_session');
   if (demoCookie?.value) {
     const demoUser = parseDemoCookie(demoCookie.value);
-    if (demoUser) {
-      if (pathname === '/login') {
-        const redirectParam =
-          request.nextUrl.searchParams.get('redirect') || request.nextUrl.searchParams.get('next');
-        let target = redirectParam && redirectParam.startsWith('/') && redirectParam !== '/login' ? redirectParam : null;
-        if (!target) {
-          if (demoUser.tier === 'security') target = '/security';
-          else if (demoUser.tier === 'super_admin') target = '/super-admin';
-          else if (demoUser.tier === 'checker') target = '/scanner';
-          else if (['youth_union', 'ctsv', 'facility', 'event_admin'].includes(demoUser.tier)) target = '/admin/proposals';
-          else if (demoUser.tier === 'user') target = '/';
-        }
-        if (target && target !== '/login') {
-          return addSecurityHeaders(
-            NextResponse.redirect(new URL(target, request.url))
-          );
-        }
-      }
-
+    if (demoUser?.email) {
       return addSecurityHeaders(NextResponse.next());
     }
   }
@@ -142,23 +124,13 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     // If unauthenticated and accessing protected route -> redirect to login with target redirect
-    if (!user && !isPublicRoute) {
+    if (!user && !isPublicRoute && !demoCookie?.value) {
       const loginUrl = new URL('/login', request.url);
       if (pathname && pathname !== '/' && pathname !== '/login') {
         const fullTarget = request.nextUrl.search ? `${pathname}${request.nextUrl.search}` : pathname;
         loginUrl.searchParams.set('redirect', fullTarget);
       }
       return addSecurityHeaders(NextResponse.redirect(loginUrl));
-    }
-
-    // If authenticated and on /login -> redirect to intended target or home
-    if (user && pathname === '/login') {
-      const redirectParam =
-        request.nextUrl.searchParams.get('redirect') || request.nextUrl.searchParams.get('next');
-      const target = redirectParam && redirectParam.startsWith('/') && redirectParam !== '/login' ? redirectParam : '/';
-      return addSecurityHeaders(
-        NextResponse.redirect(new URL(target, request.url))
-      );
     }
 
     // Maintenance Mode Check
