@@ -2229,56 +2229,6 @@ function SuperAdminContent() {
         {/* TAB: CÁN BỘ & PHÂN QUYỀN ĐA TÀI KHOẢN */}
         {activeTab === 'officers' && (
           <div className={styles.tabContent}>
-            {/* Header & Stat Summary */}
-            <div className={styles.officersStatsGrid}>
-              <div className={styles.officerStatCard}>
-                <span className={styles.officerStatLabel} style={{ color: '#64748b' }}>Tổng Cán Bộ</span>
-                <div className={styles.officerStatValue} style={{ color: '#0f172a' }}>{officers.length}</div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#fee2e2' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#dc2626' }}>Super Admin</span>
-                <div className={styles.officerStatValue} style={{ color: '#dc2626' }}>
-                  {officers.filter((o) => o.role_tier === 'super_admin').length}
-                </div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#dcfce7' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#16a34a' }}>Đoàn Học Viện</span>
-                <div className={styles.officerStatValue} style={{ color: '#16a34a' }}>
-                  {officers.filter((o) => o.role_tier === 'youth_union').length}
-                </div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#dbeafe' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#2563eb' }}>Phòng CTSV</span>
-                <div className={styles.officerStatValue} style={{ color: '#2563eb' }}>
-                  {officers.filter((o) => o.role_tier === 'ctsv').length}
-                </div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#ffedd5' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#ea580c' }}>Phòng. TC-HC-QT</span>
-                <div className={styles.officerStatValue} style={{ color: '#ea580c' }}>
-                  {officers.filter((o) => o.role_tier === 'facility').length}
-                </div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#a7f3d0' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#047857' }}>Tổ Bảo Vệ</span>
-                <div className={styles.officerStatValue} style={{ color: '#047857' }}>
-                  {officers.filter((o) => o.role_tier === 'security').length}
-                </div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#f3e8ff' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#7c3aed' }}>Admin LCĐ / CLB</span>
-                <div className={styles.officerStatValue} style={{ color: '#7c3aed' }}>
-                  {officers.filter((o) => o.role_tier === 'event_admin' && !o.unit_name?.startsWith('Sự kiện:') && !o.notes?.includes('Admin sự kiện') && !o.notes?.includes('CTV quét mã')).length}
-                </div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#c4b5fd' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#6d28d9' }}>Admin Sự Kiện & CTV</span>
-                <div className={styles.officerStatValue} style={{ color: '#6d28d9' }}>
-                  {officers.filter((o) => o.unit_name?.startsWith('Sự kiện:') || o.notes?.includes('Admin sự kiện') || o.notes?.includes('CTV quét mã') || (o as any).event_role_type).length}
-                </div>
-              </div>
-            </div>
-
             {/* Form Cấp Quyền Cán Bộ Mới Card */}
             <div
               style={{
