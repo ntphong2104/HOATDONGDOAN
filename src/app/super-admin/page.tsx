@@ -65,6 +65,7 @@ function SuperAdminContent() {
   const [proposals, setProposals] = useState<EventProposal[]>([]);
   const [officers, setOfficers] = useState<any[]>([]);
   const [unitsList, setUnitsList] = useState<OfficialUnit[]>(OFFICIAL_UNITS);
+  const [unitFilterTab, setUnitFilterTab] = useState<'all' | 'lcd' | 'clb'>('all');
   const [rooms, setRooms] = useState<Room[]>([]);
   const [students, setStudents] = useState<User[]>([]);
   const [penalties, setPenalties] = useState<UserPenalty[]>([]);
@@ -459,6 +460,16 @@ function SuperAdminContent() {
       );
     });
   }, [events, selectedUnitFilter]);
+
+  const filteredUnitsList = React.useMemo(() => {
+    if (unitFilterTab === 'lcd') {
+      return unitsList.filter((u) => u.type.includes('LCĐ') || u.code.startsWith('LCD_'));
+    }
+    if (unitFilterTab === 'clb') {
+      return unitsList.filter((u) => !u.type.includes('LCĐ') && !u.code.startsWith('LCD_'));
+    }
+    return unitsList;
+  }, [unitsList, unitFilterTab]);
 
   const pendingProposals = React.useMemo(() => {
     let list = proposals.filter((p) => p.status === 'pending');
@@ -3271,29 +3282,92 @@ function SuperAdminContent() {
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: '14px', padding: '1rem' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e40af' }}>LIÊN CHI ĐOÀN KHOA</div>
+                <button
+                  type="button"
+                  onClick={() => setUnitFilterTab(unitFilterTab === 'lcd' ? 'all' : 'lcd')}
+                  style={{
+                    textAlign: 'left',
+                    background: unitFilterTab === 'lcd' ? '#eff6ff' : '#ffffff',
+                    border: unitFilterTab === 'lcd' ? '2px solid #2563eb' : '1.5px solid #bfdbfe',
+                    borderRadius: '14px',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: unitFilterTab === 'lcd' ? '0 4px 14px rgba(37, 99, 235, 0.2)' : 'none',
+                    transform: unitFilterTab === 'lcd' ? 'translateY(-2px)' : 'none',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#1e40af' }}>LIÊN CHI ĐOÀN KHOA</div>
+                    {unitFilterTab === 'lcd' && (
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#2563eb', color: '#fff', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                        Đang lọc
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e3a8a', marginTop: '0.25rem' }}>
                     {unitsList.filter(u => u.type.includes('LCĐ') || u.code.startsWith('LCD_')).length} Đơn vị
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Quản lý hoạt động Đoàn các Khoa</div>
-                </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Bấm để lọc Đoàn các Khoa</div>
+                </button>
 
-                <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '14px', padding: '1rem' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534' }}>CLB / ĐỘI / NHÓM</div>
+                <button
+                  type="button"
+                  onClick={() => setUnitFilterTab(unitFilterTab === 'clb' ? 'all' : 'clb')}
+                  style={{
+                    textAlign: 'left',
+                    background: unitFilterTab === 'clb' ? '#f0fdf4' : '#ffffff',
+                    border: unitFilterTab === 'clb' ? '2px solid #16a34a' : '1.5px solid #bbf7d0',
+                    borderRadius: '14px',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: unitFilterTab === 'clb' ? '0 4px 14px rgba(22, 163, 74, 0.2)' : 'none',
+                    transform: unitFilterTab === 'clb' ? 'translateY(-2px)' : 'none',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#166534' }}>CLB / ĐỘI / NHÓM</div>
+                    {unitFilterTab === 'clb' && (
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#16a34a', color: '#fff', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                        Đang lọc
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#14532d', marginTop: '0.25rem' }}>
                     {unitsList.filter(u => !u.type.includes('LCĐ') && !u.code.startsWith('LCD_')).length} Đơn vị
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Học thuật, văn thể mỹ, tình nguyện</div>
-                </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Bấm để lọc CLB / Đội / Nhóm</div>
+                </button>
 
-                <div style={{ background: '#faf5ff', border: '1.5px solid #e9d5ff', borderRadius: '14px', padding: '1rem' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#6b21a8' }}>TỔNG SỐ ĐƠN VỊ</div>
+                <button
+                  type="button"
+                  onClick={() => setUnitFilterTab('all')}
+                  style={{
+                    textAlign: 'left',
+                    background: unitFilterTab === 'all' ? '#faf5ff' : '#ffffff',
+                    border: unitFilterTab === 'all' ? '2px solid #9333ea' : '1.5px solid #e9d5ff',
+                    borderRadius: '14px',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: unitFilterTab === 'all' ? '0 4px 14px rgba(147, 51, 234, 0.2)' : 'none',
+                    transform: unitFilterTab === 'all' ? 'translateY(-2px)' : 'none',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#6b21a8' }}>TỔNG SỐ ĐƠN VỊ</div>
+                    {unitFilterTab === 'all' && (
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#9333ea', color: '#fff', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                        Tất cả
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#581c87', marginTop: '0.25rem' }}>
                     {unitsList.length} Đơn vị
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Toàn bộ tổ chức được cấp phép</div>
-                </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Bấm để xem toàn bộ 24 đơn vị</div>
+                </button>
               </div>
 
               {/* Bảng Danh Sách Đơn Vị */}
@@ -3315,14 +3389,14 @@ function SuperAdminContent() {
                           Đang tải danh sách đơn vị...
                         </td>
                       </tr>
-                    ) : unitsList.length === 0 ? (
+                    ) : filteredUnitsList.length === 0 ? (
                       <tr>
                         <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                          Chưa có đơn vị nào.
+                          Không có đơn vị nào phù hợp bộ lọc.
                         </td>
                       </tr>
                     ) : (
-                      unitsList.map((unit) => {
+                      filteredUnitsList.map((unit) => {
                         const isCustom = !OFFICIAL_UNITS.some((u) => u.code === unit.code);
                         return (
                           <tr key={unit.code}>
