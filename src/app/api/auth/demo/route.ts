@@ -273,6 +273,15 @@ export const DEMO_PROFILES: Record<string, SessionUser> = {
     tier: 'facility',
     managed_events: [],
   },
+  security: {
+    mssv: 'TO-BAOVE',
+    email: 'baove@ptithcm.edu.vn',
+    full_name: 'Tổ Bảo Vệ & Quản Lý Chìa Khóa',
+    class_id: 'TO-BAO-VE',
+    tier: 'security',
+    isSecurity: true,
+    managed_events: [],
+  },
   super_admin: {
     mssv: 'ADMIN001',
     email: 'superadmin@student.ptithcm.edu.vn',

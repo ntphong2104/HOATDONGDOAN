@@ -324,9 +324,23 @@ function LoginContent() {
           </div>
         </div>
 
-        {/* NHÓM 3: SINH VIÊN & CTV */}
+        {/* NHÓM 3: TỔ BẢO VỆ, CTV & SINH VIÊN */}
         <div className={styles.demoSection}>
-          <div className={styles.demoGrid} style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+          <div className={styles.demoGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
+            <button
+              type="button"
+              className={styles.demoBtn}
+              onClick={() => handleDemoLogin('security')}
+              disabled={loading || !!demoLoading}
+              style={{ background: '#ecfdf5', borderColor: '#a7f3d0' }}
+            >
+              <span className={styles.demoBtnTitle}>
+                <span style={{ fontSize: '1rem' }}>🔑</span>
+                Tổ Bảo Vệ
+              </span>
+              <span className={styles.demoBtnDesc}>Sổ Giao Chìa Khóa</span>
+            </button>
+
             <button
               type="button"
               className={styles.demoBtn}
