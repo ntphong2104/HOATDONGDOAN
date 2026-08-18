@@ -35,12 +35,30 @@ export const OFFICIAL_UNITS: OfficialUnit[] = [
     type: 'Khoa Đào Tạo',
     email: 'khoaqtkd@ptithcm.edu.vn',
   },
-  // Đoàn Trường
+  // Đoàn Trường & Các Phòng Ban Chức Năng
   {
     code: 'BCH_DOAN',
     name: 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
     type: 'Đoàn Thanh Niên',
     email: 'doanthanhnien@ptithcm.edu.vn',
+  },
+  {
+    code: 'PHONG_CTSV',
+    name: 'Phòng Công Tác Sinh Viên (CTSV)',
+    type: 'Phòng Ban Chức Năng',
+    email: 'ctsv@ptithcm.edu.vn',
+  },
+  {
+    code: 'PHONG_TCHCQT',
+    name: 'Phòng Tổ Chức - Hành Chính - Quản Trị (TC-HC-QT)',
+    type: 'Phòng Ban Chức Năng',
+    email: 'quantri@ptithcm.edu.vn',
+  },
+  {
+    code: 'TO_BAO_VE',
+    name: 'Tổ Bảo Vệ & Quản Lý Chìa Khóa Phòng',
+    type: 'Tổ Bảo Vệ',
+    email: 'baove@ptithcm.edu.vn',
   },
   // 8 LCĐs
   {

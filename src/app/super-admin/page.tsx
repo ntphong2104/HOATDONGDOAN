@@ -304,6 +304,18 @@ function SuperAdminContent() {
       if (officerRoleTier === 'super_admin') {
         finalUnitCode = 'BCH_DOAN';
         finalUnitName = 'Ban Quản Trị Toàn Trường';
+      } else if (officerRoleTier === 'youth_union') {
+        finalUnitCode = 'BCH_DOAN';
+        finalUnitName = 'Đoàn TNCS Học Viện Cơ Sở TP.HCM';
+      } else if (officerRoleTier === 'ctsv') {
+        finalUnitCode = 'PHONG_CTSV';
+        finalUnitName = 'Phòng Công Tác Sinh Viên (CTSV)';
+      } else if (officerRoleTier === 'facility') {
+        finalUnitCode = 'PHONG_TCHCQT';
+        finalUnitName = 'Phòng Tổ Chức - Hành Chính - Quản Trị (TC-HC-QT)';
+      } else if (officerRoleTier === 'security') {
+        finalUnitCode = 'TO_BAO_VE';
+        finalUnitName = 'Tổ Bảo Vệ & Quản Lý Chìa Khóa Phòng';
       } else if (officerRoleTier === 'event_admin') {
         if (officerUnitCode === '__NEW_CUSTOM__') {
           if (!customUnitCode.trim() || !customUnitName.trim()) {
@@ -2218,19 +2230,43 @@ function SuperAdminContent() {
         {activeTab === 'officers' && (
           <div className={styles.tabContent}>
             {/* Header & Stat Summary */}
-            <div className={styles.officersStatsGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+            <div className={styles.officersStatsGrid}>
               <div className={styles.officerStatCard}>
-                <span className={styles.officerStatLabel} style={{ color: '#64748b' }}>Tổng Cán Bộ Phân Quyền</span>
+                <span className={styles.officerStatLabel} style={{ color: '#64748b' }}>Tổng Cán Bộ</span>
                 <div className={styles.officerStatValue} style={{ color: '#0f172a' }}>{officers.length}</div>
               </div>
               <div className={styles.officerStatCard} style={{ borderColor: '#fee2e2' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#dc2626' }}>Super Admin Toàn Quyền</span>
+                <span className={styles.officerStatLabel} style={{ color: '#dc2626' }}>Super Admin</span>
                 <div className={styles.officerStatValue} style={{ color: '#dc2626' }}>
                   {officers.filter((o) => o.role_tier === 'super_admin').length}
                 </div>
               </div>
+              <div className={styles.officerStatCard} style={{ borderColor: '#dcfce7' }}>
+                <span className={styles.officerStatLabel} style={{ color: '#16a34a' }}>Đoàn Học Viện</span>
+                <div className={styles.officerStatValue} style={{ color: '#16a34a' }}>
+                  {officers.filter((o) => o.role_tier === 'youth_union').length}
+                </div>
+              </div>
+              <div className={styles.officerStatCard} style={{ borderColor: '#dbeafe' }}>
+                <span className={styles.officerStatLabel} style={{ color: '#2563eb' }}>Phòng CTSV</span>
+                <div className={styles.officerStatValue} style={{ color: '#2563eb' }}>
+                  {officers.filter((o) => o.role_tier === 'ctsv').length}
+                </div>
+              </div>
+              <div className={styles.officerStatCard} style={{ borderColor: '#ffedd5' }}>
+                <span className={styles.officerStatLabel} style={{ color: '#ea580c' }}>Phòng. TC-HC-QT</span>
+                <div className={styles.officerStatValue} style={{ color: '#ea580c' }}>
+                  {officers.filter((o) => o.role_tier === 'facility').length}
+                </div>
+              </div>
+              <div className={styles.officerStatCard} style={{ borderColor: '#a7f3d0' }}>
+                <span className={styles.officerStatLabel} style={{ color: '#047857' }}>Tổ Bảo Vệ</span>
+                <div className={styles.officerStatValue} style={{ color: '#047857' }}>
+                  {officers.filter((o) => o.role_tier === 'security').length}
+                </div>
+              </div>
               <div className={styles.officerStatCard} style={{ borderColor: '#f3e8ff' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#7c3aed' }}>Admin LCĐ / CLB / Khoa</span>
+                <span className={styles.officerStatLabel} style={{ color: '#7c3aed' }}>LCĐ / CLB</span>
                 <div className={styles.officerStatValue} style={{ color: '#7c3aed' }}>
                   {officers.filter((o) => o.role_tier === 'event_admin').length}
                 </div>
@@ -2253,10 +2289,10 @@ function SuperAdminContent() {
                   <ShieldCheckIcon size={13} color="#991b1b" /> Phân Quyền Cán Bộ
                 </div>
                 <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: '0.35rem 0 0.15rem' }}>
-                  Thêm & Gán Quyền Cán Bộ / Ban Chấp Hành LCĐ
+                  Thêm & Gán Quyền Cán Bộ / Ban Chấp Hành
                 </h2>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.35 }}>
-                  Cấp quyền cho cán bộ, Bí thư/Phó Bí thư LCĐ, Chủ nhiệm CLB sử dụng tài khoản Google cá nhân (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn)
+                  Cấp quyền cho cán bộ, chuyên viên các phòng ban, Bí thư/Phó Bí thư LCĐ, Tổ Bảo vệ sử dụng tài khoản Google (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn)
                 </p>
               </div>
 
@@ -2340,6 +2376,10 @@ function SuperAdminContent() {
                       boxSizing: 'border-box',
                     }}
                   >
+                    <option value="youth_union">Đoàn Thanh Niên Học Viện</option>
+                    <option value="ctsv">Phòng Công Tác Sinh Viên (CTSV)</option>
+                    <option value="facility">Phòng Tổ Chức - Hành Chính - Quản Trị (TC-HC-QT)</option>
+                    <option value="security">Tổ Bảo Vệ (Quản Lý & Bàn Giao Chìa Khóa)</option>
                     <option value="event_admin">Ban Chấp Hành LCĐ / CLB / Khoa</option>
                     <option value="super_admin">Super Admin (Toàn Quyền Quản Trị)</option>
                   </select>
@@ -2499,7 +2539,7 @@ function SuperAdminContent() {
                   </label>
                   <input
                     type="text"
-                    placeholder="VD: Bí thư LCĐ, Chủ nhiệm CLB..."
+                    placeholder="VD: Bí thư LCĐ, Chuyên viên CTSV, Tổ trưởng bảo vệ..."
                     value={officerNotes}
                     onChange={(e) => setOfficerNotes(e.target.value)}
                     style={{
@@ -2562,7 +2602,11 @@ function SuperAdminContent() {
                   {[
                     { key: 'all', label: `Tất cả (${officers.length})` },
                     { key: 'super_admin', label: `Super Admin (${officers.filter(o => o.role_tier === 'super_admin').length})` },
-                    { key: 'event_admin', label: `Admin LCĐ / CLB / Khoa (${officers.filter(o => o.role_tier === 'event_admin').length})` },
+                    { key: 'youth_union', label: `Đoàn Học Viện (${officers.filter(o => o.role_tier === 'youth_union').length})` },
+                    { key: 'ctsv', label: `Phòng CTSV (${officers.filter(o => o.role_tier === 'ctsv').length})` },
+                    { key: 'facility', label: `Phòng. TC-HC-QT (${officers.filter(o => o.role_tier === 'facility').length})` },
+                    { key: 'security', label: `Tổ Bảo Vệ (${officers.filter(o => o.role_tier === 'security').length})` },
+                    { key: 'event_admin', label: `LCĐ/CLB (${officers.filter(o => o.role_tier === 'event_admin').length})` },
                   ].map((f) => (
                     <button
                       key={f.key}
@@ -2638,6 +2682,26 @@ function SuperAdminContent() {
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#fee2e2', color: '#991b1b', fontSize: '0.78rem', fontWeight: 800 }}>
                                     <ShieldCheckIcon size={14} color="#991b1b" />
                                     <span>Super Admin</span>
+                                  </span>
+                                ) : officer.role_tier === 'youth_union' ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#dcfce7', color: '#166534', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <CheckCircleIcon size={14} color="#166534" />
+                                    <span>Đoàn Học Viện</span>
+                                  </span>
+                                ) : officer.role_tier === 'ctsv' ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#dbeafe', color: '#1e40af', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <UsersIcon size={14} color="#1e40af" />
+                                    <span>Phòng CTSV</span>
+                                  </span>
+                                ) : officer.role_tier === 'facility' ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ffedd5', color: '#9a3412', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <BuildingIcon size={14} color="#9a3412" />
+                                    <span>Phòng. TC-HC-QT</span>
+                                  </span>
+                                ) : officer.role_tier === 'security' ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ecfdf5', color: '#047857', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <KeyIcon size={14} color="#047857" />
+                                    <span>Tổ Bảo Vệ</span>
                                   </span>
                                 ) : (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.78rem', fontWeight: 800 }}>
