@@ -2266,9 +2266,15 @@ function SuperAdminContent() {
                 </div>
               </div>
               <div className={styles.officerStatCard} style={{ borderColor: '#f3e8ff' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#7c3aed' }}>LCĐ / CLB</span>
+                <span className={styles.officerStatLabel} style={{ color: '#7c3aed' }}>Admin LCĐ / CLB</span>
                 <div className={styles.officerStatValue} style={{ color: '#7c3aed' }}>
-                  {officers.filter((o) => o.role_tier === 'event_admin').length}
+                  {officers.filter((o) => o.role_tier === 'event_admin' && !o.unit_name?.startsWith('Sự kiện:') && !o.notes?.includes('Admin sự kiện') && !o.notes?.includes('CTV quét mã')).length}
+                </div>
+              </div>
+              <div className={styles.officerStatCard} style={{ borderColor: '#c4b5fd' }}>
+                <span className={styles.officerStatLabel} style={{ color: '#6d28d9' }}>Admin Sự Kiện & CTV</span>
+                <div className={styles.officerStatValue} style={{ color: '#6d28d9' }}>
+                  {officers.filter((o) => o.unit_name?.startsWith('Sự kiện:') || o.notes?.includes('Admin sự kiện') || o.notes?.includes('CTV quét mã') || (o as any).event_role_type).length}
                 </div>
               </div>
             </div>
@@ -2606,7 +2612,8 @@ function SuperAdminContent() {
                     { key: 'ctsv', label: `Phòng CTSV (${officers.filter(o => o.role_tier === 'ctsv').length})` },
                     { key: 'facility', label: `Phòng. TC-HC-QT (${officers.filter(o => o.role_tier === 'facility').length})` },
                     { key: 'security', label: `Tổ Bảo Vệ (${officers.filter(o => o.role_tier === 'security').length})` },
-                    { key: 'event_admin', label: `LCĐ/CLB (${officers.filter(o => o.role_tier === 'event_admin').length})` },
+                    { key: 'lcd_clb', label: `Admin LCĐ / CLB (${officers.filter(o => o.role_tier === 'event_admin' && !o.unit_name?.startsWith('Sự kiện:') && !o.notes?.includes('Admin sự kiện') && !o.notes?.includes('CTV quét mã')).length})` },
+                    { key: 'event_specific', label: `Admin Sự Kiện (${officers.filter(o => o.unit_name?.startsWith('Sự kiện:') || o.notes?.includes('Admin sự kiện') || o.notes?.includes('CTV quét mã')).length})` },
                   ].map((f) => (
                     <button
                       key={f.key}
@@ -2651,7 +2658,16 @@ function SuperAdminContent() {
                             Đang tải danh sách cán bộ...
                           </td>
                         </tr>
-                      ) : officers.filter((o) => officerFilter === 'all' || o.role_tier === officerFilter).length === 0 ? (
+                      ) : officers.filter((o) => {
+                          if (officerFilter === 'all') return true;
+                          if (officerFilter === 'lcd_clb') {
+                            return o.role_tier === 'event_admin' && !o.unit_name?.startsWith('Sự kiện:') && !o.notes?.includes('Admin sự kiện') && !o.notes?.includes('CTV quét mã');
+                          }
+                          if (officerFilter === 'event_specific') {
+                            return o.unit_name?.startsWith('Sự kiện:') || o.notes?.includes('Admin sự kiện') || o.notes?.includes('CTV quét mã') || (o as any).event_role_type;
+                          }
+                          return o.role_tier === officerFilter;
+                        }).length === 0 ? (
                         <tr>
                           <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
                             Chưa có cán bộ nào trong mục này.
@@ -2659,7 +2675,16 @@ function SuperAdminContent() {
                         </tr>
                       ) : (
                         officers
-                          .filter((o) => officerFilter === 'all' || o.role_tier === officerFilter)
+                          .filter((o) => {
+                            if (officerFilter === 'all') return true;
+                            if (officerFilter === 'lcd_clb') {
+                              return o.role_tier === 'event_admin' && !o.unit_name?.startsWith('Sự kiện:') && !o.notes?.includes('Admin sự kiện') && !o.notes?.includes('CTV quét mã');
+                            }
+                            if (officerFilter === 'event_specific') {
+                              return o.unit_name?.startsWith('Sự kiện:') || o.notes?.includes('Admin sự kiện') || o.notes?.includes('CTV quét mã') || (o as any).event_role_type;
+                            }
+                            return o.role_tier === officerFilter;
+                          })
                           .map((officer) => (
                             <tr key={officer.id || officer.email}>
                               <td>
@@ -2703,9 +2728,19 @@ function SuperAdminContent() {
                                     <KeyIcon size={14} color="#047857" />
                                     <span>Tổ Bảo Vệ</span>
                                   </span>
+                                ) : officer.notes?.includes('CTV quét mã') || (officer as any).event_role_type === 'checker' ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#e0f2fe', color: '#0369a1', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <QrCodeIcon size={14} color="#0369a1" />
+                                    <span>CTV Quét Mã</span>
+                                  </span>
+                                ) : officer.unit_name?.startsWith('Sự kiện:') || officer.notes?.includes('Admin sự kiện') || (officer as any).event_role_type === 'event_admin' ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ede9fe', color: '#6d28d9', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <CalendarIcon size={14} color="#6d28d9" />
+                                    <span>Admin Sự Kiện</span>
+                                  </span>
                                 ) : (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <SettingsIcon size={14} color="#6b21a8" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#fdf4ff', color: '#a21caf', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <SettingsIcon size={14} color="#a21caf" />
                                     <span>Admin LCĐ / CLB</span>
                                   </span>
                                 )}
@@ -2765,13 +2800,31 @@ function SuperAdminContent() {
                   <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '0.875rem' }}>
                     Đang tải danh sách cán bộ...
                   </div>
-                ) : officers.filter((o) => officerFilter === 'all' || o.role_tier === officerFilter).length === 0 ? (
+                ) : officers.filter((o) => {
+                    if (officerFilter === 'all') return true;
+                    if (officerFilter === 'lcd_clb') {
+                      return o.role_tier === 'event_admin' && !o.unit_name?.startsWith('Sự kiện:') && !o.notes?.includes('Admin sự kiện') && !o.notes?.includes('CTV quét mã');
+                    }
+                    if (officerFilter === 'event_specific') {
+                      return o.unit_name?.startsWith('Sự kiện:') || o.notes?.includes('Admin sự kiện') || o.notes?.includes('CTV quét mã') || (o as any).event_role_type;
+                    }
+                    return o.role_tier === officerFilter;
+                  }).length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '0.875rem', background: '#ffffff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
                     Chưa có cán bộ nào trong mục này.
                   </div>
                 ) : (
                   officers
-                    .filter((o) => officerFilter === 'all' || o.role_tier === officerFilter)
+                    .filter((o) => {
+                      if (officerFilter === 'all') return true;
+                      if (officerFilter === 'lcd_clb') {
+                        return o.role_tier === 'event_admin' && !o.unit_name?.startsWith('Sự kiện:') && !o.notes?.includes('Admin sự kiện') && !o.notes?.includes('CTV quét mã');
+                      }
+                      if (officerFilter === 'event_specific') {
+                        return o.unit_name?.startsWith('Sự kiện:') || o.notes?.includes('Admin sự kiện') || o.notes?.includes('CTV quét mã') || (o as any).event_role_type;
+                      }
+                      return o.role_tier === officerFilter;
+                    })
                     .map((officer) => (
                       <div key={officer.id || officer.email} className={styles.officerCard}>
                         <div className={styles.officerCardHeader}>
@@ -2807,9 +2860,17 @@ function SuperAdminContent() {
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#ecfdf5', color: '#047857', fontSize: '0.72rem', fontWeight: 800 }}>
                                 <KeyIcon size={12} color="#047857" /> Tổ Bảo Vệ
                               </span>
+                            ) : officer.notes?.includes('CTV quét mã') || (officer as any).event_role_type === 'checker' ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#e0f2fe', color: '#0369a1', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <QrCodeIcon size={12} color="#0369a1" /> CTV Quét Mã
+                              </span>
+                            ) : officer.unit_name?.startsWith('Sự kiện:') || officer.notes?.includes('Admin sự kiện') || (officer as any).event_role_type === 'event_admin' ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#ede9fe', color: '#6d28d9', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <CalendarIcon size={12} color="#6d28d9" /> Admin Sự Kiện
+                              </span>
                             ) : (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <SettingsIcon size={12} color="#6b21a8" /> LCĐ / CLB
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#fdf4ff', color: '#a21caf', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <SettingsIcon size={12} color="#a21caf" /> LCĐ / CLB
                               </span>
                             )}
                           </div>
