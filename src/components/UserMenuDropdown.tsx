@@ -34,17 +34,30 @@ export default function UserMenuDropdown({
 }: UserMenuDropdownProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<SessionUser | null>(propUser || null);
+  const [imgError, setImgError] = useState(false);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(() => {
+    if (propUser && propUser.full_name) return propUser;
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('ptit_user_session_cache');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return propUser || null;
+  });
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // If propUser is already provided, use it directly without network call
     if (propUser && propUser.full_name) {
       setCurrentUser(propUser);
+      try {
+        sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(propUser));
+      } catch {}
       return;
     }
 
-    // Only fetch if no propUser provided
+    // Fetch user profile
     if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
       window
         .fetch('/api/me')
@@ -52,6 +65,9 @@ export default function UserMenuDropdown({
         .then((data) => {
           if (data.success && data.data) {
             setCurrentUser(data.data);
+            try {
+              sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(data.data));
+            } catch {}
           } else if (propUser) {
             setCurrentUser(propUser);
           }
@@ -117,7 +133,7 @@ export default function UserMenuDropdown({
     }
   };
 
-  const displayName = currentUser?.full_name || propUserName || currentUser?.email || 'Tài khoản';
+  const displayName = currentUser?.full_name || propUserName || currentUser?.email?.split('@')[0] || 'Tài khoản';
   const tier = currentUser?.tier || (propUser?.tier) || 'user';
 
   const tierLabel =
@@ -139,12 +155,9 @@ export default function UserMenuDropdown({
 
   const isPureApprover = tier === 'youth_union' || tier === 'ctsv' || tier === 'facility';
 
-  const avatarSrc =
-    currentUser?.avatar_url ||
-    propAvatarUrl ||
-    (displayName
-      ? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(displayName)}&backgroundColor=1e40af,2563eb,3b82f6,0284c7`
-      : undefined);
+  const rawAvatar = currentUser?.avatar_url || propAvatarUrl;
+  const hasRealAvatar = !!rawAvatar && !imgError && (rawAvatar.startsWith('http') || rawAvatar.startsWith('/'));
+  const initialLetter = (displayName ? displayName.trim().charAt(0).toUpperCase() : 'U');
 
   return (
     <div className={styles.wrapper} ref={menuRef}>
@@ -157,15 +170,18 @@ export default function UserMenuDropdown({
         aria-haspopup="true"
         title="Bấm để mở danh mục chức năng cá nhân"
       >
-        {avatarSrc ? (
+        {hasRealAvatar ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={avatarSrc}
+            src={rawAvatar}
             alt={displayName}
             className={styles.avatar}
+            onError={() => setImgError(true)}
           />
         ) : (
-          <UserIcon size={16} color="#93c5fd" />
+          <div className={styles.avatarFallback}>
+            {initialLetter}
+          </div>
         )}
         <span className={styles.userNameText}>{displayName}</span>
         <svg
@@ -188,12 +204,13 @@ export default function UserMenuDropdown({
         <div className={styles.dropdownMenu}>
           {/* User Profile Card Header */}
           <div className={styles.userCardHeader}>
-            {avatarSrc ? (
+            {hasRealAvatar ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={avatarSrc}
+                src={rawAvatar}
                 alt={displayName}
                 className={styles.largeAvatar}
+                onError={() => setImgError(true)}
               />
             ) : (
               <div
@@ -202,10 +219,13 @@ export default function UserMenuDropdown({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: '#e2e8f0',
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  color: '#ffffff',
+                  fontSize: '1.25rem',
+                  fontWeight: 800,
                 }}
               >
-                <UserIcon size={24} color="#64748b" />
+                {initialLetter}
               </div>
             )}
             <div className={styles.userDetails}>
