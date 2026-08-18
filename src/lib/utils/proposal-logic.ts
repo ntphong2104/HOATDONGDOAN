@@ -41,65 +41,25 @@ export function calculateProposalStages(
   roomName?: string,
   organizationUnit?: string
 ): StageRequirement {
-  const isBorrowingRoom = !!roomId && roomName !== 'Không mượn' && roomName !== 'Trực tuyến' && roomName !== '';
-  const isFaculty = isKhoaUnit(organizationUnit);
-
-  if (isFaculty) {
-    // Đơn vị Khoa mượn phòng đẩy thẳng qua Phòng. TC-HC-QT phê duyệt cấp phòng
-    return {
-      requiresYouthUnion: false,
-      requiresCtsv: false,
-      requiresFacility: true,
-      stagesList: ['facility'],
-      initialStage: 'facility',
-      isDirectFaculty: true,
-    };
-  }
-
-  const requiresCtsv = true; // Luôn cần Phòng CTSV duyệt
-  const requiresFacility = isBorrowingRoom; // Cần Phòng. TC-HC-QT duyệt nếu có mượn phòng
-
-  const stagesList: ProposalStage[] = ['youth_union', 'ctsv'];
-  if (requiresFacility) stagesList.push('facility');
-
   return {
-    requiresYouthUnion: true,
-    requiresCtsv,
-    requiresFacility,
-    stagesList,
-    initialStage: 'youth_union',
+    requiresYouthUnion: false,
+    requiresCtsv: false,
+    requiresFacility: false,
+    stagesList: ['super_admin'],
+    initialStage: 'super_admin',
     isDirectFaculty: false,
   };
 }
 
 /**
  * Determines the next approval stage when a current stage is approved:
- * CTSV -> Facility (nếu mượn phòng) -> Approved (Hoàn tất & tạo sự kiện)
+ * Direct 1-step approval -> Approved (Hoàn tất & tạo sự kiện)
  */
 export function getNextStage(
   currentStage: ProposalStage,
   requiresCtsv: boolean,
   requiresFacility: boolean
 ): ProposalStage {
-  if (currentStage === 'youth_union') {
-    if (requiresCtsv) return 'ctsv';
-    if (requiresFacility) return 'facility';
-    return 'approved';
-  }
-
-  if (currentStage === 'ctsv') {
-    if (requiresFacility) return 'facility';
-    return 'approved';
-  }
-
-  if (currentStage === 'facility') {
-    return 'approved';
-  }
-
-  if (currentStage === 'super_admin') {
-    return 'approved';
-  }
-
   return 'approved';
 }
 
@@ -108,16 +68,14 @@ export function getNextStage(
  */
 export function getStageLabel(stage: ProposalStage): string {
   switch (stage) {
-    case 'youth_union':
-      return '1. Đoàn TNCS Học Viện (Duyệt kế hoạch)';
-    case 'ctsv':
-      return '2. Phòng Công Tác Sinh Viên (CTSV)';
-    case 'facility':
-      return '3. Phòng. TC-HC-QT (Cấp phòng)';
     case 'super_admin':
-      return 'Super Admin Đoàn Trường';
+      return 'Chờ Super Admin phê duyệt';
+    case 'youth_union':
+    case 'ctsv':
+    case 'facility':
+      return 'Chờ phê duyệt';
     case 'approved':
-      return 'Đã duyệt toàn bộ & Đã tạo sự kiện';
+      return 'Đã phê duyệt & Đã tạo sự kiện';
     case 'rejected':
       return 'Bị từ chối';
     default:

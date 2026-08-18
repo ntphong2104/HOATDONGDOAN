@@ -9,6 +9,7 @@ import {
   removeOfficerRole,
   type OfficerRoleItem,
 } from '@/lib/constants/officers-store';
+import { getCustomUnitsFromDb, saveCustomUnitsToDb } from '@/lib/constants/units';
 import type { UserTier } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -228,6 +229,19 @@ export async function POST(req: Request) {
     }
 
     const officialName = fullNameInput || dbUser?.full_name || emailRaw.split('@')[0];
+
+    // If a custom unit is passed, register it to database
+    if (body.custom_unit && body.custom_unit.code && body.custom_unit.name) {
+      try {
+        const customUnits = await getCustomUnitsFromDb(supabase);
+        const exists = customUnits.some((u) => u.code === body.custom_unit.code);
+        if (!exists) {
+          await saveCustomUnitsToDb(supabase, [...customUnits, body.custom_unit], auth.email);
+        }
+      } catch (e) {
+        console.warn('Could not auto-save custom unit:', e);
+      }
+    }
 
     const newItem: OfficerRoleItem = {
       id: `off-${Date.now()}`,

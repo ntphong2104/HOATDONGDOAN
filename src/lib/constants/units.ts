@@ -349,3 +349,42 @@ export function resolveUnitForUser(user: {
     isLocked: true,
   };
 }
+
+const CUSTOM_UNITS_KEY = 'custom_units_registry';
+
+export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit[]> {
+  if (!supabase) return [];
+  try {
+    const { data } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', CUSTOM_UNITS_KEY)
+      .maybeSingle();
+
+    if (data?.value && Array.isArray(data.value)) {
+      return data.value as OfficialUnit[];
+    }
+  } catch (err) {
+    console.warn('Could not load custom units from DB:', err);
+  }
+  return [];
+}
+
+export async function saveCustomUnitsToDb(
+  supabase: any,
+  units: OfficialUnit[],
+  actorEmail: string
+): Promise<OfficialUnit[]> {
+  try {
+    await supabase.from('system_settings').upsert({
+      key: CUSTOM_UNITS_KEY,
+      value: units,
+      updated_by: actorEmail,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('Could not save custom units to DB:', err);
+  }
+  return units;
+}
+

@@ -28,7 +28,7 @@ import {
   QrCodeIcon,
   KeyIcon,
 } from '@/components/icons';
-import { OFFICIAL_UNITS } from '@/lib/constants/units';
+import { OFFICIAL_UNITS, type OfficialUnit } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
 import { isSameUnit } from '@/lib/utils/rating-logic';
 import { getEffectiveEventStatus, isEventPastDeadline, getEventLifecycleState, getEarliestCheckinTime } from '@/lib/utils/event-logic';
@@ -64,6 +64,7 @@ function SuperAdminContent() {
   const [events, setEvents] = useState<Event[]>([]);
   const [proposals, setProposals] = useState<EventProposal[]>([]);
   const [officers, setOfficers] = useState<any[]>([]);
+  const [unitsList, setUnitsList] = useState<OfficialUnit[]>(OFFICIAL_UNITS);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [students, setStudents] = useState<User[]>([]);
   const [penalties, setPenalties] = useState<UserPenalty[]>([]);
@@ -74,6 +75,7 @@ function SuperAdminContent() {
   const [eventsLoading, setEventsLoading] = useState(true);
   const [proposalsLoading, setProposalsLoading] = useState(true);
   const [officersLoading, setOfficersLoading] = useState(true);
+  const [unitsLoading, setUnitsLoading] = useState(false);
   const [roomsLoading, setRoomsLoading] = useState(true);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [penaltiesLoading, setPenaltiesLoading] = useState(true);
@@ -93,11 +95,25 @@ function SuperAdminContent() {
   // Form states for Officer Role Management
   const [officerEmail, setOfficerEmail] = useState('');
   const [officerFullName, setOfficerFullName] = useState('');
-  const [officerRoleTier, setOfficerRoleTier] = useState<UserTier>('youth_union');
-  const [officerUnitCode, setOfficerUnitCode] = useState('BCH_DOAN');
+  const [officerRoleTier, setOfficerRoleTier] = useState<UserTier>('event_admin');
+  const [officerUnitCode, setOfficerUnitCode] = useState('LCD_CNTT');
   const [officerNotes, setOfficerNotes] = useState('');
   const [grantingOfficer, setGrantingOfficer] = useState(false);
   const [officerFilter, setOfficerFilter] = useState<string>('all');
+
+  // Form states for adding custom unit when assigning officer
+  const [customUnitCode, setCustomUnitCode] = useState('');
+  const [customUnitName, setCustomUnitName] = useState('');
+  const [customUnitType, setCustomUnitType] = useState('Liên Chi Đoàn (LCĐ)');
+  const [customUnitEmail, setCustomUnitEmail] = useState('');
+
+  // Form states for Units tab management
+  const [showAddUnitModal, setShowAddUnitModal] = useState(false);
+  const [newUnitCode, setNewUnitCode] = useState('');
+  const [newUnitName, setNewUnitName] = useState('');
+  const [newUnitType, setNewUnitType] = useState('Liên Chi Đoàn (LCĐ)');
+  const [newUnitEmail, setNewUnitEmail] = useState('');
+  const [creatingUnit, setCreatingUnit] = useState(false);
 
   // Form states for Room creation
   const [newRoomName, setNewRoomName] = useState('');
@@ -186,11 +202,81 @@ function SuperAdminContent() {
     Promise.all([
       fetchStudents(),
       fetchOfficers(),
+      fetchUnits(),
       fetchRooms(),
       fetchPenalties(),
       fetchDelegates(),
     ]).catch((e) => console.error(e));
   }, []);
+
+  const fetchUnits = async () => {
+    setUnitsLoading(true);
+    try {
+      const res = await fetch('/api/admin/units');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setUnitsList(json.data);
+      }
+    } catch (err) {
+      console.error('fetchUnits error:', err);
+    } finally {
+      setUnitsLoading(false);
+    }
+  };
+
+  const handleCreateUnit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUnitCode.trim() || !newUnitName.trim()) {
+      showToast('Vui lòng nhập mã và tên đơn vị / LCĐ mới', 'error');
+      return;
+    }
+    setCreatingUnit(true);
+    try {
+      const res = await fetch('/api/admin/units', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newUnitCode.trim().toUpperCase(),
+          name: newUnitName.trim(),
+          type: newUnitType,
+          email: newUnitEmail.trim().toLowerCase(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'Đã thêm đơn vị mới thành công!', 'success');
+        setNewUnitCode('');
+        setNewUnitName('');
+        setNewUnitEmail('');
+        setShowAddUnitModal(false);
+        fetchUnits();
+      } else {
+        showToast(data.message || data.error || 'Lỗi thêm đơn vị', 'error');
+      }
+    } catch (err: any) {
+      showToast('Lỗi kết nối: ' + err.message, 'error');
+    } finally {
+      setCreatingUnit(false);
+    }
+  };
+
+  const handleDeleteUnit = async (code: string, name: string) => {
+    if (!confirm(`Bạn có chắc muốn xóa đơn vị "${name}" (${code})?`)) return;
+    try {
+      const res = await fetch(`/api/admin/units?code=${encodeURIComponent(code)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'Đã xóa đơn vị thành công!', 'success');
+        fetchUnits();
+      } else {
+        showToast(data.message || data.error || 'Lỗi xóa đơn vị', 'error');
+      }
+    } catch (err: any) {
+      showToast('Lỗi kết nối: ' + err.message, 'error');
+    }
+  };
 
   const fetchOfficers = async () => {
     try {
@@ -211,13 +297,32 @@ function SuperAdminContent() {
     if (!officerEmail || grantingOfficer) return;
     setGrantingOfficer(true);
     try {
-      let unitName = 'Đoàn TNCS Học Viện Cơ Sở TP.HCM';
-      if (officerRoleTier === 'super_admin') unitName = 'Ban Quản Trị Toàn Trường';
-      else if (officerRoleTier === 'ctsv') unitName = 'Phòng Công Tác Sinh Viên (CTSV)';
-      else if (officerRoleTier === 'facility') unitName = 'Phòng. TC-HC-QT';
-      else if (officerRoleTier === 'event_admin') {
-        const foundUnit = OFFICIAL_UNITS.find((u) => u.code === officerUnitCode);
-        unitName = foundUnit?.name || officerUnitCode;
+      let finalUnitCode = officerUnitCode;
+      let finalUnitName = 'Ban Quản Trị Toàn Trường';
+      let customUnitPayload: any = null;
+
+      if (officerRoleTier === 'super_admin') {
+        finalUnitCode = 'BCH_DOAN';
+        finalUnitName = 'Ban Quản Trị Toàn Trường';
+      } else if (officerRoleTier === 'event_admin') {
+        if (officerUnitCode === '__NEW_CUSTOM__') {
+          if (!customUnitCode.trim() || !customUnitName.trim()) {
+            showToast('Vui lòng nhập mã và tên đơn vị / LCĐ mới', 'error');
+            setGrantingOfficer(false);
+            return;
+          }
+          finalUnitCode = customUnitCode.trim().toUpperCase().replace(/\s+/g, '_');
+          finalUnitName = customUnitName.trim();
+          customUnitPayload = {
+            code: finalUnitCode,
+            name: finalUnitName,
+            type: customUnitType,
+            email: customUnitEmail.trim().toLowerCase(),
+          };
+        } else {
+          const foundUnit = unitsList.find((u) => u.code === officerUnitCode);
+          finalUnitName = foundUnit?.name || officerUnitCode;
+        }
       }
 
       const res = await fetch('/api/admin/officers', {
@@ -227,25 +332,10 @@ function SuperAdminContent() {
           email: officerEmail,
           full_name: officerFullName,
           role_tier: officerRoleTier,
-          unit_code:
-            officerRoleTier === 'event_admin'
-              ? officerUnitCode
-              : officerRoleTier === 'security'
-              ? 'TO_BAO_VE'
-              : officerRoleTier === 'ctsv'
-              ? 'PHONG_CTSV'
-              : officerRoleTier === 'facility'
-              ? 'PHONG_TCHCQT'
-              : 'BCH_DOAN',
-          unit_name:
-            officerRoleTier === 'security'
-              ? 'Tổ Bảo Vệ & Quản Lý Chìa Khóa Cơ Sở Vật Chất'
-              : officerRoleTier === 'ctsv'
-              ? 'Phòng Công Tác Sinh Viên (CTSV)'
-              : officerRoleTier === 'facility'
-              ? 'Phòng. TC-HC-QT'
-              : unitName,
+          unit_code: finalUnitCode,
+          unit_name: finalUnitName,
           notes: officerNotes,
+          custom_unit: customUnitPayload,
         }),
       });
       const data = await res.json();
@@ -254,7 +344,14 @@ function SuperAdminContent() {
         setOfficerEmail('');
         setOfficerFullName('');
         setOfficerNotes('');
+        setCustomUnitCode('');
+        setCustomUnitName('');
+        setCustomUnitEmail('');
+        if (officerUnitCode === '__NEW_CUSTOM__') {
+          setOfficerUnitCode(finalUnitCode);
+        }
         fetchOfficers();
+        fetchUnits();
       } else {
         showToast(data.error || 'Lỗi phân quyền cán bộ', 'error');
       }
@@ -1052,15 +1149,15 @@ function SuperAdminContent() {
             >
               <div className={styles.tabButtonLeft}>
                 <BuildingIcon size={18} />
-                <span>Các Đơn Vị Trực Thuộc</span>
+                <span>Quản Lý Đơn Vị / LCĐ</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span className={styles.tabBadge}>{OFFICIAL_UNITS.length}</span>
+                <span className={styles.tabBadge}>{unitsList.length}</span>
                 {isUnitsMenuOpen ? <ChevronDownIcon size={16} /> : <ChevronRightIcon size={16} />}
               </div>
             </button>
 
-            {/* Sổ xuống danh sách 24 đơn vị để chọn lọc */}
+            {/* Sổ xuống danh sách các đơn vị để chọn lọc */}
             {isUnitsMenuOpen && (
               <div
                 style={{
@@ -1102,42 +1199,9 @@ function SuperAdminContent() {
                 </button>
 
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', padding: '0.4rem 0.65rem 0.15rem' }}>
-                  Đoàn Thanh Niên Học Viện
+                  Liên Chi Đoàn Khoa
                 </div>
-                {OFFICIAL_UNITS.filter((u) => u.type.includes('Đoàn')).map((unit) => (
-                  <button
-                    key={unit.code}
-                    type="button"
-                    onClick={() => {
-                      setSelectedUnitFilter(unit.name);
-                      switchTab('events');
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '0.45rem 0.65rem',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: selectedUnitFilter === unit.name ? '#2563eb' : 'transparent',
-                      color: selectedUnitFilter === unit.name ? '#ffffff' : '#334155',
-                      fontWeight: selectedUnitFilter === unit.name ? 800 : 500,
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {unit.name}
-                    </span>
-                    {selectedUnitFilter === unit.name && <span>✓</span>}
-                  </button>
-                ))}
-
-                <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', padding: '0.4rem 0.65rem 0.15rem' }}>
-                  8 Liên Chi Đoàn Khoa
-                </div>
-                {OFFICIAL_UNITS.filter((u) => u.type.includes('LCĐ')).map((unit) => (
+                {unitsList.filter((u) => u.type.includes('LCĐ')).map((unit) => (
                   <button
                     key={unit.code}
                     type="button"
@@ -1168,9 +1232,9 @@ function SuperAdminContent() {
                 ))}
 
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', padding: '0.5rem 0.65rem 0.15rem' }}>
-                  16 CLB / Đội / Nhóm
+                  CLB / Đội / Nhóm
                 </div>
-                {OFFICIAL_UNITS.filter((u) => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map((unit) => (
+                {unitsList.filter((u) => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map((unit) => (
                   <button
                     key={unit.code}
                     type="button"
@@ -2154,43 +2218,19 @@ function SuperAdminContent() {
         {activeTab === 'officers' && (
           <div className={styles.tabContent}>
             {/* Header & Stat Summary */}
-            <div className={styles.officersStatsGrid}>
+            <div className={styles.officersStatsGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
               <div className={styles.officerStatCard}>
-                <span className={styles.officerStatLabel} style={{ color: '#64748b' }}>Tổng Cán Bộ</span>
+                <span className={styles.officerStatLabel} style={{ color: '#64748b' }}>Tổng Cán Bộ Phân Quyền</span>
                 <div className={styles.officerStatValue} style={{ color: '#0f172a' }}>{officers.length}</div>
               </div>
               <div className={styles.officerStatCard} style={{ borderColor: '#fee2e2' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#dc2626' }}>Super Admin</span>
+                <span className={styles.officerStatLabel} style={{ color: '#dc2626' }}>Super Admin Toàn Quyền</span>
                 <div className={styles.officerStatValue} style={{ color: '#dc2626' }}>
                   {officers.filter((o) => o.role_tier === 'super_admin').length}
                 </div>
               </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#dcfce7' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#16a34a' }}>Đoàn Học Viện</span>
-                <div className={styles.officerStatValue} style={{ color: '#16a34a' }}>
-                  {officers.filter((o) => o.role_tier === 'youth_union').length}
-                </div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#dbeafe' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#2563eb' }}>Phòng CTSV</span>
-                <div className={styles.officerStatValue} style={{ color: '#2563eb' }}>
-                  {officers.filter((o) => o.role_tier === 'ctsv').length}
-                </div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#ffedd5' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#ea580c' }}>Phòng. TC-HC-QT</span>
-                <div className={styles.officerStatValue} style={{ color: '#ea580c' }}>
-                  {officers.filter((o) => o.role_tier === 'facility').length}
-                </div>
-              </div>
-              <div className={styles.officerStatCard} style={{ borderColor: '#a7f3d0' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#047857' }}>Tổ Bảo Vệ</span>
-                <div className={styles.officerStatValue} style={{ color: '#047857' }}>
-                  {officers.filter((o) => o.role_tier === 'security').length}
-                </div>
-              </div>
               <div className={styles.officerStatCard} style={{ borderColor: '#f3e8ff' }}>
-                <span className={styles.officerStatLabel} style={{ color: '#7c3aed' }}>LCĐ / CLB</span>
+                <span className={styles.officerStatLabel} style={{ color: '#7c3aed' }}>Admin LCĐ / CLB / Khoa</span>
                 <div className={styles.officerStatValue} style={{ color: '#7c3aed' }}>
                   {officers.filter((o) => o.role_tier === 'event_admin').length}
                 </div>
@@ -2213,10 +2253,10 @@ function SuperAdminContent() {
                   <ShieldCheckIcon size={13} color="#991b1b" /> Phân Quyền Cán Bộ
                 </div>
                 <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: '0.35rem 0 0.15rem' }}>
-                  Thêm & Gán Quyền Cán Bộ / Ban Chấp Hành
+                  Thêm & Gán Quyền Cán Bộ / Ban Chấp Hành LCĐ
                 </h2>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.35 }}>
-                  Cấp quyền cho cán bộ, chuyên viên, Bí thư/Phó Bí thư sử dụng tài khoản Google cá nhân (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn)
+                  Cấp quyền cho cán bộ, Bí thư/Phó Bí thư LCĐ, Chủ nhiệm CLB sử dụng tài khoản Google cá nhân (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn)
                 </p>
               </div>
 
@@ -2300,11 +2340,7 @@ function SuperAdminContent() {
                       boxSizing: 'border-box',
                     }}
                   >
-                    <option value="youth_union">Đoàn Thanh Niên Học Viện</option>
-                    <option value="ctsv">Phòng Công Tác Sinh Viên (CTSV)</option>
-                    <option value="facility">Phòng. TC-HC-QT</option>
-                    <option value="security">Tổ Bảo Vệ (Quản Lý & Bàn Giao Chìa Khóa)</option>
-                    <option value="event_admin">Ban Chấp Hành LCĐ / CLB</option>
+                    <option value="event_admin">Ban Chấp Hành LCĐ / CLB / Khoa</option>
                     <option value="super_admin">Super Admin (Toàn Quyền Quản Trị)</option>
                   </select>
                 </div>
@@ -2331,13 +2367,130 @@ function SuperAdminContent() {
                         boxSizing: 'border-box',
                       }}
                     >
-                      {OFFICIAL_UNITS.map((u) => (
-                        <option key={u.code} value={u.code}>
-                          {u.name} ({u.code})
-                        </option>
-                      ))}
+                      <optgroup label="Liên Chi Đoàn Khoa">
+                        {unitsList.filter(u => u.type.includes('LCĐ')).map((u) => (
+                          <option key={u.code} value={u.code}>
+                            {u.name} ({u.code})
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="CLB / Đội / Nhóm">
+                        {unitsList.filter(u => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map((u) => (
+                          <option key={u.code} value={u.code}>
+                            {u.name} ({u.code})
+                          </option>
+                        ))}
+                      </optgroup>
+                      <option value="__NEW_CUSTOM__">+ ➕ Thêm Đơn Vị / LCĐ Mới...</option>
                     </select>
                   </div>
+                )}
+
+                {officerRoleTier === 'event_admin' && officerUnitCode === '__NEW_CUSTOM__' && (
+                  <>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                        Mã Đơn Vị Mới (VD: LCD_AI) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="VD: LCD_AI"
+                        value={customUnitCode}
+                        onChange={(e) => setCustomUnitCode(e.target.value.toUpperCase())}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          padding: '0 0.75rem',
+                          border: '1.5px solid #3b82f6',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          fontWeight: 700,
+                          color: '#1e40af',
+                          background: '#eff6ff',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                        Tên Đơn Vị / LCĐ Mới *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="VD: LCĐ Khoa Trí Tuệ Nhân Tạo"
+                        value={customUnitName}
+                        onChange={(e) => setCustomUnitName(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          padding: '0 0.75rem',
+                          border: '1.5px solid #3b82f6',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: '#0f172a',
+                          background: '#eff6ff',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                        Phân Loại Đơn Vị
+                      </label>
+                      <select
+                        value={customUnitType}
+                        onChange={(e) => setCustomUnitType(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          padding: '0 0.75rem',
+                          border: '1.5px solid #3b82f6',
+                          borderRadius: '8px',
+                          fontSize: '0.825rem',
+                          fontWeight: 600,
+                          color: '#0f172a',
+                          background: '#eff6ff',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <option value="Liên Chi Đoàn (LCĐ)">Liên Chi Đoàn (LCĐ)</option>
+                        <option value="Câu Lạc Bộ Học Thuật">Câu Lạc Bộ Học Thuật</option>
+                        <option value="Câu Lạc Bộ Kỹ Năng">Câu Lạc Bộ Kỹ Năng</option>
+                        <option value="Đội / Nhóm Sinh Viên">Đội / Nhóm Sinh Viên</option>
+                        <option value="Khoa Đào Tạo">Khoa Đào Tạo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                        Email Đơn Vị (Tùy chọn)
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="VD: lcdai@student.ptithcm.edu.vn"
+                        value={customUnitEmail}
+                        onChange={(e) => setCustomUnitEmail(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          padding: '0 0.75rem',
+                          border: '1.5px solid #3b82f6',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: '#0f172a',
+                          background: '#eff6ff',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                  </>
                 )}
 
                 <div>
@@ -2346,7 +2499,7 @@ function SuperAdminContent() {
                   </label>
                   <input
                     type="text"
-                    placeholder="VD: Ủy viên BTV, Chuyên viên, Bí thư LCĐ..."
+                    placeholder="VD: Bí thư LCĐ, Chủ nhiệm CLB..."
                     value={officerNotes}
                     onChange={(e) => setOfficerNotes(e.target.value)}
                     style={{
@@ -2404,16 +2557,12 @@ function SuperAdminContent() {
                   </h2>
                 </div>
 
-                {/* Filter Pill Tabs Scrollable on Mobile */}
+                {/* Filter Pill Tabs */}
                 <div className={styles.officersFilterScroll}>
                   {[
                     { key: 'all', label: `Tất cả (${officers.length})` },
                     { key: 'super_admin', label: `Super Admin (${officers.filter(o => o.role_tier === 'super_admin').length})` },
-                    { key: 'youth_union', label: `Đoàn Học Viện (${officers.filter(o => o.role_tier === 'youth_union').length})` },
-                    { key: 'ctsv', label: `Phòng CTSV (${officers.filter(o => o.role_tier === 'ctsv').length})` },
-                    { key: 'facility', label: `Phòng. TC-HC-QT (${officers.filter(o => o.role_tier === 'facility').length})` },
-                    { key: 'security', label: `Tổ Bảo Vệ (${officers.filter(o => o.role_tier === 'security').length})` },
-                    { key: 'event_admin', label: `LCĐ/CLB (${officers.filter(o => o.role_tier === 'event_admin').length})` },
+                    { key: 'event_admin', label: `Admin LCĐ / CLB / Khoa (${officers.filter(o => o.role_tier === 'event_admin').length})` },
                   ].map((f) => (
                     <button
                       key={f.key}
@@ -2489,26 +2638,6 @@ function SuperAdminContent() {
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#fee2e2', color: '#991b1b', fontSize: '0.78rem', fontWeight: 800 }}>
                                     <ShieldCheckIcon size={14} color="#991b1b" />
                                     <span>Super Admin</span>
-                                  </span>
-                                ) : officer.role_tier === 'youth_union' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#dcfce7', color: '#166534', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <CheckCircleIcon size={14} color="#166534" />
-                                    <span>Đoàn Học Viện</span>
-                                  </span>
-                                ) : officer.role_tier === 'ctsv' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#dbeafe', color: '#1e40af', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <UsersIcon size={14} color="#1e40af" />
-                                    <span>Phòng CTSV</span>
-                                  </span>
-                                ) : officer.role_tier === 'facility' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ffedd5', color: '#9a3412', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <BuildingIcon size={14} color="#9a3412" />
-                                    <span>Phòng. TC-HC-QT</span>
-                                  </span>
-                                ) : officer.role_tier === 'security' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ecfdf5', color: '#047857', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <KeyIcon size={14} color="#047857" />
-                                    <span>Tổ Bảo Vệ</span>
                                   </span>
                                 ) : (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.78rem', fontWeight: 800 }}>
@@ -2818,59 +2947,307 @@ function SuperAdminContent() {
           </div>
         )}
 
-        {/* TAB: 24 ĐƠN VỊ TỔ CHỨC (LCĐ & CLB) */}
+        {/* TAB: QUẢN LÝ ĐƠN VỊ & LIÊN CHI ĐOÀN */}
         {activeTab === 'units' && (
           <div className={styles.tabContent}>
             <section className={styles.section}>
-              <div className={styles.sectionHeader}>
+              <div className={styles.sectionHeader} style={{ flexWrap: 'wrap', gap: '0.85rem' }}>
                 <div>
                   <h2 className={styles.sectionTitle}>
                     <BuildingIcon size={20} color="#2563eb" />
-                    Danh Sách Các Đơn Vị Trực Thuộc (Đoàn Trường, 8 LCĐ & 16 CLB/Đội/Nhóm)
+                    Danh Sách Các Đơn Vị & Liên Chi Đoàn ({unitsList.length})
                   </h2>
                   <p className={styles.sectionSubtitle}>
-                    Các đơn vị tổ chức có quyền nộp kế hoạch chương trình và quản lý sự kiện trong hệ thống
+                    Các đơn vị LCĐ, Khoa, CLB/Đội/Nhóm có quyền nộp kế hoạch chương trình và quản lý sự kiện
                   </p>
                 </div>
-                <ExcelExportButton
-                  data={OFFICIAL_UNITS.map((u, idx) => ({
-                    stt: idx + 1,
-                    code: u.code,
-                    name: u.name,
-                    type: u.type,
-                    email: u.email,
-                  }))}
-                  filename="danh-sach-24-don-vi-doan-hoi-ptit.xlsx"
-                  label="Xuất Excel 24 đơn vị"
-                />
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddUnitModal(!showAddUnitModal)}
+                    style={{
+                      padding: '0.45rem 0.9rem',
+                      background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: 800,
+                      fontSize: '0.825rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                    }}
+                  >
+                    <PlusIcon size={14} />
+                    <span>{showAddUnitModal ? 'Đóng Form' : 'Thêm Đơn Vị / LCĐ Mới'}</span>
+                  </button>
+                  <ExcelExportButton
+                    data={unitsList.map((u, idx) => ({
+                      stt: idx + 1,
+                      code: u.code,
+                      name: u.name,
+                      type: u.type,
+                      email: u.email,
+                    }))}
+                    filename="danh-sach-don-vi-doan-hoi-ptit.xlsx"
+                    label="Xuất Excel Đơn Vị"
+                  />
+                </div>
               </div>
+
+              {/* Form Thêm Đơn Vị / LCĐ Mới */}
+              {showAddUnitModal && (
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    border: '1.5px solid #3b82f6',
+                    borderRadius: '14px',
+                    padding: '1.25rem',
+                    marginBottom: '1.5rem',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                  }}
+                >
+                  <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#1e3a8a', margin: '0 0 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <PlusIcon size={16} /> Thêm Đơn Vị / Liên Chi Đoàn Mới Vào Hệ Thống
+                  </h3>
+                  <form onSubmit={handleCreateUnit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem', alignItems: 'flex-end' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                        Mã Định Danh (Code) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="VD: LCD_AI, CLB_ROBOT..."
+                        value={newUnitCode}
+                        onChange={(e) => setNewUnitCode(e.target.value.toUpperCase())}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          padding: '0 0.75rem',
+                          border: '1.5px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          fontWeight: 700,
+                          color: '#0f172a',
+                          background: '#ffffff',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                        Tên Đơn Vị / LCĐ *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="VD: LCĐ Khoa Trí Tuệ Nhân Tạo"
+                        value={newUnitName}
+                        onChange={(e) => setNewUnitName(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          padding: '0 0.75rem',
+                          border: '1.5px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: '#0f172a',
+                          background: '#ffffff',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                        Phân Loại Đơn Vị *
+                      </label>
+                      <select
+                        value={newUnitType}
+                        onChange={(e) => setNewUnitType(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          padding: '0 0.75rem',
+                          border: '1.5px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '0.825rem',
+                          fontWeight: 600,
+                          color: '#0f172a',
+                          background: '#ffffff',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <option value="Liên Chi Đoàn (LCĐ)">Liên Chi Đoàn (LCĐ)</option>
+                        <option value="Khoa Đào Tạo">Khoa Đào Tạo</option>
+                        <option value="Câu Lạc Bộ Học Thuật">Câu Lạc Bộ Học Thuật</option>
+                        <option value="Câu Lạc Bộ Kỹ Năng">Câu Lạc Bộ Kỹ Năng</option>
+                        <option value="Đội / Nhóm Văn Thể">Đội / Nhóm Văn Thể</option>
+                        <option value="Đội / Nhóm Tình Nguyện">Đội / Nhóm Tình Nguyện</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                        Email Đăng Nhập Chính Thức
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="VD: lcdai@student.ptithcm.edu.vn"
+                        value={newUnitEmail}
+                        onChange={(e) => setNewUnitEmail(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          padding: '0 0.75rem',
+                          border: '1.5px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: '#0f172a',
+                          background: '#ffffff',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="submit"
+                        disabled={creatingUnit}
+                        style={{
+                          flex: 1,
+                          height: '40px',
+                          padding: '0 1rem',
+                          background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontWeight: 800,
+                          fontSize: '0.875rem',
+                          cursor: creatingUnit ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.4rem',
+                        }}
+                      >
+                        <PlusIcon size={14} />
+                        <span>{creatingUnit ? 'Đang thêm...' : 'Lưu Đơn Vị'}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: '14px', padding: '1rem' }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e40af' }}>LIÊN CHI ĐOÀN KHOA</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e3a8a', marginTop: '0.25rem' }}>8 Đơn vị</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e3a8a', marginTop: '0.25rem' }}>
+                    {unitsList.filter(u => u.type.includes('LCĐ')).length} Đơn vị
+                  </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Quản lý hoạt động Đoàn các Khoa</div>
                 </div>
 
                 <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '14px', padding: '1rem' }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534' }}>CLB / ĐỘI / NHÓM</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#14532d', marginTop: '0.25rem' }}>16 Đơn vị</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#14532d', marginTop: '0.25rem' }}>
+                    {unitsList.filter(u => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).length} Đơn vị
+                  </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Học thuật, văn thể mỹ, tình nguyện</div>
+                </div>
+
+                <div style={{ background: '#faf5ff', border: '1.5px solid #e9d5ff', borderRadius: '14px', padding: '1rem' }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#6b21a8' }}>TỔNG SỐ ĐƠN VỊ</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#581c87', marginTop: '0.25rem' }}>
+                    {unitsList.length} Đơn vị
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Toàn bộ tổ chức được cấp phép</div>
                 </div>
               </div>
 
-              <DataTable
-                columns={[
-                  { key: 'code', label: 'Mã Định Danh' },
-                  { key: 'name', label: 'Tên Đơn Vị' },
-                  { key: 'type', label: 'Phân Loại' },
-                  { key: 'email', label: 'Email Đăng Nhập Chính Thức' },
-                ]}
-                data={OFFICIAL_UNITS}
-                searchable={true}
-                searchPlaceholder="Tìm kiếm theo tên LCĐ, CLB..."
-                emptyMessage="Không tìm thấy đơn vị phù hợp."
-              />
+              {/* Bảng Danh Sách Đơn Vị */}
+              <div className={styles.tableResponsive}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '20%' }}>Mã Định Danh</th>
+                      <th style={{ width: '35%' }}>Tên Đơn Vị</th>
+                      <th style={{ width: '20%' }}>Phân Loại</th>
+                      <th style={{ width: '25%' }}>Email Đăng Nhập Chính Thức</th>
+                      <th style={{ width: '80px', textAlign: 'center' }}>Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unitsLoading ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                          Đang tải danh sách đơn vị...
+                        </td>
+                      </tr>
+                    ) : unitsList.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                          Chưa có đơn vị nào.
+                        </td>
+                      </tr>
+                    ) : (
+                      unitsList.map((unit) => {
+                        const isCustom = !OFFICIAL_UNITS.some((u) => u.code === unit.code);
+                        return (
+                          <tr key={unit.code}>
+                            <td>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#1e40af', background: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.825rem' }}>
+                                {unit.code}
+                              </span>
+                            </td>
+                            <td>
+                              <strong style={{ color: '#0f172a', fontSize: '0.9rem' }}>{unit.name}</strong>
+                            </td>
+                            <td>
+                              <span style={{ fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
+                                {unit.type}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{ fontSize: '0.85rem', color: '#0f172a', fontFamily: 'monospace' }}>
+                                {unit.email || '—'}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {isCustom ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUnit(unit.code, unit.name)}
+                                  style={{
+                                    padding: '0.3rem 0.6rem',
+                                    background: '#fee2e2',
+                                    color: '#dc2626',
+                                    border: '1px solid #fca5a5',
+                                    borderRadius: '6px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Xóa
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Mặc định</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </div>
         )}
@@ -3703,7 +4080,7 @@ function SuperAdminContent() {
                   e.preventDefault();
                   const finalEmail = selectedUnitCode === 'CUSTOM'
                     ? customEmail.trim().toLowerCase()
-                    : (OFFICIAL_UNITS.find(u => u.code === selectedUnitCode)?.email || customEmail.trim().toLowerCase());
+                    : (unitsList.find(u => u.code === selectedUnitCode)?.email || customEmail.trim().toLowerCase());
                   
                   if (!finalEmail) {
                     showToast('Vui lòng nhập hoặc chọn email đơn vị', 'error');
@@ -3744,7 +4121,7 @@ function SuperAdminContent() {
                       const code = e.target.value;
                       setSelectedUnitCode(code);
                       if (code !== 'CUSTOM') {
-                        const u = OFFICIAL_UNITS.find(unit => unit.code === code);
+                        const u = unitsList.find(unit => unit.code === code);
                         if (u) setCustomEmail(u.email);
                       } else {
                         setCustomEmail('');
@@ -3763,24 +4140,17 @@ function SuperAdminContent() {
                       outline: 'none',
                     }}
                   >
-                    <optgroup label="Đoàn Thanh Niên Học Viện">
-                      {OFFICIAL_UNITS.filter(u => u.type.includes('Đoàn')).map(u => (
+                    <optgroup label="Liên Chi Đoàn Khoa">
+                      {unitsList.filter(u => u.type.includes('LCĐ')).map(u => (
                         <option key={u.code} value={u.code}>
-                          {u.name} ({u.email})
+                          {u.name} ({u.email || u.code})
                         </option>
                       ))}
                     </optgroup>
-                    <optgroup label="8 Liên Chi Đoàn Khoa">
-                      {OFFICIAL_UNITS.filter(u => u.type.includes('LCĐ')).map(u => (
+                    <optgroup label="CLB / Đội / Nhóm">
+                      {unitsList.filter(u => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map(u => (
                         <option key={u.code} value={u.code}>
-                          {u.name} ({u.email})
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="16 CLB / Đội / Nhóm">
-                      {OFFICIAL_UNITS.filter(u => !u.type.includes('LCĐ') && !u.type.includes('Đoàn')).map(u => (
-                        <option key={u.code} value={u.code}>
-                          {u.name} ({u.email})
+                          {u.name} ({u.email || u.code})
                         </option>
                       ))}
                     </optgroup>
@@ -3796,7 +4166,7 @@ function SuperAdminContent() {
                   <input
                     type="email"
                     required
-                    value={selectedUnitCode === 'CUSTOM' ? customEmail : (OFFICIAL_UNITS.find(u => u.code === selectedUnitCode)?.email || customEmail)}
+                    value={selectedUnitCode === 'CUSTOM' ? customEmail : (unitsList.find(u => u.code === selectedUnitCode)?.email || customEmail)}
                     onChange={(e) => setCustomEmail(e.target.value)}
                     readOnly={selectedUnitCode !== 'CUSTOM'}
                     placeholder="VD: btc.sukien@student.ptithcm.edu.vn"
@@ -3815,7 +4185,7 @@ function SuperAdminContent() {
                   />
                   {selectedUnitCode !== 'CUSTOM' && (
                     <p style={{ margin: '0.35rem 0 0', fontSize: '0.775rem', color: '#16a34a', fontWeight: 600 }}>
-                      ✓ Email chính thức của: <strong>{OFFICIAL_UNITS.find(u => u.code === selectedUnitCode)?.name}</strong>
+                      ✓ Email chính thức của: <strong>{unitsList.find(u => u.code === selectedUnitCode)?.name}</strong>
                     </p>
                   )}
                 </div>
