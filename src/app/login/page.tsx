@@ -7,7 +7,6 @@ import { useGoogleOneTap } from '@/hooks/useGoogleOneTap';
 import {
   YouthUnionIcon,
   ShieldCheckIcon,
-  CheckCircleIcon,
   GoogleIcon,
 } from '@/components/icons';
 import DualLogos from '@/components/DualLogos';
@@ -149,11 +148,6 @@ function LoginContent() {
             <GoogleIcon size={20} />
             <span>{loading ? 'Đang chuyển hướng Google...' : 'Đăng nhập với Google Email Học Viện'}</span>
           </button>
-        </div>
-
-        <div className={styles.googleEmailHint}>
-          <CheckCircleIcon size={14} color="#16a34a" />
-          <span>Chỉ chấp nhận đuôi <strong>@student.ptithcm.edu.vn</strong> & <strong>@ptithcm.edu.vn</strong></span>
         </div>
 
         {/* Thông tin liên hệ hỗ trợ */}
