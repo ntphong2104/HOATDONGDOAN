@@ -777,35 +777,38 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 style={{
                   marginTop: '1.25rem',
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                  gap: '1rem',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+                  gap: '1.25rem',
                 }}
               >
                 {/* 1. CỔNG LINK ĐĂNG KÝ KHÁN GIẢ */}
                 <div
                   style={{
-                    padding: '1.25rem',
-                    background: regWindow.isOpen
-                      ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)'
-                      : 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                    border: `1.5px solid ${regWindow.isOpen ? '#bfdbfe' : '#fde68a'}`,
+                    background: '#ffffff',
+                    border: `1.5px solid ${regWindow.isOpen ? '#bfdbfe' : '#e2e8f0'}`,
                     borderRadius: '16px',
+                    padding: '1.5rem',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    gap: '1rem',
+                    gap: '1.25rem',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
                 >
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: regWindow.isOpen ? 'linear-gradient(90deg, #2563eb, #3b82f6)' : '#94a3b8' }} />
+
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: regWindow.isOpen ? '#1e40af' : '#b45309' }}>
-                        🎫 CỔNG KHÁN GIẢ (THAM DỰ)
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                        Cổng Đăng Ký Khán Giả
                       </span>
                       <span
                         style={{
-                          padding: '0.15rem 0.55rem',
-                          borderRadius: '10px',
-                          fontSize: '0.725rem',
+                          padding: '0.2rem 0.65rem',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
                           fontWeight: 700,
                           background: regWindow.isOpen ? '#dcfce7' : '#fee2e2',
                           color: regWindow.isOpen ? '#15803d' : '#b91c1c',
@@ -815,120 +818,137 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         {regWindow.isOpen ? '● Đang mở đăng ký' : '● Đã đóng cổng'}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e3a8a' }}>
-                      {registrations.filter((r) => r.role_type !== 'volunteer' && !r.department_id).length} sinh viên đăng ký khán giả
+
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
+                      {registrations.filter((r) => r.role_type !== 'volunteer' && !r.department_id).length}{' '}
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>sinh viên đăng ký</span>
                     </div>
-                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.775rem', color: '#475569', lineHeight: 1.4 }}>
+
+                    <p style={{ margin: 0, fontSize: '0.825rem', color: '#64748b', lineHeight: 1.5, minHeight: '38px' }}>
                       Dành cho sinh viên toàn trường đăng ký tham gia sự kiện nhận điểm rèn luyện.
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    {/* Primary Full-width Copy Button */}
                     <button
                       type="button"
                       onClick={handleCopyLink}
                       style={{
-                        flex: 1,
-                        padding: '0.55rem 0.85rem',
-                        background: copied ? '#16a34a' : '#2563eb',
+                        width: '100%',
+                        height: '42px',
+                        background: copied ? '#16a34a' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '10px',
                         fontWeight: 700,
-                        fontSize: '0.8rem',
+                        fontSize: '0.875rem',
                         cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem',
                         boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-                        textAlign: 'center',
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      {copied ? '✓ Đã chép link Khán giả!' : 'Sao Chép Link Khán Giả'}
+                      <span>{copied ? '✓ Đã sao chép link Khán giả' : 'Sao Chép Link Khán Giả'}</span>
                     </button>
 
-                    <a
-                      href={`/events/${event.event_id}/register`}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        padding: '0.55rem 0.85rem',
-                        background: '#ffffff',
-                        color: '#2563eb',
-                        border: '1.5px solid #bfdbfe',
-                        borderRadius: '10px',
-                        fontWeight: 700,
-                        fontSize: '0.8rem',
-                        textDecoration: 'none',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      Mở Trang ➔
-                    </a>
+                    {/* Secondary Actions Row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                      <a
+                        href={`/events/${event.event_id}/register`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          height: '36px',
+                          background: '#ffffff',
+                          color: '#2563eb',
+                          border: '1.5px solid #bfdbfe',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.25rem',
+                        }}
+                      >
+                        <span>Mở Trang</span>
+                        <span>↗</span>
+                      </a>
 
-                    {regWindow.isOpen ? (
-                      <button
-                        type="button"
-                        onClick={handleToggleRegistration}
-                        disabled={togglingReg}
-                        style={{
-                          padding: '0.55rem 0.85rem',
-                          background: '#d97706',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '10px',
-                          fontWeight: 700,
-                          fontSize: '0.8rem',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {togglingReg ? 'Đang xử lý...' : 'Tắt Cổng'}
-                      </button>
-                    ) : (!isExpired || isPrivileged) ? (
-                      <button
-                        type="button"
-                        onClick={handleToggleRegistration}
-                        disabled={togglingReg}
-                        style={{
-                          padding: '0.55rem 0.85rem',
-                          background: '#16a34a',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '10px',
-                          fontWeight: 700,
-                          fontSize: '0.8rem',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {togglingReg ? 'Đang xử lý...' : 'Mở Lại'}
-                      </button>
-                    ) : null}
+                      {regWindow.isOpen ? (
+                        <button
+                          type="button"
+                          onClick={handleToggleRegistration}
+                          disabled={togglingReg}
+                          style={{
+                            height: '36px',
+                            background: '#fffbeb',
+                            color: '#b45309',
+                            border: '1.5px solid #fde68a',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {togglingReg ? 'Đang xử lý...' : 'Tắt Cổng'}
+                        </button>
+                      ) : (!isExpired || isPrivileged) ? (
+                        <button
+                          type="button"
+                          onClick={handleToggleRegistration}
+                          disabled={togglingReg}
+                          style={{
+                            height: '36px',
+                            background: '#f0fdf4',
+                            color: '#15803d',
+                            border: '1.5px solid #bbf7d0',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {togglingReg ? 'Đang xử lý...' : 'Mở Lại Cổng'}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
 
                 {/* 2. CỔNG LINK TUYỂN DỤNG BAN CHUYÊN TRÁCH & CTV */}
                 <div
                   style={{
-                    padding: '1.25rem',
-                    background: event.is_recruitment_open !== false
-                      ? 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)'
-                      : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                    border: `1.5px solid ${event.is_recruitment_open !== false ? '#ddd6fe' : '#cbd5e1'}`,
+                    background: '#ffffff',
+                    border: `1.5px solid ${event.is_recruitment_open !== false ? '#ddd6fe' : '#e2e8f0'}`,
                     borderRadius: '16px',
+                    padding: '1.5rem',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    gap: '1rem',
+                    gap: '1.25rem',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
                 >
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: event.is_recruitment_open !== false ? 'linear-gradient(90deg, #7c3aed, #9333ea)' : '#94a3b8' }} />
+
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: event.is_recruitment_open !== false ? '#6d28d9' : '#475569' }}>
-                        🤝 CỔNG TUYỂN BAN CHUYÊN TRÁCH & CTV
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#5b21b6', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                        Cổng Tuyển Ban Chuyên Trách & CTV
                       </span>
                       <span
                         style={{
-                          padding: '0.15rem 0.55rem',
-                          borderRadius: '10px',
-                          fontSize: '0.725rem',
+                          padding: '0.2rem 0.65rem',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
                           fontWeight: 700,
                           background: event.is_recruitment_open !== false ? '#dcfce7' : '#fee2e2',
                           color: event.is_recruitment_open !== false ? '#15803d' : '#b91c1c',
@@ -938,93 +958,112 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         {event.is_recruitment_open !== false ? '● Đang mở tuyển' : '● Đã đóng cổng'}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#5b21b6' }}>
-                      {departments.length} Ban ({registrations.filter((r) => r.role_type === 'volunteer' || r.department_id).length} đơn ứng tuyển)
+
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
+                      {departments.length} Ban{' '}
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>
+                        ({registrations.filter((r) => r.role_type === 'volunteer' || r.department_id).length} đơn ứng tuyển)
+                      </span>
                     </div>
-                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.775rem', color: '#475569', lineHeight: 1.4 }}>
-                      Dành cho ứng viên nộp đơn vào các Ban (Hậu cần, Truyền thông, Lễ tân...) theo chỉ tiêu & giới tính.
+
+                    <p style={{ margin: 0, fontSize: '0.825rem', color: '#64748b', lineHeight: 1.5, minHeight: '38px' }}>
+                      Dành cho sinh viên nộp đơn ứng tuyển vào các Ban theo chỉ tiêu và giới tính.
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    {/* Primary Full-width Copy Button */}
                     <button
                       type="button"
                       onClick={handleCopyRecruitmentLink}
                       style={{
-                        flex: 1,
-                        padding: '0.55rem 0.85rem',
-                        background: copiedRecruitment ? '#16a34a' : '#7c3aed',
+                        width: '100%',
+                        height: '42px',
+                        background: copiedRecruitment ? '#16a34a' : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '10px',
                         fontWeight: 700,
-                        fontSize: '0.8rem',
+                        fontSize: '0.875rem',
                         cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {copiedRecruitment ? '✓ Đã chép link CTV!' : 'Sao Chép Link Tuyển CTV'}
-                    </button>
-
-                    <a
-                      href={`/events/${event.event_id}/recruitment`}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        padding: '0.55rem 0.85rem',
-                        background: '#ffffff',
-                        color: '#7c3aed',
-                        border: '1.5px solid #ddd6fe',
-                        borderRadius: '10px',
-                        fontWeight: 700,
-                        fontSize: '0.8rem',
-                        textDecoration: 'none',
-                        display: 'inline-flex',
+                        display: 'flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem',
+                        boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      Mở Trang ➔
-                    </a>
-
-                    <button
-                      type="button"
-                      onClick={handleToggleRecruitment}
-                      disabled={togglingRecruitment}
-                      style={{
-                        padding: '0.55rem 0.85rem',
-                        background: event.is_recruitment_open !== false ? '#d97706' : '#16a34a',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '10px',
-                        fontWeight: 700,
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {togglingRecruitment
-                        ? 'Đang xử lý...'
-                        : event.is_recruitment_open !== false
-                        ? 'Đóng Cổng'
-                        : 'Mở Lại'}
+                      <span>{copiedRecruitment ? '✓ Đã sao chép link Tuyển CTV' : 'Sao Chép Link Tuyển CTV'}</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('recruitment')}
-                      style={{
-                        padding: '0.55rem 0.85rem',
-                        background: '#ede9fe',
-                        color: '#6d28d9',
-                        border: '1.5px solid #c4b5fd',
-                        borderRadius: '10px',
-                        fontWeight: 700,
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Bàn Duyệt Ban ➔
-                    </button>
+                    {/* Secondary Actions Row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.4rem' }}>
+                      <a
+                        href={`/events/${event.event_id}/recruitment`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          height: '36px',
+                          background: '#ffffff',
+                          color: '#7c3aed',
+                          border: '1.5px solid #ddd6fe',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.775rem',
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.2rem',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <span>Mở Trang</span>
+                        <span>↗</span>
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={handleToggleRecruitment}
+                        disabled={togglingRecruitment}
+                        style={{
+                          height: '36px',
+                          background: event.is_recruitment_open !== false ? '#fffbeb' : '#f0fdf4',
+                          color: event.is_recruitment_open !== false ? '#b45309' : '#15803d',
+                          border: `1.5px solid ${event.is_recruitment_open !== false ? '#fde68a' : '#bbf7d0'}`,
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.775rem',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {togglingRecruitment
+                          ? '...'
+                          : event.is_recruitment_open !== false
+                          ? 'Đóng Cổng'
+                          : 'Mở Cổng'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('recruitment')}
+                        style={{
+                          height: '36px',
+                          background: '#f5f3ff',
+                          color: '#6d28d9',
+                          border: '1.5px solid #ddd6fe',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.775rem',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Duyệt Ban ➔
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
