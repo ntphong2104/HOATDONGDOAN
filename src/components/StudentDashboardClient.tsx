@@ -15,6 +15,7 @@ import {
   ClockIcon,
   UsersIcon,
   CloseIcon,
+  CalendarIcon,
 } from '@/components/icons';
 import type { HistoryItem } from '@/lib/types';
 import styles from './StudentDashboardClient.module.css';
@@ -35,6 +36,8 @@ export default function StudentDashboardClient({
   initialHistory,
 }: StudentDashboardClientProps) {
   const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
+  const [activeEvents, setActiveEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
 
   // Delegate states
@@ -115,8 +118,24 @@ export default function StudentDashboardClient({
     }
   };
 
+  const fetchActiveEvents = async () => {
+    setLoadingEvents(true);
+    try {
+      const res = await fetch('/api/events/public');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setActiveEvents(data.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
+
   useEffect(() => {
     checkDelegateStatus();
+    fetchActiveEvents();
   }, []);
 
   return (
@@ -189,6 +208,100 @@ export default function StudentDashboardClient({
           Dùng camera điện thoại quét mã QR động đổi liên tục trên máy chiếu/màn hình để tự điểm danh
         </p>
       </div>
+
+      {/* Active Events Open for Registration */}
+      <section className={styles.historySection} style={{ marginBottom: '1.75rem' }}>
+        <div className={styles.historyHeader}>
+          <h2 className={styles.historyTitle}>
+            <CalendarIcon size={20} color="#2563eb" />
+            Sự Kiện Đang Mở Đăng Ký ({activeEvents.length})
+          </h2>
+        </div>
+        {loadingEvents ? (
+          <p style={{ textAlign: 'center', padding: '1rem', color: '#64748b', fontSize: '0.85rem' }}>
+            Đang tải danh sách sự kiện...
+          </p>
+        ) : activeEvents.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '1.5rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
+              Hiện chưa có sự kiện nào đang mở đăng ký. Các sự kiện mới sẽ được cập nhật sớm!
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+            {activeEvents.map((ev) => (
+              <div
+                key={ev.event_id}
+                style={{
+                  background: '#ffffff',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '0.85rem',
+                  boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, background: '#eff6ff', color: '#2563eb', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>
+                      {ev.semester || 'Học Kỳ Mới'}
+                    </span>
+                    <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#166534', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                      ● Đang mở đăng ký
+                    </span>
+                  </div>
+                  <h3 style={{ margin: '0.2rem 0 0.4rem', fontSize: '1rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>
+                    {ev.event_name}
+                  </h3>
+                  {ev.description && (
+                    <p style={{ margin: '0 0 0.6rem', fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {ev.description}
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8rem', color: '#475569' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <ClockIcon size={14} color="#2563eb" />
+                      <span>{ev.event_date ? new Date(ev.event_date).toLocaleDateString('vi-VN') : ''} {ev.start_time ? `(${ev.start_time}${ev.end_time ? ` - ${ev.end_time}` : ''})` : ''}</span>
+                    </div>
+                    {ev.location && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span>📍 {ev.location}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <Link
+                  href={`/events/${ev.event_id}/register`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    padding: '0.65rem 1rem',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    color: '#ffffff',
+                    borderRadius: '10px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <span>Đăng Ký Tham Gia Ngay</span>
+                  <span>➔</span>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Check-in History of Current Student */}
       <section className={styles.historySection}>
