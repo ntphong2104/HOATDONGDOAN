@@ -498,19 +498,42 @@ function SuperAdminContent() {
         badgeBorder: '#fde68a',
       };
     }
+
     // p.status === 'approved'
     const matchedEvent = events.find((e) => e.event_id === (p as any).event_id || (p.title && e.event_name === p.title));
-    const isPast = matchedEvent
-      ? isEventPastDeadline(matchedEvent)
-      : isEventPastDeadline({ event_date: p.start_date, end_time: p.end_time });
+    const scheduleInfo = matchedEvent
+      ? {
+          event_date: matchedEvent.event_date,
+          start_time: matchedEvent.start_time,
+          end_time: matchedEvent.end_time,
+          status: matchedEvent.status,
+        }
+      : {
+          event_date: p.start_date,
+          start_time: p.start_time,
+          end_time: p.end_time,
+          status: 'active',
+        };
 
-    if (isPast) {
+    const lifecycle = getEventLifecycleState(scheduleInfo);
+
+    if (lifecycle === 'closed') {
       return {
         type: 'closed' as const,
         label: '● Đã kết thúc',
         badgeBg: '#f8fafc',
         badgeColor: '#64748b',
         badgeBorder: '#e2e8f0',
+      };
+    }
+
+    if (lifecycle === 'upcoming') {
+      return {
+        type: 'upcoming' as const,
+        label: '● Đang mở đăng ký',
+        badgeBg: '#eff6ff',
+        badgeColor: '#1d4ed8',
+        badgeBorder: '#bfdbfe',
       };
     }
 
