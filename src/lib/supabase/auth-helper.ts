@@ -210,6 +210,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     isYouthUnion ||
     isCtsv ||
     isFacility ||
+    isSubAdminUnit ||
     hasCreatedEvents ||
     assignedOfficerRole?.role_tier === 'event_admin' ||
     (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||

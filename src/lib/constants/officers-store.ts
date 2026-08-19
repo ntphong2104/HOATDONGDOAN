@@ -431,7 +431,12 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
           } catch {}
         }
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const mapped = parsed as OfficerRoleItem[];
+          const mapped = (parsed as OfficerRoleItem[]).map((m) => {
+            if (m.unit_code === 'LCD_MKT' || m.email === 'lcdmkt@student.ptithcm.edu.vn') {
+              return { ...m, email: 'lcdmarketing@student.ptithcm.edu.vn' };
+            }
+            return m;
+          });
           if (!mapped.some((m) => m.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase())) {
             mapped.unshift(DEFAULT_OFFICERS[0]);
           }

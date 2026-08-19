@@ -188,21 +188,44 @@ export async function GET() {
       if (res?.data) createdEvents = res.data;
     } catch {}
 
+    const lowerEmail = email.toLowerCase();
+    const isSubAdminUnit =
+      lowerEmail.startsWith('lcd') ||
+      lowerEmail.startsWith('clb') ||
+      lowerEmail.startsWith('doi') ||
+      lowerEmail.includes('marketing') ||
+      lowerEmail.includes('ketoan') ||
+      lowerEmail.includes('quantri') ||
+      lowerEmail.includes('vienthong') ||
+      lowerEmail.includes('dientu') ||
+      lowerEmail.includes('itmc');
+
     const isSuperAdmin =
-      email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase() ||
+      lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
       !!superAdmin ||
       assignedOfficerRole?.role_tier === 'super_admin';
 
     const isYouthUnion =
+      lowerEmail.includes('doanthanhnien') ||
+      lowerEmail.includes('bchdoan') ||
       assignedOfficerRole?.role_tier === 'youth_union';
 
     const isCtsv =
+      lowerEmail.includes('phongctsv') ||
+      lowerEmail.includes('ctsv') ||
       assignedOfficerRole?.role_tier === 'ctsv';
 
     const isFacility =
+      lowerEmail.includes('phongquantri') ||
+      lowerEmail.includes('quantri') ||
+      lowerEmail.includes('tchc') ||
+      lowerEmail.includes('tchcqt') ||
+      lowerEmail.includes('csvc') ||
       assignedOfficerRole?.role_tier === 'facility';
 
     const isSecurity =
+      lowerEmail.includes('baove') ||
+      lowerEmail.includes('security') ||
       assignedOfficerRole?.role_tier === 'security';
 
     const isEventAdmin =
@@ -210,6 +233,7 @@ export async function GET() {
       isYouthUnion ||
       isCtsv ||
       isFacility ||
+      isSubAdminUnit ||
       assignedOfficerRole?.role_tier === 'event_admin' ||
       (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
       createdEvents.length > 0;
