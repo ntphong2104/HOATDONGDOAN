@@ -500,7 +500,12 @@ function SuperAdminContent() {
     }
 
     // p.status === 'approved'
-    const matchedEvent = events.find((e) => e.event_id === (p as any).event_id || (p.title && e.event_name === p.title));
+    const matchedEvent = events.find(
+      (e) =>
+        e.event_id === (p as any).created_event_id ||
+        e.event_id === (p as any).event_id ||
+        (p.title && e.event_name && e.event_name.toLowerCase() === p.title.toLowerCase())
+    );
     const scheduleInfo = matchedEvent
       ? {
           event_date: matchedEvent.event_date,
@@ -556,7 +561,7 @@ function SuperAdminContent() {
       list = list.filter((p) => {
         const displayStatus = getProposalDisplayStatus(p);
         if (proposalStatusFilter === 'pending') return displayStatus.type === 'pending';
-        if (proposalStatusFilter === 'active') return displayStatus.type === 'active';
+        if (proposalStatusFilter === 'active') return displayStatus.type === 'active' || displayStatus.type === 'upcoming';
         if (proposalStatusFilter === 'closed') return displayStatus.type === 'closed' || displayStatus.type === 'rejected';
         return true;
       });
@@ -569,9 +574,10 @@ function SuperAdminContent() {
 
       const score = (type: string) => {
         if (type === 'pending') return 1;
-        if (type === 'active') return 2;
-        if (type === 'closed') return 3;
-        return 4; // rejected
+        if (type === 'upcoming') return 2;
+        if (type === 'active') return 3;
+        if (type === 'closed') return 4;
+        return 5; // rejected
       };
 
       const diff = score(statusA.type) - score(statusB.type);
@@ -593,7 +599,7 @@ function SuperAdminContent() {
     for (const p of base) {
       const st = getProposalDisplayStatus(p);
       if (st.type === 'pending') pending++;
-      else if (st.type === 'active') active++;
+      else if (st.type === 'active' || st.type === 'upcoming') active++;
       else closed++;
     }
 

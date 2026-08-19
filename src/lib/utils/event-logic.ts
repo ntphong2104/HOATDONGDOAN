@@ -23,6 +23,16 @@ export function getEventStartDateTime(event: EventScheduleInfo): Date | null {
     const hours = parseInt(hoursStr || '7', 10);
     const minutes = parseInt(minutesStr || '0', 10);
 
+    if (datePart.includes('/')) {
+      const parts = datePart.split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        return new Date(year, month - 1, day, hours, minutes, 0, 0);
+      }
+    }
+
     const [yearStr, monthStr, dayStr] = datePart.split('-');
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10);
@@ -91,16 +101,20 @@ export function isEventPastDeadline(
     const hours = parseInt(hoursStr || '22', 10);
     const minutes = parseInt(minutesStr || '0', 10);
 
-    const [yearStr, monthStr, dayStr] = datePart.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10);
-    const day = parseInt(dayStr, 10);
-
-    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
-      return false;
+    let endDateTime: Date;
+    if (datePart.includes('/')) {
+      const parts = datePart.split('/');
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const year = parseInt(parts[2], 10);
+      endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    } else {
+      const [yearStr, monthStr, dayStr] = datePart.split('-');
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      const day = parseInt(dayStr, 10);
+      endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
     }
-
-    const endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
     // 1 hour buffer after end time (60 mins * 60 secs * 1000 ms)
     const autoCloseThreshold = endDateTime.getTime() + 60 * 60 * 1000;
