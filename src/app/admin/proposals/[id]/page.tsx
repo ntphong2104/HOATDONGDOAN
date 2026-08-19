@@ -528,7 +528,24 @@ export default function ProposalDetailPage({
                     textDecoration: 'none',
                   }}
                 >
-                  🔗 Link Đăng Ký
+                  Link Đăng Ký (Khán giả)
+                </Link>
+
+                <Link
+                  href={`/events/${proposal.created_event_id}/recruitment`}
+                  target="_blank"
+                  style={{
+                    padding: '0.65rem 1.25rem',
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    border: '1.5px solid #bfdbfe',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    textDecoration: 'none',
+                  }}
+                >
+                  Link Tuyển CTV
                 </Link>
               </div>
             </div>
