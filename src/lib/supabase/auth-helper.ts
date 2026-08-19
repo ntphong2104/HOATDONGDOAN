@@ -175,19 +175,34 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     explicitTier === 'super_admin';
 
   const isYouthUnion =
+    lowerEmail.includes('doanthanhnien') ||
+    lowerEmail.includes('bchdoan') ||
     assignedOfficerRole?.role_tier === 'youth_union' ||
+    assignedOfficerRole?.unit_code === 'BCH_DOAN' ||
     explicitTier === 'youth_union';
 
   const isCtsv =
+    lowerEmail.includes('phongctsv') ||
+    lowerEmail.includes('ctsv') ||
     assignedOfficerRole?.role_tier === 'ctsv' ||
+    assignedOfficerRole?.unit_code === 'PHONG_CTSV' ||
     explicitTier === 'ctsv';
 
   const isFacility =
+    lowerEmail.includes('phongquantri') ||
+    lowerEmail.includes('quantri') ||
+    lowerEmail.includes('tchc') ||
+    lowerEmail.includes('tchcqt') ||
+    lowerEmail.includes('csvc') ||
     assignedOfficerRole?.role_tier === 'facility' ||
+    assignedOfficerRole?.unit_code === 'PHONG_TCHCQT' ||
     explicitTier === 'facility';
 
   const isSecurity =
+    lowerEmail.includes('baove') ||
+    lowerEmail.includes('security') ||
     assignedOfficerRole?.role_tier === 'security' ||
+    assignedOfficerRole?.unit_code === 'TO_BAO_VE' ||
     explicitTier === 'security';
 
   const isEventAdmin =

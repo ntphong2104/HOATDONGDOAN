@@ -45,10 +45,7 @@ export default async function HomePage({
     if (auth.tier === 'super_admin' || auth.isSuperAdmin) {
       redirect('/super-admin');
     }
-    if (auth.tier === 'youth_union') {
-      redirect('/admin');
-    }
-    if (auth.tier === 'ctsv' || auth.tier === 'facility') {
+    if (auth.tier === 'youth_union' || auth.tier === 'ctsv' || auth.tier === 'facility') {
       redirect('/admin/proposals');
     }
     if (auth.tier === 'event_admin' || auth.isEventAdmin) {

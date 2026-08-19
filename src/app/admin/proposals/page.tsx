@@ -72,9 +72,9 @@ export default function ProposalsListPage() {
   const email = user?.email?.toLowerCase() || '';
   let tier = user?.tier || 'user';
   if (tier === 'user') {
-    if (email.includes('doanthanhnien')) tier = 'youth_union';
-    else if (email.includes('ctsv')) tier = 'ctsv';
-    else if (email.includes('quantri') || email.includes('csvc')) tier = 'facility';
+    if (email.includes('doanthanhnien') || email.includes('bchdoan')) tier = 'youth_union';
+    else if (email.includes('ctsv') || email.includes('phongctsv')) tier = 'ctsv';
+    else if (email.includes('quantri') || email.includes('csvc') || email.includes('tchc') || email.includes('tchcqt')) tier = 'facility';
   }
 
   const isApprover = tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'super_admin';
