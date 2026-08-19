@@ -85,7 +85,7 @@ export const OFFICIAL_UNITS: OfficialUnit[] = [
     code: 'LCD_MKT',
     name: 'LCĐ Marketing',
     type: 'Liên Chi Đoàn (LCĐ)',
-    email: 'lcdmkt@student.ptithcm.edu.vn',
+    email: 'lcdmarketing@student.ptithcm.edu.vn',
   },
   {
     code: 'LCD_KT',
@@ -429,8 +429,17 @@ export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit
         } catch {}
       }
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const filtered = (parsed as OfficialUnit[]).filter(u => !NON_STUDENT_UNIT_CODES.has(u.code));
-        if (filtered.length !== parsed.length) {
+        let hasChanges = false;
+        const normalized = (parsed as OfficialUnit[]).map((u) => {
+          if (u.code === 'LCD_MKT' && (u.email === 'lcdmkt@student.ptithcm.edu.vn' || !u.email)) {
+            hasChanges = true;
+            return { ...u, email: 'lcdmarketing@student.ptithcm.edu.vn' };
+          }
+          return u;
+        });
+
+        const filtered = normalized.filter((u) => !NON_STUDENT_UNIT_CODES.has(u.code));
+        if (filtered.length !== parsed.length || hasChanges) {
           // Clean up stored units in DB to keep exactly the official student units
           await supabase.from('system_settings').upsert({
             key: CUSTOM_UNITS_KEY,
