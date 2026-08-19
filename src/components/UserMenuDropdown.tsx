@@ -35,16 +35,7 @@ export default function UserMenuDropdown({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const [currentUser, setCurrentUser] = useState<SessionUser | null>(() => {
-    if (propUser && propUser.full_name) return propUser;
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = sessionStorage.getItem('ptit_user_session_cache');
-        if (cached) return JSON.parse(cached);
-      } catch {}
-    }
-    return propUser || null;
-  });
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(propUser || null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +47,14 @@ export default function UserMenuDropdown({
       } catch {}
       return;
     }
+
+    // Read cached session on client mount
+    try {
+      const cached = sessionStorage.getItem('ptit_user_session_cache');
+      if (cached) {
+        setCurrentUser(JSON.parse(cached));
+      }
+    } catch {}
 
     // Fetch user profile
     if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
@@ -86,54 +85,30 @@ export default function UserMenuDropdown({
         setIsOpen(false);
       }
     };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = async () => {
-    if (onLogout) {
-      onLogout();
-      return;
-    }
     try {
-      if (typeof window !== 'undefined') {
-        document.cookie = 'demo_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT;';
-        try {
-          localStorage.clear();
-          sessionStorage.clear();
-        } catch (e) {}
-
-        await Promise.allSettled([
-          window.fetch('/api/auth/logout', { method: 'POST' }),
-          window.fetch('/api/auth/demo', { method: 'DELETE' }),
-        ]);
-      }
+      sessionStorage.removeItem('ptit_user_session_cache');
+      sessionStorage.removeItem('demo_role');
+      sessionStorage.removeItem('demo_email');
       const supabase = createClient();
       await supabase.auth.signOut();
-    } catch (err) {
-      console.error('Logout error', err);
-    } finally {
-      if (typeof window !== 'undefined') {
-        window.location.replace('/login');
-      }
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Logout error:', e);
     }
+    if (onLogout) onLogout();
+    router.push('/login');
   };
 
-  const displayName = currentUser?.full_name || propUserName || currentUser?.email?.split('@')[0] || 'Tài khoản';
+  const displayName =
+    currentUser?.full_name ||
+    propUserName ||
+    currentUser?.email?.split('@')[0] ||
+    'Tài khoản';
   const tier = currentUser?.tier || (propUser?.tier) || 'user';
 
   const tierLabel =
@@ -179,11 +154,11 @@ export default function UserMenuDropdown({
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className={styles.avatarFallback}>
+          <div className={styles.avatarFallback} suppressHydrationWarning>
             {initialLetter}
           </div>
         )}
-        <span className={styles.userNameText}>{displayName}</span>
+        <span className={styles.userNameText} suppressHydrationWarning>{displayName}</span>
         <svg
           className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}
           width="12"
