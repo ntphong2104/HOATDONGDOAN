@@ -418,6 +418,50 @@ export async function POST(req: Request) {
   }
 }
 
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const role = searchParams.get('role') || 'super_admin';
+  const targetRedirect = searchParams.get('redirect') || searchParams.get('next');
+
+  let profile = DEMO_PROFILES[role];
+  if (!profile && (role.startsWith('lcd') || role.startsWith('clb') || role.startsWith('doi'))) {
+    profile = {
+      mssv: role.toUpperCase().replace(/\./g, '_'),
+      email: `${role.toLowerCase()}@student.ptithcm.edu.vn`,
+      full_name: `Đơn vị ${role.toUpperCase()}`,
+      class_id: 'DONVI-PTIT',
+      tier: 'event_admin',
+      managed_events: [],
+    };
+  }
+  if (!profile) profile = DEMO_PROFILES.super_admin;
+
+  let redirectUrl =
+    targetRedirect && typeof targetRedirect === 'string' && targetRedirect.startsWith('/')
+      ? targetRedirect
+      : '/';
+
+  if (!targetRedirect || targetRedirect === '/') {
+    if (profile.tier === 'checker') redirectUrl = '/scanner';
+    if (profile.tier === 'security') redirectUrl = '/security';
+    if (profile.tier === 'event_admin') redirectUrl = '/admin';
+    if (profile.tier === 'youth_union' || profile.tier === 'ctsv' || profile.tier === 'facility') {
+      redirectUrl = '/admin/proposals';
+    }
+    if (profile.tier === 'super_admin') redirectUrl = '/super-admin';
+  }
+
+  const res = NextResponse.redirect(new URL(redirectUrl, req.url));
+  res.cookies.set('demo_session', signCookie(JSON.stringify(profile)), {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7,
+  });
+
+  return res;
+}
+
 export async function DELETE() {
   const cookieStore = await cookies();
   cookieStore.delete('demo_session');

@@ -45,7 +45,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     auth.tier === 'youth_union' ||
     auth.email.toLowerCase().includes('doanthanhnien');
 
-  const { status, event_name, event_date, start_time, end_time, semester } = await req.json();
+  const { status, event_name, event_date, start_time, end_time, semester, departments, target_scope } = await req.json();
 
   // Kiểm tra quyền MỞ LẠI sự kiện khi đã quá 1 tiếng sau giờ kết thúc
   if (status === 'active') {
@@ -107,6 +107,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (start_time !== undefined) updatePayload.start_time = start_time;
   if (end_time !== undefined) updatePayload.end_time = end_time;
   if (semester !== undefined) updatePayload.semester = semester;
+  if (departments !== undefined) updatePayload.departments = departments;
+  if (target_scope !== undefined) updatePayload.target_scope = target_scope;
 
   const { data, error } = await supabase
     .from('events')

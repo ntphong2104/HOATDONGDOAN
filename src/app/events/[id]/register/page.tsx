@@ -31,6 +31,11 @@ export default function EventRegisterPage({
   const [myRegistration, setMyRegistration] = useState<EventRegistration | null>(null);
   const [penaltyStatus, setPenaltyStatus] = useState<UserPenalty | null>(null);
   const [registrationWindow, setRegistrationWindow] = useState<{ isOpen: boolean; cutoffTime?: string; reason?: string } | null>(null);
+  const [regType, setRegType] = useState<'participant' | 'volunteer'>('participant');
+  const [selectedDeptId, setSelectedDeptId] = useState<string>('');
+  const [gender, setGender] = useState<'Nam' | 'Nữ'>('Nam');
+  const [phone, setPhone] = useState('');
+  const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -40,6 +45,8 @@ export default function EventRegisterPage({
       const data = await res.json();
       if (data.success && data.data) {
         setCurrentUser(data.data);
+        if (data.data.gender) setGender(data.data.gender);
+        if (data.data.phone) setPhone(data.data.phone);
       }
     } catch (e) {
       console.error(e);
@@ -56,6 +63,9 @@ export default function EventRegisterPage({
         setMyRegistration(data.data.myRegistration || null);
         setPenaltyStatus(data.data.penaltyStatus || null);
         setRegistrationWindow(data.data.registrationWindow || null);
+        if (data.data.event?.departments?.length > 0) {
+          setSelectedDeptId(data.data.event.departments[0].id);
+        }
       }
     } catch (err) {
       console.error('Failed to load registration info', err);
@@ -81,16 +91,38 @@ export default function EventRegisterPage({
       return;
     }
 
+    if (regType === 'volunteer' && selectedDeptId && event?.departments) {
+      const targetDept = event.departments.find((d) => d.id === selectedDeptId);
+      if (targetDept) {
+        if (targetDept.gender_req === 'male' && gender === 'Nữ') {
+          alert(`Vị trí "${targetDept.name}" yêu cầu ứng viên Nam. Bạn vui lòng chọn Ban khác phù hợp hơn nhé!`);
+          return;
+        }
+        if (targetDept.gender_req === 'female' && gender === 'Nam') {
+          alert(`Vị trí "${targetDept.name}" yêu cầu ứng viên Nữ. Bạn vui lòng chọn Ban khác phù hợp hơn nhé!`);
+          return;
+        }
+      }
+    }
+
     setSubmitting(true);
     try {
+      const selectedDept = event?.departments?.find((d) => d.id === selectedDeptId);
       const res = await fetch(`/api/events/${resolvedParams.id}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role_type: 'participant' }),
+        body: JSON.stringify({
+          role_type: regType,
+          department_id: regType === 'volunteer' ? selectedDeptId : null,
+          department_name: regType === 'volunteer' ? selectedDept?.name : null,
+          gender,
+          phone,
+          note,
+        }),
       });
       const data = await res.json();
       if (data.success) {
-        alert('Chúc mừng bạn đã đăng ký tham gia sự kiện thành công!');
+        alert(data.message || 'Chúc mừng bạn đã đăng ký tham gia sự kiện thành công!');
         fetchRegistrationData();
       } else {
         alert(data.error || 'Lỗi đăng ký');
@@ -305,6 +337,51 @@ export default function EventRegisterPage({
                 </div>
               ) : (
                 <>
+                  {/* Banner to Recruitment Page if departments exist */}
+                  {event.departments && event.departments.length > 0 && (
+                    <div
+                      style={{
+                        background: '#eff6ff',
+                        border: '1.5px solid #bfdbfe',
+                        borderRadius: '12px',
+                        padding: '0.85rem 1rem',
+                        marginBottom: '1.25rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <div>
+                        <strong style={{ color: '#1e40af', fontSize: '0.875rem' }}>
+                          Tuyển Ban Chuyên Trách / CTV:
+                        </strong>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#3b82f6' }}>
+                          Sự kiện đang tuyển {event.departments.length} Ban (Hậu cần, Truyền thông...).
+                        </p>
+                      </div>
+                      <Link
+                        href={`/events/${event.event_id}/recruitment`}
+                        style={{
+                          padding: '0.4rem 0.85rem',
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          borderRadius: '8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                        }}
+                      >
+                        Nộp Đơn Ứng Tuyển ➔
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Student info and extra details */}
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Thông Tin Sinh Viên Đăng Ký</label>
                     <div
@@ -318,7 +395,7 @@ export default function EventRegisterPage({
                         color: '#0f172a',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '0.35rem',
+                        gap: '0.45rem',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -326,13 +403,82 @@ export default function EventRegisterPage({
                         <span style={{ color: '#2563eb', fontWeight: 700 }}>MSSV: {currentUser.mssv || currentUser.email}</span>
                       </div>
                       <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                        Lớp: <strong>{currentUser.class_id || 'PTIT-HCM'}</strong> • Vai trò mặc định: <strong style={{ color: '#16a34a' }}>Người tham gia</strong>
+                        Lớp: <strong>{currentUser.class_id || 'PTIT-HCM'}</strong>
                       </div>
                     </div>
                   </div>
 
+                  {/* Gender & Phone fields when applying for CTV */}
+                  {regType === 'volunteer' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div className={styles.formGroup}>
+                        <label className={styles.label}>Giới Tính Của Bạn</label>
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value as any)}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 0.85rem',
+                            border: '1.5px solid #cbd5e1',
+                            borderRadius: '8px',
+                            background: '#ffffff',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <option value="Nam">Nam</option>
+                          <option value="Nữ">Nữ</option>
+                        </select>
+                      </div>
+
+                      <div className={styles.formGroup}>
+                        <label className={styles.label}>Số Điện Thoại / Zalo</label>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="Ví dụ: 0912345678"
+                          required
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 0.85rem',
+                            border: '1.5px solid #cbd5e1',
+                            borderRadius: '8px',
+                            boxSizing: 'border-box',
+                            fontWeight: 600,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Note / Experience field when applying for CTV */}
+                  {regType === 'volunteer' && (
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Ghi Chú Kỹ Năng / Kinh Nghiệm Ứng Tuyển</label>
+                      <textarea
+                        rows={3}
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder="Mô tả kỹ năng, kinh nghiệm hoặc link portfolio / facebook cá nhân..."
+                        style={{
+                          width: '100%',
+                          padding: '0.65rem 0.85rem',
+                          border: '1.5px solid #cbd5e1',
+                          borderRadius: '8px',
+                          boxSizing: 'border-box',
+                          fontFamily: 'inherit',
+                          fontSize: '0.85rem',
+                        }}
+                      />
+                    </div>
+                  )}
+
                   <button type="submit" disabled={submitting} className={styles.submitBtn}>
-                    {submitting ? 'Đang xử lý đăng ký...' : 'Xác Nhận Đăng Ký Tham Gia'}
+                    {submitting
+                      ? 'Đang xử lý đăng ký...'
+                      : regType === 'volunteer'
+                      ? 'Gửi Đơn Ứng Tuyển Ban Chuyên Trách'
+                      : 'Xác Nhận Đăng Ký Tham Gia'}
                   </button>
 
                   <div className={styles.policyNote}>

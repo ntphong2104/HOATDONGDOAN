@@ -3,14 +3,14 @@ import { createClient } from '@/lib/supabase/server';
 import { isValidSchoolEmail, extractMSSV } from '@/lib/utils/extract-mssv';
 
 function getPublicOrigin(request: Request): string {
+  const { origin } = new URL(request.url);
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    return origin;
+  }
   const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
   const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
   if (forwardedHost && !forwardedHost.includes('0.0.0.0') && !forwardedHost.includes('127.0.0.1')) {
     return `${forwardedProto}://${forwardedHost}`;
-  }
-  const { origin } = new URL(request.url);
-  if (origin.includes('0.0.0.0') || origin.includes('127.0.0.1')) {
-    return 'https://ptithcm.com';
   }
   return origin;
 }

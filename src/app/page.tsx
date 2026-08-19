@@ -88,12 +88,15 @@ export default async function HomePage({
 
     const { data: dbUser } = await supabase
       .from('users')
-      .select('mssv, full_name, class_id')
+      .select('mssv, full_name, class_id, gender, phone')
       .eq('email', auth.email)
       .maybeSingle();
 
     if (dbUser) {
-      user = dbUser;
+      user = {
+        ...user,
+        ...dbUser,
+      };
     }
 
     const { data: historyData } = await supabase

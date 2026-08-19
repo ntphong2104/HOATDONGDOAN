@@ -25,6 +25,8 @@ interface StudentDashboardClientProps {
     mssv: string;
     full_name: string;
     class_id: string;
+    gender?: string;
+    phone?: string;
   };
   tier: string;
   initialHistory: HistoryItem[];
@@ -39,6 +41,10 @@ export default function StudentDashboardClient({
   const [activeEvents, setActiveEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [userGender, setUserGender] = useState(user.gender || 'Nam');
+  const [userPhone, setUserPhone] = useState(user.phone || '');
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   // Delegate states
   const [delegateInfo, setDelegateInfo] = useState<{
@@ -186,14 +192,163 @@ export default function StudentDashboardClient({
         </div>
       )}
 
-      {/* Student Personal QR Code */}
+      {/* Student Personal QR Code & Profile Info */}
       <section className={styles.qrSection}>
         <QRCodeDisplay
           value={user.mssv}
           studentName={user.full_name}
           studentClass={user.class_id}
         />
+        <div
+          style={{
+            marginTop: '0.75rem',
+            padding: '0.65rem 1rem',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '0.825rem',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div>
+            <span>Giới tính: <strong style={{ color: userGender === 'Nam' ? '#1d4ed8' : '#be185d' }}>{userGender}</strong></span>
+            <span style={{ margin: '0 0.5rem', color: '#cbd5e1' }}>•</span>
+            <span>SĐT/Zalo: <strong>{userPhone || 'Chưa cập nhật'}</strong></span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowProfileModal(true)}
+            style={{
+              padding: '0.25rem 0.6rem',
+              background: '#eff6ff',
+              color: '#2563eb',
+              border: '1px solid #bfdbfe',
+              borderRadius: '6px',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Chỉnh sửa hồ sơ
+          </button>
+        </div>
       </section>
+
+      {/* Modal Chỉnh Sửa Hồ Sơ */}
+      {showProfileModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+          onClick={() => setShowProfileModal(false)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              width: '100%',
+              maxWidth: '420px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                Cập Nhật Thông Tin Cá Nhân
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <CloseIcon size={20} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setSavingProfile(true);
+                try {
+                  const res = await fetch('/api/me', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gender: userGender, phone: userPhone }),
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    alert('Đã lưu thông tin hồ sơ thành công!');
+                    setShowProfileModal(false);
+                  } else {
+                    alert(data.error || 'Lỗi cập nhật');
+                  }
+                } catch {
+                  alert('Lỗi kết nối');
+                } finally {
+                  setSavingProfile(false);
+                }
+              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+            >
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  Giới tính
+                </label>
+                <select
+                  value={userGender}
+                  onChange={(e) => setUserGender(e.target.value)}
+                  style={{ width: '100%', padding: '0.65rem', border: '1.5px solid #cbd5e1', borderRadius: '8px', background: '#ffffff', fontWeight: 600 }}
+                >
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  Số điện thoại / Zalo
+                </label>
+                <input
+                  type="tel"
+                  value={userPhone}
+                  onChange={(e) => setUserPhone(e.target.value)}
+                  placeholder="Ví dụ: 0912345678"
+                  style={{ width: '100%', padding: '0.65rem', border: '1.5px solid #cbd5e1', borderRadius: '8px', boxSizing: 'border-box', fontWeight: 600 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(false)}
+                  style={{ padding: '0.5rem 1rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  style={{ padding: '0.5rem 1.25rem', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {savingProfile ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Button to Scan Event Dynamic QR */}
       <div className={styles.scanEventSection}>

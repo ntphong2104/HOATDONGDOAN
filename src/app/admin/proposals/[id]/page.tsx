@@ -274,9 +274,14 @@ export default function ProposalDetailPage({
     return getStageLabel((stageName as ProposalStage) || 'youth_union');
   };
 
-  // Filter logs with notes from approvers (exclude initial submission log)
+  // Filter logs with actual custom notes from approvers (exclude initial submission and default system text)
   const approvalNotesList = (proposal.logs || []).filter(
-    (l) => l.action === 'approved' && l.notes && l.notes.trim().length > 0 && !l.notes.includes('Đã nộp kế hoạch')
+    (l) =>
+      l.action === 'approved' &&
+      l.notes &&
+      l.notes.trim().length > 0 &&
+      !l.notes.includes('Đã nộp kế hoạch') &&
+      !l.notes.startsWith('Đã phê duyệt giai đoạn')
   );
 
   return (

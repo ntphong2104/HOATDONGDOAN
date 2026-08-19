@@ -152,12 +152,86 @@ export async function POST(
   // 3. Get User Profile info
   const { data: userProfile } = await supabase
     .from('users')
-    .select('full_name, class_id')
+    .select('full_name, class_id, gender, phone')
     .eq('email', auth.email)
     .single();
 
   const body = await req.json().catch(() => ({}));
   const role_type = body.role_type === 'volunteer' ? 'volunteer' : 'participant';
+  const gender = body.gender || userProfile?.gender || 'Nam';
+  const phone = body.phone !== undefined ? body.phone : userProfile?.phone || '';
+  const note = body.note || '';
+  const department_id = body.department_id || null;
+  let department_name = body.department_name || null;
+
+  // Validate recruitment window and department quota if applying for CTV
+  if (role_type === 'volunteer') {
+    if (event.is_recruitment_open === false) {
+      return NextResponse.json({
+        success: false,
+        error: 'Cổng tuyển dụng Ban chuyên trách & CTV đã đóng theo quyết định của Ban tổ chức.',
+      }, { status: 400 });
+    }
+
+    // CTV recruitment closes 24h prior to event start
+    if (event.event_date && event.start_time) {
+      const eventStart = new Date(`${event.event_date}T${event.start_time}:00`);
+      const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
+      const hoursRemaining = (eventStart.getTime() - nowVN.getTime()) / (1000 * 60 * 60);
+      if (hoursRemaining < 24 && event.status === 'active') {
+        return NextResponse.json({
+          success: false,
+          error: 'Cổng tuyển dụng CTV đã đóng (quy định đóng trước 24 giờ để Ban tổ chức hoàn tất công tác tổ chức).',
+        }, { status: 400 });
+      }
+    }
+
+    if (department_id && Array.isArray(event.departments)) {
+      const dept = event.departments.find((d: any) => d.id === department_id);
+      if (dept) {
+        department_name = dept.name;
+
+        // Check gender requirement
+        if (dept.gender_req === 'male' && gender === 'Nữ') {
+          return NextResponse.json({
+            success: false,
+            error: `Vị trí "${dept.name}" ưu tiên ứng viên Nam. Bạn vui lòng chọn Ban khác phù hợp hơn nhé!`,
+          }, { status: 400 });
+        }
+        if (dept.gender_req === 'female' && gender === 'Nam') {
+          return NextResponse.json({
+            success: false,
+            error: `Vị trí "${dept.name}" ưu tiên ứng viên Nữ. Bạn vui lòng chọn Ban khác phù hợp hơn nhé!`,
+          }, { status: 400 });
+        }
+
+        // Check department quota
+        const { count: acceptedInDept } = await supabase
+          .from('event_registrations')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', resolvedParams.id)
+          .eq('department_id', department_id)
+          .eq('review_status', 'accepted');
+
+        if (dept.quota && (acceptedInDept || 0) >= dept.quota) {
+          return NextResponse.json({
+            success: false,
+            error: `Vị trí "${dept.name}" đã đủ chỉ tiêu trúng tuyển (${acceptedInDept}/${dept.quota}). Bạn vui lòng chọn Ban khác còn chỗ nhé!`,
+          }, { status: 400 });
+        }
+      }
+    }
+  }
+
+  // Update user phone / gender in background
+  if (body.gender || body.phone) {
+    try {
+      await supabase.from('users').update({
+        gender,
+        phone,
+      }).eq('email', auth.email);
+    } catch {}
+  }
 
   // 4. Register for the event
   const { data: reg, error: regErr } = await supabase
@@ -170,6 +244,12 @@ export async function POST(
         full_name: userProfile?.full_name || auth.email,
         class_id: userProfile?.class_id || 'PTIT-HCM',
         role_type,
+        department_id,
+        department_name,
+        gender,
+        phone,
+        note,
+        review_status: role_type === 'volunteer' ? 'pending' : 'accepted',
         attended: false,
       },
       { onConflict: 'event_id,mssv' }
@@ -178,13 +258,17 @@ export async function POST(
     .single();
 
   if (regErr) {
+    console.error('Registration error:', regErr);
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 
   return NextResponse.json({
     success: true,
     data: reg,
-    message: 'Đăng ký tham gia sự kiện thành công!',
+    message:
+      role_type === 'volunteer'
+        ? `Đã gửi đơn ứng tuyển vào "${department_name || 'Ban CTV'}" thành công! Ban tổ chức sẽ duyệt hồ sơ của bạn.`
+        : 'Đăng ký tham gia sự kiện thành công!',
   });
 }
 

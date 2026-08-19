@@ -28,6 +28,35 @@ function LoginContent() {
   });
 
   const supabase = createClient();
+  const [isLocal, setIsLocal] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsLocal(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    }
+  }, []);
+
+  const handleDemoLogin = async (role: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (role === 'super_admin') window.location.href = '/super-admin';
+        else if (role === 'youth_union') window.location.href = '/admin/proposals';
+        else if (role === 'event_admin' || role === 'lcdcntt') window.location.href = '/admin';
+        else window.location.href = '/';
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     setLoading(true);
@@ -149,6 +178,94 @@ function LoginContent() {
             <span>{loading ? 'Đang chuyển hướng Google...' : 'Đăng nhập với Google Email Học Viện'}</span>
           </button>
         </div>
+
+        {/* Localhost Quick Testing Bar (Only rendered on localhost) */}
+        {isLocal && (
+          <div
+            style={{
+              marginTop: '1.25rem',
+              padding: '1rem',
+              background: '#f8fafc',
+              border: '1.5px dashed #93c5fd',
+              borderRadius: '12px',
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ fontSize: '0.775rem', fontWeight: 800, color: '#1e40af', marginBottom: '0.65rem' }}>
+              CHẾ ĐỘ THỬ NGHIỆM LOCALHOST (Chọn vai trò để đăng nhập trực tiếp):
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('super_admin')}
+                disabled={loading}
+                style={{
+                  padding: '0.45rem 0.6rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  background: '#1e293b',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('youth_union')}
+                disabled={loading}
+                style={{
+                  padding: '0.45rem 0.6rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  background: '#16a34a',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                Đoàn Thanh Niên
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('event_admin')}
+                disabled={loading}
+                style={{
+                  padding: '0.45rem 0.6rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cán bộ LCĐ CNTT
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('user')}
+                disabled={loading}
+                style={{
+                  padding: '0.45rem 0.6rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  background: '#64748b',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                Sinh viên
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Thông tin liên hệ hỗ trợ */}
         <div

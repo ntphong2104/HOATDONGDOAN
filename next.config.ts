@@ -1,4 +1,4 @@
-import type { NextConfig } from 'next';
+const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
   compress: true,
@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 31536000,
   },
   async headers() {
+    if (!isProd) {
+      return [];
+    }
+
     return [
       {
         source: '/(.*)',

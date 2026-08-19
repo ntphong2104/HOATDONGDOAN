@@ -2,12 +2,22 @@
 // src/lib/types.ts — Shared Types
 // ═══════════════════════════════
 
+export interface EventDepartment {
+  id: string;
+  name: string;
+  quota: number;
+  gender_req: 'all' | 'male' | 'female';
+  description?: string;
+}
+
 // ──── Database Entities ────
 export interface User {
   mssv: string;
   email: string;
   full_name: string;
   class_id: string;
+  gender?: string;
+  phone?: string;
   created_at?: string;
 }
 
@@ -20,9 +30,13 @@ export interface Event {
   semester?: string;
   is_active?: boolean;
   is_registration_open?: boolean;
+  is_recruitment_open?: boolean;
+  recruitment_deadline?: string;
   status?: 'active' | 'closed' | 'pending' | 'rejected';
   created_by?: string;
   created_at?: string;
+  departments?: EventDepartment[];
+  target_scope?: 'all' | 'unit_only';
 }
 
 export interface EventRole {
@@ -49,7 +63,13 @@ export interface EventRegistration {
   mssv: string;
   full_name: string;
   class_id: string;
-  role_type: 'participant' | 'volunteer';
+  role_type: 'participant' | 'volunteer' | 'organizer';
+  department_id?: string;
+  department_name?: string;
+  gender?: string;
+  phone?: string;
+  note?: string;
+  review_status?: 'pending' | 'accepted' | 'rejected';
   attended: boolean;
   created_at: string;
 }
@@ -125,6 +145,8 @@ export interface SessionUser {
   isChecker?: boolean;
   isSecurity?: boolean;
   avatar_url?: string;
+  gender?: string;
+  phone?: string;
   unit_name?: string;
   unit_code?: string;
   managed_events: ManagedEvent[];

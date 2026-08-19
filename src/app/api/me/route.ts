@@ -345,6 +345,8 @@ export async function GET() {
       email,
       full_name: resolvedUser.full_name,
       class_id: resolvedUser.class_id,
+      gender: (resolvedUser as any).gender || 'Nam',
+      phone: (resolvedUser as any).phone || '',
       tier,
       isSuperAdmin,
       isEventAdmin,
@@ -359,5 +361,75 @@ export async function GET() {
 
   } catch (err: any) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại', message: err.message }, { status: 500, headers: noCacheHeaders });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json();
+    const { gender, phone } = body;
+
+    const cookieStore = await cookies();
+    const demoCookie = cookieStore.get('demo_session');
+    
+    // 1. If demo session, update demo cookie
+    if (demoCookie?.value) {
+      const demoUser = parseDemoCookie(demoCookie.value);
+      if (demoUser && demoUser.email) {
+        const updated = {
+          ...demoUser,
+          gender: gender || demoUser.gender || 'Nam',
+          phone: phone !== undefined ? phone : demoUser.phone || '',
+        };
+        const { signCookie } = await import('@/app/api/auth/demo/route');
+        cookieStore.set('demo_session', signCookie(JSON.stringify(updated)), {
+          path: '/',
+          httpOnly: true,
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7,
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: 'Đã cập nhật thông tin cá nhân thành công!',
+          data: { gender: updated.gender, phone: updated.phone },
+        });
+      }
+    }
+
+    // 2. Supabase Auth Session
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
+
+    if (!user || !user.email) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const email = user.email.toLowerCase();
+
+    // Update in users table
+    const updatePayload: Record<string, any> = {};
+    if (gender) updatePayload.gender = gender;
+    if (phone !== undefined) updatePayload.phone = phone;
+
+    try {
+      await supabase
+        .from('users')
+        .update(updatePayload)
+        .eq('email', email);
+    } catch {}
+
+    return NextResponse.json({
+      success: true,
+      message: 'Đã cập nhật thông tin cá nhân thành công!',
+      data: { gender, phone },
+    });
+  } catch (err: any) {
+    console.error('Update profile error:', err);
+    return NextResponse.json(
+      { success: false, error: 'Lỗi cập nhật thông tin', message: err.message },
+      { status: 500 }
+    );
   }
 }

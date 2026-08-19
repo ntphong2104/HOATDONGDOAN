@@ -8,6 +8,7 @@ import StatCard from '@/components/StatCard';
 import ExcelExportButton from '@/components/ExcelExportButton';
 import DataTable from '@/components/DataTable';
 import DynamicEventQRModal from '@/components/DynamicEventQRModal';
+import EventBulkImportModal from '@/components/EventBulkImportModal';
 import {
   UsersIcon,
   CheckCircleIcon,
@@ -20,8 +21,9 @@ import {
   UserIcon,
   StarIcon,
   TrashIcon,
+  UploadCloudIcon,
 } from '@/components/icons';
-import type { Event, EventRole, CheckinExportRow, EventRegistration } from '@/lib/types';
+import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepartment } from '@/lib/types';
 import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin } from '@/lib/utils/event-logic';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import styles from './page.module.css';
@@ -38,14 +40,27 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true);
   const [reconciling, setReconciling] = useState(false);
   const [togglingReg, setTogglingReg] = useState(false);
-  const [activeTab, setActiveTab] = useState<'checkins' | 'registrations' | 'ratings' | 'noshow'>('checkins');
+  const [activeTab, setActiveTab] = useState<'checkins' | 'registrations' | 'recruitment' | 'ratings' | 'noshow'>('checkins');
+  const [departments, setDepartments] = useState<EventDepartment[]>([]);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [newDeptQuota, setNewDeptQuota] = useState(5);
+  const [newDeptGender, setNewDeptGender] = useState<'all' | 'male' | 'female'>('all');
+  const [newDeptDesc, setNewDeptDesc] = useState('');
+  const [savingDepts, setSavingDepts] = useState(false);
+  const [showAddDeptForm, setShowAddDeptForm] = useState(false);
+  const [reviewingMssv, setReviewingMssv] = useState<string | null>(null);
+  const [selectedMssvs, setSelectedMssvs] = useState<string[]>([]);
+  const [togglingRecruitment, setTogglingRecruitment] = useState(false);
+  const [bulkReviewing, setBulkReviewing] = useState(false);
   const [ratings, setRatings] = useState<any[]>([]);
   const [manualMSSV, setManualMSSV] = useState('');
   const [manualCheckinStatus, setManualCheckinStatus] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingFeedback, setRatingFeedback] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedRecruitment, setCopiedRecruitment] = useState(false);
   const [showDynamicQR, setShowDynamicQR] = useState(false);
   const [projectorRole, setProjectorRole] = useState<'participant' | 'volunteer' | 'organizer'>('participant');
 
@@ -91,13 +106,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
       if (eventData.success && eventData.data) {
         setEvent(eventData.data);
+        setDepartments(eventData.data.departments || []);
       } else {
         const { data: directEvent } = await supabase
           .from('events')
           .select('*')
           .eq('event_id', resolvedParams.id)
           .single();
-        if (directEvent) setEvent(directEvent);
+        if (directEvent) {
+          setEvent(directEvent);
+          setDepartments(directEvent.departments || []);
+        }
       }
 
       if (checkinsData.success) {
@@ -116,6 +135,185 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       console.error(err);
     } finally {
       if (isInitial) setLoading(false);
+    }
+  };
+
+  const handleAddDepartment = async () => {
+    if (!newDeptName.trim()) {
+      alert('Vui lòng nhập tên Ban!');
+      return;
+    }
+
+    const newDept: EventDepartment = {
+      id: `dept_${Date.now()}`,
+      name: newDeptName.trim(),
+      quota: Number(newDeptQuota) || 5,
+      gender_req: newDeptGender,
+      description: newDeptDesc.trim(),
+    };
+
+    const updatedDepts = [...departments, newDept];
+    setDepartments(updatedDepts);
+    setNewDeptName('');
+    setNewDeptDesc('');
+    setShowAddDeptForm(false);
+
+    setSavingDepts(true);
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ departments: updatedDepts }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'Lỗi lưu cấu hình Ban');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingDepts(false);
+    }
+  };
+
+  const handleDeleteDepartment = async (deptId: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa Ban này?')) return;
+    const updatedDepts = departments.filter((d) => d.id !== deptId);
+    setDepartments(updatedDepts);
+
+    setSavingDepts(true);
+    try {
+      await fetch(`/api/events/${resolvedParams.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ departments: updatedDepts }),
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingDepts(false);
+    }
+  };
+
+  const handleReviewApplicant = async (mssv: string, review_status: 'accepted' | 'rejected') => {
+    setReviewingMssv(mssv);
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}/registrations/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mssv, review_status }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchData(false);
+      } else {
+        alert(data.error || 'Lỗi duyệt hồ sơ');
+      }
+    } catch (e) {
+      alert('Lỗi kết nối');
+    } finally {
+      setReviewingMssv(null);
+    }
+  };
+
+  const handleBulkReview = async (review_status: 'accepted' | 'rejected') => {
+    if (selectedMssvs.length === 0) {
+      alert('Vui lòng chọn ít nhất 1 ứng viên để phê duyệt!');
+      return;
+    }
+    const actionName = review_status === 'accepted' ? 'Duyệt trúng tuyển' : 'Từ chối';
+    if (!confirm(`Bạn có chắc chắn muốn ${actionName} cho ${selectedMssvs.length} ứng viên đã chọn?`)) return;
+
+    setBulkReviewing(true);
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}/registrations/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mssvs: selectedMssvs, review_status }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setSelectedMssvs([]);
+        fetchData(false);
+      } else {
+        alert(data.error || 'Lỗi phê duyệt hàng loạt');
+      }
+    } catch (e) {
+      alert('Lỗi kết nối');
+    } finally {
+      setBulkReviewing(false);
+    }
+  };
+
+  const handleToggleRecruitment = async () => {
+    setTogglingRecruitment(true);
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}/toggle-recruitment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchData(false);
+      } else {
+        alert(data.error || 'Lỗi thao tác');
+      }
+    } catch (e) {
+      alert('Lỗi kết nối');
+    } finally {
+      setTogglingRecruitment(false);
+    }
+  };
+
+  const handleExportCTVExcel = async () => {
+    const ctvList = registrations.filter((r) => r.role_type === 'volunteer' || r.department_id);
+    if (ctvList.length === 0) {
+      alert('Chưa có dữ liệu ứng viên để xuất file!');
+      return;
+    }
+
+    try {
+      const XLSX = await import('xlsx');
+      const data = ctvList.map((r, index) => ({
+        'STT': index + 1,
+        'Mã Số Sinh Viên': r.mssv,
+        'Họ Và Tên': r.full_name || '',
+        'Lớp Niên Chế': r.class_id || '',
+        'Ban Ứng Tuyển': r.department_name || 'Cộng tác viên',
+        'Giới Tính': r.gender || 'Nam',
+        'Số Điện Thoại / Zalo': r.phone || '',
+        'Kỹ Năng / Ghi Chú': r.note || '',
+        'Trạng Thái Duyệt': r.review_status === 'accepted' ? 'Trúng Tuyển' : r.review_status === 'rejected' ? 'Từ Chối' : 'Chờ Duyệt',
+        'Thời Gian Nộp Đơn': r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const columnWidths = [
+        { wch: 6 },
+        { wch: 15 },
+        { wch: 25 },
+        { wch: 15 },
+        { wch: 22 },
+        { wch: 12 },
+        { wch: 18 },
+        { wch: 30 },
+        { wch: 16 },
+        { wch: 22 },
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Ung_Tuyen_CTV');
+      XLSX.writeFile(
+        workbook,
+        `Danh_Sach_Ung_Tuyen_CTV_${event?.event_name ? event.event_name.replace(/[^a-zA-Z0-9]/g, '_') : 'Su_Kien'}.xlsx`
+      );
+    } catch (e) {
+      console.error(e);
+      alert('Lỗi xuất file Excel');
     }
   };
 
@@ -200,6 +398,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     navigator.clipboard.writeText(regUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleCopyRecruitmentLink = () => {
+    if (typeof window === 'undefined') return;
+    const recUrl = `${window.location.origin}/events/${resolvedParams.id}/recruitment`;
+    navigator.clipboard.writeText(recUrl).then(() => {
+      setCopiedRecruitment(true);
+      setTimeout(() => setCopiedRecruitment(false), 2000);
     });
   };
 
@@ -314,8 +521,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const isYouthUnion =
     currentUser?.tier === 'youth_union' ||
-    Boolean(currentUser?.email?.toLowerCase().includes('doanthanhnien'));
+    Boolean(currentUser?.email?.toLowerCase().includes('doanthanhnien')) ||
+    Boolean(currentUser?.email?.toLowerCase().includes('bchdoan'));
   const isPrivileged = isSuperAdmin || isYouthUnion;
+  const canBulkImport = isSuperAdmin || isYouthUnion;
   const isEventCreator = Boolean(
     event?.created_by &&
     currentUser?.email &&
@@ -620,12 +829,30 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       border: 'none',
                       borderRadius: '10px',
                       fontWeight: 700,
-                      fontSize: '0.85rem',
+                      fontSize: '0.825rem',
                       cursor: 'pointer',
                       boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
                     }}
                   >
-                    {copied ? 'Đã sao chép link!' : 'Sao Chép Link Đăng Ký'}
+                    {copied ? '✓ Đã chép link Khán giả!' : 'Sao Chép Link Khán Giả'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyRecruitmentLink}
+                    style={{
+                      padding: '0.55rem 1rem',
+                      background: copiedRecruitment ? '#16a34a' : '#7c3aed',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.825rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                    }}
+                  >
+                    {copiedRecruitment ? '✓ Đã chép link Tuyển CTV!' : 'Sao Chép Link Tuyển CTV'}
                   </button>
 
                   {regWindow.isOpen ? (
@@ -957,6 +1184,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
               <button
                 type="button"
+                onClick={() => setActiveTab('recruitment')}
+                className={`${styles.tabButton} ${activeTab === 'recruitment' ? styles.tabButtonActive : styles.tabButtonInactive}`}
+              >
+                Tuyển Dụng & Các Ban ({departments.length})
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab('noshow')}
                 className={`${styles.tabButton} ${activeTab === 'noshow' ? styles.tabButtonActive : styles.tabButtonInactive}`}
               >
@@ -977,12 +1212,37 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {activeTab === 'checkins' && (
-              <div className={styles.excelExportWrapper}>
-                <ExcelExportButton
-                  fetchUrl={`/api/events/${resolvedParams.id}/checkins`}
-                  filename={`DiemDanh_${event.event_name.replace(/\s+/g, '_')}`}
-                  label="Xuất File Excel"
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                {canBulkImport && (
+                  <button
+                    type="button"
+                    onClick={() => setShowImportModal(true)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      background: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1.5px solid #bfdbfe',
+                      borderRadius: '8px',
+                      padding: '0.5rem 0.9rem',
+                      fontSize: '0.825rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <UploadCloudIcon size={16} />
+                    <span>Nạp danh sách MSSV</span>
+                  </button>
+                )}
+                <div className={styles.excelExportWrapper}>
+                  <ExcelExportButton
+                    fetchUrl={`/api/events/${resolvedParams.id}/checkins`}
+                    filename={`DiemDanh_${event.event_name.replace(/\s+/g, '_')}`}
+                    label="Xuất File Excel"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -1437,6 +1697,600 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               searchPlaceholder="Tìm kiếm MSSV, Họ tên..."
               emptyMessage="Không có sinh viên nào vắng mặt."
             />
+          ) : activeTab === 'recruitment' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* 1. CẤU HÌNH CÁC BAN CHUYÊN TRÁCH */}
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: '1.25rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                        Cấu hình Ban Chuyên Trách & Tuyển Dụng CTV
+                      </h3>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          background: event.is_recruitment_open !== false ? '#dcfce7' : '#fee2e2',
+                          color: event.is_recruitment_open !== false ? '#15803d' : '#b91c1c',
+                          border: `1px solid ${event.is_recruitment_open !== false ? '#86efac' : '#fca5a5'}`,
+                        }}
+                      >
+                        {event.is_recruitment_open !== false ? '● Cổng CTV đang mở' : '● Cổng CTV đã đóng'}
+                      </span>
+                    </div>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                      Tự do tạo các ban (Hậu cần, Truyền thông, Lễ tân...), phân bổ chỉ tiêu và yêu cầu Nam/Nữ.
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={handleToggleRecruitment}
+                      disabled={togglingRecruitment}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        background: event.is_recruitment_open !== false ? '#d97706' : '#16a34a',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.825rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {togglingRecruitment
+                        ? 'Đang xử lý...'
+                        : event.is_recruitment_open !== false
+                        ? '🔒 Đóng Cổng Tuyển CTV Sớm'
+                        : '🟢 Mở Lại Cổng Tuyển CTV'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowAddDeptForm(!showAddDeptForm)}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        background: '#2563eb',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.825rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {showAddDeptForm ? 'Đóng Form' : '+ Thêm Ban Mới'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Form thêm Ban mới */}
+                {showAddDeptForm && (
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      border: '1.5px solid #bfdbfe',
+                      borderRadius: '12px',
+                      padding: '1rem',
+                      marginBottom: '1rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                    }}
+                  >
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.75rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
+                          Tên Ban / Vị trí *
+                        </label>
+                        <input
+                          type="text"
+                          value={newDeptName}
+                          onChange={(e) => setNewDeptName(e.target.value)}
+                          placeholder="VD: Ban Hậu Cần, Ban Truyền Thông..."
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
+                          Chỉ tiêu (Người) *
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={newDeptQuota}
+                          onChange={(e) => setNewDeptQuota(Number(e.target.value) || 1)}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
+                          Yêu cầu Giới tính
+                        </label>
+                        <select
+                          value={newDeptGender}
+                          onChange={(e) => setNewDeptGender(e.target.value as any)}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff' }}
+                        >
+                          <option value="all">Tất cả (Nam & Nữ)</option>
+                          <option value="male">Chỉ tuyển Nam</option>
+                          <option value="female">Chỉ tuyển Nữ</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
+                        Mô tả nhiệm vụ & Tiêu chí tuyển chọn
+                      </label>
+                      <input
+                        type="text"
+                        value={newDeptDesc}
+                        onChange={(e) => setNewDeptDesc(e.target.value)}
+                        placeholder="VD: Phụ trách setup âm thanh, đạo cụ hoặc chụp ảnh sự kiện..."
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddDeptForm(false)}
+                        style={{ padding: '0.45rem 0.85rem', background: '#f1f5f9', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddDepartment}
+                        disabled={savingDepts}
+                        style={{ padding: '0.45rem 1rem', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        {savingDepts ? 'Đang lưu...' : 'Lưu Ban Mới'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Danh sách các Ban hiện có */}
+                {departments.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', margin: '1rem 0' }}>
+                    Chưa có Ban chuyên trách nào được cấu hình cho sự kiện này.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem' }}>
+                    {departments.map((dept) => {
+                      const count = registrations.filter((r) => r.department_id === dept.id).length;
+                      const acceptedCount = registrations.filter((r) => r.department_id === dept.id && r.review_status === 'accepted').length;
+                      return (
+                        <div
+                          key={dept.id}
+                          style={{
+                            background: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '10px',
+                            padding: '0.85rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                              <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>
+                                {dept.name}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 800,
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: '10px',
+                                  background: dept.gender_req === 'male' ? '#dbeafe' : dept.gender_req === 'female' ? '#fce7f3' : '#dcfce7',
+                                  color: dept.gender_req === 'male' ? '#1e40af' : dept.gender_req === 'female' ? '#be185d' : '#166534',
+                                }}
+                              >
+                                {dept.gender_req === 'male' ? 'Nam' : dept.gender_req === 'female' ? 'Nữ' : 'Nam & Nữ'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.775rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                              Chỉ tiêu: <strong>{acceptedCount}/{dept.quota} bạn</strong> ({count} đơn nộp)
+                            </div>
+                            {dept.description && (
+                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                                {dept.description}
+                              </p>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.35rem', borderTop: '1px dashed #f1f5f9' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDepartment(dept.id)}
+                              style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                            >
+                              Xóa Ban
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. DANH SÁCH ỨNG VIÊN TUYỂN DỤNG & BULK ACTION BAR */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                    Danh Sách Đơn Ứng Tuyển Ban Chuyên Trách ({registrations.filter((r) => r.role_type === 'volunteer' || r.department_id).length})
+                  </h3>
+
+                  <button
+                    type="button"
+                    onClick={handleExportCTVExcel}
+                    style={{
+                      padding: '0.45rem 0.9rem',
+                      background: '#16a34a',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <span>Xuất File Excel (DS CTV)</span>
+                  </button>
+                </div>
+
+                {/* Bulk Action Bar when items are selected */}
+                {selectedMssvs.length > 0 && (
+                  <div
+                    style={{
+                      background: '#1e293b',
+                      color: '#ffffff',
+                      padding: '0.75rem 1.25rem',
+                      borderRadius: '12px',
+                      marginBottom: '0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '0.75rem',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>
+                      Đã chọn: <strong style={{ color: '#60a5fa' }}>{selectedMssvs.length}</strong> ứng viên
+                    </span>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkReview('accepted')}
+                        disabled={bulkReviewing}
+                        style={{
+                          padding: '0.4rem 0.85rem',
+                          background: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {bulkReviewing ? 'Đang duyệt...' : `Duyệt Trúng Tuyển (${selectedMssvs.length})`}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleBulkReview('rejected')}
+                        disabled={bulkReviewing}
+                        style={{
+                          padding: '0.4rem 0.85rem',
+                          background: '#ef4444',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {bulkReviewing ? 'Đang xử lý...' : `Từ Chối (${selectedMssvs.length})`}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMssvs([])}
+                        style={{
+                          padding: '0.4rem 0.65rem',
+                          background: '#475569',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Bỏ chọn
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <DataTable
+                  columns={[
+                    {
+                      key: 'select',
+                      label: (
+                        <input
+                          type="checkbox"
+                          checked={
+                            registrations.filter((r) => r.role_type === 'volunteer' || r.department_id).length > 0 &&
+                            selectedMssvs.length === registrations.filter((r) => r.role_type === 'volunteer' || r.department_id).length
+                          }
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedMssvs(
+                                registrations
+                                  .filter((r) => r.role_type === 'volunteer' || r.department_id)
+                                  .map((r) => r.mssv)
+                              );
+                            } else {
+                              setSelectedMssvs([]);
+                            }
+                          }}
+                        />
+                      ),
+                      render: (_val: any, row: any) => (
+                        <input
+                          type="checkbox"
+                          checked={selectedMssvs.includes(row.mssv)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedMssvs((prev) => [...prev, row.mssv]);
+                            } else {
+                              setSelectedMssvs((prev) => prev.filter((m) => m !== row.mssv));
+                            }
+                          }}
+                        />
+                      ),
+                    },
+                    {
+                      key: 'stt',
+                      label: 'STT',
+                      render: (_val: any, _row: any, index?: number) => (
+                        <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.85rem' }}>
+                          {(index ?? 0) + 1}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'mssv',
+                      label: 'MSSV',
+                      render: (val: string) => (
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e40af', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '3px 8px', borderRadius: '6px', fontSize: '0.85rem' }}>
+                          {val}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'full_name',
+                      label: 'Họ và tên',
+                      render: (val: string) => <span style={{ fontWeight: 600, color: '#0f172a' }}>{val || '—'}</span>,
+                    },
+                    {
+                      key: 'class_id',
+                      label: 'Lớp',
+                      render: (val: string) => <span style={{ color: '#475569', fontWeight: 500 }}>{val || '—'}</span>,
+                    },
+                    {
+                      key: 'department_name',
+                      label: 'Ban Ứng Tuyển',
+                      render: (val: string) => (
+                        <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.8rem' }}>
+                          {val || 'Ban CTV'}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'gender',
+                      label: 'Giới tính',
+                      render: (val: string) => (
+                        <span style={{ fontWeight: 600, color: val === 'Nam' ? '#1d4ed8' : '#be185d' }}>
+                          {val || 'Nam'}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'phone',
+                      label: 'SĐT / Zalo',
+                      render: (val: string) => (
+                        <span style={{ fontFamily: 'monospace', color: '#0f172a', fontWeight: 600 }}>
+                          {val || '—'}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'note',
+                      label: 'Ghi chú / Kỹ năng',
+                      render: (val: string) => (
+                        <span style={{ fontSize: '0.8rem', color: '#475569', maxWidth: '200px', display: 'inline-block' }}>
+                          {val || 'Không có ghi chú'}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'review_status',
+                      label: 'Trạng Thái',
+                      render: (val: string) => {
+                        const status = val || 'pending';
+                        const bg = status === 'accepted' ? '#dcfce7' : status === 'rejected' ? '#fee2e2' : '#fef3c7';
+                        const color = status === 'accepted' ? '#15803d' : status === 'rejected' ? '#b91c1c' : '#b45309';
+                        const label = status === 'accepted' ? 'Trúng Tuyển' : status === 'rejected' ? 'Từ Chối' : 'Chờ Duyệt';
+                        return (
+                          <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, background: bg, color }}>
+                            {label}
+                          </span>
+                        );
+                      },
+                    },
+                    {
+                      key: 'actions',
+                      label: 'Phê Duyệt',
+                      render: (_val: any, row: any) => (
+                        <div style={{ display: 'flex', gap: '0.35rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleReviewApplicant(row.mssv, 'accepted')}
+                            disabled={reviewingMssv === row.mssv || row.review_status === 'accepted'}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              background: row.review_status === 'accepted' ? '#e2e8f0' : '#16a34a',
+                              color: row.review_status === 'accepted' ? '#94a3b8' : '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: row.review_status === 'accepted' ? 'default' : 'pointer',
+                            }}
+                          >
+                            Duyệt
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleReviewApplicant(row.mssv, 'rejected')}
+                            disabled={reviewingMssv === row.mssv || row.review_status === 'rejected'}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              background: row.review_status === 'rejected' ? '#e2e8f0' : '#ef4444',
+                              color: row.review_status === 'rejected' ? '#94a3b8' : '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: row.review_status === 'rejected' ? 'default' : 'pointer',
+                            }}
+                          >
+                            Từ chối
+                          </button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  data={registrations.filter((r) => r.role_type === 'volunteer' || r.department_id)}
+                  searchable
+                  searchPlaceholder="Tìm kiếm ứng viên, MSSV, SĐT..."
+                  emptyMessage="Chưa có ứng viên nào nộp đơn ứng tuyển."
+                />
+              </div>
+            </div>
+          ) : activeTab === 'noshow' ? (
+            <DataTable 
+              columns={[
+                {
+                  key: 'stt',
+                  label: 'STT',
+                  render: (_val: any, _row: any, index?: number) => (
+                    <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.85rem' }}>
+                      {(index ?? 0) + 1}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'mssv',
+                  label: 'MSSV',
+                  render: (val: string) => (
+                    <span
+                      style={{
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        color: '#1e40af',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.85rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {val}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'full_name',
+                  label: 'Họ và tên',
+                  render: (val: string) => (
+                    <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                      {val || '—'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'class_id',
+                  label: 'Lớp',
+                  render: (val: string) => (
+                    <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      {val || '—'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'role_type',
+                  label: 'Vai trò đăng ký',
+                  render: (val: string) => {
+                    const isVol = val === 'Cộng tác viên' || val === 'volunteer';
+                    const isOrg = val === 'Ban tổ chức' || val === 'organizer';
+                    const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
+                    const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
+                    const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
+                    const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
+                    return (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '3px 10px',
+                          borderRadius: '20px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: bg,
+                          color,
+                          border: `1px solid ${border}`,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {label}
+                      </span>
+                    );
+                  },
+                },
+              ]}
+              data={registrations.filter(r => !r.attended)}
+              searchable
+              searchPlaceholder="Tìm kiếm MSSV, Họ tên..."
+              emptyMessage="Không có sinh viên nào vắng mặt."
+            />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {isApproverRole && (
@@ -1574,6 +2428,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </section>
       </main>
+
+      {event && (
+        <EventBulkImportModal
+          eventId={resolvedParams.id}
+          eventName={event.event_name}
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onSuccess={() => {
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 }

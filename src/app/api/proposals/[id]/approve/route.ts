@@ -82,7 +82,7 @@ export async function POST(
       action: 'approved',
       actor_email: auth.email,
       actor_name: actorName,
-      notes: notes || `Đã phê duyệt giai đoạn: ${getStageLabel(currentStage)}`,
+      notes: notes || '',
     });
   } catch {}
 
@@ -92,7 +92,7 @@ export async function POST(
     action: 'approved',
     actor_email: auth.email,
     actor_name: actorName,
-    notes: notes || `Đã phê duyệt giai đoạn: ${getStageLabel(currentStage)}`,
+    notes: notes || '',
   });
 
   // If Final Stage reached (Auto-create Event)
@@ -109,6 +109,8 @@ export async function POST(
           status: 'active',
           is_active: true,
           created_by: proposal.created_by,
+          departments: (proposal as any).departments || [],
+          target_scope: (proposal as any).target_scope || 'all',
         })
         .select()
         .single();
