@@ -141,7 +141,7 @@ export const DEFAULT_OFFICERS: OfficerRoleItem[] = [
   },
   {
     id: 'off-lcd-mkt',
-    email: 'lcdmkt@student.ptithcm.edu.vn',
+    email: 'lcdmarketing@student.ptithcm.edu.vn',
     role_tier: 'event_admin',
     unit_code: 'LCD_MKT',
     unit_name: 'LCĐ Marketing',

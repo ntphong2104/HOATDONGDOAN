@@ -111,7 +111,7 @@ export const DEMO_PROFILES: Record<string, SessionUser> = {
   },
   'lcdmkt': {
     mssv: 'LCD_MKT',
-    email: 'lcdmkt@student.ptithcm.edu.vn',
+    email: 'lcdmarketing@student.ptithcm.edu.vn',
     full_name: 'LCĐ Marketing',
     class_id: 'LCD-MKT',
     tier: 'event_admin',

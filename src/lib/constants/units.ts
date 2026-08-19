@@ -431,7 +431,7 @@ export async function getCustomUnitsFromDb(supabase?: any): Promise<OfficialUnit
       if (Array.isArray(parsed) && parsed.length > 0) {
         let hasChanges = false;
         const normalized = (parsed as OfficialUnit[]).map((u) => {
-          if (u.code === 'LCD_MKT' && (u.email === 'lcdmkt@student.ptithcm.edu.vn' || !u.email)) {
+          if (u.code === 'LCD_MKT' && u.email !== 'lcdmarketing@student.ptithcm.edu.vn') {
             hasChanges = true;
             return { ...u, email: 'lcdmarketing@student.ptithcm.edu.vn' };
           }

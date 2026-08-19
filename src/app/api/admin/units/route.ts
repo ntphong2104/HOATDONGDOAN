@@ -11,7 +11,12 @@ export async function GET() {
     // Merge official units with custom units (custom units can override or add new)
     const existingCodes = new Set(customUnits.map(u => u.code));
     const baseUnits = OFFICIAL_UNITS.filter(u => !existingCodes.has(u.code));
-    const allUnits = [...baseUnits, ...customUnits];
+    const allUnits = [...baseUnits, ...customUnits].map((u) => {
+      if (u.code === 'LCD_MKT') {
+        return { ...u, email: 'lcdmarketing@student.ptithcm.edu.vn' };
+      }
+      return u;
+    });
 
     return NextResponse.json({
       success: true,
