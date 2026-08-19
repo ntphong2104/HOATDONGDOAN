@@ -989,6 +989,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
                     <button
                       type="button"
+                      onClick={handleToggleRecruitment}
+                      disabled={togglingRecruitment}
+                      style={{
+                        padding: '0.55rem 0.85rem',
+                        background: event.is_recruitment_open !== false ? '#d97706' : '#16a34a',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {togglingRecruitment
+                        ? 'Đang xử lý...'
+                        : event.is_recruitment_open !== false
+                        ? 'Đóng Cổng'
+                        : 'Mở Lại'}
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => setActiveTab('recruitment')}
                       style={{
                         padding: '0.55rem 0.85rem',
