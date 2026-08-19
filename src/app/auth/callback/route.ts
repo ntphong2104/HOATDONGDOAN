@@ -99,6 +99,12 @@ export async function GET(request: Request) {
       email.startsWith('lcd') ||
       email.startsWith('clb') ||
       email.startsWith('doi') ||
+      email.includes('marketing') ||
+      email.includes('ketoan') ||
+      email.includes('quantri') ||
+      email.includes('vienthong') ||
+      email.includes('dientu') ||
+      email.includes('itmc') ||
       isEventAdmin;
 
     // If a specific target page was requested (e.g. /events/[id]/register)
@@ -121,10 +127,10 @@ export async function GET(request: Request) {
     ) {
       return NextResponse.redirect(`${origin}/admin/proposals`);
     }
-    if (isSubAdminUnit && !studentMssv) {
+    if (isSubAdminUnit) {
       return NextResponse.redirect(`${origin}/admin`);
     }
-    if (isChecker && !studentMssv) {
+    if (isChecker) {
       return NextResponse.redirect(`${origin}/scanner`);
     }
 

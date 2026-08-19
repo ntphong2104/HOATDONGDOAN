@@ -28,8 +28,9 @@ export function extractMSSV(input: string): string | null {
   if (lower.includes('@')) {
     if (isValidSchoolEmail(lower)) {
       const username = lower.split('@')[0];
-      const isMSSVFormat = /^[A-Z]\d{2}[A-Z]{4}\d{3}$/i.test(username);
-      if (isMSSVFormat || lower.includes('@student.')) {
+      const isUnitEmail = username.startsWith('lcd') || username.startsWith('clb') || username.startsWith('doi');
+      const isMSSVFormat = /^[A-Z]\d{2}[A-Z0-9]{3,5}\d{3}$/i.test(username);
+      if (!isUnitEmail && isMSSVFormat) {
         return username.toUpperCase();
       }
     }
