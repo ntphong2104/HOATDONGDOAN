@@ -3,7 +3,16 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { OFFICIAL_UNITS, getCustomUnitsFromDb, saveCustomUnitsToDb, type OfficialUnit } from '@/lib/constants/units';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
+  const noCacheHeaders = {
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    Pragma: 'no-cache',
+    Expires: '0',
+  };
+
   try {
     const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
     const customUnits = await getCustomUnitsFromDb(supabase);
@@ -21,12 +30,12 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: allUnits,
-    });
+    }, { headers: noCacheHeaders });
   } catch (err) {
     return NextResponse.json({
       success: true,
       data: OFFICIAL_UNITS,
-    });
+    }, { headers: noCacheHeaders });
   }
 }
 
