@@ -192,48 +192,137 @@ export default function StudentDashboardClient({
         </div>
       )}
 
-      {/* Student Personal QR Code & Profile Info */}
-      <section className={styles.qrSection}>
+      {/* Student Personal QR Code & Profile Info (2-Card Responsive Grid) */}
+      <section
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '1.25rem',
+          marginBottom: '1.75rem',
+          alignItems: 'stretch',
+        }}
+      >
+        {/* Card 1: Mã QR Điểm Danh Cá Nhân */}
         <QRCodeDisplay
           value={user.mssv}
           studentName={user.full_name}
           studentClass={user.class_id}
         />
+
+        {/* Card 2: Hồ Sơ Đoàn Viên & Thông Tin Cá Nhân */}
         <div
           style={{
-            marginTop: '0.75rem',
-            padding: '0.65rem 1rem',
-            background: '#f8fafc',
+            background: '#ffffff',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
             border: '1px solid #e2e8f0',
-            borderRadius: '10px',
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
             justifyContent: 'space-between',
-            fontSize: '0.825rem',
-            gap: '0.5rem',
-            flexWrap: 'wrap',
+            gap: '1.25rem',
           }}
         >
           <div>
-            <span>Giới tính: <strong style={{ color: userGender === 'Nam' ? '#1d4ed8' : '#be185d' }}>{userGender}</strong></span>
-            <span style={{ margin: '0 0.5rem', color: '#cbd5e1' }}>•</span>
-            <span>SĐT/Zalo: <strong>{userPhone || 'Chưa cập nhật'}</strong></span>
+            {/* Header with Avatar & Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '1.25rem',
+                  boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)',
+                }}
+              >
+                {user.full_name ? user.full_name.trim().charAt(0).toUpperCase() : 'S'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {user.full_name || 'Đoàn Viên / Sinh Viên'}
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                  Hồ Sơ Đoàn Viên Học Viện
+                </span>
+              </div>
+            </div>
+
+            {/* Info Grid List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
+                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Mã Số Sinh Viên</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e40af', fontSize: '0.9rem' }}>
+                  {user.mssv}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
+                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Chi Đoàn / Lớp</span>
+                <span style={{ fontWeight: 700, color: '#334155', fontSize: '0.875rem' }}>
+                  {user.class_id || 'BCH-DOAN'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
+                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Giới tính</span>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: '0.825rem',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    background: userGender === 'Nam' ? '#dbeafe' : '#fce7f3',
+                    color: userGender === 'Nam' ? '#1d4ed8' : '#be185d',
+                  }}
+                >
+                  {userGender === 'Nam' ? 'Nam' : 'Nữ'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
+                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Số Điện Thoại / Zalo</span>
+                <span style={{ fontWeight: 700, color: userPhone ? '#0f172a' : '#94a3b8', fontSize: '0.875rem' }}>
+                  {userPhone || 'Chưa cập nhật'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
+                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Sự kiện đã tham gia</span>
+                <span style={{ fontWeight: 800, color: '#16a34a', fontSize: '0.9rem' }}>
+                  {history.length} hoạt động
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* Edit Profile Button */}
           <button
             type="button"
             onClick={() => setShowProfileModal(true)}
             style={{
-              padding: '0.25rem 0.6rem',
+              width: '100%',
+              padding: '0.75rem 1rem',
               background: '#eff6ff',
               color: '#2563eb',
-              border: '1px solid #bfdbfe',
-              borderRadius: '6px',
-              fontSize: '0.75rem',
+              border: '1.5px solid #bfdbfe',
+              borderRadius: '10px',
               fontWeight: 700,
+              fontSize: '0.875rem',
               cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              transition: 'all 0.15s ease',
             }}
           >
-            Chỉnh sửa hồ sơ
+            <span>Chỉnh Sửa Giới Tính & Số Điện Thoại</span>
           </button>
         </div>
       </section>
