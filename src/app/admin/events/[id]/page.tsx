@@ -420,7 +420,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mssv: manualMSSV.trim(),
-          event_id: event?.event_id,
+          event_id: event?.event_id || resolvedParams.id,
           participate_role: 'participant',
           checked_by: `Điểm danh thủ công (${currentUser?.email || 'Super Admin'})`,
         }),
