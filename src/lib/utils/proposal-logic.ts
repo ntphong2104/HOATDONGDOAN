@@ -41,25 +41,77 @@ export function calculateProposalStages(
   roomName?: string,
   organizationUnit?: string
 ): StageRequirement {
+  const isDirectFaculty = isKhoaUnit(organizationUnit);
+  const isBorrowingRoom = Boolean(roomId && roomId !== 'none' && roomName !== 'Không mượn');
+  const requiresCtsv = participantCount > 50;
+  const requiresFacility = isBorrowingRoom;
+
+  if (isDirectFaculty) {
+    return {
+      requiresYouthUnion: false,
+      requiresCtsv: false,
+      requiresFacility: true,
+      stagesList: ['facility', 'super_admin'],
+      initialStage: 'facility',
+      isDirectFaculty: true,
+    };
+  }
+
+  const stagesList: ProposalStage[] = ['youth_union'];
+  if (requiresCtsv) {
+    stagesList.push('ctsv');
+  }
+  if (requiresFacility) {
+    stagesList.push('facility');
+  }
+  stagesList.push('super_admin');
+
   return {
-    requiresYouthUnion: false,
-    requiresCtsv: false,
-    requiresFacility: false,
-    stagesList: ['super_admin'],
-    initialStage: 'super_admin',
+    requiresYouthUnion: true,
+    requiresCtsv,
+    requiresFacility,
+    stagesList,
+    initialStage: 'youth_union',
     isDirectFaculty: false,
   };
 }
 
 /**
  * Determines the next approval stage when a current stage is approved:
- * Direct 1-step approval -> Approved (Hoàn tất & tạo sự kiện)
  */
 export function getNextStage(
   currentStage: ProposalStage,
   requiresCtsv: boolean,
-  requiresFacility: boolean
+  requiresFacility: boolean,
+  organizationUnit?: string
 ): ProposalStage {
+  const isDirectFaculty = isKhoaUnit(organizationUnit);
+
+  if (isDirectFaculty) {
+    if (currentStage === 'facility') return 'super_admin';
+    if (currentStage === 'super_admin') return 'approved';
+    return 'approved';
+  }
+
+  if (currentStage === 'youth_union') {
+    if (requiresCtsv) return 'ctsv';
+    if (requiresFacility) return 'facility';
+    return 'super_admin';
+  }
+
+  if (currentStage === 'ctsv') {
+    if (requiresFacility) return 'facility';
+    return 'super_admin';
+  }
+
+  if (currentStage === 'facility') {
+    return 'super_admin';
+  }
+
+  if (currentStage === 'super_admin') {
+    return 'approved';
+  }
+
   return 'approved';
 }
 
@@ -68,12 +120,14 @@ export function getNextStage(
  */
 export function getStageLabel(stage: ProposalStage): string {
   switch (stage) {
-    case 'super_admin':
-      return 'Chờ Super Admin phê duyệt';
     case 'youth_union':
+      return 'Đoàn TNCS Học Viện';
     case 'ctsv':
+      return 'Phòng Công Tác Sinh Viên';
     case 'facility':
-      return 'Chờ phê duyệt';
+      return 'Phòng. TC-HC-QT (Quản trị & Cấp phòng)';
+    case 'super_admin':
+      return 'Super Admin';
     case 'approved':
       return 'Đã phê duyệt & Đã tạo sự kiện';
     case 'rejected':

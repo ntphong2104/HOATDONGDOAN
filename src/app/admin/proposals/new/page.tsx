@@ -161,7 +161,7 @@ export default function NewProposalPage() {
     (Number(volunteerCount) || 0) +
     (Number(organizerCount) || 0);
 
-  const requiresCtsv = Number(participantCount) > 50;
+  const requiresCtsv = totalPersonnel > 50 || Number(participantCount) > 50;
   const isBorrowing = !!selectedRoomId && selectedRoomName !== 'Không mượn';
   const isDirectFaculty = isKhoaUnit(organizationUnit);
 
@@ -926,11 +926,11 @@ export default function NewProposalPage() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '1rem 1.25rem',
-                  background: isDirectFaculty ? '#f8fafc' : '#ffffff',
-                  border: isDirectFaculty ? '1.5px solid #e2e8f0' : '1.5px solid #bfdbfe',
+                  background: isDirectFaculty || !requiresCtsv ? '#f8fafc' : '#ffffff',
+                  border: isDirectFaculty || !requiresCtsv ? '1.5px solid #e2e8f0' : '1.5px solid #bfdbfe',
                   borderRadius: '14px',
-                  boxShadow: isDirectFaculty ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.06)',
-                  opacity: isDirectFaculty ? 0.6 : 1,
+                  boxShadow: isDirectFaculty || !requiresCtsv ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.06)',
+                  opacity: isDirectFaculty || !requiresCtsv ? 0.65 : 1,
                   flexWrap: 'wrap',
                   gap: '0.5rem',
                 }}
@@ -941,7 +941,7 @@ export default function NewProposalPage() {
                       width: '32px',
                       height: '32px',
                       borderRadius: '10px',
-                      background: isDirectFaculty ? '#94a3b8' : '#2563eb',
+                      background: isDirectFaculty || !requiresCtsv ? '#94a3b8' : '#2563eb',
                       color: '#ffffff',
                       fontWeight: 800,
                       fontSize: '0.9rem',
@@ -950,7 +950,7 @@ export default function NewProposalPage() {
                       justifyContent: 'center',
                     }}
                   >
-                    {isDirectFaculty ? '—' : '2'}
+                    {isDirectFaculty || !requiresCtsv ? '—' : '2'}
                   </div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
@@ -959,7 +959,9 @@ export default function NewProposalPage() {
                     <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
                       {isDirectFaculty
                         ? 'Tự động miễn duyệt (Dành riêng cho Đơn vị Khoa)'
-                        : 'Thẩm định nội dung kế hoạch, quy mô và phương án quản lý sinh viên'}
+                        : requiresCtsv
+                        ? 'Kích hoạt thẩm định quy mô lớn (> 50 người)'
+                        : 'Tự động miễn duyệt (Quy mô ≤ 50 người, chuyển thẳng)'}
                     </div>
                   </div>
                 </div>
@@ -969,13 +971,17 @@ export default function NewProposalPage() {
                     fontWeight: 800,
                     padding: '0.3rem 0.75rem',
                     borderRadius: '20px',
-                    background: isDirectFaculty ? '#f1f5f9' : '#dbeafe',
-                    color: isDirectFaculty ? '#64748b' : '#1e40af',
-                    border: isDirectFaculty ? '1px solid #e2e8f0' : '1px solid #bfdbfe',
+                    background: isDirectFaculty || !requiresCtsv ? '#f1f5f9' : '#dbeafe',
+                    color: isDirectFaculty || !requiresCtsv ? '#64748b' : '#1e40af',
+                    border: isDirectFaculty || !requiresCtsv ? '1px solid #e2e8f0' : '1px solid #bfdbfe',
                     textTransform: 'uppercase',
                   }}
                 >
-                  {isDirectFaculty ? 'Miễn duyệt' : 'Bắt buộc'}
+                  {isDirectFaculty
+                    ? 'Miễn duyệt'
+                    : requiresCtsv
+                    ? 'Bắt buộc (> 50 SV)'
+                    : 'Miễn duyệt (≤ 50 SV)'}
                 </span>
               </div>
 
