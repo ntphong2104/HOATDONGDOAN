@@ -166,10 +166,10 @@ function LoginContent() {
         >
           <span>Mọi thắc mắc hoặc cần cấp quyền, vui lòng liên hệ <strong>BCH Đoàn Thanh niên</strong>: </span>
           <a
-            href="mailto:doantn@ptithcm.edu.vn"
+            href="mailto:doanthanhnien@ptithcm.edu.vn"
             style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}
           >
-            doantn@ptithcm.edu.vn
+            doanthanhnien@ptithcm.edu.vn
           </a>
         </div>
       </div>
