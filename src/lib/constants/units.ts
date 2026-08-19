@@ -230,21 +230,34 @@ export const EMAIL_TO_UNIT: Record<string, string> = {
   // 8 LCĐs
   'lcdcntt@student.ptithcm.edu.vn': 'LCĐ Khoa Công nghệ Thông tin',
   'lcd_cntt@student.ptithcm.edu.vn': 'LCĐ Khoa Công nghệ Thông tin',
+  'lcdcntt@ptithcm.edu.vn': 'LCĐ Khoa Công nghệ Thông tin',
   'lcdcndpt@student.ptithcm.edu.vn': 'LCĐ Công nghệ Đa phương tiện',
   'lcd_cndpt@student.ptithcm.edu.vn': 'LCĐ Công nghệ Đa phương tiện',
+  'lcdcndpt@ptithcm.edu.vn': 'LCĐ Công nghệ Đa phương tiện',
   'lcdattt@student.ptithcm.edu.vn': 'LCĐ An toàn Thông tin',
   'lcd_attt@student.ptithcm.edu.vn': 'LCĐ An toàn Thông tin',
+  'lcdattt@ptithcm.edu.vn': 'LCĐ An toàn Thông tin',
   'lcdvt@student.ptithcm.edu.vn': 'LCĐ Khoa Viễn thông',
   'lcd_vt@student.ptithcm.edu.vn': 'LCĐ Khoa Viễn thông',
+  'lcdvt@ptithcm.edu.vn': 'LCĐ Khoa Viễn thông',
   'lcddt@student.ptithcm.edu.vn': 'LCĐ Khoa Điện tử',
   'lcd_dt@student.ptithcm.edu.vn': 'LCĐ Khoa Điện tử',
+  'lcddt@ptithcm.edu.vn': 'LCĐ Khoa Điện tử',
   'lcdqtkd@student.ptithcm.edu.vn': 'LCĐ Khoa Quản trị Kinh doanh',
   'lcd_qtkd@student.ptithcm.edu.vn': 'LCĐ Khoa Quản trị Kinh doanh',
+  'lcdqtkd@ptithcm.edu.vn': 'LCĐ Khoa Quản trị Kinh doanh',
   'lcdmkt@student.ptithcm.edu.vn': 'LCĐ Marketing',
   'lcd_mkt@student.ptithcm.edu.vn': 'LCĐ Marketing',
+  'lcdmkt@ptithcm.edu.vn': 'LCĐ Marketing',
+  'lcdmarketing@student.ptithcm.edu.vn': 'LCĐ Marketing',
+  'lcd_marketing@student.ptithcm.edu.vn': 'LCĐ Marketing',
+  'lcdmarketing@ptithcm.edu.vn': 'LCĐ Marketing',
+  'lcd.marketing@student.ptithcm.edu.vn': 'LCĐ Marketing',
   'lcdketoan@student.ptithcm.edu.vn': 'LCĐ Kế toán',
   'lcd_kt@student.ptithcm.edu.vn': 'LCĐ Kế toán',
   'lcd_ketoan@student.ptithcm.edu.vn': 'LCĐ Kế toán',
+  'lcdketoan@ptithcm.edu.vn': 'LCĐ Kế toán',
+  'lcdkt@student.ptithcm.edu.vn': 'LCĐ Kế toán',
 
   // 16 CLBs
   'clb.itmc@student.ptithcm.edu.vn': 'CLB ITMC',
@@ -272,6 +285,16 @@ export const EMAIL_TO_UNIT: Record<string, string> = {
   'clb.co@student.ptithcm.edu.vn': 'CLB Cờ',
   'clb.caulong@student.ptithcm.edu.vn': 'CLB Cầu Lông',
 };
+
+// Helper to remove accents for fuzzy matching
+function stripVietnameseAccents(str: string): string {
+  return (str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ' ')
+    .trim();
+}
 
 export function resolveUnitForUser(user: {
   email?: string;
@@ -309,38 +332,62 @@ export function resolveUnitForUser(user: {
     };
   }
 
-  // 3. Fallback: match prefix in email
-  if (email.includes('khoacntt') || email.includes('khoa_cntt')) return { unitName: 'Khoa Công Nghệ Thông Tin', isLocked: true };
-  if (email.includes('khoadt') || email.includes('khoa_dt') || email.includes('khoadientu')) return { unitName: 'Khoa Điện Tử', isLocked: true };
-  if (email.includes('khoacoban') || email.includes('khoa_cb') || email.includes('khoacb')) return { unitName: 'Khoa Cơ Bản', isLocked: true };
-  if (email.includes('khoaqtkd') || email.includes('khoa_qtkd')) return { unitName: 'Khoa Quản Trị Kinh Doanh', isLocked: true };
+  const cleanEmail = stripVietnameseAccents(email);
+  const cleanName = stripVietnameseAccents(user.full_name || '');
 
-  if (email.includes('cntt')) return { unitName: 'LCĐ Khoa Công nghệ Thông tin', isLocked: true };
-  if (email.includes('cndpt') || email.includes('dpt')) return { unitName: 'LCĐ Công nghệ Đa phương tiện', isLocked: true };
-  if (email.includes('attt')) return { unitName: 'LCĐ An toàn Thông tin', isLocked: true };
-  if (email.includes('vt') || email.includes('vienthong')) return { unitName: 'LCĐ Khoa Viễn thông', isLocked: true };
-  if (email.includes('dt') || email.includes('dientu')) return { unitName: 'LCĐ Khoa Điện tử', isLocked: true };
-  if (email.includes('qtkd')) return { unitName: 'LCĐ Khoa Quản trị Kinh doanh', isLocked: true };
-  if (email.includes('mkt')) return { unitName: 'LCĐ Marketing', isLocked: true };
-  if (email.includes('ketoan') || email.includes('kt')) return { unitName: 'LCĐ Kế toán', isLocked: true };
-  if (email.includes('itmc')) return { unitName: 'CLB ITMC', isLocked: true };
-  if (email.includes('guitar')) return { unitName: 'CLB Guitar', isLocked: true };
-  if (email.includes('vannghe')) return { unitName: 'Đội Văn Nghệ', isLocked: true };
-  if (email.includes('tinhnguyen')) return { unitName: 'Đội Sinh Viên Tình Nguyện', isLocked: true };
-  if (email.includes('ketnoi')) return { unitName: 'CLB Kết Nối', isLocked: true };
-  if (email.includes('cmc')) return { unitName: 'CLB C.MC', isLocked: true };
-  if (email.includes('37do')) return { unitName: 'CLB 37 Độ Sinh viên', isLocked: true };
-  if (email.includes('bma')) return { unitName: 'CLB BMA', isLocked: true };
-  if (email.includes('bongchuyen')) return { unitName: 'CLB Bóng Chuyền', isLocked: true };
-  if (email.includes('bongda')) return { unitName: 'CLB Bóng Đá', isLocked: true };
-  if (email.includes('bongro')) return { unitName: 'CLB Bóng Rổ', isLocked: true };
-  if (email.includes('vovinam')) return { unitName: 'CLB VOVINAM', isLocked: true };
-  if (email.includes('covua') || email.includes('clb.co')) return { unitName: 'CLB Cờ', isLocked: true };
-  if (email.includes('caulong')) return { unitName: 'CLB Cầu Lông', isLocked: true };
+  // 3. Match Faculties (Khoa Đào Tạo)
+  if (cleanEmail.includes('khoacntt') || cleanEmail.includes('khoa cntt')) return { unitName: 'Khoa Công Nghệ Thông Tin', isLocked: true };
+  if (cleanEmail.includes('khoadt') || cleanEmail.includes('khoa dt') || cleanEmail.includes('khoadientu')) return { unitName: 'Khoa Điện Tử', isLocked: true };
+  if (cleanEmail.includes('khoacoban') || cleanEmail.includes('khoa cb') || cleanEmail.includes('khoacb')) return { unitName: 'Khoa Cơ Bản', isLocked: true };
+  if (cleanEmail.includes('khoaqtkd') || cleanEmail.includes('khoa qtkd')) return { unitName: 'Khoa Quản Trị Kinh Doanh', isLocked: true };
 
-  // 4. Try matching full_name
-  const name = (user.full_name || '').toLowerCase();
-  const matched = OFFICIAL_UNITS.find((u) => name.includes(u.name.toLowerCase()) || u.name.toLowerCase().includes(name));
+  // 4. Match 8 LCĐs by email or full_name (fuzzy support)
+  if (cleanEmail.includes('marketing') || cleanEmail.includes('mkt') || cleanName.includes('marketing')) {
+    return { unitName: 'LCĐ Marketing', isLocked: true };
+  }
+  if (cleanEmail.includes('ketoan') || cleanEmail.includes('ke toan') || cleanEmail.includes('kt') || cleanName.includes('ke toan')) {
+    return { unitName: 'LCĐ Kế toán', isLocked: true };
+  }
+  if (cleanEmail.includes('qtkd') || cleanEmail.includes('quantri') || cleanName.includes('quan tri kinh doanh')) {
+    return { unitName: 'LCĐ Khoa Quản trị Kinh doanh', isLocked: true };
+  }
+  if (cleanEmail.includes('attt') || cleanEmail.includes('antoan') || cleanName.includes('an toan thong tin')) {
+    return { unitName: 'LCĐ An toàn Thông tin', isLocked: true };
+  }
+  if (cleanEmail.includes('cndpt') || cleanEmail.includes('dpt') || cleanEmail.includes('daphuongtien') || cleanName.includes('da phuong tien')) {
+    return { unitName: 'LCĐ Công nghệ Đa phương tiện', isLocked: true };
+  }
+  if (cleanEmail.includes('vt') || cleanEmail.includes('vienthong') || cleanName.includes('vien thong')) {
+    return { unitName: 'LCĐ Khoa Viễn thông', isLocked: true };
+  }
+  if (cleanEmail.includes('dt') || cleanEmail.includes('dientu') || cleanName.includes('dien tu')) {
+    return { unitName: 'LCĐ Khoa Điện tử', isLocked: true };
+  }
+  if (cleanEmail.includes('cntt') || cleanEmail.includes('congnghethongtin') || cleanName.includes('cong nghe thong tin')) {
+    return { unitName: 'LCĐ Khoa Công nghệ Thông tin', isLocked: true };
+  }
+
+  // 5. Match 16 CLBs
+  if (cleanEmail.includes('itmc') || cleanName.includes('itmc')) return { unitName: 'CLB ITMC', isLocked: true };
+  if (cleanEmail.includes('guitar') || cleanName.includes('guitar')) return { unitName: 'CLB Guitar', isLocked: true };
+  if (cleanEmail.includes('vannghe') || cleanName.includes('van nghe')) return { unitName: 'Đội Văn Nghệ', isLocked: true };
+  if (cleanEmail.includes('tinhnguyen') || cleanName.includes('tinh nguyen')) return { unitName: 'Đội Sinh Viên Tình Nguyện', isLocked: true };
+  if (cleanEmail.includes('ketnoi') || cleanName.includes('ket noi')) return { unitName: 'CLB Kết Nối', isLocked: true };
+  if (cleanEmail.includes('cmc') || cleanName.includes('cmc')) return { unitName: 'CLB C.MC', isLocked: true };
+  if (cleanEmail.includes('37do') || cleanName.includes('37 do')) return { unitName: 'CLB 37 Độ Sinh viên', isLocked: true };
+  if (cleanEmail.includes('bma') || cleanName.includes('bma')) return { unitName: 'CLB BMA', isLocked: true };
+  if (cleanEmail.includes('bongchuyen') || cleanName.includes('bong chuyen')) return { unitName: 'CLB Bóng Chuyền', isLocked: true };
+  if (cleanEmail.includes('bongda') || cleanName.includes('bong da')) return { unitName: 'CLB Bóng Đá', isLocked: true };
+  if (cleanEmail.includes('bongro') || cleanName.includes('bong ro')) return { unitName: 'CLB Bóng Rổ', isLocked: true };
+  if (cleanEmail.includes('vovinam') || cleanName.includes('vovinam')) return { unitName: 'CLB VOVINAM', isLocked: true };
+  if (cleanEmail.includes('covua') || cleanEmail.includes('clb.co') || cleanName.includes('co vua')) return { unitName: 'CLB Cờ', isLocked: true };
+  if (cleanEmail.includes('caulong') || cleanName.includes('cau long')) return { unitName: 'CLB Cầu Lông', isLocked: true };
+
+  // 6. Direct full_name match with official unit name
+  const matched = OFFICIAL_UNITS.find((u) => {
+    const uClean = stripVietnameseAccents(u.name);
+    return cleanName.includes(uClean) || uClean.includes(cleanName);
+  });
   if (matched) {
     return { unitName: matched.name, isLocked: true };
   }
