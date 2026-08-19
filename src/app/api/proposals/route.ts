@@ -57,6 +57,8 @@ export async function GET(req: Request) {
       query = query.eq('status', status);
     }
 
+    const { data: proposals, error } = await query;
+
     if (!error && proposals) {
       let handoverDb: any = {};
       try {
