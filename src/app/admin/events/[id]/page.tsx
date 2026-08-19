@@ -925,7 +925,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 <div
                   style={{
                     background: '#ffffff',
-                    border: `1.5px solid ${event.is_recruitment_open !== false ? '#ddd6fe' : '#e2e8f0'}`,
+                    border: `1.5px solid ${event.is_recruitment_open !== false ? '#99f6e4' : '#e2e8f0'}`,
                     borderRadius: '16px',
                     padding: '1.5rem',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
@@ -937,11 +937,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     overflow: 'hidden',
                   }}
                 >
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: event.is_recruitment_open !== false ? 'linear-gradient(90deg, #7c3aed, #9333ea)' : '#94a3b8' }} />
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: event.is_recruitment_open !== false ? 'linear-gradient(90deg, #0d9488, #14b8a6)' : '#94a3b8' }} />
 
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#5b21b6', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f766e', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
                         Cổng Tuyển Ban Chuyên Trách & CTV
                       </span>
                       <span
@@ -979,7 +979,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       style={{
                         width: '100%',
                         height: '42px',
-                        background: copiedRecruitment ? '#16a34a' : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+                        background: copiedRecruitment ? '#16a34a' : 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '10px',
@@ -990,7 +990,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '0.4rem',
-                        boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                        boxShadow: '0 2px 6px rgba(13, 148, 136, 0.25)',
                         transition: 'all 0.15s ease',
                       }}
                     >
@@ -1006,8 +1006,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         style={{
                           height: '36px',
                           background: '#ffffff',
-                          color: '#7c3aed',
-                          border: '1.5px solid #ddd6fe',
+                          color: '#0f766e',
+                          border: '1.5px solid #99f6e4',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.775rem',
@@ -1051,9 +1051,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         onClick={() => setActiveTab('recruitment')}
                         style={{
                           height: '36px',
-                          background: '#f5f3ff',
-                          color: '#6d28d9',
-                          border: '1.5px solid #ddd6fe',
+                          background: '#f0fdfa',
+                          color: '#0f766e',
+                          border: '1.5px solid #99f6e4',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.775rem',
@@ -1279,9 +1279,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 type="button"
                 onClick={() => setActiveTab('recruitment')}
                 className={`${styles.tabButton} ${activeTab === 'recruitment' ? styles.tabButtonActive : styles.tabButtonInactive}`}
-                style={activeTab === 'recruitment' ? { background: '#7c3aed', borderColor: '#7c3aed', color: '#ffffff' } : {}}
+                style={activeTab === 'recruitment' ? { background: '#0d9488', borderColor: '#0d9488', color: '#ffffff' } : {}}
               >
-                🤝 Tuyển Dụng & CTV ({departments.length} Ban • {registrations.filter(r => r.role_type === 'volunteer' || r.department_id).length} đơn)
+                Tuyển Dụng & CTV ({departments.length} Ban • {registrations.filter(r => r.role_type === 'volunteer' || r.department_id).length} đơn)
               </button>
 
               <button
