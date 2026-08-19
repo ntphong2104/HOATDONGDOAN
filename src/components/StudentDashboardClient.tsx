@@ -150,45 +150,76 @@ export default function StudentDashboardClient({
       {tier !== 'user' && (
         <div
           style={{
-            background: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: '12px',
-            padding: '0.65rem 1rem',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+            border: '1.5px solid #bfdbfe',
+            borderRadius: '14px',
+            padding: '0.85rem 1.25rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: '1.25rem',
-            gap: '0.5rem',
+            marginBottom: '1.5rem',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)',
           }}
         >
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e40af' }}>
-            🔵 Đang xem Cổng Sinh Viên
-          </span>
-          <Link
-            href={
-              tier === 'super_admin'
-                ? '/super-admin'
-                : tier === 'youth_union' || tier === 'ctsv' || tier === 'facility'
-                ? '/admin/proposals'
-                : tier === 'event_admin'
-                ? '/admin'
-                : '/scanner'
-            }
-            style={{
-              background: '#2563eb',
-              color: '#ffffff',
-              padding: '0.4rem 0.85rem',
-              borderRadius: '8px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-            }}
-          >
-            Về Bàn Quản Trị ➔
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '1rem' }}>🏛️</span>
+            <div>
+              <span style={{ fontSize: '0.875rem', fontWeight: 800, color: '#1e40af', display: 'block' }}>
+                Không gian Cán bộ Đoàn — {user.full_name || 'Ban Chấp Hành LCĐ'}
+              </span>
+              <span style={{ fontSize: '0.775rem', color: '#3b82f6', fontWeight: 600 }}>
+                Bạn đang xem Cổng Sinh Viên cá nhân. Sử dụng các lối tắt bên phải để vào Bàn Quản Trị.
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <Link
+              href="/admin/proposals"
+              style={{
+                background: '#ffffff',
+                color: '#1d4ed8',
+                border: '1.5px solid #bfdbfe',
+                padding: '0.45rem 0.9rem',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <span>📄 Trình Kế Hoạch ➔</span>
+            </Link>
+
+            <Link
+              href={
+                tier === 'super_admin'
+                  ? '/super-admin'
+                  : tier === 'youth_union' || tier === 'ctsv' || tier === 'facility'
+                  ? '/admin/proposals'
+                  : '/admin'
+              }
+              style={{
+                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                color: '#ffffff',
+                padding: '0.45rem 1rem',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+              }}
+            >
+              <span>⚙️ Bàn Quản Trị Sự Kiện ➔</span>
+            </Link>
+          </div>
         </div>
       )}
 

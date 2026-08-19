@@ -7,6 +7,9 @@ import StudentDashboardClient from '@/components/StudentDashboardClient';
 import type { HistoryItem, ParticipateRole, SessionUser } from '@/lib/types';
 import styles from './page.module.css';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function HomePage({
   searchParams,
 }: {
