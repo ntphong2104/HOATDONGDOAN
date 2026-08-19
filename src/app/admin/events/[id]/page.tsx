@@ -856,7 +856,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </button>
 
                     {/* Secondary Actions Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.4rem' }}>
                       <a
                         href={`/events/${event.event_id}/register`}
                         target="_blank"
@@ -868,12 +868,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           border: '1.5px solid #bfdbfe',
                           borderRadius: '8px',
                           fontWeight: 700,
-                          fontSize: '0.8rem',
+                          fontSize: '0.775rem',
                           textDecoration: 'none',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '0.25rem',
+                          gap: '0.2rem',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         <span>Mở Trang</span>
@@ -892,11 +893,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             border: '1.5px solid #fde68a',
                             borderRadius: '8px',
                             fontWeight: 700,
-                            fontSize: '0.8rem',
+                            fontSize: '0.775rem',
                             cursor: 'pointer',
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          {togglingReg ? 'Đang xử lý...' : 'Tắt Cổng'}
+                          {togglingReg ? '...' : 'Tắt Cổng'}
                         </button>
                       ) : (!isExpired || isPrivileged) ? (
                         <button
@@ -910,13 +912,40 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             border: '1.5px solid #bbf7d0',
                             borderRadius: '8px',
                             fontWeight: 700,
-                            fontSize: '0.8rem',
+                            fontSize: '0.775rem',
                             cursor: 'pointer',
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          {togglingReg ? 'Đang xử lý...' : 'Mở Lại Cổng'}
+                          {togglingReg ? '...' : 'Mở Cổng'}
                         </button>
                       ) : null}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('registrations');
+                          setTimeout(() => {
+                            const el = document.getElementById('event-tabs-container');
+                            if (el) {
+                              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }, 50);
+                        }}
+                        style={{
+                          height: '36px',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1.5px solid #bfdbfe',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.775rem',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Xem DS ➔
+                      </button>
                     </div>
                   </div>
                 </div>
