@@ -1727,24 +1727,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {/* 1. CẤU HÌNH CÁC BAN CHUYÊN TRÁCH */}
               <div
                 style={{
-                  background: '#f8fafc',
+                  background: '#ffffff',
                   border: '1.5px solid #e2e8f0',
-                  borderRadius: '14px',
-                  padding: '1.25rem',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
                         Cấu hình Ban Chuyên Trách & Tuyển Dụng CTV
                       </h3>
                       <span
                         style={{
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          padding: '2px 8px',
-                          borderRadius: '10px',
+                          padding: '3px 9px',
+                          borderRadius: '12px',
                           background: event.is_recruitment_open !== false ? '#dcfce7' : '#fee2e2',
                           color: event.is_recruitment_open !== false ? '#15803d' : '#b91c1c',
                           border: `1px solid ${event.is_recruitment_open !== false ? '#86efac' : '#fca5a5'}`,
@@ -1753,49 +1754,57 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         {event.is_recruitment_open !== false ? '● Cổng CTV đang mở' : '● Cổng CTV đã đóng'}
                       </span>
                     </div>
-                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                      Tự do tạo các ban (Hậu cần, Truyền thông, Lễ tân...), phân bổ chỉ tiêu và yêu cầu Nam/Nữ.
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.825rem', color: '#64748b' }}>
+                      Thiết lập các Ban, chỉ tiêu số lượng và tiêu chuẩn Nam/Nữ để ứng viên nộp đơn.
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     <button
                       type="button"
                       onClick={handleToggleRecruitment}
                       disabled={togglingRecruitment}
                       style={{
-                        padding: '0.5rem 0.9rem',
-                        background: event.is_recruitment_open !== false ? '#d97706' : '#16a34a',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '8px',
+                        height: '38px',
+                        padding: '0 1rem',
+                        background: event.is_recruitment_open !== false ? '#fffbeb' : '#f0fdf4',
+                        color: event.is_recruitment_open !== false ? '#b45309' : '#15803d',
+                        border: `1.5px solid ${event.is_recruitment_open !== false ? '#fde68a' : '#bbf7d0'}`,
+                        borderRadius: '10px',
                         fontSize: '0.825rem',
                         fontWeight: 700,
                         cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
                       }}
                     >
                       {togglingRecruitment
                         ? 'Đang xử lý...'
                         : event.is_recruitment_open !== false
-                        ? '🔒 Đóng Cổng Tuyển CTV Sớm'
-                        : '🟢 Mở Lại Cổng Tuyển CTV'}
+                        ? 'Đóng Cổng Tuyển CTV'
+                        : 'Mở Lại Cổng Tuyển CTV'}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setShowAddDeptForm(!showAddDeptForm)}
                       style={{
-                        padding: '0.5rem 0.9rem',
-                        background: '#2563eb',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '0.825rem',
+                        height: '38px',
+                        padding: '0 1.25rem',
+                        background: showAddDeptForm ? '#f1f5f9' : 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+                        color: showAddDeptForm ? '#475569' : '#ffffff',
+                        border: showAddDeptForm ? '1.5px solid #cbd5e1' : 'none',
+                        borderRadius: '10px',
+                        fontSize: '0.85rem',
                         fontWeight: 700,
                         cursor: 'pointer',
+                        boxShadow: showAddDeptForm ? 'none' : '0 2px 6px rgba(13, 148, 136, 0.25)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
                       }}
                     >
-                      {showAddDeptForm ? 'Đóng Form' : '+ Thêm Ban Mới'}
+                      <span>{showAddDeptForm ? 'Đóng Form' : '+ Thêm Ban Mới'}</span>
                     </button>
                   </div>
                 </div>
@@ -1804,51 +1813,90 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 {showAddDeptForm && (
                   <div
                     style={{
-                      background: '#ffffff',
-                      border: '1.5px solid #bfdbfe',
-                      borderRadius: '12px',
-                      padding: '1rem',
-                      marginBottom: '1rem',
+                      background: '#f8fafc',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '14px',
+                      padding: '1.25rem',
+                      marginBottom: '1.25rem',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '0.75rem',
+                      gap: '1rem',
                     }}
                   >
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0f172a' }}>
+                        Tạo Ban Chuyên Trách Mới
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddDeptForm(false)}
+                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem' }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
-                          Tên Ban / Vị trí *
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                          Tên Ban / Vị trí <span style={{ color: '#dc2626' }}>*</span>
                         </label>
                         <input
                           type="text"
                           value={newDeptName}
                           onChange={(e) => setNewDeptName(e.target.value)}
                           placeholder="VD: Ban Hậu Cần, Ban Truyền Thông..."
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }}
+                          style={{
+                            width: '100%',
+                            padding: '0.6rem 0.75rem',
+                            border: '1.5px solid #cbd5e1',
+                            borderRadius: '8px',
+                            boxSizing: 'border-box',
+                            fontSize: '0.85rem',
+                            background: '#ffffff',
+                            fontWeight: 600,
+                          }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
-                          Chỉ tiêu (Người) *
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                          Chỉ tiêu (Số người) <span style={{ color: '#dc2626' }}>*</span>
                         </label>
                         <input
                           type="number"
                           min={1}
                           value={newDeptQuota}
                           onChange={(e) => setNewDeptQuota(Number(e.target.value) || 1)}
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }}
+                          style={{
+                            width: '100%',
+                            padding: '0.6rem 0.75rem',
+                            border: '1.5px solid #cbd5e1',
+                            borderRadius: '8px',
+                            boxSizing: 'border-box',
+                            fontSize: '0.85rem',
+                            background: '#ffffff',
+                            fontWeight: 600,
+                          }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
                           Yêu cầu Giới tính
                         </label>
                         <select
                           value={newDeptGender}
                           onChange={(e) => setNewDeptGender(e.target.value as any)}
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff' }}
+                          style={{
+                            width: '100%',
+                            padding: '0.6rem 0.75rem',
+                            border: '1.5px solid #cbd5e1',
+                            borderRadius: '8px',
+                            background: '#ffffff',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                          }}
                         >
                           <option value="all">Tất cả (Nam & Nữ)</option>
                           <option value="male">Chỉ tuyển Nam</option>
@@ -1858,7 +1906,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.25rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
                         Mô tả nhiệm vụ & Tiêu chí tuyển chọn
                       </label>
                       <input
@@ -1866,15 +1914,33 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         value={newDeptDesc}
                         onChange={(e) => setNewDeptDesc(e.target.value)}
                         placeholder="VD: Phụ trách setup âm thanh, đạo cụ hoặc chụp ảnh sự kiện..."
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }}
+                        style={{
+                          width: '100%',
+                          padding: '0.6rem 0.75rem',
+                          border: '1.5px solid #cbd5e1',
+                          borderRadius: '8px',
+                          boxSizing: 'border-box',
+                          fontSize: '0.85rem',
+                          background: '#ffffff',
+                          fontWeight: 500,
+                        }}
                       />
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.25rem' }}>
                       <button
                         type="button"
                         onClick={() => setShowAddDeptForm(false)}
-                        style={{ padding: '0.45rem 0.85rem', background: '#f1f5f9', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#ffffff',
+                          border: '1.5px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '0.825rem',
+                          fontWeight: 700,
+                          color: '#475569',
+                          cursor: 'pointer',
+                        }}
                       >
                         Hủy
                       </button>
@@ -1882,7 +1948,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         type="button"
                         onClick={handleAddDepartment}
                         disabled={savingDepts}
-                        style={{ padding: '0.45rem 1rem', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+                        style={{
+                          padding: '0.5rem 1.25rem',
+                          background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '0.825rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 6px rgba(13, 148, 136, 0.25)',
+                        }}
                       >
                         {savingDepts ? 'Đang lưu...' : 'Lưu Ban Mới'}
                       </button>
