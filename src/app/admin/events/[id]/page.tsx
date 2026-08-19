@@ -1048,7 +1048,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
                       <button
                         type="button"
-                        onClick={() => setActiveTab('recruitment')}
+                        onClick={() => {
+                          setActiveTab('recruitment');
+                          setTimeout(() => {
+                            const el = document.getElementById('event-tabs-container');
+                            if (el) {
+                              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }, 50);
+                        }}
                         style={{
                           height: '36px',
                           background: '#f0fdfa',
@@ -1258,7 +1266,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
-            <div className={styles.tabContainer}>
+            <div className={styles.tabContainer} id="event-tabs-container">
               <button
                 type="button"
                 onClick={() => setActiveTab('checkins')}
@@ -1713,83 +1721,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               searchable
               searchPlaceholder="Tìm kiếm trong danh sách đăng ký..."
               emptyMessage="Chưa có sinh viên nào đăng ký sự kiện này."
-            />
-          ) : activeTab === 'noshow' ? (
-            <DataTable 
-              columns={[
-                {
-                  key: 'mssv',
-                  label: 'MSSV',
-                  render: (val: string) => (
-                    <span
-                      style={{
-                        fontFamily: 'monospace',
-                        fontWeight: 700,
-                        color: '#1e40af',
-                        background: '#eff6ff',
-                        border: '1px solid #bfdbfe',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {val}
-                    </span>
-                  ),
-                },
-                {
-                  key: 'full_name',
-                  label: 'Họ và tên',
-                  render: (val: string) => (
-                    <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
-                      {val || '—'}
-                    </span>
-                  ),
-                },
-                {
-                  key: 'class_id',
-                  label: 'Lớp',
-                  render: (val: string) => (
-                    <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                      {val || '—'}
-                    </span>
-                  ),
-                },
-                {
-                  key: 'role_type',
-                  label: 'Vai trò đăng ký',
-                  render: (val: string) => {
-                    const isVol = val === 'Cộng tác viên' || val === 'volunteer';
-                    const isOrg = val === 'Ban tổ chức' || val === 'organizer';
-                    const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
-                    const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
-                    const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
-                    const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
-                    return (
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '3px 10px',
-                          borderRadius: '20px',
-                          fontSize: '0.78rem',
-                          fontWeight: 700,
-                          background: bg,
-                          color,
-                          border: `1px solid ${border}`,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {label}
-                      </span>
-                    );
-                  },
-                },
-              ]}
-              data={registrations.filter(r => !r.attended)}
-              searchable
-              searchPlaceholder="Tìm kiếm MSSV, Họ tên..."
-              emptyMessage="Không có sinh viên nào vắng mặt."
             />
           ) : activeTab === 'recruitment' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
