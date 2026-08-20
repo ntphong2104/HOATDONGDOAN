@@ -92,6 +92,24 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
             }
 
             if (data?.session) {
+              const email = data.session.user.email?.toLowerCase().trim() || '';
+              const isSchool =
+                email.endsWith('@student.ptithcm.edu.vn') ||
+                email.endsWith('@ptithcm.edu.vn') ||
+                email.includes('doanthanhnien') ||
+                email.includes('bchdoan');
+
+              if (!isSchool) {
+                await supabase.auth.signOut();
+                if (onStatusChange)
+                  onStatusChange(
+                    false,
+                    'Vui lòng sử dụng tài khoản Email Học Viện (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn)'
+                  );
+                router.push('/login?error=invalid_domain');
+                return;
+              }
+
               const redirectParam =
                 typeof window !== 'undefined'
                   ? new URLSearchParams(window.location.search).get('redirect') ||

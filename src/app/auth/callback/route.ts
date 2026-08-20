@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isValidSchoolEmail, extractMSSV } from '@/lib/utils/extract-mssv';
 
 function getPublicOrigin(request: Request): string {
@@ -61,6 +61,12 @@ export async function GET(request: Request) {
     const isAuthorized = isSuperAdmin || !!registeredUser || (eventRoles && eventRoles.length > 0) || isValidSchoolEmail(email);
 
     if (!isAuthorized) {
+      try {
+        const adminSupabase = await createAdminClient();
+        if (session.user.id && adminSupabase) {
+          await adminSupabase.auth.admin.deleteUser(session.user.id);
+        }
+      } catch {}
       await supabase.auth.signOut();
       return NextResponse.redirect(`${origin}/login?error=invalid_domain`);
     }
