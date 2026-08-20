@@ -107,6 +107,11 @@ export default function EventRecruitmentPage({
       }
     }
 
+    if (!phone || !phone.trim()) {
+      alert('Vui lòng nhập Số điện thoại / Zalo để Ban tổ chức liên hệ!');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const selectedDept = event?.departments?.find((d) => d.id === selectedDeptId);

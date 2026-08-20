@@ -280,8 +280,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
+  const isVolunteerApplicant = (r: EventRegistration) => {
+    if (departments && departments.length > 0) {
+      return (
+        !!r.department_id ||
+        (r.role_type === 'volunteer' &&
+          !!r.department_name &&
+          departments.some((d) => d.id === r.department_id || d.name === r.department_name))
+      );
+    }
+    return (
+      r.role_type === 'volunteer' &&
+      (!!r.phone || !!r.note || (!!r.department_name && r.department_name !== 'Ban CTV'))
+    );
+  };
+
+  const volunteerRegistrations = registrations.filter(isVolunteerApplicant);
+  const participantRegistrations = registrations.filter((r) => !isVolunteerApplicant(r));
+
   const handleExportCTVExcel = async () => {
-    const ctvList = registrations.filter((r) => r.role_type === 'volunteer' || r.department_id);
+    const ctvList = volunteerRegistrations;
     if (ctvList.length === 0) {
       alert('Chưa có dữ liệu ứng viên để xuất file!');
       return;
@@ -886,7 +904,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
 
                     <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
-                      {registrations.filter((r) => r.role_type !== 'volunteer' && !r.department_id).length}{' '}
+                      {participantRegistrations.length}{' '}
                       <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>sinh viên đăng ký</span>
                     </div>
 
@@ -1057,7 +1075,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
                       {departments.length} Ban{' '}
                       <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>
-                        ({registrations.filter((r) => r.role_type === 'volunteer' || r.department_id).length} đơn ứng tuyển)
+                        ({volunteerRegistrations.length} đơn ứng tuyển)
                       </span>
                     </div>
 
@@ -1384,7 +1402,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 onClick={() => setActiveTab('registrations')}
                 className={`${styles.tabButton} ${activeTab === 'registrations' ? styles.tabButtonActive : styles.tabButtonInactive}`}
               >
-                Danh Sách Đăng Ký ({registrations.length})
+                Danh Sách Đăng Ký ({participantRegistrations.length})
               </button>
 
               <button
@@ -1393,7 +1411,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 className={`${styles.tabButton} ${activeTab === 'recruitment' ? styles.tabButtonActive : styles.tabButtonInactive}`}
                 style={activeTab === 'recruitment' ? { background: '#0d9488', borderColor: '#0d9488', color: '#ffffff' } : {}}
               >
-                Tuyển Dụng & CTV ({departments.length} Ban • {registrations.filter(r => r.role_type === 'volunteer' || r.department_id).length} đơn)
+                Tuyển Dụng & CTV ({departments.length} Ban • {volunteerRegistrations.length} đơn)
               </button>
 
               <button
@@ -1981,7 +1999,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   },
                 },
               ]}
-              data={registrations}
+              data={participantRegistrations}
               searchable
               searchPlaceholder="Tìm kiếm trong danh sách đăng ký..."
               emptyMessage="Chưa có sinh viên nào đăng ký sự kiện này."
@@ -2301,7 +2319,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
-                    Danh Sách Đơn Ứng Tuyển Ban Chuyên Trách ({registrations.filter((r) => r.role_type === 'volunteer' || r.department_id).length})
+                    Danh Sách Đơn Ứng Tuyển Ban Chuyên Trách ({volunteerRegistrations.length})
                   </h3>
 
                   <button
@@ -2411,16 +2429,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <input
                           type="checkbox"
                           checked={
-                            registrations.filter((r) => r.role_type === 'volunteer' || r.department_id).length > 0 &&
-                            selectedMssvs.length === registrations.filter((r) => r.role_type === 'volunteer' || r.department_id).length
+                            volunteerRegistrations.length > 0 &&
+                            selectedMssvs.length === volunteerRegistrations.length
                           }
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedMssvs(
-                                registrations
-                                  .filter((r) => r.role_type === 'volunteer' || r.department_id)
-                                  .map((r) => r.mssv)
-                              );
+                              setSelectedMssvs(volunteerRegistrations.map((r) => r.mssv));
                             } else {
                               setSelectedMssvs([]);
                             }
@@ -2563,7 +2577,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       ),
                     },
                   ]}
-                  data={registrations.filter((r) => r.role_type === 'volunteer' || r.department_id)}
+                  data={volunteerRegistrations}
                   searchable
                   searchPlaceholder="Tìm kiếm ứng viên, MSSV, SĐT..."
                   emptyMessage="Chưa có ứng viên nào nộp đơn ứng tuyển."
