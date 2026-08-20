@@ -8,7 +8,10 @@ import { resolveUnitForUser } from '@/lib/constants/units';
 import { summarizeUnitRatings } from '@/lib/utils/rating-logic';
 import { getStoredProposals, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
 import { getHandoverRegistryFromDb } from '@/lib/constants/handover-store';
+import { saveEventMeta } from '@/lib/constants/event-meta-store';
 import type { EventProposal } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const auth = await getAuthContext();
@@ -64,6 +67,61 @@ export async function GET(req: Request) {
       try {
         handoverDb = await getHandoverRegistryFromDb(supabase);
       } catch {}
+
+      // Auto-heal: Ensure every approved proposal has an active event in events table
+      for (const prop of proposals) {
+        if (prop.status === 'approved' || prop.current_stage === 'approved') {
+          try {
+            let eventExists = false;
+            if (prop.created_event_id && !prop.created_event_id.startsWith('ev-')) {
+              const { data: ev } = await supabase
+                .from('events')
+                .select('event_id')
+                .eq('event_id', prop.created_event_id)
+                .maybeSingle();
+              if (ev?.event_id) eventExists = true;
+            }
+
+            if (!eventExists) {
+              const { data: newEv } = await supabase
+                .from('events')
+                .insert({
+                  event_name: prop.title,
+                  event_date: prop.start_date,
+                  start_time: prop.start_time,
+                  end_time: prop.end_time,
+                  status: 'active',
+                  is_active: true,
+                  created_by: prop.created_by,
+                  semester: prop.semester || 'Chưa xếp kỳ',
+                  is_registration_open: true,
+                })
+                .select()
+                .maybeSingle();
+
+              if (newEv?.event_id) {
+                prop.created_event_id = newEv.event_id;
+                await saveEventMeta(supabase, newEv.event_id, {
+                  departments: (prop as any).departments || [],
+                  target_scope: (prop as any).target_scope || 'all',
+                  is_recruitment_open: true,
+                });
+                await supabase.from('event_roles').insert({
+                  event_id: newEv.event_id,
+                  email: prop.created_by,
+                  role_type: 'event_admin',
+                });
+                await supabase
+                  .from('event_proposals')
+                  .update({ created_event_id: newEv.event_id })
+                  .eq('id', prop.id);
+              }
+            }
+          } catch (healErr) {
+            console.error('Auto-heal proposal event error:', healErr);
+          }
+        }
+      }
 
       const stored = getStoredProposals();
       const storedMap = new Map(stored.map(s => [s.id, s]));

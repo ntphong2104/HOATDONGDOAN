@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getNextStage, getStageLabel } from '@/lib/utils/proposal-logic';
 import { getStoredProposalById, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
+import { saveEventMeta } from '@/lib/constants/event-meta-store';
 import type { ProposalStage, EventProposal } from '@/lib/types';
 
 export async function POST(
@@ -97,9 +98,9 @@ export async function POST(
 
   // If Final Stage reached (Auto-create Event)
   if (nextStage === 'approved') {
-    let newEventId = `ev-${Date.now()}`;
+    let newEventId: string | null = null;
     try {
-      const { data: newEvent } = await supabase
+      const { data: newEvent, error: createEventErr } = await supabase
         .from('events')
         .insert({
           event_name: proposal.title,
@@ -109,39 +110,51 @@ export async function POST(
           status: 'active',
           is_active: true,
           created_by: proposal.created_by,
-          departments: (proposal as any).departments || [],
-          target_scope: (proposal as any).target_scope || 'all',
+          semester: proposal.semester || 'Chưa xếp kỳ',
+          is_registration_open: true,
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (newEvent?.event_id) {
         newEventId = newEvent.event_id;
+
+        // Save departments and target scope into event meta store
+        await saveEventMeta(supabase, newEvent.event_id, {
+          departments: (proposal as any).departments || [],
+          target_scope: (proposal as any).target_scope || 'all',
+          is_recruitment_open: true,
+        });
+
         await supabase.from('event_roles').insert({
           event_id: newEventId,
           email: proposal.created_by,
           role_type: 'event_admin',
         });
       }
-    } catch {}
+    } catch (createErr) {
+      console.error('Error auto-creating event from proposal:', createErr);
+    }
 
-    try {
-      await supabase
-        .from('event_proposals')
-        .update({
-          status: 'approved',
-          current_stage: 'approved',
-          created_event_id: newEventId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', proposal.id);
-    } catch {}
+    if (newEventId) {
+      try {
+        await supabase
+          .from('event_proposals')
+          .update({
+            status: 'approved',
+            current_stage: 'approved',
+            created_event_id: newEventId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', proposal.id);
+      } catch {}
+    }
 
     const updatedProposal = saveProposalToStore({
       ...proposal,
       status: 'approved',
       current_stage: 'approved',
-      created_event_id: newEventId,
+      created_event_id: newEventId || proposal.created_event_id || proposal.id,
       updated_at: new Date().toISOString(),
     });
 
