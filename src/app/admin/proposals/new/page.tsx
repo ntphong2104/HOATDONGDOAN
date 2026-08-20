@@ -369,7 +369,7 @@ export default function NewProposalPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className={styles.formGrid}>
+        <form onSubmit={handleSubmit} className={styles.formGrid} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           {/* ═══════════════ MỤC 1: THÔNG TIN CƠ BẢN ═══════════════ */}
           <div className={styles.sectionCard}>
             <div
