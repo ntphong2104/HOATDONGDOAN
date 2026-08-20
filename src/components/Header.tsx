@@ -83,11 +83,13 @@ export default function Header({
             <ArrowLeftIcon size={20} />
           </Link>
         )}
-        <DualLogos size="sm" />
-        <div className={styles.branding}>
-          <span className={styles.appTitle}>{title || 'HOẠT ĐỘNG ĐOÀN'}</span>
-          <span className={styles.appSubtitle}>Học Viện Công Nghệ Bưu Chính Viễn Thông Cơ Sở Tại TP. Hồ Chí Minh</span>
-        </div>
+        <Link href="/" className={styles.logoLink} title="Về trang chủ">
+          <DualLogos size="sm" />
+          <div className={styles.branding}>
+            <span className={styles.appTitle}>{title || 'HOẠT ĐỘNG ĐOÀN'}</span>
+            <span className={styles.appSubtitle}>Học Viện Công Nghệ Bưu Chính Viễn Thông Cơ Sở Tại TP. Hồ Chí Minh</span>
+          </div>
+        </Link>
       </div>
 
       <div className={styles.right}>

@@ -146,10 +146,9 @@ export default function StudentDashboardClient({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '1rem' }}>🏛️</span>
             <div>
               <span style={{ fontSize: '0.875rem', fontWeight: 800, color: '#1e40af', display: 'block' }}>
-                Không gian Cán bộ Đoàn — {user.full_name || 'Ban Chấp Hành LCĐ'}
+                Không gian Cán bộ Đoàn — {user.full_name || user.mssv}
               </span>
               <span style={{ fontSize: '0.775rem', color: '#3b82f6', fontWeight: 600 }}>
                 Bạn đang xem Cổng Sinh Viên cá nhân. Sử dụng các lối tắt bên phải để vào Bàn Quản Trị.
@@ -174,7 +173,7 @@ export default function StudentDashboardClient({
                 gap: '0.35rem',
               }}
             >
-              <span>📄 Trình Kế Hoạch ➔</span>
+              <span>Trình Kế Hoạch ➔</span>
             </Link>
 
             <Link
@@ -199,7 +198,7 @@ export default function StudentDashboardClient({
                 boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
               }}
             >
-              <span>⚙️ Bàn Quản Trị Sự Kiện ➔</span>
+              <span>Bàn Quản Trị Sự Kiện ➔</span>
             </Link>
           </div>
         </div>

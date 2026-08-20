@@ -22,6 +22,21 @@
   flex: 1;
 }
 
+.logoLink {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.logoLink:hover {
+  opacity: 0.92;
+}
+
 .logoIcon {
   display: flex;
   align-items: center;
