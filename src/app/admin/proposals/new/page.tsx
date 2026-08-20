@@ -15,6 +15,7 @@ import {
   BuildingIcon,
   AlertTriangleIcon,
   FileTextIcon,
+  YouthUnionIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS, OFFICIAL_UNIT_GROUPS, resolveUnitForUser } from '@/lib/constants/units';
 import { isKhoaUnit } from '@/lib/utils/proposal-logic';
@@ -53,6 +54,96 @@ export default function NewProposalPage() {
 
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [selectedRoomName, setSelectedRoomName] = useState('Không mượn');
+
+  // Multi-session mode
+  const [isMultiSession, setIsMultiSession] = useState(false);
+  const [sessionsList, setSessionsList] = useState<ProposalSessionItem[]>([
+    {
+      id: 'session_1',
+      name: 'Buổi 1 (Khai mạc / Toàn thể)',
+      session_date: getVNDate(),
+      start_time: '08:00',
+      end_time: '11:30',
+      room_id: '',
+      room_name: 'Không mượn',
+      participant_count: 60,
+      purpose: 'Tổ chức sự kiện chính',
+      status: 'pending',
+    },
+  ]);
+
+  const handleAddSession = () => {
+    const nextIdx = sessionsList.length + 1;
+    setSessionsList([
+      ...sessionsList,
+      {
+        id: `session_${Date.now()}`,
+        name: `Buổi ${nextIdx}`,
+        session_date: endDate || startDate || getVNDate(),
+        start_time: '08:00',
+        end_time: '11:30',
+        room_id: '',
+        room_name: 'Không mượn',
+        participant_count: Number(participantCount) || 60,
+        purpose: '',
+        status: 'pending',
+      },
+    ]);
+  };
+
+  const handleRemoveSession = (id: string) => {
+    if (sessionsList.length <= 1) return;
+    setSessionsList(sessionsList.filter((s) => s.id !== id));
+  };
+
+  const handleUpdateSession = (id: string, field: keyof ProposalSessionItem, value: any) => {
+    setSessionsList(
+      sessionsList.map((s) => {
+        if (s.id === id) {
+          const updated = { ...s, [field]: value };
+          if (field === 'room_id') {
+            const foundRoom = rooms.find((r) => r.id === value);
+            updated.room_name = foundRoom ? foundRoom.room_name : 'Không mượn';
+          }
+          return updated;
+        }
+        return s;
+      })
+    );
+  };
+
+  const handleAutoSplitDays = () => {
+    if (!startDate || !endDate) return;
+    const startObj = new Date(startDate);
+    const endObj = new Date(endDate);
+    if (isNaN(startObj.getTime()) || isNaN(endObj.getTime()) || startObj > endObj) {
+      alert('Vui lòng chọn Ngày bắt đầu và Ngày kết thúc hợp lệ trước');
+      return;
+    }
+    const newSessions: ProposalSessionItem[] = [];
+    let cur = new Date(startObj);
+    let day = 1;
+    while (cur <= endObj && day <= 30) {
+      const dateStr = cur.toISOString().split('T')[0];
+      const vnDate = cur.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+      newSessions.push({
+        id: `session_day_${day}`,
+        name: `Ngày ${day} (${vnDate})`,
+        session_date: dateStr,
+        start_time: startTime || '08:00',
+        end_time: endTime || '11:30',
+        room_id: selectedRoomId || '',
+        room_name: selectedRoomName || 'Không mượn',
+        participant_count: Number(participantCount) || 60,
+        purpose: `Các hoạt động trong ngày ${day}`,
+        status: 'pending',
+      });
+      cur.setDate(cur.getDate() + 1);
+      day++;
+    }
+    setSessionsList(newSessions);
+    setIsMultiSession(true);
+  };
 
   const [description, setDescription] = useState('');
   const [planUrl, setPlanUrl] = useState('');
@@ -182,12 +273,7 @@ export default function NewProposalPage() {
     const minAllowedTime = new Date(now.getTime() - 5 * 60 * 1000);
 
     if (startDatetime < minAllowedTime) {
-      setErrorMessage('🚫 Thời gian bắt đầu sự kiện không thể ở trong quá khứ! Vui lòng chọn ngày và giờ hiện tại hoặc tương lai.');
-      return;
-    }
-
-    if (endDatetime <= startDatetime) {
-      setErrorMessage('🚫 Thời gian kết thúc phải diễn ra sau thời gian bắt đầu!');
+      setErrorMessage('🚫 Thời gian bắt đầu sự kiện không thể ở trong quá khứ! V vui lòng chọn ngày và giờ hiện tại hoặc tương lai.');
       return;
     }
 
@@ -208,8 +294,22 @@ export default function NewProposalPage() {
           participant_count: Number(participantCount) || 0,
           volunteer_count: Number(volunteerCount) || 0,
           organizer_count: Number(organizerCount) || 0,
-          room_id: selectedRoomId || null,
-          room_name: selectedRoomName,
+          room_id: isMultiSession ? (sessionsList[0]?.room_id || null) : (selectedRoomId || null),
+          room_name: isMultiSession ? (sessionsList[0]?.room_name || 'Không mượn') : selectedRoomName,
+          sessions: isMultiSession ? sessionsList : [
+            {
+              id: 'session_1',
+              name: 'Buổi 1 (Buổi chính)',
+              session_date: startDate,
+              start_time: startTime,
+              end_time: endTime,
+              room_id: selectedRoomId || null,
+              room_name: selectedRoomName,
+              participant_count: Number(participantCount) || 0,
+              purpose: description || 'Tổ chức sự kiện',
+              status: 'pending',
+            },
+          ],
         }),
       });
 
@@ -258,33 +358,19 @@ export default function NewProposalPage() {
             Đề Xuất / Trình Kế Hoạch Sự Kiện Mới
           </h1>
           <p className={styles.subtitle}>
-            Kế hoạch sẽ được tự động chuyển qua các cấp phê duyệt theo quy mô và địa điểm mượn.
+            Hệ thống phân luồng phê duyệt tự động theo thẩm quyền Đoàn Trường, Phòng CTSV và Phòng TC-HC-QT
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-          {errorMessage && (
-            <div
-              style={{
-                padding: '1rem 1.25rem',
-                background: '#fef2f2',
-                border: '1.5px solid #fecaca',
-                color: '#b91c1c',
-                borderRadius: '16px',
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.1)',
-              }}
-            >
-              <AlertTriangleIcon size={20} color="#b91c1c" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
+        {errorMessage && (
+          <div className={styles.errorAlert}>
+            <AlertTriangleIcon size={20} color="#b91c1c" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
-          {/* ═══════════════ MỤC 1: TÊN CHƯƠNG TRÌNH & ĐƠN VỊ ═══════════════ */}
+        <form onSubmit={handleSubmit} className={styles.formGrid}>
+          {/* ═══════════════ MỤC 1: THÔNG TIN CƠ BẢN ═══════════════ */}
           <div className={styles.sectionCard}>
             <div
               style={{
@@ -301,81 +387,152 @@ export default function NewProposalPage() {
                   width: '42px',
                   height: '42px',
                   borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                  background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <SettingsIcon size={20} color="#2563eb" />
+                <YouthUnionIcon size={22} color="#1d4ed8" />
               </div>
               <div>
                 <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                  1. Thông Tin Chương Trình
+                  1. Thông Tin Chung & Đơn Vị Chủ Trì
                 </h2>
                 <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.15rem 0 0' }}>
-                  Tên chủ đề hoạt động và tổ chức chủ trì
+                  Xác định cơ quan tổ chức và tên chương trình
                 </p>
               </div>
             </div>
 
-            <div className={styles.gridTwo}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Tên sự kiện */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
-                  Tên chương trình sự kiện <span style={{ color: '#ef4444' }}>*</span>
+                  Tên Sự Kiện / Chương Trình / Hoạt Động <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="VD: Hội thảo Công nghệ AI & Chuyển đổi số 2026"
+                  placeholder="VD: Hội Thao Sinh Viên PTIT 2026 - Chào Tân Sinh Viên"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className={styles.inputField}
                 />
               </div>
 
+              {/* Đơn vị tổ chức */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
-                  Đơn vị / Chi đoàn tổ chức <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                {lockedUnit ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <select
-                      value={organizationUnit}
-                      disabled
-                      className={styles.selectField}
-                      style={{ background: '#f8fafc', color: '#1e293b', fontWeight: 600, cursor: 'not-allowed', opacity: 0.95 }}
-                      required
-                    >
-                      <option value={lockedUnit}>{lockedUnit}</option>
-                    </select>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      🔒 <i>Đơn vị được cố định theo tài khoản đăng nhập ({currentUser?.email || 'LCĐ/CLB'}).</i>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
+                    Đơn Vị Chủ Trì / Tổ Chức <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  {lockedUnit && !isSuperAdmin && (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>
+                      🔒 Đã khóa theo tài khoản cán bộ
                     </span>
-                  </div>
-                ) : (
-                  <select
-                    value={organizationUnit}
-                    onChange={(e) => setOrganizationUnit(e.target.value)}
-                    className={styles.selectField}
-                    required
+                  )}
+                </div>
+
+                <select
+                  value={organizationUnit}
+                  onChange={(e) => setOrganizationUnit(e.target.value)}
+                  disabled={!!lockedUnit && !isSuperAdmin}
+                  className={styles.selectField}
+                  style={{
+                    background: lockedUnit && !isSuperAdmin ? '#f8fafc' : '#ffffff',
+                    cursor: lockedUnit && !isSuperAdmin ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {OFFICIAL_UNIT_GROUPS.map((group) => (
+                    <optgroup key={group.group} label={group.group}>
+                      {group.items.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+
+                {isDirectFaculty && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '10px',
+                      background: '#f0fdf4',
+                      border: '1px solid #bbf7d0',
+                      color: '#166534',
+                      fontSize: '0.825rem',
+                      fontWeight: 600,
+                    }}
                   >
-                    {OFFICIAL_UNIT_GROUPS.map((group) => (
-                      <optgroup key={group.group} label={group.group}>
-                        {group.items.map((unit) => (
-                          <option key={unit} value={unit}>
-                            {unit}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                    <span>⚡ Kế hoạch của cấp <strong>Khoa</strong> sẽ được ưu tiên chuyển thẳng đến <strong>Phòng TC-HC-QT</strong> phê duyệt cấp phòng mà không qua bước Đoàn trường.</span>
+                  </div>
                 )}
+              </div>
+
+              {/* Thời gian tổng thể */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
+                    Ngày Bắt Đầu:
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className={styles.inputField}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
+                    Giờ Bắt Đầu:
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className={styles.inputField}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
+                    Ngày Kết Thúc:
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className={styles.inputField}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
+                    Giờ Kết Thúc:
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className={styles.inputField}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* ═══════════════ MỤC 2: THỜI GIAN & QUY MÔ NHÂN SỰ ═══════════════ */}
+          {/* ═══════════════ MỤC 2: QUY MÔ NHÂN SỰ & THÀNH PHẦN ═══════════════ */}
           <div className={styles.sectionCard}>
             <div
               style={{
@@ -392,87 +549,25 @@ export default function NewProposalPage() {
                   width: '42px',
                   height: '42px',
                   borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                  background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <ClockIcon size={20} color="#059669" />
+                <UsersIcon size={20} color="#15803d" />
               </div>
               <div>
                 <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                  2. Thời Gian Diễn Ra & Quy Mô Dự Kiến
+                  2. Quy Mô Nhân Sự & Thành Phần Tham Gia
                 </h2>
                 <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.15rem 0 0' }}>
-                  Khung giờ tổ chức và ước tính số lượng nhân sự tham gia
+                  Hệ thống tự động yêu cầu Phòng CTSV thẩm định nếu quy mô sinh viên &gt; 50 người
                 </p>
               </div>
             </div>
 
-            {/* Khung 4 Ô Thời Gian */}
-            <div className={styles.gridFour}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
-                  Ngày bắt đầu <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  min={getVNDate()}
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    // Auto-sync endDate if it's before the new startDate
-                    if (endDate < e.target.value) setEndDate(e.target.value);
-                  }}
-                  className={styles.inputField}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
-                  Giờ bắt đầu <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="time"
-                  required
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className={styles.inputField}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
-                  Ngày kết thúc <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  min={startDate || getVNDate()}
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className={styles.inputField}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
-                  Giờ kết thúc <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="time"
-                  required
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className={styles.inputField}
-                />
-              </div>
-            </div>
-
-            {/* 3 Thẻ Nhập Quy Mô Nhân Sự */}
-            <div className={styles.gridThree} style={{ marginTop: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
               <div
                 style={{
                   background: '#f8fafc',
@@ -487,7 +582,7 @@ export default function NewProposalPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>Sinh viên tham gia</span>
                   <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.2rem 0.55rem', borderRadius: '8px', background: '#dbeafe', color: '#1e40af' }}>
-                    SV dự khán
+                    Khán giả
                   </span>
                 </div>
                 <input
@@ -582,12 +677,11 @@ export default function NewProposalPage() {
               </div>
             </div>
 
-            {/* Banner Tổng Quy Mô */}
             <div className={styles.totalBanner}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <UsersIcon size={20} color="#166534" />
                 <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#166534' }}>
-                  Tổng quy mô toàn sự kiện (Người tham gia + CTV + BTC):
+                  Tổng quy mô toàn sự kiện:
                 </span>
               </div>
               <span style={{ fontSize: '1.45rem', fontWeight: 900, color: '#15803d' }}>
@@ -596,90 +690,302 @@ export default function NewProposalPage() {
             </div>
           </div>
 
-          {/* ═══════════════ MỤC 3: ĐỊA ĐIỂM & KIỂM TRA TRÙNG PHÒNG ═══════════════ */}
+          {/* ═══════════════ MỤC 3: ĐỊA ĐIỂM & CHI TIẾT CA / BUỔI & KIỂM TRA TRÙNG LỊCH ═══════════════ */}
           <div className={styles.sectionCard}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.85rem',
+                justifyContent: 'space-between',
                 marginBottom: '1.5rem',
                 paddingBottom: '1rem',
                 borderBottom: '1.5px solid #f1f5f9',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
               }}
             >
-              <div
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <BuildingIcon size={20} color="#7e22ce" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <div
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <BuildingIcon size={20} color="#7e22ce" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    3. Lịch Trình Chi Tiết Các Ca / Buổi & Mượn Phòng
+                  </h2>
+                  <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.15rem 0 0' }}>
+                    Tự động kiểm tra trùng lịch phòng cho từng ca & chuyển Phòng TC-HC-QT duyệt
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                  3. Địa Điểm Tổ Chức & Kiểm Tra Trùng Lịch
-                </h2>
-                <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.15rem 0 0' }}>
-                  Mượn phòng/hội trường tại Học Viện cơ sở TP.HCM
-                </p>
+
+              {/* Mode Toggle Buttons */}
+              <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.3rem', borderRadius: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsMultiSession(false)}
+                  style={{
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: !isMultiSession ? '#ffffff' : 'transparent',
+                    color: !isMultiSession ? '#2563eb' : '#64748b',
+                    boxShadow: !isMultiSession ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  1 Buổi Duy Nhất
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMultiSession(true)}
+                  style={{
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: isMultiSession ? '#ffffff' : 'transparent',
+                    color: isMultiSession ? '#7e22ce' : '#64748b',
+                    boxShadow: isMultiSession ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  Nhiều Ca / Nhiều Phòng
+                </button>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
-                Chọn Phòng / Hội Trường / Sân Bãi Học Viện:
-              </label>
-              <select
-                value={selectedRoomId}
-                onChange={handleRoomChange}
-                className={styles.selectField}
-              >
-                <option value="">Không mượn phòng (Tổ chức trực tuyến / Ngoài trường)</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.room_name} (Sức chứa: {r.capacity} người - {r.location})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isMultiSession ? (
+              /* ĐƠN BUỔI MODE */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
+                  Chọn Phòng / Hội Trường / Sân Bãi Học Viện:
+                </label>
+                <select
+                  value={selectedRoomId}
+                  onChange={handleRoomChange}
+                  className={styles.selectField}
+                >
+                  <option value="">Không mượn phòng (Tổ chức trực tuyến / Ngoài trường)</option>
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.room_name} (Sức chứa: {r.capacity} người - {r.location})
+                    </option>
+                  ))}
+                </select>
 
-            {/* Conflict Alert Box */}
-            {selectedRoomId && selectedRoomName !== 'Không mượn' && (
-              <div
-                style={{
-                  marginTop: '1.25rem',
-                  padding: '1.1rem 1.35rem',
-                  borderRadius: '14px',
-                  border: conflictResult.conflict ? '1.5px solid #fca5a5' : '1.5px solid #86efac',
-                  background: conflictResult.conflict ? '#fef2f2' : '#f0fdf4',
-                  color: conflictResult.conflict ? '#991b1b' : '#166534',
-                  fontSize: '0.925rem',
-                  lineHeight: 1.5,
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                }}
-              >
-                {checkingConflict ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563eb' }}>
-                    <span>Đang kiểm tra lịch trống của phòng với hệ thống...</span>
-                  </div>
-                ) : conflictResult.conflict ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <AlertTriangleIcon size={18} color="#b91c1c" />
-                    <span><strong style={{ color: '#b91c1c' }}>CẢNH BÁO TRÙNG LỊCH:</strong> {conflictResult.message}</span>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <CheckCircleIcon size={18} color="#15803d" />
-                    <span><strong style={{ color: '#15803d' }}>PHÒNG TRỐNG SẴN SÀNG:</strong> Phòng <strong>{selectedRoomName}</strong> hoàn toàn
-                    trống trong khung giờ từ {startTime} ngày {startDate} đến {endTime} ngày {endDate}.</span>
+                {selectedRoomId && selectedRoomName !== 'Không mượn' && (
+                  <div
+                    style={{
+                      marginTop: '0.75rem',
+                      padding: '1.1rem 1.35rem',
+                      borderRadius: '14px',
+                      border: conflictResult.conflict ? '1.5px solid #fca5a5' : '1.5px solid #86efac',
+                      background: conflictResult.conflict ? '#fef2f2' : '#f0fdf4',
+                      color: conflictResult.conflict ? '#991b1b' : '#166534',
+                      fontSize: '0.925rem',
+                      lineHeight: 1.5,
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                    }}
+                  >
+                    {checkingConflict ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563eb' }}>
+                        <span>Đang kiểm tra lịch trống của phòng với hệ thống...</span>
+                      </div>
+                    ) : conflictResult.conflict ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <AlertTriangleIcon size={18} color="#b91c1c" />
+                        <span><strong style={{ color: '#b91c1c' }}>CẢNH BÁO TRÙNG LỊCH:</strong> {conflictResult.message}</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <CheckCircleIcon size={18} color="#15803d" />
+                        <span><strong style={{ color: '#15803d' }}>PHÒNG TRỐNG SẴN SÀNG:</strong> Phòng <strong>{selectedRoomName}</strong> hoàn toàn
+                        trống trong khung giờ từ {startTime} ngày {startDate} đến {endTime} ngày {endDate}.</span>
+                      </div>
+                    )}
                   </div>
                 )}
+              </div>
+            ) : (
+              /* NHIỀU CA / NHIỀU BUỔI / NHIỀU PHÒNG MODE */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>
+                    Danh Sách Các Ca / Buổi Diễn Ra ({sessionsList.length} ca):
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {startDate && endDate && startDate !== endDate && (
+                      <button
+                        type="button"
+                        onClick={handleAutoSplitDays}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          background: '#f5f3ff',
+                          color: '#6d28d9',
+                          border: '1px solid #ddd6fe',
+                          borderRadius: '8px',
+                          fontSize: '0.785rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ⚡ Tự Động Chia Theo Ngày
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleAddSession}
+                      style={{
+                        padding: '0.35rem 0.85rem',
+                        background: '#2563eb',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.785rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + Thêm Ca Mới
+                    </button>
+                  </div>
+                </div>
+
+                {/* Session Cards List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {sessionsList.map((sess, idx) => (
+                    <div
+                      key={sess.id}
+                      style={{
+                        background: '#f8fafc',
+                        border: '1.5px solid #e2e8f0',
+                        borderRadius: '16px',
+                        padding: '1.25rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.85rem',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#7e22ce', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
+                            {idx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={sess.name}
+                            onChange={(e) => handleUpdateSession(sess.id, 'name', e.target.value)}
+                            placeholder={`Tên ca (VD: Ca ${idx + 1}: Vòng Sơ Khảo)`}
+                            style={{
+                              fontSize: '0.95rem',
+                              fontWeight: 800,
+                              color: '#0f172a',
+                              padding: '0.35rem 0.65rem',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '8px',
+                              background: '#ffffff',
+                              width: '240px',
+                            }}
+                          />
+                        </div>
+                        {sessionsList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSession(sess.id)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ef4444',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✕ Xóa Ca Này
+                          </button>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Ngày:</label>
+                          <input
+                            type="date"
+                            value={sess.session_date}
+                            onChange={(e) => handleUpdateSession(sess.id, 'session_date', e.target.value)}
+                            style={{ padding: '0.45rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Bắt đầu:</label>
+                          <input
+                            type="time"
+                            value={sess.start_time}
+                            onChange={(e) => handleUpdateSession(sess.id, 'start_time', e.target.value)}
+                            style={{ padding: '0.45rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Kết thúc:</label>
+                          <input
+                            type="time"
+                            value={sess.end_time}
+                            onChange={(e) => handleUpdateSession(sess.id, 'end_time', e.target.value)}
+                            style={{ padding: '0.45rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Phòng/Hội trường:</label>
+                          <select
+                            value={sess.room_id || ''}
+                            onChange={(e) => handleUpdateSession(sess.id, 'room_id', e.target.value)}
+                            style={{ padding: '0.45rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                          >
+                            <option value="">Không mượn phòng</option>
+                            {rooms.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.room_name} ({r.capacity} chỗ)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          value={sess.purpose || ''}
+                          onChange={(e) => handleUpdateSession(sess.id, 'purpose', e.target.value)}
+                          placeholder="Mục đích sử dụng phòng / Nội dung chính ca này..."
+                          style={{
+                            flex: 1,
+                            padding: '0.45rem 0.75rem',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.825rem',
+                            background: '#ffffff',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

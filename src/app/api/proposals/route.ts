@@ -195,6 +195,7 @@ export async function POST(req: Request) {
       organizer_count = 0,
       room_id = null,
       room_name = 'Không mượn',
+      sessions = [],
     } = body;
 
     // Sanitize description and plan_url
@@ -281,7 +282,7 @@ export async function POST(req: Request) {
 
     const supabase = await createAdminClient();
 
-    // Server-side Conflict Check if borrowing room
+    // Server-side Conflict Check for main room and all individual sessions
     if (room_id && room_name !== 'Không mượn') {
       const { data: conflicts } = await supabase
         .from('event_proposals')
@@ -300,12 +301,56 @@ export async function POST(req: Request) {
       }
     }
 
+    // Validate sessions conflicts
+    const normalizedSessions: any[] = [];
+    if (Array.isArray(sessions) && sessions.length > 0) {
+      for (const sess of sessions) {
+        if (!sess.name || !sess.session_date) continue;
+        const sessStart = sess.start_time || '08:00';
+        const sessEnd = sess.end_time || '11:30';
+        const sessStartDt = new Date(`${sess.session_date}T${sessStart}`);
+        const sessEndDt = new Date(`${sess.session_date}T${sessEnd}`);
+
+        if (sess.room_id && sess.room_name && sess.room_name !== 'Không mượn' && !isNaN(sessStartDt.getTime()) && !isNaN(sessEndDt.getTime())) {
+          const { data: conflicts } = await supabase
+            .from('event_proposals')
+            .select('id, title')
+            .eq('room_id', sess.room_id)
+            .neq('status', 'rejected')
+            .neq('status', 'deleted')
+            .lt('start_datetime', sessEndDt.toISOString())
+            .gt('end_datetime', sessStartDt.toISOString());
+
+          if (conflicts && conflicts.length > 0) {
+            return NextResponse.json({
+              success: false,
+              error: `Phòng "${sess.room_name}" trong ca "${sess.name}" (${sess.session_date}) đã bị trùng lịch với chương trình "${conflicts[0].title}". Vui lòng chọn phòng hoặc thời gian khác!`,
+            }, { status: 409 });
+          }
+        }
+
+        normalizedSessions.push({
+          id: sess.id || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          name: sess.name.trim(),
+          session_date: sess.session_date,
+          start_time: sessStart,
+          end_time: sessEnd,
+          room_id: sess.room_id || null,
+          room_name: sess.room_name || 'Không mượn',
+          participant_count: Number(sess.participant_count) || participants,
+          purpose: sess.purpose || '',
+          status: 'pending',
+        });
+      }
+    }
+
     // Calculate smart stages (Khoa pushes directly to Phòng. TC-HC-QT)
     const { requiresCtsv, requiresFacility, initialStage, isDirectFaculty } = calculateProposalStages(
       participants,
       room_id,
       room_name,
-      finalOrganizationUnit
+      finalOrganizationUnit,
+      normalizedSessions
     );
 
     // Insert proposal

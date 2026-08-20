@@ -252,6 +252,20 @@ export type ProposalStage =
 
 export type ProposalStatus = 'pending' | 'approved' | 'rejected';
 
+export interface ProposalSessionItem {
+  id: string;
+  name: string;
+  session_date: string;
+  start_time: string;
+  end_time: string;
+  room_id?: string | null;
+  room_name?: string;
+  participant_count?: number;
+  purpose?: string;
+  status?: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string;
+}
+
 export interface EventProposal {
   id: string;
   title: string;
@@ -275,6 +289,7 @@ export interface EventProposal {
   status: ProposalStatus;
   description?: string | null;
   plan_url?: string | null;
+  sessions?: ProposalSessionItem[];
   key_status?: 'pending' | 'handed_over' | 'returned';
   key_handed_at?: string | null;
   key_handed_by?: string | null;

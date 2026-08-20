@@ -64,7 +64,22 @@ export async function POST(
   }
 
   const body = await req.json().catch(() => ({}));
-  const { notes = '' } = body;
+  const { notes = '', session_decisions = {} } = body;
+
+  // Update session statuses if decisions were provided
+  if (proposal.sessions && Array.isArray(proposal.sessions) && Object.keys(session_decisions).length > 0) {
+    proposal.sessions = proposal.sessions.map((sess: any) => {
+      const decision = session_decisions[sess.id];
+      if (decision) {
+        return {
+          ...sess,
+          status: decision.status || sess.status,
+          rejection_reason: decision.rejection_reason || sess.rejection_reason || '',
+        };
+      }
+      return sess;
+    });
+  }
 
   const nextStage = getNextStage(
     currentStage,
@@ -119,44 +134,60 @@ export async function POST(
       if (newEvent?.event_id) {
         newEventId = newEvent.event_id;
 
-        // Auto-generate sessions for multi-day proposals
-        const sessions: any[] = [];
-        if (proposal.start_date && proposal.end_date && proposal.start_date !== proposal.end_date) {
-          const startDateObj = new Date(proposal.start_date);
-          const endDateObj = new Date(proposal.end_date);
-          let currentDay = new Date(startDateObj);
-          let dayIndex = 1;
+        // Auto-generate or filter sessions for event
+        let finalSessions: any[] = [];
+        if (proposal.sessions && proposal.sessions.length > 0) {
+          // Use only non-rejected sessions
+          finalSessions = proposal.sessions
+            .filter((s: any) => s.status !== 'rejected')
+            .map((s: any, idx: number) => ({
+              id: s.id || `session_${idx + 1}`,
+              name: s.name,
+              session_date: s.session_date,
+              start_time: s.start_time,
+              end_time: s.end_time,
+              created_at: new Date().toISOString(),
+            }));
+        }
 
-          while (currentDay <= endDateObj && dayIndex <= 30) {
-            const dateStr = currentDay.toISOString().split('T')[0];
-            const vnDateFormatted = currentDay.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-            sessions.push({
-              id: `session_day_${dayIndex}`,
-              name: `Buổi ${dayIndex} (${vnDateFormatted})`,
-              session_date: dateStr,
+        if (finalSessions.length === 0) {
+          if (proposal.start_date && proposal.end_date && proposal.start_date !== proposal.end_date) {
+            const startDateObj = new Date(proposal.start_date);
+            const endDateObj = new Date(proposal.end_date);
+            let currentDay = new Date(startDateObj);
+            let dayIndex = 1;
+
+            while (currentDay <= endDateObj && dayIndex <= 30) {
+              const dateStr = currentDay.toISOString().split('T')[0];
+              const vnDateFormatted = currentDay.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+              finalSessions.push({
+                id: `session_day_${dayIndex}`,
+                name: `Buổi ${dayIndex} (${vnDateFormatted})`,
+                session_date: dateStr,
+                start_time: proposal.start_time || '08:00',
+                end_time: proposal.end_time || '11:30',
+                created_at: new Date().toISOString(),
+              });
+              currentDay.setDate(currentDay.getDate() + 1);
+              dayIndex++;
+            }
+          } else {
+            finalSessions.push({
+              id: 'session_1',
+              name: 'Buổi 1 (Buổi chính)',
+              session_date: proposal.start_date || new Date().toISOString().split('T')[0],
               start_time: proposal.start_time || '08:00',
               end_time: proposal.end_time || '11:30',
               created_at: new Date().toISOString(),
             });
-            currentDay.setDate(currentDay.getDate() + 1);
-            dayIndex++;
           }
-        } else {
-          sessions.push({
-            id: 'session_1',
-            name: 'Buổi 1 (Buổi chính)',
-            session_date: proposal.start_date || new Date().toISOString().split('T')[0],
-            start_time: proposal.start_time || '08:00',
-            end_time: proposal.end_time || '11:30',
-            created_at: new Date().toISOString(),
-          });
         }
 
-        // Save departments, target scope, and auto-generated sessions into event meta store
+        // Save departments, target scope, and sessions into event meta store
         await saveEventMeta(supabase, newEvent.event_id, {
           departments: (proposal as any).departments || [],
           target_scope: (proposal as any).target_scope || 'all',
-          sessions: sessions,
+          sessions: finalSessions,
           is_recruitment_open: true,
         });
 

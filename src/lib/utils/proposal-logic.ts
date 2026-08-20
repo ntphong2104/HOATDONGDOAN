@@ -39,11 +39,18 @@ export function calculateProposalStages(
   participantCount: number,
   roomId?: string | null,
   roomName?: string,
-  organizationUnit?: string
+  organizationUnit?: string,
+  sessions?: any[]
 ): StageRequirement {
   const isDirectFaculty = isKhoaUnit(organizationUnit);
-  const isBorrowingRoom = Boolean(roomId && roomId !== 'none' && roomName !== 'Không mượn');
-  const requiresCtsv = participantCount > 50;
+  const isBorrowingRoom =
+    Boolean(roomId && roomId !== 'none' && roomName !== 'Không mượn') ||
+    (Array.isArray(sessions) && sessions.some((s) => s.room_id && s.room_name && s.room_name !== 'Không mượn'));
+  const maxParticipants =
+    Array.isArray(sessions) && sessions.length > 0
+      ? Math.max(participantCount, ...sessions.map((s) => Number(s.participant_count || 0)))
+      : participantCount;
+  const requiresCtsv = maxParticipants > 50;
   const requiresFacility = isBorrowingRoom;
 
   if (isDirectFaculty) {

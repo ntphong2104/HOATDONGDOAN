@@ -49,10 +49,14 @@ export async function GET(
         eventRatings = evRatings || [];
       }
 
+      const stored = getStoredProposalById(resolvedParams.id);
+      const proposalSessions = proposal.sessions || stored?.sessions || [];
+
       return NextResponse.json({
         success: true,
         data: {
           ...proposal,
+          sessions: proposalSessions,
           logs: logs || [],
           ratingSummary,
           eventRatings,
