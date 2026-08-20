@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { getEventMeta, saveEventMeta, type EventMeta } from '@/lib/constants/event-meta-store';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   const supabase = await createClient();
-  const { data, error } = await supabase.from('events').select('*').eq('event_id', resolvedParams.id).single();
+  const { data, error } = await supabase.from('events').select('*').eq('event_id', resolvedParams.id).maybeSingle();
   
-  if (error) return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+  if (error || !data) return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện'}, { status: 404 });
   
   if (data && data.status === 'active' && isEventPastDeadline(data)) {
     data.status = 'closed';
@@ -16,7 +17,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', resolvedParams.id).then(() => {});
   }
 
-  return NextResponse.json({ success: true, data });
+  const meta = await getEventMeta(supabase, resolvedParams.id);
+  const enriched = {
+    ...data,
+    departments: meta.departments || [],
+    is_recruitment_open: meta.is_recruitment_open !== false,
+    target_scope: meta.target_scope || 'all',
+  };
+
+  return NextResponse.json({ success: true, data: enriched });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,7 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .from('events')
     .select('*')
     .eq('event_id', resolvedParams.id)
-    .single();
+    .maybeSingle();
 
   if (fetchError || !currentEvent) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
@@ -45,7 +54,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     auth.tier === 'youth_union' ||
     auth.email.toLowerCase().includes('doanthanhnien');
 
-  const { status, event_name, event_date, start_time, end_time, semester, departments, target_scope } = await req.json();
+  const body = await req.json().catch(() => ({}));
+  const { status, event_name, event_date, start_time, end_time, semester, departments, target_scope, is_recruitment_open } = body;
 
   // Kiểm tra quyền MỞ LẠI sự kiện khi đã quá 1 tiếng sau giờ kết thúc
   if (status === 'active') {
@@ -84,42 +94,64 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
-  const updatePayload: Record<string, any> = {};
-  if (status !== undefined) {
-    updatePayload.status = status;
-    updatePayload.is_active = status === 'active';
+  // Save departments & recruitment custom metadata safely
+  const metaUpdates: Partial<EventMeta> = {};
+  if (departments !== undefined) metaUpdates.departments = departments;
+  if (target_scope !== undefined) metaUpdates.target_scope = target_scope;
+  if (is_recruitment_open !== undefined) metaUpdates.is_recruitment_open = is_recruitment_open;
 
-    // Nếu Super Admin hoặc Đoàn TN mở lại một sự kiện đã quá hạn trong quá khứ, tự động gia hạn giờ kết thúc để không bị re-close ngay lập tức
+  if (Object.keys(metaUpdates).length > 0) {
+    await saveEventMeta(supabase, resolvedParams.id, metaUpdates);
+  }
+
+  const dbPayload: Record<string, any> = {};
+  if (status !== undefined) {
+    dbPayload.status = status;
+    dbPayload.is_active = status === 'active';
+
     if (status === 'active' && isEventPastDeadline(currentEvent) && isPrivileged) {
       const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
       const todayStr = nowVN.toISOString().split('T')[0];
       if (currentEvent.event_date < todayStr && !event_date) {
-        updatePayload.event_date = todayStr;
+        dbPayload.event_date = todayStr;
       }
       if (!end_time) {
-        updatePayload.end_time = '23:59';
+        dbPayload.end_time = '23:59';
       }
     }
   }
 
-  if (event_name !== undefined) updatePayload.event_name = event_name;
-  if (event_date !== undefined) updatePayload.event_date = event_date;
-  if (start_time !== undefined) updatePayload.start_time = start_time;
-  if (end_time !== undefined) updatePayload.end_time = end_time;
-  if (semester !== undefined) updatePayload.semester = semester;
-  if (departments !== undefined) updatePayload.departments = departments;
-  if (target_scope !== undefined) updatePayload.target_scope = target_scope;
+  if (event_name !== undefined) dbPayload.event_name = event_name;
+  if (event_date !== undefined) dbPayload.event_date = event_date;
+  if (start_time !== undefined) dbPayload.start_time = start_time;
+  if (end_time !== undefined) dbPayload.end_time = end_time;
+  if (semester !== undefined) dbPayload.semester = semester;
 
-  const { data, error } = await supabase
-    .from('events')
-    .update(updatePayload)
-    .eq('event_id', resolvedParams.id)
-    .select()
-    .single();
+  let updatedEvent = currentEvent;
+  if (Object.keys(dbPayload).length > 0) {
+    const { data, error } = await supabase
+      .from('events')
+      .update(dbPayload)
+      .eq('event_id', resolvedParams.id)
+      .select()
+      .maybeSingle();
 
-  if (error) return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
+    if (error) {
+      console.error('Update event error:', error);
+      return NextResponse.json({ success: false, error: 'Lỗi cập nhật thông tin sự kiện' }, { status: 500 });
+    }
+    if (data) updatedEvent = data;
+  }
 
-  return NextResponse.json({ success: true, data });
+  const latestMeta = await getEventMeta(supabase, resolvedParams.id);
+  const result = {
+    ...updatedEvent,
+    departments: latestMeta.departments || [],
+    is_recruitment_open: latestMeta.is_recruitment_open !== false,
+    target_scope: latestMeta.target_scope || 'all',
+  };
+
+  return NextResponse.json({ success: true, data: result });
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {

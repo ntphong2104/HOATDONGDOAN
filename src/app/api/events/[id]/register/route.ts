@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
+import { getEventMeta } from '@/lib/constants/event-meta-store';
 
 export async function GET(
   req: Request,
@@ -14,15 +15,23 @@ export async function GET(
   const supabase = await createClient();
 
   // Fetch event details
-  const { data: event, error: eventErr } = await supabase
+  const { data: rawEvent, error: eventErr } = await supabase
     .from('events')
     .select('*')
     .eq('event_id', resolvedParams.id)
-    .single();
+    .maybeSingle();
 
-  if (eventErr || !event) {
+  if (eventErr || !rawEvent) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
+
+  const meta = await getEventMeta(supabase, resolvedParams.id);
+  const event = {
+    ...rawEvent,
+    departments: meta.departments || [],
+    is_recruitment_open: meta.is_recruitment_open !== false,
+    target_scope: meta.target_scope || 'all',
+  };
 
   const registrationWindow = isRegistrationWindowOpen(
     event.event_date,
@@ -109,15 +118,23 @@ export async function POST(
   const supabase = await createClient();
 
   // 1. Verify Event Exists and is Active
-  const { data: event, error: eventErr } = await supabase
+  const { data: rawEvent, error: eventErr } = await supabase
     .from('events')
     .select('*')
     .eq('event_id', resolvedParams.id)
-    .single();
+    .maybeSingle();
 
-  if (eventErr || !event) {
+  if (eventErr || !rawEvent) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
+
+  const meta = await getEventMeta(supabase, resolvedParams.id);
+  const event = {
+    ...rawEvent,
+    departments: meta.departments || [],
+    is_recruitment_open: meta.is_recruitment_open !== false,
+    target_scope: meta.target_scope || 'all',
+  };
 
   const registrationWindow = isRegistrationWindowOpen(
     event.event_date,
