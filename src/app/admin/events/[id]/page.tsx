@@ -1814,22 +1814,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         }}>
                           Ca #{idx + 1}
                         </span>
-                        {sessions.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteSession(s.id, s.name)}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#ef4444',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Xóa ca
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSession(s.id, s.name)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            background: '#fef2f2',
+                            border: '1px solid #fecaca',
+                            color: '#dc2626',
+                            padding: '0.3rem 0.65rem',
+                            borderRadius: '8px',
+                            fontSize: '0.785rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          <span>🗑️ Xóa Ca Này</span>
+                        </button>
                       </div>
 
                       <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>

@@ -906,15 +906,21 @@ export default function NewProposalPage() {
                             type="button"
                             onClick={() => handleRemoveSession(sess.id)}
                             style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#ef4444',
-                              fontSize: '0.8rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              background: '#fef2f2',
+                              border: '1px solid #fecaca',
+                              color: '#dc2626',
+                              padding: '0.3rem 0.65rem',
+                              borderRadius: '8px',
+                              fontSize: '0.785rem',
                               fontWeight: 700,
                               cursor: 'pointer',
+                              transition: 'all 0.2s ease',
                             }}
                           >
-                            ✕ Xóa Ca Này
+                            <span>🗑️ Xóa Ca Này</span>
                           </button>
                         )}
                       </div>
