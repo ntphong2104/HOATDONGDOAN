@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 
 export async function POST(
   req: Request,
@@ -111,17 +112,18 @@ export async function POST(
       }
     }
 
-    // 4. Update the registrations
-    const { error: updateErr } = await supabase
-      .from('event_registrations')
-      .update({ review_status })
-      .eq('event_id', resolvedParams.id)
-      .in('mssv', targetMssvs);
-
-    if (updateErr) {
-      console.error('Update registrations error:', updateErr);
-      return NextResponse.json({ success: false, error: 'Lỗi cập nhật hồ sơ trong database' }, { status: 500 });
+    // 4. Update the registrations in meta store and database
+    for (const m of targetMssvs) {
+      await saveRegistrationExtra(supabase, resolvedParams.id, m, { review_status });
     }
+
+    try {
+      await supabase
+        .from('event_registrations')
+        .update({ role_type: review_status === 'accepted' ? 'volunteer' : 'participant' })
+        .eq('event_id', resolvedParams.id)
+        .in('mssv', targetMssvs);
+    } catch {}
 
     const statusText =
       review_status === 'accepted'

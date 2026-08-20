@@ -4,7 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
-import { getEventMeta } from '@/lib/constants/event-meta-store';
+import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 
 export async function GET(
   req: Request,
@@ -46,6 +46,8 @@ export async function GET(
     .select('*', { count: 'exact', head: true })
     .eq('event_id', resolvedParams.id);
 
+  const regExtras = await getRegistrationExtras(supabase, resolvedParams.id);
+
   let myRegistration = null;
   let penaltyStatus = null;
 
@@ -58,16 +60,27 @@ export async function GET(
       .select('*')
       .eq('event_id', resolvedParams.id)
       .eq('email', auth.email)
-      .single();
+      .maybeSingle();
 
-    myRegistration = reg;
+    if (reg) {
+      const extra = regExtras[mssv.toUpperCase()] || {};
+      myRegistration = {
+        ...reg,
+        department_id: extra.department_id || reg.department_id || null,
+        department_name: extra.department_name || reg.department_name || null,
+        gender: extra.gender || reg.gender || 'Nam',
+        phone: extra.phone || reg.phone || '',
+        note: extra.note || reg.note || '',
+        review_status: extra.review_status || reg.review_status || (reg.role_type === 'volunteer' ? 'pending' : 'accepted'),
+      };
+    }
 
     // Check penalty status
     const { data: penalty } = await supabase
       .from('user_penalties')
       .select('*')
       .eq('mssv', mssv)
-      .single();
+      .maybeSingle();
 
     penaltyStatus = penalty;
   }
@@ -81,7 +94,18 @@ export async function GET(
       .eq('event_id', resolvedParams.id)
       .order('created_at', { ascending: false });
 
-    allRegistrations = list || [];
+    allRegistrations = (list || []).map((r) => {
+      const extra = regExtras[(r.mssv || '').toUpperCase()] || {};
+      return {
+        ...r,
+        department_id: extra.department_id || r.department_id || null,
+        department_name: extra.department_name || r.department_name || null,
+        gender: extra.gender || r.gender || 'Nam',
+        phone: extra.phone || r.phone || '',
+        note: extra.note || r.note || '',
+        review_status: extra.review_status || r.review_status || (r.role_type === 'volunteer' ? 'pending' : 'accepted'),
+      };
+    });
   }
 
   return NextResponse.json({
@@ -156,7 +180,7 @@ export async function POST(
     .from('user_penalties')
     .select('*')
     .eq('mssv', mssv)
-    .single();
+    .maybeSingle();
 
   if (penalty?.is_blacklisted) {
     return NextResponse.json({
@@ -171,7 +195,7 @@ export async function POST(
     .from('users')
     .select('full_name, class_id, gender, phone')
     .eq('email', auth.email)
-    .single();
+    .maybeSingle();
 
   const body = await req.json().catch(() => ({}));
   const role_type = body.role_type === 'volunteer' ? 'volunteer' : 'participant';
@@ -221,21 +245,6 @@ export async function POST(
             error: `Vị trí "${dept.name}" ưu tiên ứng viên Nữ. Bạn vui lòng chọn Ban khác phù hợp hơn nhé!`,
           }, { status: 400 });
         }
-
-        // Check department quota
-        const { count: acceptedInDept } = await supabase
-          .from('event_registrations')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', resolvedParams.id)
-          .eq('department_id', department_id)
-          .eq('review_status', 'accepted');
-
-        if (dept.quota && (acceptedInDept || 0) >= dept.quota) {
-          return NextResponse.json({
-            success: false,
-            error: `Vị trí "${dept.name}" đã đủ chỉ tiêu trúng tuyển (${acceptedInDept}/${dept.quota}). Bạn vui lòng chọn Ban khác còn chỗ nhé!`,
-          }, { status: 400 });
-        }
       }
     }
   }
@@ -250,7 +259,9 @@ export async function POST(
     } catch {}
   }
 
-  // 4. Register for the event
+  // 4. Register for the event (Insert standard Postgres columns safely)
+  const review_status = role_type === 'volunteer' ? 'pending' : 'accepted';
+
   const { data: reg, error: regErr } = await supabase
     .from('event_registrations')
     .upsert(
@@ -261,27 +272,41 @@ export async function POST(
         full_name: userProfile?.full_name || auth.email,
         class_id: userProfile?.class_id || 'PTIT-HCM',
         role_type,
-        department_id,
-        department_name,
-        gender,
-        phone,
-        note,
-        review_status: role_type === 'volunteer' ? 'pending' : 'accepted',
         attended: false,
       },
       { onConflict: 'event_id,mssv' }
     )
     .select()
-    .single();
+    .maybeSingle();
 
   if (regErr) {
-    console.error('Registration error:', regErr);
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
+    console.error('Registration database error:', regErr);
+    return NextResponse.json({ success: false, error: 'Lỗi đăng ký trong cơ sở dữ liệu' }, { status: 500 });
   }
+
+  // Save extra attributes (departments, review status, notes) in persistent meta store
+  await saveRegistrationExtra(supabase, resolvedParams.id, mssv, {
+    department_id,
+    department_name,
+    gender,
+    phone,
+    note,
+    review_status,
+  });
+
+  const responseData = {
+    ...(reg || {}),
+    department_id,
+    department_name,
+    gender,
+    phone,
+    note,
+    review_status,
+  };
 
   return NextResponse.json({
     success: true,
-    data: reg,
+    data: responseData,
     message:
       role_type === 'volunteer'
         ? `Đã gửi đơn ứng tuyển vào "${department_name || 'Ban CTV'}" thành công! Ban tổ chức sẽ duyệt hồ sơ của bạn.`
