@@ -337,50 +337,6 @@ export default function EventRegisterPage({
                 </div>
               ) : (
                 <>
-                  {/* Banner to Recruitment Page if departments exist */}
-                  {event.departments && event.departments.length > 0 && (
-                    <div
-                      style={{
-                        background: '#eff6ff',
-                        border: '1.5px solid #bfdbfe',
-                        borderRadius: '12px',
-                        padding: '0.85rem 1rem',
-                        marginBottom: '1.25rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <div>
-                        <strong style={{ color: '#1e40af', fontSize: '0.875rem' }}>
-                          Tuyển Ban Chuyên Trách / CTV:
-                        </strong>
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#3b82f6' }}>
-                          Sự kiện đang tuyển {event.departments.length} Ban (Hậu cần, Truyền thông...).
-                        </p>
-                      </div>
-                      <Link
-                        href={`/events/${event.event_id}/recruitment`}
-                        style={{
-                          padding: '0.4rem 0.85rem',
-                          background: '#2563eb',
-                          color: '#ffffff',
-                          borderRadius: '8px',
-                          fontSize: '0.8rem',
-                          fontWeight: 700,
-                          textDecoration: 'none',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.3rem',
-                        }}
-                      >
-                        Nộp Đơn Ứng Tuyển ➔
-                      </Link>
-                    </div>
-                  )}
-
                   {/* Student info and extra details */}
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Thông Tin Sinh Viên Đăng Ký</label>
