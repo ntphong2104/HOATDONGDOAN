@@ -217,7 +217,9 @@ export default function EventRegisterPage({
 
             <div className={styles.infoBox}>
               <span className={styles.infoLabel}>Đã Đăng Ký</span>
-              <span className={styles.infoValue}>{totalRegistered} sinh viên</span>
+              <span className={styles.infoValue}>
+                {totalRegistered}{event.max_participants ? ` / ${event.max_participants}` : ''} sinh viên
+              </span>
             </div>
 
             <div className={styles.infoBox}>
@@ -226,7 +228,11 @@ export default function EventRegisterPage({
                 className={styles.infoValue}
                 style={{ color: registrationWindow?.isOpen ? '#16a34a' : '#dc2626' }}
               >
-                {registrationWindow?.isOpen ? '🟢 Đang mở đăng ký' : '🔴 Đã đóng đăng ký'}
+                {registrationWindow?.isOpen
+                  ? '🟢 Đang mở đăng ký'
+                  : event.max_participants && totalRegistered >= event.max_participants
+                  ? '🔴 Đã đủ chỉ tiêu (Đã đóng)'
+                  : '🔴 Đã đóng đăng ký'}
               </span>
             </div>
           </div>

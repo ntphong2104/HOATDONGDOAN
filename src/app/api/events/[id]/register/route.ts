@@ -31,20 +31,29 @@ export async function GET(
     departments: meta.departments || [],
     is_recruitment_open: meta.is_recruitment_open !== false,
     target_scope: meta.target_scope || 'all',
+    max_participants: meta.max_participants || 0,
+    max_volunteers: meta.max_volunteers || 0,
   };
-
-  const registrationWindow = isRegistrationWindowOpen(
-    event.event_date,
-    event.start_time,
-    event.status,
-    event.is_registration_open
-  );
 
   // Count total registrations
   const { count: totalRegistered } = await supabase
     .from('event_registrations')
     .select('*', { count: 'exact', head: true })
     .eq('event_id', resolvedParams.id);
+
+  let registrationWindow = isRegistrationWindowOpen(
+    event.event_date,
+    event.start_time,
+    event.status,
+    event.is_registration_open
+  );
+
+  if (registrationWindow.isOpen && event.max_participants > 0 && (totalRegistered || 0) >= event.max_participants) {
+    registrationWindow = {
+      isOpen: false,
+      reason: `Sự kiện đã đủ số lượng sinh viên đăng ký (${totalRegistered}/${event.max_participants} sinh viên). Cổng đăng ký đã tự động đóng!`,
+    };
+  }
 
   const regExtras = await getRegistrationExtras(supabase, resolvedParams.id);
 
@@ -204,6 +213,22 @@ export async function POST(
   const note = body.note || '';
   const department_id = body.department_id || null;
   let department_name = body.department_name || null;
+
+  // Validate participant capacity limit
+  if (role_type === 'participant' && event.max_participants && event.max_participants > 0) {
+    const { count: currentParticipantCount } = await supabase
+      .from('event_registrations')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', resolvedParams.id)
+      .eq('role_type', 'participant');
+
+    if ((currentParticipantCount || 0) >= event.max_participants) {
+      return NextResponse.json({
+        success: false,
+        error: `Sự kiện đã đủ số lượng sinh viên tham gia quy định (${currentParticipantCount}/${event.max_participants} sinh viên). Cổng đăng ký đã tự động đóng!`,
+      }, { status: 400 });
+    }
+  }
 
   // Validate recruitment window and department quota if applying for CTV
   if (role_type === 'volunteer') {
