@@ -43,5 +43,17 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   await POST(req);
-  return NextResponse.redirect(new URL('/login', req.url));
+  const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+  let origin = 'https://ptithcm.com';
+  if (
+    forwardedHost &&
+    !forwardedHost.includes('127.0.0.1') &&
+    !forwardedHost.includes('localhost')
+  ) {
+    origin = `${forwardedProto}://${forwardedHost}`;
+  } else if (process.env.NODE_ENV !== 'production') {
+    origin = new URL(req.url).origin;
+  }
+  return NextResponse.redirect(`${origin}/login`);
 }

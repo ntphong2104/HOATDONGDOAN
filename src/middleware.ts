@@ -76,6 +76,7 @@ function getValidUrl(url: string | undefined): string {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicRoute = pathname === '/' || PUBLIC_ROUTES.some((route) => route !== '/' && pathname.startsWith(route));
+  const publicOrigin = getPublicOriginFromReq(request);
 
   // 1. Check Demo Session Cookie
   const demoCookie = request.cookies.get('demo_session');
@@ -91,7 +92,7 @@ export async function middleware(request: NextRequest) {
     request,
   });
 
-  const supabaseUrl = getValidUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
   const supabaseAnonKey =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
@@ -107,7 +108,7 @@ export async function middleware(request: NextRequest) {
             return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
             supabaseResponse = NextResponse.next({
               request,
             });
@@ -125,7 +126,7 @@ export async function middleware(request: NextRequest) {
 
     // If unauthenticated and accessing protected route -> redirect to login with target redirect
     if (!user && !isPublicRoute && !demoCookie?.value) {
-      const loginUrl = new URL('/login', request.url);
+      const loginUrl = new URL('/login', publicOrigin);
       if (pathname && pathname !== '/' && pathname !== '/login') {
         const fullTarget = request.nextUrl.search ? `${pathname}${request.nextUrl.search}` : pathname;
         loginUrl.searchParams.set('redirect', fullTarget);
@@ -154,14 +155,14 @@ export async function middleware(request: NextRequest) {
 
       if (isMaintenance && pathname !== '/maintenance' && !pathname.startsWith('/api/admin/maintenance')) {
         if (!isSuperAdmin) {
-          return addSecurityHeaders(NextResponse.redirect(new URL('/maintenance', request.url)));
+          return addSecurityHeaders(NextResponse.redirect(new URL('/maintenance', publicOrigin)));
         }
       }
 
     }
   } catch (err) {
     if (!isPublicRoute) {
-      return addSecurityHeaders(NextResponse.redirect(new URL('/login', request.url)));
+      return addSecurityHeaders(NextResponse.redirect(new URL('/login', publicOrigin)));
     }
   }
 

@@ -3,15 +3,25 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isValidSchoolEmail, extractMSSV } from '@/lib/utils/extract-mssv';
 
 function getPublicOrigin(request: Request): string {
-  const { origin } = new URL(request.url);
-  if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-    return origin;
-  }
   const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
   const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
-  if (forwardedHost && !forwardedHost.includes('0.0.0.0') && !forwardedHost.includes('127.0.0.1')) {
+
+  // Prioritize reverse proxy headers (e.g. ptithcm.com)
+  if (
+    forwardedHost &&
+    !forwardedHost.includes('127.0.0.1') &&
+    !forwardedHost.includes('localhost') &&
+    !forwardedHost.includes('0.0.0.0')
+  ) {
     return `${forwardedProto}://${forwardedHost}`;
   }
+
+  // In production VPS environment, default to production domain
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://ptithcm.com';
+  }
+
+  const { origin } = new URL(request.url);
   return origin;
 }
 
