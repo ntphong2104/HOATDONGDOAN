@@ -46,30 +46,37 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Lỗi tải danh sách đăng ký' }, { status: 500 });
     }
 
-    const eventMetas = await getEventMeta(supabase);
+    const { getSessionCheckIns, getEventMeta: getMetaForEvent } = await import('@/lib/constants/event-meta-store');
+
     const enrichedList = await Promise.all(
       (regs || []).map(async (r: any) => {
         const ev = r.events || {};
         const regExtras = await getRegistrationExtras(supabase, r.event_id);
         const extra = regExtras[(r.mssv || '').toUpperCase()] || {};
-        const evMeta = eventMetas[r.event_id] || {};
+        const singleMeta = await getMetaForEvent(supabase, r.event_id);
+        const sessionCheckins = await getSessionCheckIns(supabase, r.event_id);
+        const mySessions = sessionCheckins.filter((s) => s.mssv.toUpperCase() === (r.mssv || '').toUpperCase());
+        const totalSessions = (singleMeta.sessions && singleMeta.sessions.length > 0) ? singleMeta.sessions.length : 1;
+        const mySessionCount = mySessions.length > 0 ? mySessions.length : (r.attended ? 1 : 0);
 
         return {
           id: r.id,
           event_id: r.event_id,
-          event_name: ev.event_name || evMeta.title || 'Sự kiện Học Viện',
-          event_date: ev.event_date || evMeta.event_date || null,
-          start_time: ev.start_time || evMeta.start_time || null,
-          end_time: ev.end_time || evMeta.end_time || null,
-          semester: ev.semester || evMeta.semester || 'Học kỳ mới',
+          event_name: ev.event_name || 'Sự kiện Học Viện',
+          event_date: ev.event_date || null,
+          start_time: ev.start_time || null,
+          end_time: ev.end_time || null,
+          semester: ev.semester || 'Học kỳ mới',
           status: ev.status || 'active',
           role_type: r.role_type || 'participant',
           department_name: extra.department_name || null,
           review_status: extra.review_status || (r.role_type === 'volunteer' ? 'pending' : 'accepted'),
           attended: Boolean(r.attended),
           registered_at: r.created_at,
-          location: evMeta.location || null,
-          description: evMeta.description || null,
+          session_count: mySessionCount,
+          total_sessions: totalSessions,
+          session_ratio: totalSessions > 1 ? `${mySessionCount}/${totalSessions} ca` : null,
+          session_names: mySessions.map((s) => s.session_name || s.session_id),
         };
       })
     );

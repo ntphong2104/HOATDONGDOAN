@@ -120,14 +120,34 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
   }
 
-  const exportData = Array.from(checkinsMap.values()).map((c, index) => ({
-    stt: index + 1,
-    ...c,
-  }));
+  // Enrich with per-session check-in history
+  const { getSessionCheckIns, getEventMeta } = await import('@/lib/constants/event-meta-store');
+  const sessionCheckins = await getSessionCheckIns(supabase, resolvedParams.id);
+  const meta = await getEventMeta(supabase, resolvedParams.id);
+  const totalSessions = (meta.sessions && meta.sessions.length > 0) ? meta.sessions.length : 1;
+
+  const exportData = Array.from(checkinsMap.values()).map((c, index) => {
+    const mySessions = sessionCheckins.filter((s) => s.mssv.toUpperCase() === c.mssv.toUpperCase());
+    const sessionNames = mySessions.length > 0
+      ? mySessions.map((s) => s.session_name || s.session_id)
+      : ['Buổi chính'];
+    const sessionCount = mySessions.length > 0 ? mySessions.length : 1;
+
+    return {
+      stt: index + 1,
+      ...c,
+      session_count: sessionCount,
+      total_sessions: totalSessions,
+      session_ratio: `${sessionCount}/${totalSessions} buổi`,
+      session_names: sessionNames.join(', '),
+      sessions: mySessions,
+    };
+  });
 
   return NextResponse.json({
     success: true,
     data: exportData,
     count: exportData.length,
+    session_checkins: sessionCheckins,
   });
 }

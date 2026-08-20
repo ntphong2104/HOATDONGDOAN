@@ -601,6 +601,23 @@ export default function StudentDashboardClient({
                         {ev.role_type === 'volunteer' ? `Cộng tác viên ${ev.department_name ? `(${ev.department_name})` : ''}` : 'Người tham gia'}
                       </span>
                     </div>
+
+                    {ev.session_ratio && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+                        <span style={{ fontWeight: 600 }}>Điểm danh ca:</span>
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '6px',
+                          background: ev.session_count > 0 ? '#eff6ff' : '#f8fafc',
+                          color: ev.session_count > 0 ? '#2563eb' : '#64748b',
+                          border: '1px solid #bfdbfe'
+                        }}>
+                          {ev.session_ratio} {ev.session_names?.length ? `(${ev.session_names.join(', ')})` : ''}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

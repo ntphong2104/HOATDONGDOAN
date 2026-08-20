@@ -16,6 +16,7 @@ export async function GET(
 
   const { searchParams } = new URL(req.url);
   const role = searchParams.get('role') || 'participant';
+  const sessionId = searchParams.get('session_id') || searchParams.get('sessionId') || 'main';
 
   const supabase = await createClient();
   const { data: event, error } = await supabase
@@ -28,8 +29,8 @@ export async function GET(
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
-  // Generate real-time expiring token for specific role
-  const tokenData = generateDynamicToken(event.event_id, role);
+  // Generate real-time expiring token for specific role and session
+  const tokenData = generateDynamicToken(event.event_id, role, Date.now(), sessionId);
 
   return NextResponse.json({
     success: true,
@@ -38,6 +39,7 @@ export async function GET(
       event_name: event.event_name,
       status: event.status,
       role: tokenData.role,
+      sessionId: tokenData.sessionId,
       token: tokenData.token,
       expiresInSeconds: tokenData.expiresInSeconds,
       windowSeconds: 10,

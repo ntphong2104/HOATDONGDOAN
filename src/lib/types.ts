@@ -37,6 +37,26 @@ export interface Event {
   created_at?: string;
   departments?: EventDepartment[];
   target_scope?: 'all' | 'unit_only';
+  sessions?: EventSession[];
+}
+
+export interface EventSession {
+  id: string;
+  name: string;
+  session_date?: string;
+  start_time?: string;
+  end_time?: string;
+  created_at?: string;
+}
+
+export interface SessionCheckIn {
+  event_id: string;
+  session_id: string;
+  session_name: string;
+  mssv: string;
+  participate_role: 'participant' | 'volunteer' | 'organizer';
+  checked_at: string;
+  checked_by: string;
 }
 
 export interface EventRole {
@@ -54,6 +74,8 @@ export interface CheckIn {
   participate_role: ParticipateRole;
   checked_by: string;
   created_at: string;
+  session_id?: string;
+  session_name?: string;
 }
 
 export interface EventRegistration {

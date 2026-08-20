@@ -40,7 +40,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true);
   const [reconciling, setReconciling] = useState(false);
   const [togglingReg, setTogglingReg] = useState(false);
-  const [activeTab, setActiveTab] = useState<'checkins' | 'registrations' | 'recruitment' | 'ratings' | 'noshow'>('checkins');
+  const [activeTab, setActiveTab] = useState<'checkins' | 'sessions' | 'registrations' | 'recruitment' | 'ratings' | 'noshow'>('checkins');
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [showAddSessionModal, setShowAddSessionModal] = useState(false);
+  const [newSessionName, setNewSessionName] = useState('');
+  const [newSessionDate, setNewSessionDate] = useState('');
+  const [newSessionStartTime, setNewSessionStartTime] = useState('07:30');
+  const [newSessionEndTime, setNewSessionEndTime] = useState('11:30');
+  const [savingSession, setSavingSession] = useState(false);
   const [departments, setDepartments] = useState<EventDepartment[]>([]);
   const [newDeptName, setNewDeptName] = useState('');
   const [newDeptQuota, setNewDeptQuota] = useState(5);
@@ -88,20 +95,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         return;
       }
 
-      const [eventRes, checkinsRes, rolesRes, regRes, ratingRes] = await Promise.all([
+      const [eventRes, checkinsRes, rolesRes, regRes, ratingRes, sessionsRes] = await Promise.all([
         fetch(`/api/events/${resolvedParams.id}`),
         fetch(`/api/events/${resolvedParams.id}/checkins`),
         fetch(`/api/events/${resolvedParams.id}/roles`),
         fetch(`/api/events/${resolvedParams.id}/register`),
         fetch(`/api/events/${resolvedParams.id}/ratings`),
+        fetch(`/api/events/${resolvedParams.id}/sessions`),
       ]);
 
-      const [eventData, checkinsData, rolesData, regData, ratingData] = await Promise.all([
+      const [eventData, checkinsData, rolesData, regData, ratingData, sessionsData] = await Promise.all([
         eventRes.json().catch(() => ({ success: false })),
         checkinsRes.json().catch(() => ({ success: false })),
         rolesRes.json().catch(() => ({ success: false })),
         regRes.json().catch(() => ({ success: false })),
         ratingRes.json().catch(() => ({ success: false })),
+        sessionsRes.json().catch(() => ({ success: false })),
       ]);
 
       if (eventData.success && eventData.data) {
@@ -128,11 +137,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       if (regData.success && regData.data?.allRegistrations) {
         setRegistrations(regData.data.allRegistrations || []);
       }
-      if (ratingData.success) {
-        setRatings(ratingData.data || []);
+      if (ratingData.success && ratingData.data) {
+        setRatings(ratingData.data);
+      }
+      if (sessionsData.success && Array.isArray(sessionsData.data?.sessions)) {
+        setSessions(sessionsData.data.sessions);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch event data:', err);
     } finally {
       if (isInitial) setLoading(false);
     }
@@ -314,6 +326,60 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     } catch (e) {
       console.error(e);
       alert('Lỗi xuất file Excel');
+    }
+  };
+
+  const handleAddSession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSessionName.trim()) {
+      alert('Vui lòng nhập tên ca/buổi');
+      return;
+    }
+    setSavingSession(true);
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session: {
+            name: newSessionName.trim(),
+            session_date: newSessionDate || (event?.event_date || new Date().toISOString().split('T')[0]),
+            start_time: newSessionStartTime || '07:30',
+            end_time: newSessionEndTime || '11:30',
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Thêm ca điểm danh thành công!');
+        setNewSessionName('');
+        setShowAddSessionModal(false);
+        fetchData(false);
+      } else {
+        alert(data.error || 'Lỗi thêm ca');
+      }
+    } catch {
+      alert('Lỗi kết nối');
+    } finally {
+      setSavingSession(false);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string, sessionName: string) => {
+    if (!confirm(`Bạn có chắc muốn xóa ca điểm danh "${sessionName}"?`)) return;
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}/sessions?session_id=${sessionId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Đã xóa ca thành công');
+        fetchData(false);
+      } else {
+        alert(data.error || 'Lỗi xóa ca');
+      }
+    } catch {
+      alert('Lỗi kết nối');
     }
   };
 
@@ -1306,6 +1372,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
               <button
                 type="button"
+                onClick={() => setActiveTab('sessions')}
+                className={`${styles.tabButton} ${activeTab === 'sessions' ? styles.tabButtonActive : styles.tabButtonInactive}`}
+                style={activeTab === 'sessions' ? { background: '#4f46e5', borderColor: '#4f46e5', color: '#ffffff' } : {}}
+              >
+                📑 Ca / Buổi Điểm Danh ({sessions.length})
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab('registrations')}
                 className={`${styles.tabButton} ${activeTab === 'registrations' ? styles.tabButtonActive : styles.tabButtonInactive}`}
               >
@@ -1586,6 +1661,34 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   },
                 },
                 {
+                  key: 'session_names',
+                  label: 'Buổi tham gia',
+                  render: (_val: string, row: any) => {
+                    const ratio = row.session_ratio || '1/1 buổi';
+                    const names = row.session_names || 'Buổi chính';
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          background: '#eff6ff',
+                          color: '#2563eb',
+                          border: '1px solid #bfdbfe',
+                          width: 'fit-content',
+                        }}>
+                          {ratio}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          {names}
+                        </span>
+                      </div>
+                    );
+                  },
+                },
+                {
                   key: 'checkin_time',
                   label: 'Thời gian quét',
                   render: (val: string) => {
@@ -1617,6 +1720,138 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               searchPlaceholder="Tìm kiếm theo MSSV, Họ tên, Lớp..."
               emptyMessage="Chưa có lượt điểm danh nào cho sự kiện này."
             />
+          ) : activeTab === 'sessions' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{
+                background: '#ffffff',
+                border: '1.5px solid #e2e8f0',
+                borderRadius: '14px',
+                padding: '1.25rem 1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '1rem',
+              }}>
+                <div>
+                  <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                    Quản Lý Các Ca / Buổi Điểm Danh ({sessions.length} ca)
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                    Mỗi ca có khung giờ điểm danh độc lập. Sinh viên đăng ký 1 lần, đến ca nào điểm danh ca đó và không thể điểm danh 2 lần trong cùng 1 ca.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewSessionName(`Buổi ${sessions.length + 1}`);
+                    setNewSessionDate(event?.event_date || new Date().toISOString().split('T')[0]);
+                    setShowAddSessionModal(true);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.6rem 1.2rem',
+                    background: '#4f46e5',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)',
+                  }}
+                >
+                  <span>+ Thêm Ca / Buổi Mới</span>
+                </button>
+              </div>
+
+              {/* Sessions Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+                {sessions.map((s, idx) => (
+                  <div
+                    key={s.id || idx}
+                    style={{
+                      background: '#ffffff',
+                      border: '1.5px solid #e2e8f0',
+                      borderRadius: '14px',
+                      padding: '1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '1rem',
+                      boxShadow: '0 2px 6px rgba(15, 23, 42, 0.04)',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          background: '#eef2ff',
+                          color: '#4f46e5',
+                          padding: '0.2rem 0.6rem',
+                          borderRadius: '6px',
+                        }}>
+                          Ca #{idx + 1}
+                        </span>
+                        {sessions.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSession(s.id, s.name)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ef4444',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Xóa ca
+                          </button>
+                        )}
+                      </div>
+
+                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                        {s.name}
+                      </h4>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.825rem', color: '#475569' }}>
+                        <div>📅 <strong>Ngày:</strong> {s.session_date ? new Date(s.session_date).toLocaleDateString('vi-VN') : 'Mặc định'}</div>
+                        <div>⏰ <strong>Giờ:</strong> {s.start_time || '07:30'} - {s.end_time || '11:30'}</div>
+                        <div>👥 <strong>Đã điểm danh ca này:</strong> <span style={{ color: '#16a34a', fontWeight: 800, fontSize: '0.95rem' }}>{s.checkedInCount || 0}</span> sinh viên</div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDynamicQR(true);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem',
+                        padding: '0.6rem 1rem',
+                        background: '#f0fdf4',
+                        color: '#166534',
+                        border: '1.5px solid #bbf7d0',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        fontSize: '0.825rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <QrCodeIcon size={16} color="#166534" />
+                      <span>Chiếu Mã QR Cho Ca Này</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : activeTab === 'registrations' ? (
             <DataTable 
               columns={[
@@ -2558,6 +2793,160 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </section>
       </main>
+
+      {/* Add Session Modal */}
+      {showAddSessionModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem',
+        }} onClick={() => setShowAddSessionModal(false)}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '480px',
+            width: '100%',
+            padding: '1.5rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+              ➕ Thêm Ca / Buổi Điểm Danh Mới
+            </h3>
+
+            <form onSubmit={handleAddSession} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                  Tên Ca / Buổi Điểm Danh: *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Buổi Sáng - Khai Mạc, Buổi Chiều, Ca 2..."
+                  value={newSessionName}
+                  onChange={(e) => setNewSessionName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.85rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box',
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                  Ngày Diễn Ra: *
+                </label>
+                <input
+                  type="date"
+                  value={newSessionDate}
+                  onChange={(e) => setNewSessionDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.85rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box',
+                  }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                    Giờ Bắt Đầu: *
+                  </label>
+                  <input
+                    type="time"
+                    value={newSessionStartTime}
+                    onChange={(e) => setNewSessionStartTime(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: '8px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      boxSizing: 'border-box',
+                    }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                    Giờ Kết Thúc: *
+                  </label>
+                  <input
+                    type="time"
+                    value={newSessionEndTime}
+                    onChange={(e) => setNewSessionEndTime(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: '8px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      boxSizing: 'border-box',
+                    }}
+                    required
+                  />
+                </div>
+              </div>
+
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.775rem', color: '#64748b' }}>
+                💡 <em>Điểm danh sẽ tự động mở trước giờ bắt đầu 15 phút và đóng sau giờ kết thúc 1 tiếng.</em>
+              </p>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddSessionModal(false)}
+                  style={{
+                    padding: '0.55rem 1rem',
+                    background: '#f1f5f9',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingSession}
+                  style={{
+                    padding: '0.55rem 1.25rem',
+                    background: '#4f46e5',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {savingSession ? 'Đang lưu...' : 'Lưu Ca Điểm Danh'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {event && (
         <EventBulkImportModal

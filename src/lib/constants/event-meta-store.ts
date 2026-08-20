@@ -10,10 +10,32 @@ export interface DepartmentConfig {
   created_at?: string;
 }
 
+export interface EventSession {
+  id: string;
+  name: string;
+  session_date?: string;
+  start_time?: string;
+  end_time?: string;
+  created_at?: string;
+}
+
+export interface SessionCheckIn {
+  event_id: string;
+  session_id: string;
+  session_name: string;
+  mssv: string;
+  participate_role: 'participant' | 'volunteer' | 'organizer';
+  checked_at: string;
+  checked_by: string;
+}
+
 export interface EventMeta {
   departments?: DepartmentConfig[];
   is_recruitment_open?: boolean;
   target_scope?: string;
+  sessions?: EventSession[];
+  max_participants?: number;
+  max_volunteers?: number;
 }
 
 const META_DIR = path.join(process.cwd(), 'data');
@@ -219,4 +241,95 @@ export async function saveRegistrationMeta(
   metaUpdate: Partial<EventMeta>
 ): Promise<EventMeta> {
   return saveEventMeta(supabase, eventId, metaUpdate);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Session-based Check-In Storage (Tracks attendance per individual session)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const inMemorySessionCheckins: Record<string, SessionCheckIn[]> = {};
+
+function getSessionCheckinsFile(eventId: string): string {
+  return path.join(META_DIR, `session-checkins-${eventId}.json`);
+}
+
+function loadSessionCheckinsFromFile(eventId: string): SessionCheckIn[] {
+  try {
+    const fPath = getSessionCheckinsFile(eventId);
+    if (fs.existsSync(fPath)) {
+      const raw = fs.readFileSync(fPath, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch {}
+  return [];
+}
+
+function saveSessionCheckinsToFile(eventId: string, checkins: SessionCheckIn[]) {
+  try {
+    if (!fs.existsSync(META_DIR)) {
+      fs.mkdirSync(META_DIR, { recursive: true });
+    }
+    fs.writeFileSync(getSessionCheckinsFile(eventId), JSON.stringify(checkins, null, 2), 'utf-8');
+  } catch {}
+}
+
+export async function getSessionCheckIns(supabase: any, eventId: string): Promise<SessionCheckIn[]> {
+  const sessionKey = `event_session_checkins_${eventId}`;
+
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', sessionKey)
+        .maybeSingle();
+
+      if (data?.value) {
+        const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (Array.isArray(parsed)) {
+          inMemorySessionCheckins[eventId] = parsed;
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+
+  if (inMemorySessionCheckins[eventId]) {
+    return inMemorySessionCheckins[eventId];
+  }
+
+  const fromFile = loadSessionCheckinsFromFile(eventId);
+  inMemorySessionCheckins[eventId] = fromFile;
+  return fromFile;
+}
+
+export async function saveSessionCheckIn(supabase: any, checkIn: SessionCheckIn): Promise<SessionCheckIn[]> {
+  const eventId = checkIn.event_id;
+  const current = await getSessionCheckIns(supabase, eventId);
+
+  // Check if already checked in for THIS session
+  const exists = current.some(
+    (c) => c.session_id === checkIn.session_id && c.mssv.toUpperCase() === checkIn.mssv.toUpperCase()
+  );
+
+  if (exists) {
+    return current;
+  }
+
+  const updated = [checkIn, ...current];
+  inMemorySessionCheckins[eventId] = updated;
+  saveSessionCheckinsToFile(eventId, updated);
+
+  const sessionKey = `event_session_checkins_${eventId}`;
+  if (supabase) {
+    try {
+      await supabase.from('system_settings').upsert({
+        key: sessionKey,
+        value: JSON.stringify(updated),
+        updated_at: new Date().toISOString(),
+      });
+    } catch {}
+  }
+
+  return updated;
 }
