@@ -103,10 +103,29 @@ export async function GET(
       .eq('event_id', resolvedParams.id)
       .order('created_at', { ascending: false });
 
+    const mssvList = (list || []).map((r) => r.mssv).filter(Boolean);
+    const { data: userProfiles } = await supabase
+      .from('users')
+      .select('mssv, full_name, class_id')
+      .in('mssv', mssvList);
+
+    const userProfileMap = new Map((userProfiles || []).map((u) => [u.mssv.toUpperCase(), u]));
+
     allRegistrations = (list || []).map((r) => {
       const extra = regExtras[(r.mssv || '').toUpperCase()] || {};
+      const uProfile = userProfileMap.get((r.mssv || '').toUpperCase());
+      const realName = (uProfile?.full_name && !uProfile.full_name.includes('@'))
+        ? uProfile.full_name
+        : (r.full_name && !r.full_name.includes('@'))
+        ? r.full_name
+        : uProfile?.full_name || r.full_name || r.mssv;
+
+      const realClass = uProfile?.class_id || r.class_id || 'PTIT-HCM';
+
       return {
         ...r,
+        full_name: realName,
+        class_id: realClass,
         department_id: extra.department_id || r.department_id || null,
         department_name: extra.department_name || r.department_name || null,
         gender: extra.gender || r.gender || 'Nam',
@@ -203,8 +222,23 @@ export async function POST(
   const { data: userProfile } = await supabase
     .from('users')
     .select('full_name, class_id, gender, phone')
-    .eq('email', auth.email)
+    .or(`email.ilike.${auth.email},mssv.ilike.${mssv}`)
     .maybeSingle();
+
+  let resolvedFullName = (userProfile?.full_name && !userProfile.full_name.includes('@'))
+    ? userProfile.full_name
+    : null;
+
+  if (!resolvedFullName) {
+    const rawName = (auth as any).user_metadata?.full_name || (auth as any).user_metadata?.name;
+    if (rawName) {
+      const match = rawName.match(/^([A-Z]\d{2}[A-Z0-9-]+)\s+(.+)$/i);
+      resolvedFullName = match ? match[2].trim() : rawName;
+    }
+  }
+
+  const finalFullName = resolvedFullName || mssv;
+  const finalClassId = userProfile?.class_id || 'PTIT-HCM';
 
   const body = await req.json().catch(() => ({}));
   const role_type = body.role_type === 'volunteer' ? 'volunteer' : 'participant';
@@ -294,8 +328,8 @@ export async function POST(
         event_id: resolvedParams.id,
         email: auth.email,
         mssv: mssv,
-        full_name: userProfile?.full_name || auth.email,
-        class_id: userProfile?.class_id || 'PTIT-HCM',
+        full_name: finalFullName,
+        class_id: finalClassId,
         role_type,
         attended: false,
       },

@@ -99,10 +99,35 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
   });
 
+  // Fetch master user profiles for all checkin MSSVs to guarantee real student full name and class
+  const allMssvs = [...checkinsMap.keys()];
+  if (allMssvs.length > 0) {
+    const { data: userProfiles } = await supabase
+      .from('users')
+      .select('mssv, full_name, class_id')
+      .in('mssv', allMssvs);
+
+    const uMap = new Map((userProfiles || []).map((u) => [u.mssv.toUpperCase(), u]));
+
+    checkinsMap.forEach((val, key) => {
+      const u = uMap.get(key.toUpperCase());
+      if (u?.full_name && !u.full_name.includes('@')) {
+        val.full_name = u.full_name;
+      }
+      if (u?.class_id) {
+        val.class_id = u.class_id;
+      }
+    });
+  }
+
   const exportData = Array.from(checkinsMap.values()).map((c, index) => ({
     stt: index + 1,
     ...c,
   }));
 
-  return NextResponse.json({ success: true, data: exportData });
+  return NextResponse.json({
+    success: true,
+    data: exportData,
+    count: exportData.length,
+  });
 }
