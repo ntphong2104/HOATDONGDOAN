@@ -30,15 +30,19 @@ interface StudentDashboardClientProps {
   };
   tier: string;
   initialHistory: HistoryItem[];
+  initialRegistrations?: any[];
 }
 
 export default function StudentDashboardClient({
   user,
   tier,
   initialHistory,
+  initialRegistrations = [],
 }: StudentDashboardClientProps) {
   const [currentUser, setCurrentUser] = useState(user);
   const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
+  const [registeredEvents, setRegisteredEvents] = useState<any[]>(initialRegistrations);
+  const [loadingRegistrations, setLoadingRegistrations] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [userGender, setUserGender] = useState(user.gender || 'Nam');
   const [userPhone, setUserPhone] = useState(user.phone || '');
@@ -70,6 +74,21 @@ export default function StudentDashboardClient({
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchRegisteredEvents = async () => {
+    setLoadingRegistrations(true);
+    try {
+      const res = await fetch('/api/me/registrations');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setRegisteredEvents(data.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingRegistrations(false);
     }
   };
 
@@ -109,6 +128,7 @@ export default function StudentDashboardClient({
   useEffect(() => {
     checkDelegateStatus();
     syncUserProfile();
+    fetchRegisteredEvents();
   }, []);
 
   const fetchClassStudents = async (query?: string) => {
@@ -493,6 +513,124 @@ export default function StudentDashboardClient({
       </div>
 
 
+
+      {/* My Registered Events Section */}
+      <section className={styles.historySection} style={{ marginBottom: '1.75rem' }}>
+        <div className={styles.historyHeader}>
+          <h2 className={styles.historyTitle}>
+            <CalendarIcon size={20} color="#2563eb" />
+            Sự Kiện Tôi Đã Đăng Ký ({registeredEvents.length})
+          </h2>
+        </div>
+        {loadingRegistrations ? (
+          <p style={{ textAlign: 'center', padding: '1rem', color: '#64748b', fontSize: '0.85rem' }}>
+            Đang tải sự kiện đã đăng ký...
+          </p>
+        ) : registeredEvents.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '1.5rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
+              Bạn chưa đăng ký tham gia sự kiện nào. Khi bạn đăng ký tham gia qua link của Ban Tổ Chức, sự kiện sẽ hiển thị tại đây.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '1rem' }}>
+            {registeredEvents.map((ev) => (
+              <div
+                key={ev.id || ev.event_id}
+                style={{
+                  background: '#ffffff',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: '1.15rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '0.85rem',
+                  boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.725rem', fontWeight: 800, background: '#eff6ff', color: '#2563eb', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
+                      {ev.semester || 'Học Kỳ Mới'}
+                    </span>
+                    {ev.attended ? (
+                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#166534', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                        Đã điểm danh tham gia
+                      </span>
+                    ) : ev.role_type === 'volunteer' && ev.review_status === 'pending' ? (
+                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                        Đang chờ duyệt CTV
+                      </span>
+                    ) : ev.role_type === 'volunteer' && ev.review_status === 'rejected' ? (
+                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#991b1b', background: '#fef2f2', border: '1px solid #fecaca', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                        Chưa trúng tuyển CTV
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#1e40af', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                        Đã đăng ký (Chờ điểm danh)
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 style={{ margin: '0.2rem 0 0.4rem', fontSize: '0.975rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>
+                    {ev.event_name}
+                  </h3>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8rem', color: '#475569' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <ClockIcon size={14} color="#2563eb" />
+                      <span>{ev.event_date ? new Date(ev.event_date).toLocaleDateString('vi-VN') : 'Chưa xếp ngày'} {ev.start_time ? `(${ev.start_time}${ev.end_time ? ` - ${ev.end_time}` : ''})` : ''}</span>
+                    </div>
+                    {ev.location && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span>📍 {ev.location}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+                      <span style={{ fontWeight: 600 }}>Vai trò:</span>
+                      <span style={{
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '6px',
+                        background: ev.role_type === 'volunteer' ? '#f5f3ff' : '#ecfdf5',
+                        color: ev.role_type === 'volunteer' ? '#6d28d9' : '#047857',
+                        border: `1px solid ${ev.role_type === 'volunteer' ? '#ddd6fe' : '#a7f3d0'}`
+                      }}>
+                        {ev.role_type === 'volunteer' ? `Cộng tác viên ${ev.department_name ? `(${ev.department_name})` : ''}` : 'Người tham gia'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/events/${ev.event_id}/register`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    padding: '0.55rem 0.9rem',
+                    background: '#f8fafc',
+                    color: '#2563eb',
+                    border: '1.5px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>Xem Phiếu Đăng Ký / Chi Tiết</span>
+                  <span>➔</span>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Check-in History of Current Student */}
       <section className={styles.historySection}>

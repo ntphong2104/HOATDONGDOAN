@@ -91,6 +91,7 @@ export default async function HomePage({
   } catch {}
 
   let history: HistoryItem[] = [];
+  let initialRegistrations: any[] = [];
 
   try {
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
@@ -131,6 +132,45 @@ export default async function HomePage({
         semester: item.events?.semester,
         participate_role: item.participate_role as ParticipateRole,
         checkin_time: item.created_at,
+      }));
+    }
+
+    const { data: regData } = await supabase
+      .from('event_registrations')
+      .select(`
+        id,
+        event_id,
+        mssv,
+        role_type,
+        attended,
+        created_at,
+        events (
+          event_id,
+          event_name,
+          event_date,
+          start_time,
+          end_time,
+          semester,
+          status,
+          is_active
+        )
+      `)
+      .or(`email.ilike.${auth.email},mssv.ilike.${user.mssv}`)
+      .order('created_at', { ascending: false });
+
+    if (regData) {
+      initialRegistrations = regData.map((r: any) => ({
+        id: r.id,
+        event_id: r.event_id,
+        event_name: r.events?.event_name || 'Sự kiện Học Viện',
+        event_date: r.events?.event_date,
+        start_time: r.events?.start_time,
+        end_time: r.events?.end_time,
+        semester: r.events?.semester || 'Học kỳ mới',
+        status: r.events?.status || 'active',
+        role_type: r.role_type || 'participant',
+        attended: Boolean(r.attended),
+        registered_at: r.created_at,
       }));
     }
   } catch {}
@@ -174,6 +214,7 @@ export default async function HomePage({
           user={user}
           tier={auth.tier}
           initialHistory={history}
+          initialRegistrations={initialRegistrations}
         />
       </main>
     </div>
