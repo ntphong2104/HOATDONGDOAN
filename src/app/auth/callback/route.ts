@@ -85,19 +85,32 @@ export async function GET(request: Request) {
     const studentMssv = extractMSSV(email);
 
     if (studentMssv) {
+      // Check existing user in users table first
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('mssv, full_name, class_id')
+        .or(`email.ilike.${email},mssv.ilike.${studentMssv}`)
+        .maybeSingle();
+
       const rawName =
         session.user.user_metadata?.full_name ||
         session.user.user_metadata?.name ||
         '';
 
-      let className = 'PTIT-HCM';
-      let actualName = rawName || studentMssv;
+      let className = (existingUser?.class_id && existingUser.class_id !== 'PTIT-HCM') ? existingUser.class_id : 'PTIT-HCM';
+      let actualName = (existingUser?.full_name && !existingUser.full_name.includes('@'))
+        ? existingUser.full_name
+        : (rawName || studentMssv);
 
       // PTIT Google account name format: "D22CQCN02-N NGUYEN THANH PHONG"
       const match = rawName.match(/^([A-Z]\d{2}[A-Z0-9-]+)\s+(.+)$/i);
       if (match) {
-        className = match[1].toUpperCase();
-        actualName = match[2].trim();
+        if (!existingUser?.class_id || existingUser.class_id === 'PTIT-HCM') {
+          className = match[1].toUpperCase();
+        }
+        if (!existingUser?.full_name || existingUser.full_name.includes('@')) {
+          actualName = match[2].trim();
+        }
       }
 
       await supabase.from('users').upsert(

@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
+import { extractMSSV } from '@/lib/utils/extract-mssv';
 import Header from '@/components/Header';
 import StudentDashboardClient from '@/components/StudentDashboardClient';
 import type { HistoryItem, ParticipateRole, SessionUser } from '@/lib/types';
@@ -63,10 +64,13 @@ export default async function HomePage({
   }
 
   // ──── Giao diện Dành Riêng Cho Sinh Viên (Mã QR Điểm Danh & Lịch Sử) ────
+  const rawMssv = extractMSSV(auth.email) || auth.email.split('@')[0].toUpperCase();
   let user = {
-    mssv: auth.email.split('@')[0].toUpperCase(),
-    full_name: auth.email.split('@')[0],
+    mssv: rawMssv,
+    full_name: rawMssv,
     class_id: 'PTIT-HCM',
+    gender: 'Nam',
+    phone: '',
   };
 
   try {
@@ -79,6 +83,8 @@ export default async function HomePage({
           mssv: demoUser.mssv || user.mssv,
           full_name: demoUser.full_name || user.full_name,
           class_id: demoUser.class_id || user.class_id,
+          gender: demoUser.gender || user.gender,
+          phone: demoUser.phone || user.phone,
         };
       }
     }
@@ -87,18 +93,24 @@ export default async function HomePage({
   let history: HistoryItem[] = [];
 
   try {
-    const supabase = await createClient();
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
 
     const { data: dbUser } = await supabase
       .from('users')
       .select('mssv, full_name, class_id, gender, phone')
-      .eq('email', auth.email)
+      .or(`email.ilike.${auth.email},mssv.ilike.${rawMssv}`)
       .maybeSingle();
 
     if (dbUser) {
+      const realName = (dbUser.full_name && !dbUser.full_name.includes('@')) ? dbUser.full_name : user.full_name;
+      const realClass = dbUser.class_id || user.class_id;
       user = {
         ...user,
         ...dbUser,
+        mssv: dbUser.mssv || user.mssv,
+        full_name: realName,
+        class_id: realClass,
       };
     }
 
