@@ -10,24 +10,36 @@ export async function GET() {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
+  const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
+  const isYouthUnion = auth.tier === 'youth_union' || (auth.email || '').toLowerCase().includes('doanthanhnien');
+
   const supabase = await createClient();
   let query = supabase
     .from('events')
     .select('*, event_roles(id, email, role_type)')
     .order('created_at', { ascending: false });
 
-  if (!auth.isSuperAdmin) {
+  if (!isSuperAdmin && !isYouthUnion) {
     const { data: eventRoles } = await supabase
       .from('event_roles')
       .select('event_id')
-      .eq('email', auth.email)
+      .ilike('email', auth.email)
       .eq('role_type', 'event_admin');
 
-    if (!eventRoles || eventRoles.length === 0) {
+    const roleEventIds = (eventRoles || []).map((r) => r.event_id);
+
+    const { data: createdEvents } = await supabase
+      .from('events')
+      .select('event_id')
+      .ilike('created_by', auth.email);
+
+    const createdEventIds = (createdEvents || []).map((e) => e.event_id);
+    const allAccessibleIds = [...new Set([...roleEventIds, ...createdEventIds])];
+
+    if (allAccessibleIds.length === 0) {
       return NextResponse.json({ success: true, data: [] });
     }
-    const eventIds = eventRoles.map((r) => r.event_id);
-    query = query.in('event_id', eventIds);
+    query = query.in('event_id', allAccessibleIds);
   }
 
   const { data: events, error } = await query;
