@@ -73,6 +73,23 @@ function getValidUrl(url: string | undefined): string {
   return 'https://placeholder.supabase.co';
 }
 
+function getPublicOriginFromReq(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+  if (
+    forwardedHost &&
+    !forwardedHost.includes('127.0.0.1') &&
+    !forwardedHost.includes('localhost') &&
+    !forwardedHost.includes('0.0.0.0')
+  ) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://ptithcm.com';
+  }
+  return request.nextUrl.origin;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicRoute = pathname === '/' || PUBLIC_ROUTES.some((route) => route !== '/' && pathname.startsWith(route));
