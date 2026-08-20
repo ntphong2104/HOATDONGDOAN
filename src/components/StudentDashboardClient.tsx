@@ -37,6 +37,7 @@ export default function StudentDashboardClient({
   tier,
   initialHistory,
 }: StudentDashboardClientProps) {
+  const [currentUser, setCurrentUser] = useState(user);
   const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
   const [showScanner, setShowScanner] = useState(false);
   const [userGender, setUserGender] = useState(user.gender || 'Nam');
@@ -84,6 +85,31 @@ export default function StudentDashboardClient({
       console.error(err);
     }
   };
+
+  const syncUserProfile = async () => {
+    try {
+      const res = await fetch('/api/me');
+      const data = await res.json();
+      if (data.success && data.data) {
+        const d = data.data;
+        setCurrentUser((prev) => ({
+          ...prev,
+          mssv: d.mssv || prev.mssv,
+          full_name: (d.full_name && !d.full_name.includes('@')) ? d.full_name : prev.full_name,
+          class_id: (d.class_id && d.class_id !== 'PTIT-HCM') ? d.class_id : prev.class_id,
+          gender: d.gender || prev.gender,
+          phone: d.phone || prev.phone,
+        }));
+        if (d.gender) setUserGender(d.gender);
+        if (d.phone) setUserPhone(d.phone);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    checkDelegateStatus();
+    syncUserProfile();
+  }, []);
 
   const fetchClassStudents = async (query?: string) => {
     setLoadingClass(true);
@@ -216,9 +242,10 @@ export default function StudentDashboardClient({
       >
         {/* Card 1: Mã QR Điểm Danh Cá Nhân */}
         <QRCodeDisplay
-          value={user.mssv}
-          studentName={user.full_name}
-          studentClass={user.class_id}
+          value={currentUser.mssv}
+          studentName={currentUser.full_name}
+          studentClass={currentUser.class_id}
+          studentId={currentUser.mssv}
         />
 
         {/* Card 2: Hồ Sơ Đoàn Viên & Thông Tin Cá Nhân */}
@@ -253,11 +280,11 @@ export default function StudentDashboardClient({
                   boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)',
                 }}
               >
-                {user.full_name ? user.full_name.trim().charAt(0).toUpperCase() : 'S'}
+                {currentUser.full_name ? currentUser.full_name.trim().charAt(0).toUpperCase() : 'S'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {user.full_name || 'Đoàn Viên / Sinh Viên'}
+                  {currentUser.full_name || 'Đoàn Viên / Sinh Viên'}
                 </h3>
                 <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
                   Hồ Sơ Đoàn Viên Học Viện
@@ -270,14 +297,14 @@ export default function StudentDashboardClient({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
                 <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Mã Số Sinh Viên</span>
                 <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e40af', fontSize: '0.9rem' }}>
-                  {user.mssv}
+                  {currentUser.mssv}
                 </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
                 <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Chi Đoàn / Lớp</span>
                 <span style={{ fontWeight: 700, color: '#334155', fontSize: '0.875rem' }}>
-                  {user.class_id || 'BCH-DOAN'}
+                  {currentUser.class_id || 'BCH-DOAN'}
                 </span>
               </div>
 
