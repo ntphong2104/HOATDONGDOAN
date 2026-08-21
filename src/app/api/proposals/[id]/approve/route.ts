@@ -115,6 +115,9 @@ export async function POST(
   if (nextStage === 'approved') {
     let newEventId: string | null = null;
     try {
+      const participantCount = Number(proposal.participant_count) || 0;
+      const volunteerCount = Number((proposal as any).volunteer_count) || 0;
+
       const { data: newEvent, error: createEventErr } = await supabase
         .from('events')
         .insert({
@@ -126,7 +129,7 @@ export async function POST(
           is_active: true,
           created_by: proposal.created_by,
           semester: proposal.semester || 'Chưa xếp kỳ',
-          is_registration_open: true,
+          is_registration_open: participantCount > 0,
         })
         .select()
         .maybeSingle();
@@ -208,7 +211,9 @@ export async function POST(
           departments: (proposal as any).departments || [],
           target_scope: (proposal as any).target_scope || 'all',
           sessions: finalSessions,
-          is_recruitment_open: true,
+          is_recruitment_open: volunteerCount > 0 || Boolean((proposal as any).departments && (proposal as any).departments.length > 0),
+          max_participants: participantCount,
+          max_volunteers: volunteerCount,
         });
 
         await supabase.from('event_roles').insert({

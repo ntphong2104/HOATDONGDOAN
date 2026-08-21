@@ -83,6 +83,8 @@ export async function GET(req: Request) {
             }
 
             if (!eventExists) {
+              const participantCount = Number(prop.participant_count) || 0;
+              const volunteerCount = Number((prop as any).volunteer_count) || 0;
               const { data: newEv } = await supabase
                 .from('events')
                 .insert({
@@ -94,7 +96,7 @@ export async function GET(req: Request) {
                   is_active: true,
                   created_by: prop.created_by,
                   semester: prop.semester || 'Chưa xếp kỳ',
-                  is_registration_open: true,
+                  is_registration_open: participantCount > 0,
                 })
                 .select()
                 .maybeSingle();
@@ -104,7 +106,9 @@ export async function GET(req: Request) {
                 await saveEventMeta(supabase, newEv.event_id, {
                   departments: (prop as any).departments || [],
                   target_scope: (prop as any).target_scope || 'all',
-                  is_recruitment_open: true,
+                  is_recruitment_open: volunteerCount > 0 || Boolean((prop as any).departments && (prop as any).departments.length > 0),
+                  max_participants: participantCount,
+                  max_volunteers: volunteerCount,
                 });
                 await supabase.from('event_roles').insert({
                   event_id: newEv.event_id,

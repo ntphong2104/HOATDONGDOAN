@@ -48,7 +48,12 @@ export async function GET(
     event.is_registration_open
   );
 
-  if (registrationWindow.isOpen && event.max_participants > 0 && (totalRegistered || 0) >= event.max_participants) {
+  if (event.is_registration_open === false || event.status !== 'active') {
+    registrationWindow = {
+      isOpen: false,
+      reason: 'Sự kiện này không mở cổng đăng ký người tham gia (Chỉ dành cho Ban Tổ Chức & Cộng Tác Viên).',
+    };
+  } else if (event.max_participants > 0 && (totalRegistered || 0) >= event.max_participants) {
     registrationWindow = {
       isOpen: false,
       reason: `Sự kiện đã đủ số lượng sinh viên đăng ký (${totalRegistered}/${event.max_participants} sinh viên). Cổng đăng ký đã tự động đóng!`,
@@ -248,19 +253,28 @@ export async function POST(
   const department_id = body.department_id || null;
   let department_name = body.department_name || null;
 
-  // Validate participant capacity limit
-  if (role_type === 'participant' && event.max_participants && event.max_participants > 0) {
-    const { count: currentParticipantCount } = await supabase
-      .from('event_registrations')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', resolvedParams.id)
-      .eq('role_type', 'participant');
-
-    if ((currentParticipantCount || 0) >= event.max_participants) {
+  // Validate participant registration availability
+  if (role_type === 'participant') {
+    if (event.is_registration_open === false || event.status !== 'active') {
       return NextResponse.json({
         success: false,
-        error: `Sự kiện đã đủ số lượng sinh viên tham gia quy định (${currentParticipantCount}/${event.max_participants} sinh viên). Cổng đăng ký đã tự động đóng!`,
+        error: 'Sự kiện này không mở cổng đăng ký người tham gia / khán giả.',
       }, { status: 400 });
+    }
+
+    if (event.max_participants && event.max_participants > 0) {
+      const { count: currentParticipantCount } = await supabase
+        .from('event_registrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', resolvedParams.id)
+        .eq('role_type', 'participant');
+
+      if ((currentParticipantCount || 0) >= event.max_participants) {
+        return NextResponse.json({
+          success: false,
+          error: `Sự kiện đã đủ số lượng sinh viên tham gia quy định (${currentParticipantCount}/${event.max_participants} sinh viên). Cổng đăng ký đã tự động đóng!`,
+        }, { status: 400 });
+      }
     }
   }
 

@@ -230,6 +230,8 @@ export default function EventRegisterPage({
               >
                 {registrationWindow?.isOpen
                   ? '🟢 Đang mở đăng ký'
+                  : event.is_registration_open === false || event.max_participants === 0
+                  ? '🔴 Không mở đăng ký'
                   : event.max_participants && totalRegistered >= event.max_participants
                   ? '🔴 Đã đủ chỉ tiêu (Đã đóng)'
                   : '🔴 Đã đóng đăng ký'}
@@ -254,7 +256,7 @@ export default function EventRegisterPage({
             </div>
           )}
 
-          {/* 2. REGISTRATION WINDOW CLOSED (12-Hour Cutoff or Closed) */}
+          {/* 2. REGISTRATION WINDOW CLOSED (12-Hour Cutoff or Closed or 0 capacity) */}
           {!registrationWindow?.isOpen && !isBlacklisted && (
             <div
               style={{
@@ -267,14 +269,36 @@ export default function EventRegisterPage({
               }}
             >
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 800, color: '#b45309' }}>
-                CỔNG ĐĂNG KÝ ĐÃ ĐÓNG
+                {event.is_registration_open === false || event.max_participants === 0
+                  ? 'CỔNG ĐĂNG KÝ KHÁN GIẢ KHÔNG MỞ'
+                  : 'CỔNG ĐĂNG KÝ ĐÃ ĐÓNG'}
               </h3>
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                {registrationWindow?.reason || 'Cổng đăng ký đã đóng theo thời hạn quy định.'}
+                {registrationWindow?.reason || 'Sự kiện này không mở cổng đăng ký người tham gia / khán giả.'}
               </p>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                Quy định: Cổng đăng ký tự động đóng trước 12 tiếng để Ban tổ chức chốt số lượng người tham gia & chuẩn bị công tác tổ chức.
-              </div>
+
+              {event.is_recruitment_open !== false && (event.departments?.length > 0 || (event as any).max_volunteers > 0) && (
+                <div style={{ marginTop: '1.25rem' }}>
+                  <Link
+                    href={`/events/${event.event_id}/recruitment`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      background: '#0d9488',
+                      color: '#ffffff',
+                      padding: '0.7rem 1.25rem',
+                      borderRadius: '10px',
+                      fontWeight: 800,
+                      fontSize: '0.875rem',
+                      textDecoration: 'none',
+                      boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)',
+                    }}
+                  >
+                    <span>👉 Xem Cổng Tuyển Dụng Ban Chuyên Trách / CTV</span>
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
