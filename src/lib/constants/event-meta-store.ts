@@ -243,6 +243,60 @@ export async function saveRegistrationMeta(
   return saveEventMeta(supabase, eventId, metaUpdate);
 }
 
+export interface ProposalMeta {
+  sessions?: any[];
+  departments?: any[];
+  plan_url?: string;
+  description?: string;
+  target_scope?: string;
+}
+
+export async function getProposalMeta(supabase: any, proposalId: string): Promise<ProposalMeta> {
+  const metaKey = `proposal_meta_${proposalId}`;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', metaKey)
+        .maybeSingle();
+
+      if (data?.value) {
+        const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+  return {};
+}
+
+export async function saveProposalMeta(
+  supabase: any,
+  proposalId: string,
+  metaUpdate: Partial<ProposalMeta>
+): Promise<ProposalMeta> {
+  const current = await getProposalMeta(supabase, proposalId);
+  const updated: ProposalMeta = {
+    ...current,
+    ...metaUpdate,
+  };
+
+  const metaKey = `proposal_meta_${proposalId}`;
+  if (supabase) {
+    try {
+      await supabase.from('system_settings').upsert({
+        key: metaKey,
+        value: JSON.stringify(updated),
+        updated_at: new Date().toISOString(),
+      });
+    } catch {}
+  }
+
+  return updated;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Session-based Check-In Storage (Tracks attendance per individual session)
 // ═══════════════════════════════════════════════════════════════════════════

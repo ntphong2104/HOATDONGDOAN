@@ -8,7 +8,7 @@ import { resolveUnitForUser } from '@/lib/constants/units';
 import { summarizeUnitRatings } from '@/lib/utils/rating-logic';
 import { getStoredProposals, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
 import { getHandoverRegistryFromDb } from '@/lib/constants/handover-store';
-import { saveEventMeta } from '@/lib/constants/event-meta-store';
+import { saveEventMeta, saveProposalMeta } from '@/lib/constants/event-meta-store';
 import type { EventProposal } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -400,7 +400,21 @@ export async function POST(req: Request) {
       }
 
       if (!insertErr && createdProp) {
-        newProposal = createdProp;
+        newProposal = {
+          ...createdProp,
+          sessions: normalizedSessions,
+          description: sanitizedDescription,
+          plan_url: sanitizedPlanUrl,
+        };
+
+        // Persist proposal sessions and metadata into Supabase system_settings
+        await saveProposalMeta(supabase, createdProp.id, {
+          sessions: normalizedSessions,
+          description: sanitizedDescription,
+          plan_url: sanitizedPlanUrl,
+        });
+        saveProposalToStore(newProposal);
+
         try {
           await supabase.from('proposal_logs').insert({
             proposal_id: newProposal.id,
@@ -422,9 +436,17 @@ export async function POST(req: Request) {
       newProposal = {
         ...insertPayload,
         id: generatedId,
+        sessions: normalizedSessions,
+        description: sanitizedDescription,
+        plan_url: sanitizedPlanUrl,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+      await saveProposalMeta(supabase, generatedId, {
+        sessions: normalizedSessions,
+        description: sanitizedDescription,
+        plan_url: sanitizedPlanUrl,
+      });
       saveProposalToStore(newProposal);
       addStoredProposalLog({
         proposal_id: generatedId,

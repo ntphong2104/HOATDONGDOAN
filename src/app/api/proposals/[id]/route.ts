@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { summarizeUnitRatings } from '@/lib/utils/rating-logic';
 import { getStoredProposalById, getStoredProposalLogs, deleteProposalFromStore } from '@/lib/constants/proposals-store';
+import { getProposalMeta } from '@/lib/constants/event-meta-store';
 
 export async function GET(
   req: Request,
@@ -49,13 +50,19 @@ export async function GET(
         eventRatings = evRatings || [];
       }
 
+      const propMeta = await getProposalMeta(supabase, resolvedParams.id);
       const stored = getStoredProposalById(resolvedParams.id);
-      const proposalSessions = proposal.sessions || stored?.sessions || [];
+      const proposalSessions =
+        (propMeta.sessions && propMeta.sessions.length > 0)
+          ? propMeta.sessions
+          : proposal.sessions || stored?.sessions || [];
 
       return NextResponse.json({
         success: true,
         data: {
           ...proposal,
+          description: proposal.description || propMeta.description || stored?.description || '',
+          plan_url: proposal.plan_url || propMeta.plan_url || stored?.plan_url || '',
           sessions: proposalSessions,
           logs: logs || [],
           ratingSummary,

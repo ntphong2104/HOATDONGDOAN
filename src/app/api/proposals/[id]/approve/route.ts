@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getNextStage, getStageLabel } from '@/lib/utils/proposal-logic';
 import { getStoredProposalById, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
-import { saveEventMeta } from '@/lib/constants/event-meta-store';
+import { saveEventMeta, getProposalMeta } from '@/lib/constants/event-meta-store';
 import type { ProposalStage, EventProposal } from '@/lib/types';
 
 export async function POST(
@@ -134,11 +134,31 @@ export async function POST(
       if (newEvent?.event_id) {
         newEventId = newEvent.event_id;
 
+        const propMeta = await getProposalMeta(supabase, proposal.id);
+        const stored = getStoredProposalById(proposal.id);
+        const availableSessions: any[] =
+          (proposal.sessions && proposal.sessions.length > 0)
+            ? proposal.sessions
+            : (propMeta.sessions && propMeta.sessions.length > 0)
+            ? propMeta.sessions
+            : stored?.sessions || [];
+
+        // Apply session_decisions if provided
+        if (body.session_decisions && typeof body.session_decisions === 'object') {
+          for (const s of availableSessions) {
+            const dec = body.session_decisions[s.id];
+            if (dec) {
+              s.status = dec.status;
+              s.rejection_reason = dec.rejection_reason;
+            }
+          }
+        }
+
         // Auto-generate or filter sessions for event
         let finalSessions: any[] = [];
-        if (proposal.sessions && proposal.sessions.length > 0) {
+        if (availableSessions && availableSessions.length > 0) {
           // Use only non-rejected sessions
-          finalSessions = proposal.sessions
+          finalSessions = availableSessions
             .filter((s: any) => s.status !== 'rejected')
             .map((s: any, idx: number) => ({
               id: s.id || `session_${idx + 1}`,
