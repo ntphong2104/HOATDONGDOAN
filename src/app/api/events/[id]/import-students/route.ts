@@ -147,10 +147,10 @@ export async function POST(
         return {
           event_id: resolvedParams.id,
           mssv,
+          email: uInfo?.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
           full_name: uInfo?.full_name || mssv,
-          class_id: uInfo?.class_id || '',
+          class_id: uInfo?.class_id || 'PTIT-HCM',
           role_type: participate_role === 'volunteer' ? 'volunteer' : 'participant',
-          status: 'registered',
           attended: false,
           created_at: now,
         };
@@ -162,10 +162,12 @@ export async function POST(
 
       if (regErr) {
         console.error('Bulk registration error:', regErr);
-        for (const record of regRecords) {
-          try {
-            await supabase.from('event_registrations').insert(record);
-          } catch {}
+        // Fallback insert if onConflict upsert has issues
+        const { error: insertErr } = await supabase
+          .from('event_registrations')
+          .insert(regRecords);
+        if (insertErr) {
+          console.error('Fallback insert error:', insertErr);
         }
       }
 
