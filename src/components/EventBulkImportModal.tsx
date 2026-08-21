@@ -19,6 +19,10 @@ interface EventBulkImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialRole?: 'participant' | 'volunteer' | 'organizer';
+  initialMode?: 'checkin' | 'register';
+  departments?: Array<{ id: string; name: string }>;
+  initialDepartmentId?: string;
 }
 
 export default function EventBulkImportModal({
@@ -27,13 +31,27 @@ export default function EventBulkImportModal({
   isOpen,
   onClose,
   onSuccess,
+  initialRole = 'participant',
+  initialMode = 'checkin',
+  departments = [],
+  initialDepartmentId = '',
 }: EventBulkImportModalProps) {
   const [inputText, setInputText] = useState('');
-  const [role, setRole] = useState<'participant' | 'volunteer' | 'organizer'>('participant');
-  const [mode, setMode] = useState<'checkin' | 'register'>('checkin');
+  const [role, setRole] = useState<'participant' | 'volunteer' | 'organizer'>(initialRole);
+  const [mode, setMode] = useState<'checkin' | 'register'>(initialMode);
+  const [selectedDeptId, setSelectedDeptId] = useState<string>(initialDepartmentId);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialRole) setRole(initialRole);
+      if (initialMode) setMode(initialMode);
+      if (initialDepartmentId) setSelectedDeptId(initialDepartmentId);
+      setFeedback(null);
+    }
+  }, [isOpen, initialRole, initialMode, initialDepartmentId]);
 
   if (!isOpen) return null;
 
@@ -116,6 +134,7 @@ export default function EventBulkImportModal({
     setFeedback(null);
 
     try {
+      const selectedDept = departments.find((d) => d.id === selectedDeptId);
       const res = await fetch(`/api/events/${eventId}/import-students`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,6 +142,8 @@ export default function EventBulkImportModal({
           mssv_list: parsedMssvs,
           participate_role: role,
           mode,
+          department_id: role === 'volunteer' ? (selectedDeptId || null) : null,
+          department_name: role === 'volunteer' ? (selectedDept ? selectedDept.name : 'Ban CTV') : null,
         }),
       });
 
@@ -174,8 +195,8 @@ export default function EventBulkImportModal({
         <form onSubmit={handleSubmit} className={styles.body}>
           {/* Permission notice banner */}
           <div className={styles.permissionBanner}>
-            <span className={styles.permissionTag}>Quyền hạn đặc biệt</span>
-            <span>Chỉ <strong>Đoàn TNCS Học Viện</strong> và <strong>Super Admin</strong> mới có quyền thực hiện thao tác nạp danh sách trực tiếp này.</span>
+            <span className={styles.permissionTag}>Quyền hạn Ban Tổ Chức</span>
+            <span>Ban Tổ Chức và Ban Quản Trị có quyền nạp trực tiếp danh sách MSSV tham gia, CTV hoặc điểm danh sự kiện.</span>
           </div>
 
           {/* Configuration Grid */}
@@ -199,11 +220,29 @@ export default function EventBulkImportModal({
                 onChange={(e) => setRole(e.target.value as any)}
                 className={styles.select}
               >
-                <option value="participant">Người tham gia (Participant)</option>
+                <option value="participant">Người tham gia (Khán giả)</option>
                 <option value="volunteer">Cộng tác viên (CTV)</option>
                 <option value="organizer">Ban tổ chức (BTC)</option>
               </select>
             </div>
+
+            {role === 'volunteer' && departments && departments.length > 0 && (
+              <div className={styles.formGroup} style={{ gridColumn: 'span 2' }}>
+                <label className={styles.label}>Phân bổ vào Ban Chuyên Trách</label>
+                <select
+                  value={selectedDeptId}
+                  onChange={(e) => setSelectedDeptId(e.target.value)}
+                  className={styles.select}
+                >
+                  <option value="">-- Ban CTV Chung --</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* File Upload Area */}

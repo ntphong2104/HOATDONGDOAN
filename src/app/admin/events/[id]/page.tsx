@@ -61,8 +61,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [bulkReviewing, setBulkReviewing] = useState(false);
   const [ratings, setRatings] = useState<any[]>([]);
   const [manualMSSV, setManualMSSV] = useState('');
-  const [manualCheckinStatus, setManualCheckinStatus] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [importRole, setImportRole] = useState<'participant' | 'volunteer' | 'organizer'>('participant');
+  const [importMode, setImportMode] = useState<'checkin' | 'register'>('checkin');
+  const [importDeptId, setImportDeptId] = useState<string>('');
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingFeedback, setRatingFeedback] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
@@ -607,8 +609,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     currentUser?.tier === 'youth_union' ||
     Boolean(currentUser?.email?.toLowerCase().includes('doanthanhnien')) ||
     Boolean(currentUser?.email?.toLowerCase().includes('bchdoan'));
-  const isPrivileged = isSuperAdmin || isYouthUnion;
-  const canBulkImport = isSuperAdmin || isYouthUnion;
   const isEventCreator = Boolean(
     event?.created_by &&
     currentUser?.email &&
@@ -619,6 +619,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   ) || roles?.some(
     (r: any) => r.email?.toLowerCase() === currentUser?.email?.toLowerCase()
   );
+  const isPrivileged = isSuperAdmin || isYouthUnion;
+  const canBulkImport = isSuperAdmin || isYouthUnion || isEventCreator || hasEventRole || Boolean(currentUser?.isEventAdmin);
 
   // Authorization: super admin, youth union, event creator, assigned role or officer can view
   const hasEventAccess = isSuperAdmin || isYouthUnion || isPrivileged || isEventCreator || hasEventRole || Boolean(currentUser?.isEventAdmin) || (currentUser?.tier && currentUser?.tier !== 'user');
@@ -1440,7 +1442,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 {canBulkImport && (
                   <button
                     type="button"
-                    onClick={() => setShowImportModal(true)}
+                    onClick={() => {
+                      setImportRole('participant');
+                      setImportMode('checkin');
+                      setShowImportModal(true);
+                    }}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1875,139 +1881,176 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
           ) : activeTab === 'registrations' ? (
-            <DataTable 
-              columns={[
-                {
-                  key: 'mssv',
-                  label: 'MSSV',
-                  render: (val: string) => (
-                    <span
-                      style={{
-                        fontFamily: 'monospace',
-                        fontWeight: 700,
-                        color: '#1e40af',
-                        background: '#eff6ff',
-                        border: '1px solid #bfdbfe',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {val}
-                    </span>
-                  ),
-                },
-                {
-                  key: 'full_name',
-                  label: 'Họ và tên',
-                  render: (val: string) => (
-                    <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
-                      {val || '—'}
-                    </span>
-                  ),
-                },
-                {
-                  key: 'class_id',
-                  label: 'Lớp',
-                  render: (val: string) => (
-                    <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                      {val || '—'}
-                    </span>
-                  ),
-                },
-                {
-                  key: 'role_type',
-                  label: 'Vai trò đăng ký',
-                  render: (val: string) => {
-                    const isVol = val === 'Cộng tác viên' || val === 'volunteer';
-                    const isOrg = val === 'Ban tổ chức' || val === 'organizer';
-                    const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
-                    const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
-                    const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
-                    const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
-                    return (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.65rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                  Danh Sách Đăng Ký Khán Giả ({participantRegistrations.length})
+                </h3>
+
+                {canBulkImport && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportRole('participant');
+                      setImportMode('register');
+                      setImportDeptId('');
+                      setShowImportModal(true);
+                    }}
+                    style={{
+                      padding: '0.45rem 0.95rem',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
+                    }}
+                  >
+                    <UploadCloudIcon size={15} />
+                    <span>📥 Nạp DS Đăng Ký (Khán Giả)</span>
+                  </button>
+                )}
+              </div>
+
+              <DataTable 
+                columns={[
+                  {
+                    key: 'mssv',
+                    label: 'MSSV',
+                    render: (val: string) => (
                       <span
                         style={{
-                          display: 'inline-block',
-                          padding: '3px 10px',
-                          borderRadius: '20px',
-                          fontSize: '0.78rem',
+                          fontFamily: 'monospace',
                           fontWeight: 700,
-                          background: bg,
-                          color,
-                          border: `1px solid ${border}`,
+                          color: '#1e40af',
+                          background: '#eff6ff',
+                          border: '1px solid #bfdbfe',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {label}
-                      </span>
-                    );
-                  },
-                },
-                {
-                  key: 'attended',
-                  label: 'Trạng thái tham gia',
-                  render: (val: boolean) =>
-                    val ? (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '3px 10px',
-                          borderRadius: '20px',
-                          fontSize: '0.8rem',
-                          fontWeight: 700,
-                          background: '#ecfdf5',
-                          color: '#16a34a',
-                          border: '1px solid #a7f3d0',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        ✓ Đã có mặt
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '3px 10px',
-                          borderRadius: '20px',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          background: '#fef2f2',
-                          color: '#dc2626',
-                          border: '1px solid #fecaca',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        ✕ Chưa điểm danh
+                        {val}
                       </span>
                     ),
-                },
-                {
-                  key: 'created_at',
-                  label: 'Ngày đăng ký',
-                  render: (val: string) => {
-                    if (!val) return '—';
-                    const d = new Date(val);
-                    return (
-                      <span style={{ color: '#475569', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                        {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}{' '}
-                        <span style={{ color: '#cbd5e1' }}>•</span>{' '}
-                        {d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                      </span>
-                    );
                   },
-                },
-              ]}
-              data={participantRegistrations}
-              searchable
-              searchPlaceholder="Tìm kiếm trong danh sách đăng ký..."
-              emptyMessage="Chưa có sinh viên nào đăng ký sự kiện này."
-            />
+                  {
+                    key: 'full_name',
+                    label: 'Họ và tên',
+                    render: (val: string) => (
+                      <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                        {val || '—'}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'class_id',
+                    label: 'Lớp',
+                    render: (val: string) => (
+                      <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                        {val || '—'}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'role_type',
+                    label: 'Vai trò đăng ký',
+                    render: (val: string) => {
+                      const isVol = val === 'Cộng tác viên' || val === 'volunteer';
+                      const isOrg = val === 'Ban tổ chức' || val === 'organizer';
+                      const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
+                      const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
+                      const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
+                      const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
+                      return (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: '20px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            background: bg,
+                            color,
+                            border: `1px solid ${border}`,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {label}
+                        </span>
+                      );
+                    },
+                  },
+                  {
+                    key: 'attended',
+                    label: 'Trạng thái tham gia',
+                    render: (val: boolean) =>
+                      val ? (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 10px',
+                            borderRadius: '20px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            background: '#dcfce7',
+                            color: '#15803d',
+                            border: '1px solid #bbf7d0',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ✓ Đã tham gia
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 10px',
+                            borderRadius: '20px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            background: '#fef2f2',
+                            color: '#dc2626',
+                            border: '1px solid #fecaca',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ✕ Chưa điểm danh
+                        </span>
+                      ),
+                  },
+                  {
+                    key: 'created_at',
+                    label: 'Ngày đăng ký',
+                    render: (val: string) => {
+                      if (!val) return '—';
+                      const d = new Date(val);
+                      return (
+                        <span style={{ color: '#475569', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                          {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}{' '}
+                          <span style={{ color: '#cbd5e1' }}>•</span>{' '}
+                          {d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+                      );
+                    },
+                  },
+                ]}
+                data={participantRegistrations}
+                searchable
+                searchPlaceholder="Tìm kiếm trong danh sách đăng ký..."
+                emptyMessage="Chưa có sinh viên nào đăng ký sự kiện này."
+              />
+            </div>
           ) : activeTab === 'recruitment' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {/* 1. CẤU HÌNH CÁC BAN CHUYÊN TRÁCH */}
@@ -2326,25 +2369,57 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     Danh Sách Đơn Ứng Tuyển Ban Chuyên Trách ({volunteerRegistrations.length})
                   </h3>
 
-                  <button
-                    type="button"
-                    onClick={handleExportCTVExcel}
-                    style={{
-                      padding: '0.45rem 0.9rem',
-                      background: '#16a34a',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                    }}
-                  >
-                    <span>Xuất File Excel (DS CTV)</span>
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {canBulkImport && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImportRole('volunteer');
+                          setImportMode('register');
+                          setImportDeptId('');
+                          setShowImportModal(true);
+                        }}
+                        style={{
+                          padding: '0.45rem 0.95rem',
+                          background: '#0d9488',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          boxShadow: '0 2px 4px rgba(13, 148, 136, 0.2)',
+                        }}
+                      >
+                        <UploadCloudIcon size={15} />
+                        <span>📥 Nạp Danh Sách CTV</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleExportCTVExcel}
+                      style={{
+                        padding: '0.45rem 0.9rem',
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)',
+                      }}
+                    >
+                      <span>Xuất File Excel (DS CTV)</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Bulk Action Bar when items are selected */}
@@ -2975,6 +3050,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           onSuccess={() => {
             fetchData();
           }}
+          initialRole={importRole}
+          initialMode={importMode}
+          initialDepartmentId={importDeptId}
+          departments={departments}
         />
       )}
     </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 
 export async function POST(
   req: Request,
@@ -13,16 +14,40 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Vui lòng đăng nhập' }, { status: 401 });
   }
 
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
+
   const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
   const isYouthUnion =
     auth.tier === 'youth_union' ||
     auth.email.toLowerCase().includes('doanthanhnien') ||
     auth.email.toLowerCase().includes('bchdoan');
 
-  // Strict RBAC: Only Super Admin and Youth Union can bulk import
-  if (!isSuperAdmin && !isYouthUnion) {
+  // Verify target event exists
+  const { data: event, error: eventErr } = await supabase
+    .from('events')
+    .select('event_id, event_name, semester, created_by')
+    .eq('event_id', resolvedParams.id)
+    .maybeSingle();
+
+  if (eventErr || !event) {
+    return NextResponse.json({ success: false, error: 'Không tìm thấy thông tin sự kiện' }, { status: 404 });
+  }
+
+  // Check if user is Event Admin or Creator
+  const { data: eventRole } = await supabase
+    .from('event_roles')
+    .select('role_type')
+    .eq('event_id', resolvedParams.id)
+    .eq('email', auth.email)
+    .maybeSingle();
+
+  const isCreator = event?.created_by && event.created_by.toLowerCase() === auth.email.toLowerCase();
+  const isEventAdmin = eventRole?.role_type === 'event_admin';
+
+  if (!isSuperAdmin && !isYouthUnion && !isEventAdmin && !isCreator) {
     return NextResponse.json(
-      { success: false, error: 'Chỉ Đoàn Thanh Niên Học Viện và Ban Quản Trị Super Admin mới có quyền nạp danh sách sinh viên!' },
+      { success: false, error: 'Bạn không có quyền nạp danh sách cho sự kiện này' },
       { status: 403 }
     );
   }
@@ -33,6 +58,8 @@ export async function POST(
       mssv_list = [],
       participate_role = 'participant',
       mode = 'checkin', // 'checkin' | 'register'
+      department_id = null,
+      department_name = null,
     } = body;
 
     if (!Array.isArray(mssv_list) || mssv_list.length === 0) {
@@ -52,32 +79,20 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Không tìm thấy MSSV hợp lệ trong danh sách cung cấp' }, { status: 400 });
     }
 
-    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
-    const supabase = (await getSupabase()) || (await createClient());
-
-    // Verify target event exists
-    const { data: event, error: eventErr } = await supabase
-      .from('events')
-      .select('event_id, event_name, semester')
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
-
-    if (eventErr || !event) {
-      return NextResponse.json({ success: false, error: 'Không tìm thấy thông tin sự kiện' }, { status: 404 });
-    }
-
     // Fetch existing student info from `users` table for full_name and class_id
     const { data: existingUsers } = await supabase
       .from('users')
-      .select('mssv, full_name, class_id, email')
+      .select('mssv, full_name, class_id, email, phone, gender')
       .in('mssv', cleanedMssvs);
 
-    const userMap = new Map<string, { full_name: string; class_id: string; email?: string }>();
+    const userMap = new Map<string, { full_name: string; class_id: string; email?: string; phone?: string; gender?: string }>();
     (existingUsers || []).forEach((u: any) => {
       userMap.set(u.mssv.toUpperCase(), {
         full_name: u.full_name || u.mssv,
         class_id: u.class_id || '',
         email: u.email || `${u.mssv.toLowerCase()}@student.ptithcm.edu.vn`,
+        phone: u.phone || '',
+        gender: u.gender || '',
       });
     });
 
@@ -104,7 +119,6 @@ export async function POST(
 
       if (insertErr) {
         console.error('Bulk checkin error:', insertErr);
-        // Fallback: try individual inserts ignoring duplicates
         for (const record of checkinRecords) {
           try {
             await supabase.from('check_ins').insert(record);
@@ -155,10 +169,27 @@ export async function POST(
         }
       }
 
+      // If imported as volunteer / CTV, link to department and set accepted status in registration extra store
+      if (participate_role === 'volunteer') {
+        for (const mssv of cleanedMssvs) {
+          const uInfo = userMap.get(mssv);
+          await saveRegistrationExtra(supabase, resolvedParams.id, mssv, {
+            department_id: department_id || null,
+            department_name: department_name || (department_id ? 'Ban Chuyên Trách' : 'Ban CTV'),
+            phone: uInfo?.phone || '',
+            gender: uInfo?.gender || '',
+            review_status: 'accepted',
+            note: 'Nạp danh sách trực tiếp bởi Ban Tổ Chức',
+          });
+        }
+      }
+
       return NextResponse.json({
         success: true,
         count: cleanedMssvs.length,
-        message: `Đã nạp thành công ${cleanedMssvs.length} sinh viên vào danh sách đăng ký sự kiện "${event.event_name}".`,
+        message: participate_role === 'volunteer'
+          ? `Đã nạp thành công ${cleanedMssvs.length} CTV vào ${department_name ? `"${department_name}"` : 'danh sách CTV'} và tự động duyệt Trúng Tuyển!`
+          : `Đã nạp thành công ${cleanedMssvs.length} sinh viên vào danh sách đăng ký sự kiện "${event.event_name}".`,
       });
     }
   } catch (err: any) {
