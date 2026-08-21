@@ -207,6 +207,44 @@ export async function saveRegistrationExtra(
   return updated;
 }
 
+export async function saveRegistrationExtrasBulk(
+  supabase: any,
+  eventId: string,
+  extrasMap: Record<string, Partial<RegistrationExtra>>
+): Promise<Record<string, RegistrationExtra>> {
+  const currentEventRegs = await getRegistrationExtras(supabase, eventId);
+
+  for (const [mssv, extra] of Object.entries(extrasMap)) {
+    const normalizedMssv = mssv.toUpperCase().trim();
+    const existing = currentEventRegs[normalizedMssv] || { event_id: eventId, mssv: normalizedMssv };
+    currentEventRegs[normalizedMssv] = {
+      ...existing,
+      ...extra,
+      event_id: eventId,
+      mssv: normalizedMssv,
+    };
+  }
+
+  inMemoryRegExtras[eventId] = currentEventRegs;
+
+  const allFile = loadRegFromFile();
+  allFile[eventId] = currentEventRegs;
+  saveRegToFile(allFile);
+
+  const regKey = `event_regs_${eventId}`;
+  if (supabase) {
+    try {
+      await supabase.from('system_settings').upsert({
+        key: regKey,
+        value: JSON.stringify(currentEventRegs),
+        updated_at: new Date().toISOString(),
+      });
+    } catch {}
+  }
+
+  return currentEventRegs;
+}
+
 export async function saveEventMeta(
   supabase: any,
   eventId: string,

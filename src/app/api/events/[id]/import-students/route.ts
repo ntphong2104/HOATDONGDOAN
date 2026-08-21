@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { saveRegistrationExtra } from '@/lib/constants/event-meta-store';
+import { saveRegistrationExtrasBulk } from '@/lib/constants/event-meta-store';
 
 export async function POST(
   req: Request,
@@ -171,17 +171,19 @@ export async function POST(
 
       // If imported as volunteer / CTV, link to department and set accepted status in registration extra store
       if (participate_role === 'volunteer') {
+        const extrasMap: Record<string, any> = {};
         for (const mssv of cleanedMssvs) {
           const uInfo = userMap.get(mssv);
-          await saveRegistrationExtra(supabase, resolvedParams.id, mssv, {
+          extrasMap[mssv] = {
             department_id: department_id || null,
             department_name: department_name || (department_id ? 'Ban Chuyên Trách' : 'Ban CTV'),
             phone: uInfo?.phone || '',
-            gender: uInfo?.gender || '',
+            gender: uInfo?.gender || 'Nam',
             review_status: 'accepted',
             note: 'Nạp danh sách trực tiếp bởi Ban Tổ Chức',
-          });
+          };
         }
+        await saveRegistrationExtrasBulk(supabase, resolvedParams.id, extrasMap);
       }
 
       return NextResponse.json({

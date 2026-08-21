@@ -284,17 +284,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   };
 
   const isVolunteerApplicant = (r: EventRegistration) => {
-    if (departments && departments.length > 0) {
-      return (
-        !!r.department_id ||
-        (r.role_type === 'volunteer' &&
-          !!r.department_name &&
-          departments.some((d) => d.id === r.department_id || d.name === r.department_name))
-      );
-    }
     return (
-      r.role_type === 'volunteer' &&
-      (!!r.phone || !!r.note || (!!r.department_name && r.department_name !== 'Ban CTV'))
+      r.role_type === 'volunteer' ||
+      r.role_type === 'Cộng tác viên' ||
+      !!r.department_id ||
+      (!!r.department_name && r.department_name !== 'Khán giả')
     );
   };
 
