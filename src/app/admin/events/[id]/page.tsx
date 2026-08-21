@@ -1070,9 +1070,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
 
                     <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
-                      {departments.length} Ban{' '}
+                      {departments.length > 0 ? `${departments.length} Ban Chuyên Trách` : 'Ban Tổ Chức & CTV'}{' '}
                       <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>
-                        ({volunteerRegistrations.length} đơn ứng tuyển)
+                        ({volunteerRegistrations.length} {departments.length > 0 ? 'đơn ứng tuyển' : 'cộng tác viên'})
                       </span>
                     </div>
 
@@ -2542,7 +2542,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       key: 'mssv',
                       label: 'MSSV',
                       render: (val: string) => (
-                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e40af', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '3px 8px', borderRadius: '6px', fontSize: '0.85rem' }}>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e40af', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '3px 8px', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                           {val}
                         </span>
                       ),
@@ -2550,18 +2550,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     {
                       key: 'full_name',
                       label: 'Họ và tên',
-                      render: (val: string) => <span style={{ fontWeight: 600, color: '#0f172a' }}>{val || '—'}</span>,
+                      render: (val: string) => <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>{val || '—'}</span>,
                     },
                     {
                       key: 'class_id',
                       label: 'Lớp',
-                      render: (val: string) => <span style={{ color: '#475569', fontWeight: 500 }}>{val || '—'}</span>,
+                      render: (val: string) => <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>{val || '—'}</span>,
                     },
                     {
                       key: 'department_name',
                       label: 'Ban Ứng Tuyển',
                       render: (val: string) => (
-                        <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.8rem' }}>
+                        <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                           {val || 'Ban CTV'}
                         </span>
                       ),
@@ -2570,7 +2570,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       key: 'gender',
                       label: 'Giới tính',
                       render: (val: string) => (
-                        <span style={{ fontWeight: 600, color: val === 'Nam' ? '#1d4ed8' : '#be185d' }}>
+                        <span style={{ fontWeight: 600, color: val === 'Nam' ? '#1d4ed8' : '#be185d', whiteSpace: 'nowrap' }}>
                           {val || 'Nam'}
                         </span>
                       ),
@@ -2579,7 +2579,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       key: 'phone',
                       label: 'SĐT / Zalo',
                       render: (val: string) => (
-                        <span style={{ fontFamily: 'monospace', color: '#0f172a', fontWeight: 600 }}>
+                        <span style={{ fontFamily: 'monospace', color: '#0f172a', fontWeight: 600, whiteSpace: 'nowrap' }}>
                           {val || '—'}
                         </span>
                       ),
@@ -2588,7 +2588,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       key: 'note',
                       label: 'Ghi chú / Kỹ năng',
                       render: (val: string) => (
-                        <span style={{ fontSize: '0.8rem', color: '#475569', maxWidth: '200px', display: 'inline-block' }}>
+                        <span style={{ fontSize: '0.8rem', color: '#475569', maxWidth: '250px', display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {val || 'Không có ghi chú'}
                         </span>
                       ),
@@ -2602,7 +2602,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         const color = status === 'accepted' ? '#15803d' : status === 'rejected' ? '#b91c1c' : '#b45309';
                         const label = status === 'accepted' ? 'Trúng Tuyển' : status === 'rejected' ? 'Từ Chối' : 'Chờ Duyệt';
                         return (
-                          <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, background: bg, color }}>
+                          <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, background: bg, color, whiteSpace: 'nowrap' }}>
                             {label}
                           </span>
                         );

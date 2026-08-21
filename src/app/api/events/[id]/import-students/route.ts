@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { saveRegistrationExtrasBulk } from '@/lib/constants/event-meta-store';
+import { getEventMeta, saveEventMeta, saveRegistrationExtrasBulk } from '@/lib/constants/event-meta-store';
 
 export async function POST(
   req: Request,
@@ -18,34 +18,24 @@ export async function POST(
   const supabase = (await getSupabase()) || (await createClient());
 
   const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
-  const isYouthUnion =
-    auth.tier === 'youth_union' ||
-    auth.email.toLowerCase().includes('doanthanhnien') ||
-    auth.email.toLowerCase().includes('bchdoan');
+  const isYouthUnion = auth.tier === 'youth_union' || (auth.email || '').includes('doanthanhnien');
+  const isEventAdmin = auth.isEventAdmin;
 
-  // Verify target event exists
+  // 1. Fetch Event
   const { data: event, error: eventErr } = await supabase
     .from('events')
-    .select('event_id, event_name, semester, created_by')
+    .select('*')
     .eq('event_id', resolvedParams.id)
-    .maybeSingle();
+    .single();
 
   if (eventErr || !event) {
-    return NextResponse.json({ success: false, error: 'Không tìm thấy thông tin sự kiện' }, { status: 404 });
+    return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
-  // Check if user is Event Admin or Creator
-  const { data: eventRole } = await supabase
-    .from('event_roles')
-    .select('role_type')
-    .eq('event_id', resolvedParams.id)
-    .eq('email', auth.email)
-    .maybeSingle();
+  const isEventCreator = event.created_by && auth.email && event.created_by.toLowerCase() === auth.email.toLowerCase();
 
-  const isCreator = event?.created_by && event.created_by.toLowerCase() === auth.email.toLowerCase();
-  const isEventAdmin = eventRole?.role_type === 'event_admin';
-
-  if (!isSuperAdmin && !isYouthUnion && !isEventAdmin && !isCreator) {
+  // Allow Super Admin, Youth Union, Event Admin, and Event Creator
+  if (!isSuperAdmin && !isYouthUnion && !isEventAdmin && !isEventCreator) {
     return NextResponse.json(
       { success: false, error: 'Bạn không có quyền nạp danh sách cho sự kiện này' },
       { status: 403 }
@@ -56,6 +46,7 @@ export async function POST(
     const body = await req.json();
     const {
       mssv_list = [],
+      students_data = [],
       participate_role = 'participant',
       mode = 'checkin', // 'checkin' | 'register'
       department_id = null,
@@ -64,6 +55,24 @@ export async function POST(
 
     if (!Array.isArray(mssv_list) || mssv_list.length === 0) {
       return NextResponse.json({ success: false, error: 'Danh sách MSSV không được để trống' }, { status: 400 });
+    }
+
+    // Map student structured data if supplied from Excel
+    const studentDataMap = new Map<string, {
+      full_name?: string;
+      class_id?: string;
+      phone?: string;
+      gender?: string;
+      department_name?: string;
+      note?: string;
+    }>();
+
+    if (Array.isArray(students_data)) {
+      students_data.forEach((s: any) => {
+        if (s && s.mssv) {
+          studentDataMap.set(String(s.mssv).trim().toUpperCase(), s);
+        }
+      });
     }
 
     // Clean, uppercase, and deduplicate MSSV list
@@ -96,13 +105,68 @@ export async function POST(
       });
     });
 
+    // Optionally update `users` table if Excel contained new names/classes
+    const userUpserts = cleanedMssvs
+      .map((mssv) => {
+        const sData = studentDataMap.get(mssv);
+        if (!sData?.full_name && !sData?.class_id) return null;
+        return {
+          mssv,
+          email: `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
+          full_name: sData.full_name || mssv,
+          class_id: sData.class_id || 'PTIT-HCM',
+          phone: sData.phone || '',
+          gender: sData.gender || 'Nam',
+          role: 'student',
+          tier: 'student',
+          status: 'active',
+        };
+      })
+      .filter(Boolean);
+
+    if (userUpserts.length > 0) {
+      try {
+        await supabase.from('users').upsert(userUpserts as any, { onConflict: 'mssv' });
+      } catch {}
+    }
+
+    // Auto-create departments in event meta if Excel specified custom department names
+    const meta = await getEventMeta(supabase, resolvedParams.id);
+    const currentDepts = meta.departments || [];
+    const newDeptNames = Array.from(
+      new Set(
+        cleanedMssvs
+          .map((m) => studentDataMap.get(m)?.department_name)
+          .filter(
+            (d): d is string =>
+              Boolean(d && d.trim() && d.trim() !== 'Ban CTV' && !currentDepts.some((cd) => cd.name.toLowerCase() === d.trim().toLowerCase()))
+          )
+      )
+    );
+
+    if (newDeptNames.length > 0) {
+      const updatedDepts = [...currentDepts];
+      newDeptNames.forEach((dName, idx) => {
+        updatedDepts.push({
+          id: `dept_${Date.now()}_${idx}`,
+          name: dName.trim(),
+          slots: 50,
+          gender_req: 'all',
+          description: 'Tự động tạo từ danh sách nạp Excel',
+        });
+      });
+      await saveEventMeta(supabase, resolvedParams.id, {
+        departments: updatedDepts,
+        is_recruitment_open: true,
+      });
+    }
+
     const now = new Date().toISOString();
     const actorEmail = auth.email;
 
     if (mode === 'checkin') {
       // Prepare records for `check_ins`
       const checkinRecords = cleanedMssvs.map((mssv) => {
-        const uInfo = userMap.get(mssv);
         return {
           event_id: resolvedParams.id,
           mssv,
@@ -115,13 +179,13 @@ export async function POST(
       // Upsert into check_ins to avoid duplicates
       const { error: insertErr } = await supabase
         .from('check_ins')
-        .upsert(checkinRecords, { onConflict: 'event_id,mssv' });
+        .upsert(checkinRecords as any, { onConflict: 'event_id,mssv' });
 
       if (insertErr) {
         console.error('Bulk checkin error:', insertErr);
         for (const record of checkinRecords) {
           try {
-            await supabase.from('check_ins').insert(record);
+            await supabase.from('check_ins').insert(record as any);
           } catch {}
         }
       }
@@ -144,12 +208,16 @@ export async function POST(
       // Mode: Pre-register into `event_registrations`
       const regRecords = cleanedMssvs.map((mssv) => {
         const uInfo = userMap.get(mssv);
+        const sData = studentDataMap.get(mssv);
+        const resolvedFullName = sData?.full_name || (uInfo?.full_name && !uInfo.full_name.includes('@') ? uInfo.full_name : null) || mssv;
+        const resolvedClassId = sData?.class_id || uInfo?.class_id || 'PTIT-HCM';
+
         return {
           event_id: resolvedParams.id,
           mssv,
           email: uInfo?.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
-          full_name: uInfo?.full_name || mssv,
-          class_id: uInfo?.class_id || 'PTIT-HCM',
+          full_name: resolvedFullName,
+          class_id: resolvedClassId,
           role_type: participate_role === 'volunteer' ? 'volunteer' : 'participant',
           attended: false,
           created_at: now,
@@ -158,14 +226,13 @@ export async function POST(
 
       const { error: regErr } = await supabase
         .from('event_registrations')
-        .upsert(regRecords, { onConflict: 'event_id,mssv' });
+        .upsert(regRecords as any, { onConflict: 'event_id,mssv' });
 
       if (regErr) {
         console.error('Bulk registration error:', regErr);
-        // Fallback insert if onConflict upsert has issues
         const { error: insertErr } = await supabase
           .from('event_registrations')
-          .insert(regRecords);
+          .insert(regRecords as any);
         if (insertErr) {
           console.error('Fallback insert error:', insertErr);
         }
@@ -176,13 +243,18 @@ export async function POST(
         const extrasMap: Record<string, any> = {};
         for (const mssv of cleanedMssvs) {
           const uInfo = userMap.get(mssv);
+          const sData = studentDataMap.get(mssv);
+          const resolvedDeptName = sData?.department_name || department_name || (department_id ? 'Ban Chuyên Trách' : 'Ban CTV');
+          const resolvedPhone = sData?.phone || uInfo?.phone || '';
+          const resolvedGender = sData?.gender || uInfo?.gender || 'Nam';
+
           extrasMap[mssv] = {
             department_id: department_id || null,
-            department_name: department_name || (department_id ? 'Ban Chuyên Trách' : 'Ban CTV'),
-            phone: uInfo?.phone || '',
-            gender: uInfo?.gender || 'Nam',
+            department_name: resolvedDeptName,
+            phone: resolvedPhone,
+            gender: resolvedGender,
             review_status: 'accepted',
-            note: 'Nạp danh sách trực tiếp bởi Ban Tổ Chức',
+            note: sData?.note || 'Nạp danh sách trực tiếp bởi Ban Tổ Chức',
           };
         }
         await saveRegistrationExtrasBulk(supabase, resolvedParams.id, extrasMap);
@@ -192,7 +264,7 @@ export async function POST(
         success: true,
         count: cleanedMssvs.length,
         message: participate_role === 'volunteer'
-          ? `Đã nạp thành công ${cleanedMssvs.length} CTV vào ${department_name ? `"${department_name}"` : 'danh sách CTV'} và tự động duyệt Trúng Tuyển!`
+          ? `Đã nạp thành công ${cleanedMssvs.length} CTV vào danh sách CTV và tự động duyệt Trúng Tuyển!`
           : `Đã nạp thành công ${cleanedMssvs.length} sinh viên vào danh sách đăng ký sự kiện "${event.event_name}".`,
       });
     }
