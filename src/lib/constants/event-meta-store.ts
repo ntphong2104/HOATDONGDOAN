@@ -64,8 +64,11 @@ let inMemoryMeta: Record<string, EventMeta> = loadFromFile();
 
 export async function getEventMeta(supabase: any, eventId: string): Promise<EventMeta> {
   const metaKey = `event_meta_${eventId}`;
+  const fromFile = loadFromFile();
+  const fileMeta = fromFile[eventId] || inMemoryMeta[eventId] || null;
 
   // 1. Try Supabase system_settings
+  let dbMeta: EventMeta | null = null;
   if (supabase) {
     try {
       const { data } = await supabase
@@ -77,29 +80,29 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
       if (data?.value) {
         const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         if (parsed && typeof parsed === 'object') {
-          inMemoryMeta[eventId] = parsed;
-          return parsed;
+          dbMeta = parsed;
         }
       }
     } catch {}
   }
 
-  // 2. Fallback in-memory & file
-  if (inMemoryMeta[eventId]) {
-    return inMemoryMeta[eventId];
-  }
-
-  const fromFile = loadFromFile();
-  if (fromFile[eventId]) {
-    inMemoryMeta[eventId] = fromFile[eventId];
-    return fromFile[eventId];
-  }
-
-  return {
-    departments: [],
-    is_recruitment_open: true,
-    target_scope: 'all',
+  const merged: EventMeta = {
+    departments: (fileMeta?.departments && fileMeta.departments.length > 0)
+      ? fileMeta.departments
+      : dbMeta?.departments || [],
+    sessions: (fileMeta?.sessions && fileMeta.sessions.length >= (dbMeta?.sessions?.length || 0))
+      ? fileMeta.sessions
+      : dbMeta?.sessions || fileMeta?.sessions || [],
+    is_recruitment_open: fileMeta?.is_recruitment_open !== undefined
+      ? fileMeta.is_recruitment_open
+      : dbMeta?.is_recruitment_open !== false,
+    target_scope: fileMeta?.target_scope || dbMeta?.target_scope || 'all',
+    max_participants: fileMeta?.max_participants ?? dbMeta?.max_participants ?? 0,
+    max_volunteers: fileMeta?.max_volunteers ?? dbMeta?.max_volunteers ?? 0,
   };
+
+  inMemoryMeta[eventId] = merged;
+  return merged;
 }
 
 export interface RegistrationExtra {
