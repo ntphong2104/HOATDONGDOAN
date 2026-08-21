@@ -61,6 +61,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [bulkReviewing, setBulkReviewing] = useState(false);
   const [ratings, setRatings] = useState<any[]>([]);
   const [manualMSSV, setManualMSSV] = useState('');
+  const [manualCheckinStatus, setManualCheckinStatus] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [importRole, setImportRole] = useState<'participant' | 'volunteer' | 'organizer'>('participant');
   const [importMode, setImportMode] = useState<'checkin' | 'register'>('checkin');
