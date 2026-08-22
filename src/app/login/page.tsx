@@ -34,6 +34,37 @@ function LoginContent() {
     if (typeof window !== 'undefined') {
       setIsLocal(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     }
+
+    // Auto-redirect if already authenticated
+    const checkAlreadyLoggedIn = async () => {
+      try {
+        const res = await fetch('/api/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data) {
+            const redirectParam =
+              new URLSearchParams(window.location.search).get('redirect') ||
+              new URLSearchParams(window.location.search).get('next');
+            if (redirectParam && redirectParam.startsWith('/') && redirectParam !== '/login') {
+              window.location.href = redirectParam;
+            } else if (data.data.tier === 'super_admin' || data.data.isSuperAdmin) {
+              window.location.href = '/super-admin';
+            } else if (['youth_union', 'ctsv', 'facility'].includes(data.data.tier)) {
+              window.location.href = '/admin/proposals';
+            } else if (data.data.tier === 'event_admin' || data.data.isEventAdmin) {
+              window.location.href = '/admin';
+            } else if (data.data.tier === 'security') {
+              window.location.href = '/security';
+            } else if (data.data.tier === 'checker') {
+              window.location.href = '/scanner';
+            } else {
+              window.location.href = '/';
+            }
+          }
+        }
+      } catch {}
+    };
+    checkAlreadyLoggedIn();
   }, []);
 
   const handleDemoLogin = async (role: string) => {

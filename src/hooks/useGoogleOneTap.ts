@@ -115,8 +115,7 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
                   ? new URLSearchParams(window.location.search).get('redirect') ||
                     new URLSearchParams(window.location.search).get('next')
                   : null;
-              router.push(redirectParam && redirectParam.startsWith('/') ? redirectParam : '/');
-              router.refresh();
+              window.location.href = redirectParam && redirectParam.startsWith('/') && redirectParam !== '/login' ? redirectParam : '/';
             }
           },
           nonce: hashedNonce,

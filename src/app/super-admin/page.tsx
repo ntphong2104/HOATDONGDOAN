@@ -177,8 +177,16 @@ function SuperAdminContent() {
           return;
         }
         const data = await res.json();
-        if (!data.success || (data.data?.tier !== 'super_admin' && !data.data?.isSuperAdmin)) {
-          window.location.replace('/');
+        if (!data.success) {
+          window.location.replace('/login');
+          return;
+        }
+        if (data.data?.tier !== 'super_admin' && !data.data?.isSuperAdmin) {
+          if (data.data?.isEventAdmin) {
+            window.location.replace('/admin');
+          } else {
+            window.location.replace('/');
+          }
           return;
         }
       } catch {
