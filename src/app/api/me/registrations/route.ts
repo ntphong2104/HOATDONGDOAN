@@ -57,7 +57,49 @@ export async function GET() {
         const sessionCheckins = await getSessionCheckIns(supabase, r.event_id);
         const mySessions = sessionCheckins.filter((s) => s.mssv.toUpperCase() === (r.mssv || '').toUpperCase());
         const totalSessions = (singleMeta.sessions && singleMeta.sessions.length > 0) ? singleMeta.sessions.length : 1;
-        const mySessionCount = mySessions.length > 0 ? mySessions.length : (r.attended ? 1 : 0);
+
+        // Also check the check_ins table for this student (for legacy checkins before multi-session fix)
+        let mySessionCount = mySessions.length;
+        const mySessionNames: string[] = mySessions.map((s) => s.session_name || s.session_id);
+
+        if (totalSessions > 1) {
+          // Multi-session event: cross-reference with check_ins table to find missed sessions
+          try {
+            const { data: checkInRecords } = await supabase
+              .from('check_ins')
+              .select('checked_by, created_at')
+              .eq('event_id', r.event_id)
+              .eq('mssv', (r.mssv || '').toUpperCase());
+
+            if (checkInRecords && checkInRecords.length > 0) {
+              for (const ci of checkInRecords) {
+                const ciTime = new Date(ci.created_at);
+                // Supabase stores in UTC, convert to Vietnam time (UTC+7)
+                const vnTime = new Date(ciTime.getTime() + 7 * 60 * 60 * 1000);
+                const ciHHMM = `${String(vnTime.getUTCHours()).padStart(2, '0')}:${String(vnTime.getUTCMinutes()).padStart(2, '0')}`;
+
+                for (const sess of (singleMeta.sessions || [])) {
+                  const sStart = (sess.start_time || '00:00').substring(0, 5);
+                  const sEnd = (sess.end_time || '23:59').substring(0, 5);
+                  const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
+                  const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
+                  if (ciHHMM >= sStart && ciHHMM <= bufferedEnd) {
+                    if (!mySessionNames.includes(sess.name)) {
+                      mySessionNames.push(sess.name);
+                    }
+                    break;
+                  }
+                }
+              }
+              mySessionCount = Math.max(mySessionNames.length, mySessionCount, r.attended ? 1 : 0);
+            }
+          } catch {}
+        }
+
+        // Fallback: if attended but still 0 sessions counted
+        if (mySessionCount === 0 && r.attended) {
+          mySessionCount = 1;
+        }
 
         return {
           id: r.id,
@@ -76,7 +118,7 @@ export async function GET() {
           session_count: mySessionCount,
           total_sessions: totalSessions,
           session_ratio: totalSessions > 1 ? `${mySessionCount}/${totalSessions} ca` : null,
-          session_names: mySessions.map((s) => s.session_name || s.session_id),
+          session_names: mySessionNames,
         };
       })
     );
