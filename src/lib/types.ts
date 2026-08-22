@@ -206,6 +206,8 @@ export interface CheckInRequest {
   mssv: string;
   event_id: string;
   participate_role: ParticipateRole;
+  session_id?: string;
+  checked_by?: string;
 }
 
 export interface CheckInSuccessData {

@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizeInput } from '@/lib/security/sanitizer';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getEventMeta, getSessionCheckIns, saveSessionCheckIn } from '@/lib/constants/event-meta-store';
 import type { CheckInRequest } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
   
   try {
     const body: CheckInRequest = await req.json();
-    const { event_id, participate_role = 'participant' } = body;
+    const { event_id, participate_role = 'participant', session_id } = body;
     const mssv = sanitizeInput(body.mssv || '').toUpperCase().trim();
 
     const validRoles = ['participant', 'volunteer', 'organizer'];
@@ -113,36 +114,119 @@ export async function POST(req: Request) {
       }
     }
 
-    const { error: insertError } = await supabase
-      .from('check_ins')
-      .insert({
-        mssv,
-        event_id,
-        participate_role,
-        checked_by: body.checked_by || userEmail || 'Điểm danh thủ công',
-      });
+    // ── Determine which session to check in for ──
+    const meta = await getEventMeta(supabase, event_id);
+    const sessions = meta.sessions || [];
 
-    if (insertError) {
-      if (insertError.code === '23505') {
-        const { data: existing } = await supabase
-          .from('check_ins')
-          .select('created_at')
-          .eq('mssv', mssv)
-          .eq('event_id', event_id)
-          .maybeSingle();
-          
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Conflict', 
-          message: `Sinh viên ${mssv} đã được điểm danh trước đó!`,
-          checked_at: existing?.created_at
+    // Auto-detect current session if not specified and event has multiple sessions
+    let targetSessionId = session_id || '';
+    let matchedSessionName = 'Buổi chính';
+
+    if (sessions.length > 0) {
+      if (targetSessionId) {
+        // Explicit session_id provided
+        const matched = sessions.find((s) => s.id === targetSessionId);
+        if (matched) {
+          matchedSessionName = matched.name;
+        }
+      } else {
+        // Auto-detect: find the session whose time range covers "now"
+        const now = new Date();
+        const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        let bestSession = sessions[0]; // fallback to first session
+        for (const s of sessions) {
+          const sStart = s.start_time || '00:00';
+          const sEnd = s.end_time || '23:59';
+          // Give 1-hour buffer after end_time for late check-ins
+          const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
+          const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
+          if (nowHHMM >= sStart && nowHHMM <= bufferedEnd) {
+            bestSession = s;
+            break;
+          }
+        }
+        targetSessionId = bestSession.id;
+        matchedSessionName = bestSession.name;
+      }
+    }
+
+    // ── Session-aware duplicate check ──
+    if (targetSessionId && sessions.length > 0) {
+      // Multi-session event: check duplicate per session (allows check-in across sessions)
+      const existingSessionCheckins = await getSessionCheckIns(supabase, event_id);
+      const hasCheckedInThisSession = existingSessionCheckins.some(
+        (c) => c.session_id === targetSessionId && c.mssv.toUpperCase() === mssv.toUpperCase()
+      );
+
+      if (hasCheckedInThisSession) {
+        return NextResponse.json({
+          success: false,
+          error: 'Conflict',
+          message: `Sinh viên ${mssv} đã được điểm danh "${matchedSessionName}" trước đó rồi!`,
+          is_duplicate: true,
+          session_name: matchedSessionName,
         }, { status: 409 });
       }
-      return NextResponse.json({
-        success: false,
-        error: 'Database Error',
-        message: `Lỗi ghi nhận điểm danh: ${insertError.message}`,
-      }, { status: 500 });
+
+      // Record session check-in
+      await saveSessionCheckIn(supabase, {
+        event_id,
+        session_id: targetSessionId,
+        session_name: matchedSessionName,
+        mssv,
+        participate_role,
+        checked_at: new Date().toISOString(),
+        checked_by: body.checked_by || userEmail || 'Scanner',
+      });
+
+      // Also upsert into global check_ins table (won't fail on duplicate)
+      try {
+        await supabase
+          .from('check_ins')
+          .upsert(
+            {
+              event_id,
+              mssv,
+              participate_role,
+              checked_by: body.checked_by || userEmail || `Scanner: ${matchedSessionName}`,
+            },
+            { onConflict: 'event_id,mssv' }
+          );
+      } catch {}
+    } else {
+      // Single-session event: use standard insert with duplicate detection
+      const { error: insertError } = await supabase
+        .from('check_ins')
+        .insert({
+          mssv,
+          event_id,
+          participate_role,
+          checked_by: body.checked_by || userEmail || 'Điểm danh thủ công',
+        });
+
+      if (insertError) {
+        if (insertError.code === '23505') {
+          const { data: existing } = await supabase
+            .from('check_ins')
+            .select('created_at')
+            .eq('mssv', mssv)
+            .eq('event_id', event_id)
+            .maybeSingle();
+
+          return NextResponse.json({ 
+            success: false, 
+            error: 'Conflict', 
+            message: `Sinh viên ${mssv} đã được điểm danh trước đó!`,
+            checked_at: existing?.created_at
+          }, { status: 409 });
+        }
+        return NextResponse.json({
+          success: false,
+          error: 'Database Error',
+          message: `Lỗi ghi nhận điểm danh: ${insertError.message}`,
+        }, { status: 500 });
+      }
     }
 
     // Synchronize event_registrations attended status
@@ -169,9 +253,12 @@ export async function POST(req: Request) {
       success: true,
       data: {
         student: finalStudent,
-        checkin_time: new Date().toISOString()
+        checkin_time: new Date().toISOString(),
+        session_name: matchedSessionName,
       },
-      message: `Đã điểm danh thành công cho sinh viên ${finalStudent.full_name} (${mssv})!`,
+      message: sessions.length > 0
+        ? `Đã điểm danh thành công "${matchedSessionName}" cho sinh viên ${finalStudent.full_name} (${mssv})!`
+        : `Đã điểm danh thành công cho sinh viên ${finalStudent.full_name} (${mssv})!`,
     });
 
   } catch (err: any) {
