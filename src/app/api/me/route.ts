@@ -321,8 +321,8 @@ export async function GET() {
       mssv: userRecord?.mssv || roleDefaults.mssv,
       full_name: userRecord?.full_name || googleName || roleDefaults.name,
       class_id: userRecord?.class_id || roleDefaults.classId,
-      gender: profileExtra?.gender || (demoUser ? demoUser.gender : 'Nam'),
-      phone: profileExtra?.phone !== undefined ? profileExtra.phone : (demoUser ? demoUser.phone : ''),
+      gender: profileExtra?.gender || 'Nam',
+      phone: profileExtra?.phone !== undefined ? profileExtra.phone : '',
     };
 
     let managed_events: any[] = [];
