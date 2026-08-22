@@ -9,13 +9,13 @@ import type { SessionUser, UserTier } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
-  const noCacheHeaders = {
-    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-    Pragma: 'no-cache',
-    Expires: '0',
-  };
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
 
+export async function GET() {
   try {
     const cookieStore = await cookies();
     const demoCookie = cookieStore.get('demo_session');
@@ -296,9 +296,12 @@ export async function GET() {
       };
     }
 
-    // If not a registered student and not any admin/approver role
-    if (!userRecord && !isSuperAdmin && !isEventAdmin && !isChecker && !isSecurity && tier === 'user') {
-      return NextResponse.json({ success: false, error: 'Not Found', message: 'Tài khoản chưa được đăng ký trong hệ thống' }, { status: 404 });
+    if (!userRecord) {
+      userRecord = {
+        mssv: username,
+        full_name: googleName || username,
+        class_id: 'PTIT-HCM',
+      };
     }
 
     const defaultNames: Record<string, { mssv: string; name: string; classId: string }> = {
