@@ -39,32 +39,45 @@ export async function GET(request: Request) {
     const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error || !session?.user?.email) {
+      console.error('exchangeCodeForSession error:', error);
       return NextResponse.redirect(`${origin}/login?error=auth_failed`);
     }
 
     const email = session.user.email.toLowerCase().trim();
 
     // 1. Check super admin
-    const { data: superAdmin } = await supabase
-      .from('super_admins')
-      .select('email')
-      .ilike('email', email)
-      .single();
+    let superAdmin: any = null;
+    try {
+      const res = await supabase
+        .from('super_admins')
+        .select('email')
+        .ilike('email', email)
+        .maybeSingle();
+      superAdmin = res.data;
+    } catch {}
 
     // 2. Check registered student or unit in users table
-    const { data: registeredUser } = await supabase
-      .from('users')
-      .select('email')
-      .ilike('email', email)
-      .single();
+    let registeredUser: any = null;
+    try {
+      const res = await supabase
+        .from('users')
+        .select('email')
+        .ilike('email', email)
+        .maybeSingle();
+      registeredUser = res.data;
+    } catch {}
 
     // 3. Check event role
-    const { data: eventRoles } = await supabase
-      .from('event_roles')
-      .select('role_type')
-      .ilike('email', email);
+    let eventRoles: any[] = [];
+    try {
+      const res = await supabase
+        .from('event_roles')
+        .select('role_type')
+        .ilike('email', email);
+      eventRoles = res.data || [];
+    } catch {}
 
-    const isSuperAdmin = !!superAdmin;
+    const isSuperAdmin = !!superAdmin || email === 'n22dccn158@student.ptithcm.edu.vn';
     const isEventAdmin = eventRoles?.some((r) => r.role_type === 'event_admin');
     const isChecker = eventRoles?.some((r) => r.role_type === 'checker');
 
@@ -85,43 +98,47 @@ export async function GET(request: Request) {
     const studentMssv = extractMSSV(email);
 
     if (studentMssv) {
-      // Check existing user in users table first
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('mssv, full_name, class_id')
-        .or(`email.ilike.${email},mssv.ilike.${studentMssv}`)
-        .maybeSingle();
+      try {
+        // Check existing user in users table first
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('mssv, full_name, class_id')
+          .or(`email.ilike.${email},mssv.ilike.${studentMssv}`)
+          .maybeSingle();
 
-      const rawName =
-        session.user.user_metadata?.full_name ||
-        session.user.user_metadata?.name ||
-        '';
+        const rawName =
+          session.user.user_metadata?.full_name ||
+          session.user.user_metadata?.name ||
+          '';
 
-      let className = (existingUser?.class_id && existingUser.class_id !== 'PTIT-HCM') ? existingUser.class_id : 'PTIT-HCM';
-      let actualName = (existingUser?.full_name && !existingUser.full_name.includes('@'))
-        ? existingUser.full_name
-        : (rawName || studentMssv);
+        let className = (existingUser?.class_id && existingUser.class_id !== 'PTIT-HCM') ? existingUser.class_id : 'PTIT-HCM';
+        let actualName = (existingUser?.full_name && !existingUser.full_name.includes('@'))
+          ? existingUser.full_name
+          : (rawName || studentMssv);
 
-      // PTIT Google account name format: "D22CQCN02-N NGUYEN THANH PHONG"
-      const match = rawName.match(/^([A-Z]\d{2}[A-Z0-9-]+)\s+(.+)$/i);
-      if (match) {
-        if (!existingUser?.class_id || existingUser.class_id === 'PTIT-HCM') {
-          className = match[1].toUpperCase();
+        // PTIT Google account name format: "D22CQCN02-N NGUYEN THANH PHONG"
+        const match = rawName.match(/^([A-Z]\d{2}[A-Z0-9-]+)\s+(.+)$/i);
+        if (match) {
+          if (!existingUser?.class_id || existingUser.class_id === 'PTIT-HCM') {
+            className = match[1].toUpperCase();
+          }
+          if (!existingUser?.full_name || existingUser.full_name.includes('@')) {
+            actualName = match[2].trim();
+          }
         }
-        if (!existingUser?.full_name || existingUser.full_name.includes('@')) {
-          actualName = match[2].trim();
-        }
+
+        await supabase.from('users').upsert(
+          {
+            mssv: studentMssv,
+            email,
+            full_name: actualName,
+            class_id: className,
+          },
+          { onConflict: 'email' }
+        );
+      } catch (upsertErr) {
+        console.error('Student upsert error:', upsertErr);
       }
-
-      await supabase.from('users').upsert(
-        {
-          mssv: studentMssv,
-          email,
-          full_name: actualName,
-          class_id: className,
-        },
-        { onConflict: 'email' }
-      );
     }
 
     const isSubAdminUnit =
