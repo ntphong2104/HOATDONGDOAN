@@ -437,6 +437,11 @@ export default function StudentDashboardClient({
                   });
                   const data = await res.json();
                   if (data.success) {
+                    setCurrentUser((prev) => ({
+                      ...prev,
+                      gender: userGender,
+                      phone: userPhone,
+                    }));
                     alert('Đã lưu thông tin hồ sơ thành công!');
                     setShowProfileModal(false);
                   } else {

@@ -140,11 +140,12 @@ export async function GET() {
   }
   
   try {
+    const username = email.split('@')[0].toUpperCase();
     const { data: user } = await adminClient
       .from('users')
-      .select('mssv, full_name, class_id')
-      .eq('email', email)
-      .single();
+      .select('mssv, full_name, class_id, gender, phone')
+      .or(`email.ilike.${email},mssv.ilike.${username}`)
+      .maybeSingle();
 
     let superAdmin = null;
     try {
@@ -255,7 +256,6 @@ export async function GET() {
 
     const googleName = authMetadata?.full_name || authMetadata?.name;
     const avatarUrl = authMetadata?.avatar_url || authMetadata?.picture;
-    const username = email.split('@')[0].toUpperCase();
 
     let userRecord = user;
 
@@ -311,6 +311,8 @@ export async function GET() {
       mssv: userRecord?.mssv || roleDefaults.mssv,
       full_name: userRecord?.full_name || googleName || roleDefaults.name,
       class_id: userRecord?.class_id || roleDefaults.classId,
+      gender: userRecord?.gender || (demoUser ? demoUser.gender : 'Nam'),
+      phone: userRecord?.phone || (demoUser ? demoUser.phone : ''),
     };
 
     let managed_events: any[] = [];
@@ -395,6 +397,7 @@ export async function PATCH(req: Request) {
 
     const cookieStore = await cookies();
     const demoCookie = cookieStore.get('demo_session');
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
     
     // 1. If demo session, update demo cookie
     if (demoCookie?.value) {
@@ -413,24 +416,43 @@ export async function PATCH(req: Request) {
           maxAge: 60 * 60 * 24 * 7,
         });
 
+        // Also sync to users table in database
+        try {
+          const email = demoUser.email.toLowerCase();
+          const username = (demoUser.mssv || email.split('@')[0]).toUpperCase();
+          await supabase.from('users').upsert({
+            email,
+            mssv: username,
+            full_name: demoUser.full_name || username,
+            class_id: demoUser.class_id || 'PTIT-HCM',
+            gender: updated.gender,
+            phone: updated.phone,
+            role: 'student',
+            tier: 'student',
+            status: 'active',
+          }, { onConflict: 'email' });
+        } catch (dbErr) {
+          console.error('Demo sync to db error:', dbErr);
+        }
+
         return NextResponse.json({
           success: true,
           message: 'Đã cập nhật thông tin cá nhân thành công!',
           data: { gender: updated.gender, phone: updated.phone },
-        });
+        }, { headers: noCacheHeaders });
       }
     }
 
     // 2. Supabase Auth Session
-    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
     const authClient = await createClient();
     const { data: { user } } = await authClient.auth.getUser();
 
     if (!user || !user.email) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401, headers: noCacheHeaders });
     }
 
     const email = user.email.toLowerCase();
+    const username = email.split('@')[0].toUpperCase();
 
     // Update in users table
     const updatePayload: Record<string, any> = {};
@@ -438,22 +460,37 @@ export async function PATCH(req: Request) {
     if (phone !== undefined) updatePayload.phone = phone;
 
     try {
-      await supabase
+      const { data: updatedRows } = await supabase
         .from('users')
         .update(updatePayload)
-        .eq('email', email);
-    } catch {}
+        .or(`email.ilike.${email},mssv.ilike.${username}`)
+        .select();
+
+      if (!updatedRows || updatedRows.length === 0) {
+        await supabase.from('users').upsert({
+          email,
+          mssv: username,
+          gender: gender || 'Nam',
+          phone: phone || '',
+          role: 'student',
+          tier: 'student',
+          status: 'active',
+        }, { onConflict: 'email' });
+      }
+    } catch (dbErr) {
+      console.error('Update users db error:', dbErr);
+    }
 
     return NextResponse.json({
       success: true,
       message: 'Đã cập nhật thông tin cá nhân thành công!',
       data: { gender, phone },
-    });
+    }, { headers: noCacheHeaders });
   } catch (err: any) {
     console.error('Update profile error:', err);
     return NextResponse.json(
       { success: false, error: 'Lỗi cập nhật thông tin', message: err.message },
-      { status: 500 }
+      { status: 500, headers: noCacheHeaders }
     );
   }
 }
