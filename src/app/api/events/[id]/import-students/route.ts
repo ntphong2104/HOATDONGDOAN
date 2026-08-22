@@ -167,10 +167,12 @@ export async function POST(
     if (mode === 'checkin') {
       // Prepare records for `check_ins`
       const checkinRecords = cleanedMssvs.map((mssv) => {
+        const sData = studentDataMap.get(mssv);
+        const resolvedRole = sData?.role_type || (participate_role === 'volunteer' ? 'volunteer' : participate_role === 'organizer' ? 'organizer' : 'participant');
         return {
           event_id: resolvedParams.id,
           mssv,
-          participate_role: participate_role || 'participant',
+          participate_role: resolvedRole,
           checked_by: `Nạp bởi ${actorEmail}`,
           created_at: now,
         };
@@ -211,6 +213,7 @@ export async function POST(
         const sData = studentDataMap.get(mssv);
         const resolvedFullName = sData?.full_name || (uInfo?.full_name && !uInfo.full_name.includes('@') ? uInfo.full_name : null) || mssv;
         const resolvedClassId = sData?.class_id || uInfo?.class_id || 'PTIT-HCM';
+        const resolvedRole = sData?.role_type || (participate_role === 'volunteer' ? 'volunteer' : participate_role === 'organizer' ? 'organizer' : 'participant');
 
         return {
           event_id: resolvedParams.id,
@@ -218,7 +221,7 @@ export async function POST(
           email: uInfo?.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
           full_name: resolvedFullName,
           class_id: resolvedClassId,
-          role_type: participate_role === 'volunteer' ? 'volunteer' : 'participant',
+          role_type: resolvedRole,
           attended: false,
           created_at: now,
         };
@@ -238,10 +241,16 @@ export async function POST(
         }
       }
 
-      // If imported as volunteer / CTV, link to department and set accepted status in registration extra store
-      if (participate_role === 'volunteer') {
+      // If any imported students are volunteers / CTV, link to department and set accepted status in registration extra store
+      const volunteerMssvs = cleanedMssvs.filter((mssv) => {
+        const sData = studentDataMap.get(mssv);
+        const r = sData?.role_type || participate_role;
+        return r === 'volunteer';
+      });
+
+      if (volunteerMssvs.length > 0) {
         const extrasMap: Record<string, any> = {};
-        for (const mssv of cleanedMssvs) {
+        for (const mssv of volunteerMssvs) {
           const uInfo = userMap.get(mssv);
           const sData = studentDataMap.get(mssv);
           const resolvedDeptName = sData?.department_name || department_name || (department_id ? 'Ban Chuyên Trách' : 'Ban CTV');
@@ -263,8 +272,8 @@ export async function POST(
       return NextResponse.json({
         success: true,
         count: cleanedMssvs.length,
-        message: participate_role === 'volunteer'
-          ? `Đã nạp thành công ${cleanedMssvs.length} CTV vào danh sách CTV và tự động duyệt Trúng Tuyển!`
+        message: participate_role === 'volunteer' || volunteerMssvs.length > 0
+          ? `Đã nạp thành công ${cleanedMssvs.length} sinh viên (gồm ${volunteerMssvs.length} CTV và ${cleanedMssvs.length - volunteerMssvs.length} người tham gia)!`
           : `Đã nạp thành công ${cleanedMssvs.length} sinh viên vào danh sách đăng ký sự kiện "${event.event_name}".`,
       });
     }

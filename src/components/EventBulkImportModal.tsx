@@ -44,6 +44,7 @@ export default function EventBulkImportModal({
     phone?: string;
     gender?: string;
     department_name?: string;
+    role_type?: 'participant' | 'volunteer' | 'organizer';
     note?: string;
   }>>([]);
   const [role, setRole] = useState<'participant' | 'volunteer' | 'organizer'>(initialRole);
@@ -105,6 +106,7 @@ export default function EventBulkImportModal({
           phone: -1,
           gender: -1,
           dept: -1,
+          role: -1,
           note: -1,
         };
 
@@ -141,6 +143,9 @@ export default function EventBulkImportModal({
             colMap.dept = normalizedRow.findIndex((c) =>
               c.includes('ban') || c.includes('vị trí') || c.includes('bộ phận') || c.includes('chuyên trách') || c.includes('department') || c.includes('ca trực') || c.includes('buổi')
             );
+            colMap.role = normalizedRow.findIndex((c) =>
+              c.includes('vai trò') || c.includes('role') || c.includes('đối tượng') || c.includes('hình thức') || c.includes('tư cách') || c.includes('phân loại')
+            );
             colMap.note = normalizedRow.findIndex((c) =>
               c.includes('ghi chú') || c.includes('kỹ năng') || c.includes('nhiệm vụ') || c.includes('note')
             );
@@ -155,6 +160,7 @@ export default function EventBulkImportModal({
           phone?: string;
           gender?: string;
           department_name?: string;
+          role_type?: 'participant' | 'volunteer' | 'organizer';
           note?: string;
         }> = [];
         const mssvList: string[] = [];
@@ -184,6 +190,22 @@ export default function EventBulkImportModal({
             let deptName = colMap.dept !== -1 && row[colMap.dept] ? String(row[colMap.dept]).trim() : '';
             let note = colMap.note !== -1 && row[colMap.note] ? String(row[colMap.note]).trim() : '';
 
+            let parsedRole: 'participant' | 'volunteer' | 'organizer' | undefined = undefined;
+            if (colMap.role !== -1 && row[colMap.role]) {
+              const rStr = String(row[colMap.role]).toLowerCase().trim();
+              if (rStr.includes('ctv') || rStr.includes('cộng tác') || rStr.includes('tình nguyện') || rStr.includes('volunteer') || rStr.includes('hỗ trợ')) {
+                parsedRole = 'volunteer';
+              } else if (rStr.includes('btc') || rStr.includes('tổ chức') || rStr.includes('organizer') || rStr.includes('ban tổ chức') || rStr.includes('admin')) {
+                parsedRole = 'organizer';
+              } else if (rStr.includes('tham gia') || rStr.includes('participant') || rStr.includes('người tham gia') || rStr.includes('sinh viên') || rStr.includes('khán giả') || rStr.includes('sv')) {
+                parsedRole = 'participant';
+              }
+            }
+
+            if (!parsedRole && deptName && deptName.trim()) {
+              parsedRole = 'volunteer';
+            }
+
             items.push({
               mssv: rawMssv,
               full_name: fullName || undefined,
@@ -191,6 +213,7 @@ export default function EventBulkImportModal({
               phone: phone || undefined,
               gender: gender || undefined,
               department_name: deptName || undefined,
+              role_type: parsedRole,
               note: note || undefined,
             });
             mssvList.push(rawMssv);
