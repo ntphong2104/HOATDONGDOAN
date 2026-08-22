@@ -39,24 +39,23 @@ export default function UserMenuDropdown({
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // If propUser is already provided, use it directly without network call
+    // Use propUser as initial state immediately for fast render
     if (propUser && propUser.full_name) {
       setCurrentUser(propUser);
       try {
         sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(propUser));
       } catch {}
-      return;
+    } else {
+      // Read cached session on client mount
+      try {
+        const cached = sessionStorage.getItem('ptit_user_session_cache');
+        if (cached) {
+          setCurrentUser(JSON.parse(cached));
+        }
+      } catch {}
     }
 
-    // Read cached session on client mount
-    try {
-      const cached = sessionStorage.getItem('ptit_user_session_cache');
-      if (cached) {
-        setCurrentUser(JSON.parse(cached));
-      }
-    } catch {}
-
-    // Fetch user profile
+    // Always fetch /api/me to get latest role data (checker/event_admin may have been added after login)
     if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
       window
         .fetch('/api/me')
@@ -67,13 +66,10 @@ export default function UserMenuDropdown({
             try {
               sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(data.data));
             } catch {}
-          } else if (propUser) {
-            setCurrentUser(propUser);
           }
         })
         .catch((err) => {
           console.error('Failed to fetch user profile', err);
-          if (propUser) setCurrentUser(propUser);
         });
     }
   }, [propUser, propUserName, propAvatarUrl]);
