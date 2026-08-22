@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officers-store';
 import { parseDemoCookie } from '@/lib/supabase/auth-helper';
+import { getUserProfileExtra, saveUserProfileExtra } from '@/lib/constants/user-profile-store';
 import type { SessionUser, UserTier } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -91,10 +92,14 @@ export async function GET() {
           const isEventAdmin = isSuperAdmin || tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'event_admin' || managed_events.length > 0;
           const isChecker = isEventAdmin || tier === 'checker' || demoUser.isChecker;
 
+          const pExtra = getUserProfileExtra(demoUser.email) || (demoUser.mssv ? getUserProfileExtra(demoUser.mssv) : null);
+
           return NextResponse.json({
             success: true,
             data: {
               ...demoUser,
+              gender: pExtra?.gender || demoUser.gender || 'Nam',
+              phone: pExtra?.phone !== undefined ? pExtra.phone : (demoUser.phone || ''),
               tier,
               isSuperAdmin,
               isEventAdmin,
@@ -143,7 +148,7 @@ export async function GET() {
     const username = email.split('@')[0].toUpperCase();
     const { data: user } = await adminClient
       .from('users')
-      .select('mssv, full_name, class_id, gender, phone')
+      .select('mssv, full_name, class_id')
       .or(`email.ilike.${email},mssv.ilike.${username}`)
       .maybeSingle();
 
@@ -307,12 +312,14 @@ export async function GET() {
 
     const roleDefaults = defaultNames[tier] || { mssv: username, name: 'Sinh Viên PTIT', classId: 'PTIT-HCM' };
 
+    const profileExtra = getUserProfileExtra(email) || (userRecord?.mssv ? getUserProfileExtra(userRecord.mssv) : null) || getUserProfileExtra(username);
+
     const resolvedUser = {
       mssv: userRecord?.mssv || roleDefaults.mssv,
       full_name: userRecord?.full_name || googleName || roleDefaults.name,
       class_id: userRecord?.class_id || roleDefaults.classId,
-      gender: userRecord?.gender || (demoUser ? demoUser.gender : 'Nam'),
-      phone: userRecord?.phone || (demoUser ? demoUser.phone : ''),
+      gender: profileExtra?.gender || (demoUser ? demoUser.gender : 'Nam'),
+      phone: profileExtra?.phone !== undefined ? profileExtra.phone : (demoUser ? demoUser.phone : ''),
     };
 
     let managed_events: any[] = [];
@@ -371,8 +378,8 @@ export async function GET() {
       email,
       full_name: resolvedUser.full_name,
       class_id: resolvedUser.class_id,
-      gender: (resolvedUser as any).gender || 'Nam',
-      phone: (resolvedUser as any).phone || '',
+      gender: resolvedUser.gender || 'Nam',
+      phone: resolvedUser.phone || '',
       tier,
       isSuperAdmin,
       isEventAdmin,
@@ -391,13 +398,18 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  const noCacheHeaders = {
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    Pragma: 'no-cache',
+    Expires: '0',
+  };
+
   try {
     const body = await req.json();
     const { gender, phone } = body;
 
     const cookieStore = await cookies();
     const demoCookie = cookieStore.get('demo_session');
-    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
     
     // 1. If demo session, update demo cookie
     if (demoCookie?.value) {
@@ -416,24 +428,8 @@ export async function PATCH(req: Request) {
           maxAge: 60 * 60 * 24 * 7,
         });
 
-        // Also sync to users table in database
-        try {
-          const email = demoUser.email.toLowerCase();
-          const username = (demoUser.mssv || email.split('@')[0]).toUpperCase();
-          await supabase.from('users').upsert({
-            email,
-            mssv: username,
-            full_name: demoUser.full_name || username,
-            class_id: demoUser.class_id || 'PTIT-HCM',
-            gender: updated.gender,
-            phone: updated.phone,
-            role: 'student',
-            tier: 'student',
-            status: 'active',
-          }, { onConflict: 'email' });
-        } catch (dbErr) {
-          console.error('Demo sync to db error:', dbErr);
-        }
+        saveUserProfileExtra(demoUser.email, { gender: updated.gender, phone: updated.phone });
+        if (demoUser.mssv) saveUserProfileExtra(demoUser.mssv, { gender: updated.gender, phone: updated.phone });
 
         return NextResponse.json({
           success: true,
@@ -454,32 +450,8 @@ export async function PATCH(req: Request) {
     const email = user.email.toLowerCase();
     const username = email.split('@')[0].toUpperCase();
 
-    // Update in users table
-    const updatePayload: Record<string, any> = {};
-    if (gender) updatePayload.gender = gender;
-    if (phone !== undefined) updatePayload.phone = phone;
-
-    try {
-      const { data: updatedRows } = await supabase
-        .from('users')
-        .update(updatePayload)
-        .or(`email.ilike.${email},mssv.ilike.${username}`)
-        .select();
-
-      if (!updatedRows || updatedRows.length === 0) {
-        await supabase.from('users').upsert({
-          email,
-          mssv: username,
-          gender: gender || 'Nam',
-          phone: phone || '',
-          role: 'student',
-          tier: 'student',
-          status: 'active',
-        }, { onConflict: 'email' });
-      }
-    } catch (dbErr) {
-      console.error('Update users db error:', dbErr);
-    }
+    saveUserProfileExtra(email, { gender, phone });
+    saveUserProfileExtra(username, { gender, phone });
 
     return NextResponse.json({
       success: true,
