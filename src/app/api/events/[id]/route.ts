@@ -4,6 +4,9 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isEventPastDeadline } from '@/lib/utils/event-logic';
 import { getEventMeta, saveEventMeta, type EventMeta } from '@/lib/constants/event-meta-store';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   const supabase = await createClient();
@@ -21,11 +24,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const enriched = {
     ...data,
     departments: meta.departments || [],
+    sessions: meta.sessions || [],
     is_recruitment_open: meta.is_recruitment_open !== false,
     target_scope: meta.target_scope || 'all',
   };
 
-  return NextResponse.json({ success: true, data: enriched });
+  return NextResponse.json({ success: true, data: enriched }, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
+  });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

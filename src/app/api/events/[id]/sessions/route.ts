@@ -58,13 +58,22 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        sessions: sessionsWithStats,
-        totalSessionCheckins: sessionCheckins.length,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          sessions: sessionsWithStats,
+          totalSessionCheckins: sessionCheckins.length,
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('GET /api/events/[id]/sessions error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

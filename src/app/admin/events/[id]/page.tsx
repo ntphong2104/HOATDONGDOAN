@@ -99,12 +99,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       }
 
       const [eventRes, checkinsRes, rolesRes, regRes, ratingRes, sessionsRes] = await Promise.all([
-        fetch(`/api/events/${resolvedParams.id}`),
-        fetch(`/api/events/${resolvedParams.id}/checkins`),
-        fetch(`/api/events/${resolvedParams.id}/roles`),
-        fetch(`/api/events/${resolvedParams.id}/register`),
-        fetch(`/api/events/${resolvedParams.id}/ratings`),
-        fetch(`/api/events/${resolvedParams.id}/sessions`),
+        fetch(`/api/events/${resolvedParams.id}`, { cache: 'no-store' }),
+        fetch(`/api/events/${resolvedParams.id}/checkins`, { cache: 'no-store' }),
+        fetch(`/api/events/${resolvedParams.id}/roles`, { cache: 'no-store' }),
+        fetch(`/api/events/${resolvedParams.id}/register`, { cache: 'no-store' }),
+        fetch(`/api/events/${resolvedParams.id}/ratings`, { cache: 'no-store' }),
+        fetch(`/api/events/${resolvedParams.id}/sessions`, { cache: 'no-store' }),
       ]);
 
       const [eventData, checkinsData, rolesData, regData, ratingData, sessionsData] = await Promise.all([
@@ -145,6 +145,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       }
       if (sessionsData.success && Array.isArray(sessionsData.data?.sessions)) {
         setSessions(sessionsData.data.sessions);
+      } else if (eventData.success && Array.isArray(eventData.data?.sessions)) {
+        setSessions(eventData.data.sessions);
       }
     } catch (err) {
       console.error('Failed to fetch event data:', err);
