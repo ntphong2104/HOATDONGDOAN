@@ -215,6 +215,33 @@ export async function POST(
           .in('mssv', cleanedMssvs);
       } catch {}
 
+      // Also save department info + importer for CTV in checkin mode
+      const checkinVolunteers = cleanedMssvs.filter((mssv) => {
+        const sData = studentDataMap.get(mssv);
+        const r = sData?.role_type || participate_role;
+        return r === 'volunteer';
+      });
+
+      if (checkinVolunteers.length > 0) {
+        const extrasMap: Record<string, any> = {};
+        for (const mssv of checkinVolunteers) {
+          const uInfo = userMap.get(mssv);
+          const sData = studentDataMap.get(mssv);
+          const resolvedDeptName = sData?.department_name || department_name || (department_id ? 'Ban Chuyên Trách' : 'Ban CTV');
+          extrasMap[mssv] = {
+            department_id: department_id || null,
+            department_name: resolvedDeptName,
+            phone: sData?.phone || uInfo?.phone || '',
+            gender: sData?.gender || uInfo?.gender || 'Nam',
+            review_status: 'accepted',
+            note: sData?.note || `Nạp điểm danh bởi ${actorEmail} lúc ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
+            imported_by: actorEmail,
+            imported_at: now,
+          };
+        }
+        await saveRegistrationExtrasBulk(supabase, resolvedParams.id, extrasMap);
+      }
+
       return NextResponse.json({
         success: true,
         count: cleanedMssvs.length,
@@ -277,7 +304,24 @@ export async function POST(
             phone: resolvedPhone,
             gender: resolvedGender,
             review_status: 'accepted',
-            note: sData?.note || 'Nạp danh sách trực tiếp bởi Ban Tổ Chức',
+            note: sData?.note || `Nạp DS bởi ${actorEmail} lúc ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
+            imported_by: actorEmail,
+            imported_at: now,
+          };
+        }
+        await saveRegistrationExtrasBulk(supabase, resolvedParams.id, extrasMap);
+      }
+
+      // Also save importer info for non-volunteer registrations
+      const nonVolunteerMssvs = cleanedMssvs.filter((mssv) => !volunteerMssvs.includes(mssv));
+      if (nonVolunteerMssvs.length > 0) {
+        const extrasMap: Record<string, any> = {};
+        for (const mssv of nonVolunteerMssvs) {
+          extrasMap[mssv] = {
+            review_status: 'accepted',
+            note: `Nạp DS bởi ${actorEmail} lúc ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
+            imported_by: actorEmail,
+            imported_at: now,
           };
         }
         await saveRegistrationExtrasBulk(supabase, resolvedParams.id, extrasMap);

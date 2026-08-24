@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isEventPastDeadline } from '@/lib/utils/event-logic';
 import { getEventMeta, saveEventMeta, type EventMeta } from '@/lib/constants/event-meta-store';
@@ -9,7 +9,8 @@ export const revalidate = 0;
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
-  const supabase = await createClient();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
   const { data, error } = await supabase.from('events').select('*').eq('event_id', resolvedParams.id).maybeSingle();
   
   if (error || !data) return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện'}, { status: 404 });
@@ -48,7 +49,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
   }
 
-  const supabase = await createClient();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
   const { data: currentEvent, error: fetchError } = await supabase
     .from('events')
     .select('*')
@@ -174,7 +176,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
   }
 
-  const supabase = await createClient();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
   // If not super admin, check if this event admin is authorized for this event
   if (!auth.isSuperAdmin) {
