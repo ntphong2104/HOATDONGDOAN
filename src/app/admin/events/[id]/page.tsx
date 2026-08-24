@@ -73,6 +73,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [importDeptId, setImportDeptId] = useState<string>('');
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingFeedback, setRatingFeedback] = useState('');
+  const [showSupplementModal, setShowSupplementModal] = useState(false);
+  const [supplementMssvs, setSupplementMssvs] = useState('');
+  const [supplementSessionId, setSupplementSessionId] = useState('main');
+  const [supplementRole, setSupplementRole] = useState<'volunteer' | 'organizer'>('volunteer');
+  const [supplementReason, setSupplementReason] = useState('');
+  const [supplementing, setSupplementing] = useState(false);
+  const [supplementResult, setSupplementResult] = useState<any>(null);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedRecruitment, setCopiedRecruitment] = useState(false);
@@ -1475,9 +1482,218 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     label="Xuất File Excel"
                   />
                 </div>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSupplementResult(null);
+                      setSupplementMssvs('');
+                      setSupplementReason('');
+                      setShowSupplementModal(true);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.5rem 0.9rem',
+                      fontSize: '0.825rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 8px rgba(124,58,237,0.25)',
+                    }}
+                  >
+                    <PlusIcon size={16} />
+                    <span>Bổ Sung Điểm Danh (SA)</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
+
+          {/* Supplement Attendance Modal (Super Admin Only) */}
+          {showSupplementModal && isSuperAdmin && (
+            <div style={{
+              background: '#faf5ff',
+              border: '2px solid #c4b5fd',
+              borderRadius: '12px',
+              padding: '1.25rem',
+              marginBottom: '1rem',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', color: '#6d28d9', fontWeight: 800 }}>
+                  Bổ Sung Điểm Danh CTV / BTC (Super Admin)
+                </h3>
+                <button
+                  onClick={() => setShowSupplementModal(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
+                    Vai trò
+                  </label>
+                  <select
+                    value={supplementRole}
+                    onChange={(e) => setSupplementRole(e.target.value as any)}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      borderRadius: '8px',
+                      border: '1.5px solid #c4b5fd',
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    <option value="volunteer">Cộng tác viên (CTV)</option>
+                    <option value="organizer">Ban tổ chức (BTC)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
+                    Ca / Buổi điểm danh
+                  </label>
+                  <select
+                    value={supplementSessionId}
+                    onChange={(e) => setSupplementSessionId(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      borderRadius: '8px',
+                      border: '1.5px solid #c4b5fd',
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    <option value="main">Buổi chính</option>
+                    {sessions.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
+                  Danh sách MSSV (mỗi dòng 1 MSSV, hoặc cách nhau bằng dấu phẩy)
+                </label>
+                <textarea
+                  value={supplementMssvs}
+                  onChange={(e) => setSupplementMssvs(e.target.value)}
+                  placeholder="N21DCCN001&#10;N21DCCN002&#10;N21DCCN003"
+                  rows={5}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid #c4b5fd',
+                    fontSize: '0.85rem',
+                    fontFamily: 'monospace',
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
+                  Lý do bổ sung (tùy chọn)
+                </label>
+                <input
+                  type="text"
+                  value={supplementReason}
+                  onChange={(e) => setSupplementReason(e.target.value)}
+                  placeholder="VD: Bổ sung cho các bạn CTV trực ca sáng..."
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid #c4b5fd',
+                    fontSize: '0.85rem',
+                  }}
+                />
+              </div>
+
+              {supplementResult && (
+                <div style={{
+                  background: supplementResult.success ? '#dcfce7' : '#fee2e2',
+                  color: supplementResult.success ? '#166534' : '#991b1b',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  marginBottom: '0.75rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                }}>
+                  {supplementResult.message || supplementResult.error}
+                  {supplementResult.data?.skipped_list?.length > 0 && (
+                    <div style={{ marginTop: '0.3rem', fontSize: '0.8rem', fontWeight: 400 }}>
+                      Đã bỏ qua (đã ĐD trước đó): {supplementResult.data.skipped_list.join(', ')}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={supplementing || !supplementMssvs.trim()}
+                onClick={async () => {
+                  setSupplementing(true);
+                  setSupplementResult(null);
+                  try {
+                    const mssvList = supplementMssvs
+                      .split(/[\n,;\s\t]+/)
+                      .map((m) => m.trim().toUpperCase())
+                      .filter((m) => m.length >= 4);
+                    
+                    const res = await fetch(`/api/events/${resolvedParams.id}/supplement-attendance`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        mssv_list: mssvList,
+                        session_id: supplementSessionId,
+                        role_type: supplementRole,
+                        reason: supplementReason,
+                      }),
+                    });
+                    const data = await res.json();
+                    setSupplementResult(data);
+                    if (data.success) {
+                      fetchData();
+                    }
+                  } catch (err: any) {
+                    setSupplementResult({ success: false, error: err?.message || 'Lỗi hệ thống' });
+                  } finally {
+                    setSupplementing(false);
+                  }
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  background: supplementing ? '#a78bfa' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.6rem 1.2rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  cursor: supplementing ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 8px rgba(124,58,237,0.25)',
+                }}
+              >
+                {supplementing ? 'Đang xử lý...' : 'Bổ Sung Điểm Danh'}
+              </button>
+
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#7c3aed', fontStyle: 'italic' }}>
+                Chức năng này bypass kiểm tra: trạng thái sự kiện, SĐT, đăng ký. Chỉ dành cho Super Admin. Mọi thao tác đều được ghi log.
+              </p>
+            </div>
+          )}
 
           {activeTab === 'checkins' ? (
             <DataTable 
