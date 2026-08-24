@@ -1,12 +1,15 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { getAuthContext } from '@/lib/supabase/auth-helper';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
+    const auth = await getAuthContext();
+    if (!auth) return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
+
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
 
     const { data } = await supabase
       .from('event_roles')
@@ -23,9 +26,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
+    const auth = await getAuthContext();
+    if (!auth) return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
+
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
 
     const body = await request.json();
     const { email, role_type } = body;

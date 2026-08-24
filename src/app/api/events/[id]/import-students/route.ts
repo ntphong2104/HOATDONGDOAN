@@ -34,8 +34,22 @@ export async function POST(
 
   const isEventCreator = event.created_by && auth.email && event.created_by.toLowerCase() === auth.email.toLowerCase();
 
-  // Allow Super Admin, Youth Union, Event Admin, and Event Creator
+  // Check event-specific role assignment
+  let hasEventRole = false;
   if (!isSuperAdmin && !isYouthUnion && !isEventAdmin && !isEventCreator) {
+    try {
+      const { data: eventRole } = await supabase
+        .from('event_roles')
+        .select('role_type')
+        .eq('email', auth.email)
+        .eq('event_id', resolvedParams.id)
+        .maybeSingle();
+      hasEventRole = !!eventRole;
+    } catch {}
+  }
+
+  // Allow Super Admin, Youth Union, Event Admin, Event Creator, and anyone with an event role
+  if (!isSuperAdmin && !isYouthUnion && !isEventAdmin && !isEventCreator && !hasEventRole) {
     return NextResponse.json(
       { success: false, error: 'Bạn không có quyền nạp danh sách cho sự kiện này' },
       { status: 403 }
