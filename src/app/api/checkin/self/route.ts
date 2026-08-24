@@ -7,6 +7,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { getEventMeta, getSessionCheckIns, saveSessionCheckIn, type EventSession } from '@/lib/constants/event-meta-store';
+import { getUserProfileExtra } from '@/lib/constants/user-profile-store';
 
 export async function POST(req: Request) {
   try {
@@ -104,6 +105,17 @@ export async function POST(req: Request) {
 
     if (!mssv) {
       return NextResponse.json({ success: false, error: 'Không tìm thấy thông tin MSSV của bạn' }, { status: 400 });
+    }
+
+    // Check phone number - require phone to be updated before checkin
+    const profileExtra = getUserProfileExtra(email || '') || getUserProfileExtra(mssv);
+    const userPhone = profileExtra?.phone || '';
+    if (!userPhone || userPhone.trim().length < 8) {
+      return NextResponse.json({
+        success: false,
+        error: 'Bạn chưa cập nhật Số Điện Thoại / Zalo. Vui lòng cập nhật SĐT trong hồ sơ cá nhân trước khi điểm danh.',
+        require_phone: true,
+      }, { status: 400 });
     }
 
     // Check event status

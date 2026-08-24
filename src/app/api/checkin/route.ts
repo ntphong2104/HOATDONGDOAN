@@ -5,6 +5,7 @@ import { sanitizeInput } from '@/lib/security/sanitizer';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, getSessionCheckIns, saveSessionCheckIn } from '@/lib/constants/event-meta-store';
+import { getUserProfileExtra } from '@/lib/constants/user-profile-store';
 import type { CheckInRequest } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -112,6 +113,18 @@ export async function POST(req: Request) {
           message: `Không tìm thấy sinh viên có MSSV "${mssv}" trong hệ thống`,
         }, { status: 404 });
       }
+    }
+
+    // Check phone number requirement
+    const studentEmail = finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
+    const profileExtra = getUserProfileExtra(studentEmail) || getUserProfileExtra(mssv);
+    const studentPhone = profileExtra?.phone || '';
+    if (!studentPhone || studentPhone.trim().length < 8) {
+      return NextResponse.json({
+        success: false,
+        error: `Sinh viên ${finalStudent.full_name || mssv} (${mssv}) chưa cập nhật SĐT. Yêu cầu sinh viên cập nhật SĐT trong hồ sơ cá nhân trước khi điểm danh.`,
+        require_phone: true,
+      }, { status: 400 });
     }
 
     // ── Determine which session to check in for ──
