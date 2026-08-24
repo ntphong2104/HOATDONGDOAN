@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { CloseIcon, LockIcon, SpinnerIcon, QrCodeIcon } from '@/components/icons';
+import { CloseIcon, LockIcon, SpinnerIcon, QrCodeIcon, MapPinIcon } from '@/components/icons';
 import type { ParticipateRole } from '@/lib/types';
 import styles from './DynamicEventQRModal.module.css';
 
@@ -185,8 +185,8 @@ export default function DynamicEventQRModal({
               textAlign: 'left',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155' }}>
-                  📌 Chọn Buổi / Ca Điểm Danh:
+                <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <MapPinIcon size={14} /> Chọn Buổi / Ca Điểm Danh:
                 </label>
                 <select
                   value={selectedSessionId}

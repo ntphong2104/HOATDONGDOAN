@@ -22,6 +22,11 @@ import {
   StarIcon,
   TrashIcon,
   UploadCloudIcon,
+  LockIcon,
+  UnlockIcon,
+  CalendarIcon,
+  DownloadIcon,
+  LightbulbIcon,
 } from '@/components/icons';
 import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepartment } from '@/lib/types';
 import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin } from '@/lib/utils/event-logic';
@@ -746,7 +751,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       borderRadius: '10px',
                     }}
                   >
-                    <span>⏳ Sắp diễn ra (Mở điểm danh lúc {earliestTime || 'trước 15p'})</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><ClockIcon size={14} /> Sắp diễn ra (Mở điểm danh lúc {earliestTime || 'trước 15p'})</span>
                   </span>
                 );
               }
@@ -806,7 +811,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   cursor: 'pointer',
                 }}
               >
-                🔒 Đóng Sự Kiện
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><LockIcon size={14} /> Đóng Sự Kiện</span>
               </button>
             ) : isPrivileged ? (
               <button
@@ -823,7 +828,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   cursor: 'pointer',
                 }}
               >
-                🔓 Mở Lại Sự Kiện
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><UnlockIcon size={14} /> Mở Lại Sự Kiện</span>
               </button>
             ) : (
               <span
@@ -841,7 +846,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 }}
                 title="Sự kiện tự động đóng sau 1 giờ. Chỉ Super Admin và Đoàn Thanh Niên mới có quyền mở lại."
               >
-                🔒 Đã tự động đóng (Liên hệ Đoàn TN để mở lại)
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><LockIcon size={14} /> Đã tự động đóng (Liên hệ Đoàn TN để mở lại)</span>
               </span>
             )}
           </div>
@@ -1835,7 +1840,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             transition: 'all 0.2s ease',
                           }}
                         >
-                          <span>🗑️ Xóa Ca Này</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><TrashIcon size={14} /> Xóa Ca Này</span>
                         </button>
                       </div>
 
@@ -1844,9 +1849,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       </h4>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.825rem', color: '#475569' }}>
-                        <div>📅 <strong>Ngày:</strong> {s.session_date ? new Date(s.session_date).toLocaleDateString('vi-VN') : 'Mặc định'}</div>
-                        <div>⏰ <strong>Giờ:</strong> {s.start_time || '07:30'} - {s.end_time || '11:30'}</div>
-                        <div>👥 <strong>Đã điểm danh ca này:</strong> <span style={{ color: '#16a34a', fontWeight: 800, fontSize: '0.95rem' }}>{s.checkedInCount || 0}</span> sinh viên</div>
+                        <div><CalendarIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Ngày:</strong> {s.session_date ? new Date(s.session_date).toLocaleDateString('vi-VN') : 'Mặc định'}</div>
+                        <div><ClockIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Giờ:</strong> {s.start_time || '07:30'} - {s.end_time || '11:30'}</div>
+                        <div><UsersIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Đã điểm danh ca này:</strong> <span style={{ color: '#16a34a', fontWeight: 800, fontSize: '0.95rem' }}>{s.checkedInCount || 0}</span> sinh viên</div>
                       </div>
                     </div>
 
@@ -1909,7 +1914,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     }}
                   >
                     <UploadCloudIcon size={15} />
-                    <span>📥 Nạp DS Đăng Ký (Khán Giả)</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><DownloadIcon size={14} /> Nạp DS Đăng Ký (Khán Giả)</span>
                   </button>
                 )}
               </div>
@@ -2392,7 +2397,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         }}
                       >
                         <UploadCloudIcon size={15} />
-                        <span>📥 Nạp Danh Sách CTV</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><DownloadIcon size={14} /> Nạp Danh Sách CTV</span>
                       </button>
                     )}
 
@@ -2996,7 +3001,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.775rem', color: '#64748b' }}>
-                💡 <em>Điểm danh sẽ tự động mở trước giờ bắt đầu 15 phút và đóng sau giờ kết thúc 1 tiếng.</em>
+                <LightbulbIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <em>Điểm danh sẽ tự động mở trước giờ bắt đầu 15 phút và đóng sau giờ kết thúc 1 tiếng.</em>
               </p>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>

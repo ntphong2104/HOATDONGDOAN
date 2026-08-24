@@ -16,6 +16,9 @@ import {
   AlertTriangleIcon,
   FileTextIcon,
   YouthUnionIcon,
+  LockIcon,
+  TrashIcon,
+  LightbulbIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS, OFFICIAL_UNIT_GROUPS, resolveUnitForUser } from '@/lib/constants/units';
 import { isKhoaUnit } from '@/lib/utils/proposal-logic';
@@ -429,7 +432,7 @@ export default function NewProposalPage() {
                   </label>
                   {lockedUnit && !isSuperAdmin && (
                     <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>
-                      🔒 Đã khóa theo tài khoản cán bộ
+                      <LockIcon size={14} /> Đã khóa theo tài khoản cán bộ
                     </span>
                   )}
                 </div>
@@ -920,7 +923,7 @@ export default function NewProposalPage() {
                               transition: 'all 0.2s ease',
                             }}
                           >
-                            <span>🗑️ Xóa Ca Này</span>
+                            <span><TrashIcon size={14} /> Xóa Ca Này</span>
                           </button>
                         )}
                       </div>
@@ -1091,7 +1094,7 @@ export default function NewProposalPage() {
                     gap: '0.45rem',
                   }}
                 >
-                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>💡</span>
+                  <span style={{ fontSize: '1rem', lineHeight: 1, display: 'flex' }}><LightbulbIcon size={14} /></span>
                   <span>
                     <strong>Mẹo:</strong> Hãy dán đường link chia sẻ từ Google Drive ở chế độ <i>"Bất kỳ ai có liên kết đều có thể xem"</i>. Hệ thống chỉ lưu đường dẫn URL, giúp bạn linh hoạt cập nhật nội dung file trên Drive bất kỳ lúc nào mà không cần nộp lại đơn.
                   </span>

@@ -483,5 +483,20 @@ export const InboxIcon = createIcon(
   </>
 );
 
+export const UnlockIcon = createIcon(
+  'UnlockIcon',
+  <>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+  </>
+);
 
+export const LightbulbIcon = createIcon(
+  'LightbulbIcon',
+  <>
+    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+    <path d="M9 18h6" />
+    <path d="M10 22h4" />
+  </>
+);
 

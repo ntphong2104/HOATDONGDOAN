@@ -16,6 +16,7 @@ import {
   UsersIcon,
   CloseIcon,
   CalendarIcon,
+  AlertTriangleIcon,
 } from '@/components/icons';
 import type { HistoryItem } from '@/lib/types';
 import styles from './StudentDashboardClient.module.css';
@@ -872,7 +873,7 @@ export default function StudentDashboardClient({
                 </div>
               ) : classmateHistoryError ? (
                 <div style={{ padding: '2rem 1.5rem', textAlign: 'center', background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '14px', color: '#b91c1c' }}>
-                  <div style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>⚠️</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}><AlertTriangleIcon size={24} /></div>
                   <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.35rem' }}>
                     {classmateHistoryError}
                   </div>

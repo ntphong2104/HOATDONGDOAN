@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import EventCard from '@/components/EventCard';
-import { CalendarIcon, ScanCameraIcon, PlusIcon, CloseIcon } from '@/components/icons';
+import { CalendarIcon, ScanCameraIcon, PlusIcon, CloseIcon, FileTextIcon } from '@/components/icons';
 import type { Event } from '@/lib/types';
 import styles from './AdminDashboardClient.module.css';
 
@@ -73,7 +73,7 @@ export default function AdminDashboardClient({ initialEvents }: AdminDashboardCl
           Sự kiện phụ trách
         </div>
         <Link href="/admin/proposals" className={styles.tabInactive} style={{ color: '#c2410c', borderColor: '#fed7aa', background: '#fff7ed' }}>
-          📋 Kế hoạch trình duyệt
+          <FileTextIcon size={16} /> Kế hoạch trình duyệt
         </Link>
         <Link href="/scanner" className={styles.tabInactive}>
           <ScanCameraIcon size={16} />
