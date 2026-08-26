@@ -27,6 +27,7 @@ import {
   CalendarIcon,
   DownloadIcon,
   LightbulbIcon,
+  PlusIcon,
 } from '@/components/icons';
 import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepartment } from '@/lib/types';
 import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin } from '@/lib/utils/event-logic';
