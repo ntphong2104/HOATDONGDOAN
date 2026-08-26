@@ -182,6 +182,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     };
 
     const updatedDepts = [...departments, newDept];
+    const previousDepts = [...departments];
+
     setDepartments(updatedDepts);
     setNewDeptName('');
     setNewDeptDesc('');
@@ -194,12 +196,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ departments: updatedDepts }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || `Lỗi lưu cấu hình Ban (HTTP ${res.status})`);
+        setDepartments(previousDepts);
+        return;
+      }
       const data = await res.json();
       if (!data.success) {
         alert(data.error || 'Lỗi lưu cấu hình Ban');
+        setDepartments(previousDepts);
+      } else {
+        alert('Đã thêm Ban thành công!');
       }
     } catch (e) {
-      console.error(e);
+      alert('Lỗi kết nối khi lưu cấu hình Ban');
+      setDepartments(previousDepts);
     } finally {
       setSavingDepts(false);
     }
@@ -207,18 +219,33 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleDeleteDepartment = async (deptId: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa Ban này?')) return;
+    const previousDepts = [...departments];
     const updatedDepts = departments.filter((d) => d.id !== deptId);
     setDepartments(updatedDepts);
 
     setSavingDepts(true);
     try {
-      await fetch(`/api/events/${resolvedParams.id}`, {
+      const res = await fetch(`/api/events/${resolvedParams.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ departments: updatedDepts }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || `Lỗi xóa Ban (HTTP ${res.status})`);
+        setDepartments(previousDepts);
+        return;
+      }
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'Lỗi xóa Ban');
+        setDepartments(previousDepts);
+      } else {
+        alert('Đã xóa Ban thành công!');
+      }
     } catch (e) {
-      console.error(e);
+      alert('Lỗi kết nối khi xóa Ban');
+      setDepartments(previousDepts);
     } finally {
       setSavingDepts(false);
     }
@@ -232,15 +259,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mssv, review_status }),
       });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        alert(data.message || (review_status === 'accepted' ? 'Đã duyệt ứng viên thành công!' : 'Đã từ chối ứng viên thành công!'));
         fetchData(false);
       } else {
-        alert(data.error || 'Lỗi duyệt hồ sơ');
+        alert(data.error || data.message || `Lỗi duyệt hồ sơ (HTTP ${res.status})`);
       }
     } catch (e) {
-      alert('Lỗi kết nối');
+      alert('Lỗi kết nối khi duyệt hồ sơ');
     } finally {
       setReviewingMssv(null);
     }
@@ -261,16 +288,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mssvs: selectedMssvs, review_status }),
       });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        alert(data.message || `Đã ${actionName.toLowerCase()} ${selectedMssvs.length} ứng viên thành công!`);
         setSelectedMssvs([]);
         fetchData(false);
       } else {
-        alert(data.error || 'Lỗi phê duyệt hàng loạt');
+        alert(data.error || data.message || `Lỗi phê duyệt hàng loạt (HTTP ${res.status})`);
       }
     } catch (e) {
-      alert('Lỗi kết nối');
+      alert('Lỗi kết nối khi phê duyệt hàng loạt');
     } finally {
       setBulkReviewing(false);
     }
@@ -520,13 +547,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           checked_by: `Điểm danh thủ công (${currentUser?.email || 'Super Admin'})`,
         }),
       });
-      const data = await res.json();
-      if (data.success) {
-        setManualCheckinStatus(`Thành công: Đã điểm danh cho ${manualMSSV}`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setManualCheckinStatus(`Thành công: ${data.message || `Đã điểm danh cho ${manualMSSV}`}`);
         setManualMSSV('');
         fetchData();
       } else {
-        setManualCheckinStatus(`Lỗi: ${data.message || data.error}`);
+        setManualCheckinStatus(`Lỗi: ${data.message || data.error || `Lỗi HTTP ${res.status}`}`);
       }
     } catch (err: any) {
       setManualCheckinStatus(`Lỗi kết nối: ${err.message}`);
@@ -540,15 +567,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       const res = await fetch(`/api/events/${resolvedParams.id}/reconcile-attendance`, {
         method: 'POST',
       });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        alert(data.message || 'Đã chốt điểm danh thành công!');
         fetchData();
       } else {
-        alert(data.error || 'Lỗi xử lý điểm danh');
+        alert(data.error || data.message || `Lỗi xử lý điểm danh (HTTP ${res.status})`);
       }
     } catch (e) {
-      alert('Lỗi kết nối');
+      alert('Lỗi kết nối khi chốt điểm danh');
     } finally {
       setReconciling(false);
     }
@@ -563,15 +590,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newEmail, role_type: 'checker' }),
       });
-      const data = await res.json();
-      if (data.success) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        alert(`Đã thêm quyền quét cho ${newEmail} thành công!`);
         setNewEmail('');
         fetchData();
       } else {
-        alert(data.message || data.error || 'Lỗi thêm checker');
+        alert(data.message || data.error || `Lỗi thêm checker (HTTP ${res.status})`);
       }
     } catch (err) {
-      console.error(err);
+      alert('Lỗi kết nối khi thêm checker');
     }
   };
 
@@ -581,11 +609,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       const res = await fetch(`/api/events/${resolvedParams.id}/roles/${roleId}`, {
         method: 'DELETE',
       });
-      if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.success !== false)) {
+        alert('Đã xóa quyền thành công!');
         fetchData();
+      } else {
+        alert(data.error || data.message || `Lỗi xóa quyền (HTTP ${res.status})`);
       }
     } catch (err) {
-      console.error(err);
+      alert('Lỗi kết nối khi xóa quyền');
     }
   };
 

@@ -49,6 +49,9 @@ export default function ScannerPage() {
           }
         }
         setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
       });
   }, [router]);
 
