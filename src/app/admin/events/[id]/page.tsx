@@ -80,6 +80,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [supplementReason, setSupplementReason] = useState('');
   const [supplementing, setSupplementing] = useState(false);
   const [supplementResult, setSupplementResult] = useState<any>(null);
+  const [requireRegistration, setRequireRegistration] = useState<boolean>(true);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedRecruitment, setCopiedRecruitment] = useState(false);
@@ -159,6 +160,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         setSessions(sessionsData.data.sessions);
       } else if (eventData.success && Array.isArray(eventData.data?.sessions)) {
         setSessions(eventData.data.sessions);
+      }
+
+      // Load require_registration setting
+      if (eventData.success && eventData.data) {
+        setRequireRegistration(eventData.data.require_registration !== false);
       }
     } catch (err) {
       console.error('Failed to fetch event data:', err);
@@ -889,6 +895,71 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </span>
             )}
           </div>
+
+          {/* Require Registration Toggle (Super Admin Only) */}
+          {isSuperAdmin && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              marginTop: '0.75rem',
+              padding: '0.6rem 1rem',
+              background: requireRegistration ? '#eff6ff' : '#fef3c7',
+              border: `1.5px solid ${requireRegistration ? '#bfdbfe' : '#fde68a'}`,
+              borderRadius: '10px',
+              flexWrap: 'wrap',
+            }}>
+              <label style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                color: requireRegistration ? '#1d4ed8' : '#b45309',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={requireRegistration}
+                  onChange={async (e) => {
+                    const newVal = e.target.checked;
+                    setRequireRegistration(newVal);
+                    try {
+                      const res = await fetch(`/api/events/${resolvedParams.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ require_registration: newVal }),
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (res.ok && data.success) {
+                        alert(newVal
+                          ? 'Đã BẬT yêu cầu đăng ký trước khi điểm danh!'
+                          : 'Đã TẮT yêu cầu đăng ký — sinh viên có thể điểm danh mà không cần đăng ký trước!'
+                        );
+                      } else {
+                        alert(data.error || 'Lỗi cập nhật cài đặt');
+                        setRequireRegistration(!newVal);
+                      }
+                    } catch {
+                      alert('Lỗi kết nối');
+                      setRequireRegistration(!newVal);
+                    }
+                  }}
+                  style={{ width: '18px', height: '18px', accentColor: requireRegistration ? '#2563eb' : '#d97706', cursor: 'pointer' }}
+                />
+                {requireRegistration
+                  ? 'Yêu cầu đăng ký trước khi điểm danh'
+                  : 'Không yêu cầu đăng ký (CTR không cần đăng ký)'
+                }
+              </label>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
+                {requireRegistration
+                  ? '(SV phải đăng ký trước mới được quét mã điểm danh)'
+                  : '(SV quét mã QR điểm danh trực tiếp, không cần đăng ký trước)'
+                }
+              </span>
+            </div>
+          )}
 
           {event.status === 'active' && (() => {
             const regWindow = isRegistrationWindowOpen(

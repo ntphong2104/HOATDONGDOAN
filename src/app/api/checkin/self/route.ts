@@ -167,25 +167,38 @@ export async function POST(req: Request) {
     }
 
     // Check if student has registered for this event
-    const { data: registration } = await supabase
-      .from('event_registrations')
-      .select('id, role_type, attended')
-      .eq('event_id', eventId)
-      .eq('mssv', mssv)
-      .maybeSingle();
+    let registration = null;
+    if (meta.require_registration !== false) {
+      const { data: regData } = await supabase
+        .from('event_registrations')
+        .select('id, role_type, attended')
+        .eq('event_id', eventId)
+        .eq('mssv', mssv)
+        .maybeSingle();
+      
+      registration = regData;
 
-    if (!registration) {
-      return NextResponse.json({
-        success: false,
-        error: `Bạn chưa đăng ký tham gia sự kiện "${event.event_name}". Vui lòng đăng ký trước khi điểm danh!`,
-        not_registered: true,
-      }, { status: 400 });
+      if (!registration) {
+        return NextResponse.json({
+          success: false,
+          error: 'Sự kiện này yêu cầu đăng ký trước khi điểm danh. Vui lòng đăng ký tại cổng đăng ký sự kiện trước.',
+          require_registration: true,
+        }, { status: 400 });
+      }
+    } else {
+      const { data: regData } = await supabase
+        .from('event_registrations')
+        .select('id, role_type, attended')
+        .eq('event_id', eventId)
+        .eq('mssv', mssv)
+        .maybeSingle();
+      registration = regData;
     }
 
     const effectiveRole =
       assignedRole !== 'participant'
         ? assignedRole
-        : registration.role_type === 'volunteer'
+        : registration?.role_type === 'volunteer'
         ? 'volunteer'
         : 'participant';
 

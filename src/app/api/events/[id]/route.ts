@@ -27,6 +27,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     departments: meta.departments || [],
     sessions: meta.sessions || [],
     is_recruitment_open: meta.is_recruitment_open !== false,
+    require_registration: meta.require_registration !== false,
     target_scope: meta.target_scope || 'all',
   };
 
@@ -67,7 +68,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     auth.email.toLowerCase().includes('doanthanhnien');
 
   const body = await req.json().catch(() => ({}));
-  const { status, event_name, event_date, start_time, end_time, semester, departments, target_scope, is_recruitment_open } = body;
+  const { status, event_name, event_date, start_time, end_time, semester, departments, target_scope, is_recruitment_open, require_registration } = body;
 
   // Kiểm tra quyền MỞ LẠI sự kiện khi đã quá 1 tiếng sau giờ kết thúc
   if (status === 'active') {
@@ -111,6 +112,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (departments !== undefined) metaUpdates.departments = departments;
   if (target_scope !== undefined) metaUpdates.target_scope = target_scope;
   if (is_recruitment_open !== undefined) metaUpdates.is_recruitment_open = is_recruitment_open;
+  if (require_registration !== undefined) metaUpdates.require_registration = require_registration;
 
   if (Object.keys(metaUpdates).length > 0) {
     await saveEventMeta(supabase, resolvedParams.id, metaUpdates);
@@ -160,6 +162,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     ...updatedEvent,
     departments: latestMeta.departments || [],
     is_recruitment_open: latestMeta.is_recruitment_open !== false,
+    require_registration: latestMeta.require_registration !== false,
     target_scope: latestMeta.target_scope || 'all',
   };
 

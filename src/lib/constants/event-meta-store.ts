@@ -32,6 +32,7 @@ export interface SessionCheckIn {
 export interface EventMeta {
   departments?: DepartmentConfig[];
   is_recruitment_open?: boolean;
+  require_registration?: boolean;
   target_scope?: string;
   sessions?: EventSession[];
   max_participants?: number;
@@ -96,6 +97,9 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
     is_recruitment_open: fileMeta?.is_recruitment_open !== undefined
       ? fileMeta.is_recruitment_open
       : dbMeta?.is_recruitment_open !== false,
+    require_registration: fileMeta?.require_registration !== undefined
+      ? fileMeta.require_registration
+      : dbMeta?.require_registration !== false,
     target_scope: fileMeta?.target_scope || dbMeta?.target_scope || 'all',
     max_participants: fileMeta?.max_participants ?? dbMeta?.max_participants ?? 0,
     max_volunteers: fileMeta?.max_volunteers ?? dbMeta?.max_volunteers ?? 0,
