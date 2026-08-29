@@ -128,42 +128,46 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : null) || supabase;
 
-  // Check super_admins table
-  let superAdmin: any = null;
-  try {
-    const q = adminClient.from('super_admins').select('email');
-    const { data } = typeof q.ilike === 'function'
-      ? await q.ilike('email', email).maybeSingle()
-      : await q.eq('email', email).maybeSingle();
-    superAdmin = data;
-  } catch {}
-
-  // Check dynamic officer_roles via persistent store
-  let assignedOfficerRole: any = null;
-  try {
-    const roles = await getStoredOfficerRoles(adminClient);
-    assignedOfficerRole = roles.find((r) => r.email.toLowerCase() === email.toLowerCase());
-  } catch {}
-
-  // Check event_roles table
-  let eventRoles: any = [];
-  try {
-    const q = adminClient.from('event_roles').select('role_type');
-    const { data } = typeof q.ilike === 'function'
-      ? await q.ilike('email', email)
-      : await q.eq('email', email);
-    eventRoles = data || [];
-  } catch {}
-
-  // Check if created any events
-  let hasCreatedEvents = false;
-  try {
-    const q = adminClient.from('events').select('event_id');
-    const { data } = typeof q.ilike === 'function'
-      ? await q.ilike('created_by', email).limit(1)
-      : await q.eq('created_by', email).limit(1);
-    hasCreatedEvents = Boolean(data && data.length > 0);
-  } catch {}
+  // Run all auth queries in parallel for performance
+  const [superAdmin, assignedOfficerRole, eventRoles, hasCreatedEvents] = await Promise.all([
+    // Check super_admins table
+    (async () => {
+      try {
+        const q = adminClient.from('super_admins').select('email');
+        const { data } = typeof q.ilike === 'function'
+          ? await q.ilike('email', email).maybeSingle()
+          : await q.eq('email', email).maybeSingle();
+        return data;
+      } catch { return null; }
+    })(),
+    // Check dynamic officer_roles via persistent store
+    (async () => {
+      try {
+        const roles = await getStoredOfficerRoles(adminClient);
+        return roles.find((r) => r.email.toLowerCase() === email.toLowerCase()) || null;
+      } catch { return null; }
+    })(),
+    // Check event_roles table
+    (async () => {
+      try {
+        const q = adminClient.from('event_roles').select('role_type');
+        const { data } = typeof q.ilike === 'function'
+          ? await q.ilike('email', email)
+          : await q.eq('email', email);
+        return data || [];
+      } catch { return []; }
+    })(),
+    // Check if created any events
+    (async () => {
+      try {
+        const q = adminClient.from('events').select('event_id');
+        const { data } = typeof q.ilike === 'function'
+          ? await q.ilike('created_by', email).limit(1)
+          : await q.eq('created_by', email).limit(1);
+        return Boolean(data && data.length > 0);
+      } catch { return false; }
+    })(),
+  ]);
 
   const lowerEmail = email.toLowerCase();
   const isSubAdminUnit = lowerEmail.startsWith('lcd') || lowerEmail.startsWith('clb') || lowerEmail.startsWith('doi');

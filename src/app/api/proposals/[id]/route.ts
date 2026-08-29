@@ -25,32 +25,37 @@ export async function GET(
       .single();
 
     if (!proposalErr && proposal) {
-      const { data: logs } = await supabase
-        .from('proposal_logs')
-        .select('*')
-        .eq('proposal_id', proposal.id)
-        .order('created_at', { ascending: true });
-
-      const { data: allRatings } = await supabase
-        .from('unit_ratings')
-        .select('*');
+      // Run all sub-queries in parallel for faster loading
+      const [
+        { data: logs },
+        { data: allRatings },
+        eventRatingsResult,
+        propMeta,
+      ] = await Promise.all([
+        supabase
+          .from('proposal_logs')
+          .select('*')
+          .eq('proposal_id', proposal.id)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('unit_ratings')
+          .select('*'),
+        proposal.created_event_id
+          ? supabase
+              .from('unit_ratings')
+              .select('*')
+              .eq('event_id', proposal.created_event_id)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [] }),
+        getProposalMeta(supabase, resolvedParams.id),
+      ]);
 
       const ratingSummary = summarizeUnitRatings(
         allRatings || [],
         proposal.organization_unit || 'Đơn vị tổ chức'
       );
 
-      let eventRatings: any[] = [];
-      if (proposal.created_event_id) {
-        const { data: evRatings } = await supabase
-          .from('unit_ratings')
-          .select('*')
-          .eq('event_id', proposal.created_event_id)
-          .order('created_at', { ascending: false });
-        eventRatings = evRatings || [];
-      }
-
-      const propMeta = await getProposalMeta(supabase, resolvedParams.id);
+      const eventRatings = eventRatingsResult?.data || [];
       const stored = getStoredProposalById(resolvedParams.id);
       const proposalSessions =
         (propMeta.sessions && propMeta.sessions.length > 0)
