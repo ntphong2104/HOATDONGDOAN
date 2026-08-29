@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const supabase = (await getSupabase()) || (await createClient());
 
   const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
-  const isPrivileged = isSuperAdmin || auth.tier === 'youth_union' || auth.email.includes('doanthanhnien');
+  const isPrivileged = isSuperAdmin || auth.tier === 'youth_union';
 
   if (isPrivileged) {
     try {

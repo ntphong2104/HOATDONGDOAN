@@ -331,7 +331,7 @@ export default function NewProposalPage() {
   };
 
   const isSuperAdmin = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
-  const isYouthUnion = currentUser?.tier === 'youth_union' || (currentUser?.email || '').toLowerCase().includes('doanthanhnien');
+  const isYouthUnion = currentUser?.tier === 'youth_union';
   const backTarget = isSuperAdmin ? '/super-admin?tab=proposals' : isYouthUnion ? '/admin/proposals' : '/admin';
 
   return (

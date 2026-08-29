@@ -164,7 +164,6 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/super-admin`);
     }
     if (
-      email.includes('doanthanhnien') ||
       email.includes('ctsv') ||
       email.includes('quantri') ||
       email.includes('tchc') ||

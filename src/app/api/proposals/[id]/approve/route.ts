@@ -48,7 +48,7 @@ export async function POST(
 
   // Department-specific permission check
   let canApprove = auth.isSuperAdmin;
-  if (currentStage === 'youth_union' && (auth.tier === 'youth_union' || auth.email.includes('doanthanhnien'))) {
+  if (currentStage === 'youth_union' && auth.tier === 'youth_union') {
     canApprove = true;
   } else if (currentStage === 'ctsv' && (auth.tier === 'ctsv' || auth.email.includes('ctsv'))) {
     canApprove = true;

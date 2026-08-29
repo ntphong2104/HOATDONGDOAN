@@ -29,17 +29,6 @@ export const DEFAULT_OFFICERS: OfficerRoleItem[] = [
     created_at: '2026-01-01T00:00:00.000Z',
   },
   {
-    id: 'off-dyu',
-    email: 'doanthanhnien@ptithcm.edu.vn',
-    role_tier: 'youth_union',
-    unit_code: 'BCH_DOAN',
-    unit_name: 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
-    full_name: 'Đoàn Thanh Niên Học Viện',
-    notes: 'Tài khoản chính thức Đoàn Học Viện',
-    created_by: 'System',
-    created_at: '2026-01-01T00:00:00.000Z',
-  },
-  {
     id: 'off-ctsv',
     email: 'ctsv@ptithcm.edu.vn',
     role_tier: 'ctsv',

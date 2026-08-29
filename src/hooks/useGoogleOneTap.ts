@@ -96,7 +96,6 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
               const isSchool =
                 email.endsWith('@student.ptithcm.edu.vn') ||
                 email.endsWith('@ptithcm.edu.vn') ||
-                email.includes('doanthanhnien') ||
                 email.includes('bchdoan');
 
               if (!isSchool) {

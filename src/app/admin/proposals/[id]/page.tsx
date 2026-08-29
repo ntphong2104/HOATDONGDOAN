@@ -225,7 +225,6 @@ export default function ProposalDetailPage({
     tier === 'youth_union' ||
     tier === 'ctsv' ||
     tier === 'facility' ||
-    email.includes('doanthanhnien') ||
     email.includes('ctsv') ||
     email.includes('quantri') ||
     email.includes('tchc') ||
@@ -238,7 +237,7 @@ export default function ProposalDetailPage({
   if (proposal.status === 'pending') {
     if (isSuperAdmin) {
       canActOnThisStage = true;
-    } else if (currentStage === 'youth_union' && (tier === 'youth_union' || email.includes('doanthanhnien'))) {
+    } else if (currentStage === 'youth_union' && (tier === 'youth_union')) {
       canActOnThisStage = true;
     } else if (currentStage === 'ctsv' && (tier === 'ctsv' || email.includes('ctsv'))) {
       canActOnThisStage = true;
@@ -276,7 +275,7 @@ export default function ProposalDetailPage({
   const recentLowRatings = proposal.ratingSummary?.recent_low_ratings || [];
 
   const getStageDepartmentName = (stageName?: string, actorEmail?: string) => {
-    if (stageName === 'youth_union' || actorEmail?.includes('doanthanhnien')) return 'Đoàn Thanh Niên Học Viện';
+    if (stageName === 'youth_union') return 'Đoàn Thanh Niên Học Viện';
     if (stageName === 'ctsv' || actorEmail?.includes('ctsv')) return 'Phòng Công Tác Sinh Viên (CTSV)';
     if (stageName === 'facility' || actorEmail?.includes('quantri') || actorEmail?.includes('csvc') || actorEmail?.includes('tchc')) return 'Phòng. TC-HC-QT';
     if (stageName === 'super_admin' || actorEmail?.includes('admin')) return 'Super Admin Đoàn Trường';

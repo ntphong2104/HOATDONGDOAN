@@ -64,8 +64,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const isPrivileged =
     auth.isSuperAdmin ||
-    auth.tier === 'youth_union' ||
-    auth.email.toLowerCase().includes('doanthanhnien');
+    auth.tier === 'youth_union';
 
   const body = await req.json().catch(() => ({}));
   const { status, event_name, event_date, start_time, end_time, semester, departments, target_scope, is_recruitment_open, require_registration } = body;

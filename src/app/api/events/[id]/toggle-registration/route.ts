@@ -14,7 +14,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const isPrivileged = auth.isSuperAdmin || auth.tier === 'youth_union' || (auth.email || '').includes('doanthanhnien');
+  const isPrivileged = auth.isSuperAdmin || auth.tier === 'youth_union';
 
   const supabase = await createClient();
 

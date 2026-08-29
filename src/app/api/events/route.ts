@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
-  const isYouthUnion = auth.tier === 'youth_union' || (auth.email || '').toLowerCase().includes('doanthanhnien');
+  const isYouthUnion = auth.tier === 'youth_union';
 
   const supabase = await createClient();
   let query = supabase

@@ -224,7 +224,6 @@ export const EMAIL_TO_UNIT: Record<string, string> = {
   'khoaqtkd@ptithcm.edu.vn': 'Khoa Quản Trị Kinh Doanh',
   'khoa_qtkd@ptithcm.edu.vn': 'Khoa Quản Trị Kinh Doanh',
 
-  'doanthanhnien@ptithcm.edu.vn': 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
   'bchdoan@ptithcm.edu.vn': 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
   
   // 8 LCĐs
@@ -306,7 +305,7 @@ export function resolveUnitForUser(user: {
 }): { unitName: string; isLocked: boolean } {
   const isSA = user.tier === 'super_admin' || user.isSuperAdmin;
   const email = (user.email || '').toLowerCase().trim();
-  const isYouthUnion = user.tier === 'youth_union' || email.includes('doanthanhnien') || email.includes('bchdoan');
+  const isYouthUnion = user.tier === 'youth_union' || email.includes('bchdoan');
 
   // Super Admin & Đoàn Thanh Niên can pick any unit
   if (isSA || isYouthUnion) {

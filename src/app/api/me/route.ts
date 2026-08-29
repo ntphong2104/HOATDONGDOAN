@@ -212,7 +212,6 @@ export async function GET() {
       assignedOfficerRole?.role_tier === 'super_admin';
 
     const isYouthUnion =
-      lowerEmail.includes('doanthanhnien') ||
       lowerEmail.includes('bchdoan') ||
       assignedOfficerRole?.role_tier === 'youth_union';
 

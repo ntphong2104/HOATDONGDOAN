@@ -312,13 +312,7 @@ function LoginContent() {
             textAlign: 'center',
           }}
         >
-          <span>Mọi thắc mắc hoặc cần cấp quyền, vui lòng liên hệ <strong>BCH Đoàn Thanh niên</strong>: </span>
-          <a
-            href="mailto:doanthanhnien@ptithcm.edu.vn"
-            style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}
-          >
-            doanthanhnien@ptithcm.edu.vn
-          </a>
+          <span>Mọi thắc mắc hoặc cần cấp quyền, vui lòng liên hệ <strong>BCH Đoàn Thanh niên</strong>.</span>
         </div>
       </div>
     </div>

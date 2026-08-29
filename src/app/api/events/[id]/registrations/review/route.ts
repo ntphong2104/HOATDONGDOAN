@@ -18,7 +18,7 @@ export async function POST(
   const supabase = (await getSupabase()) || (await createClient());
 
   const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
-  const isYouthUnion = auth.tier === 'youth_union' || auth.email.includes('doanthanhnien');
+  const isYouthUnion = auth.tier === 'youth_union';
 
   if (!isSuperAdmin && !isYouthUnion && auth.tier !== 'event_admin') {
     const { data: eventRole } = await supabase

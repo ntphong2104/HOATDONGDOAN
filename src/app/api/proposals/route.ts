@@ -30,7 +30,6 @@ export async function GET(req: Request) {
     auth.tier === 'ctsv' ||
     auth.tier === 'facility' ||
     auth.tier === 'security' ||
-    auth.email.includes('doanthanhnien') ||
     auth.email.includes('ctsv') ||
     auth.email.includes('quantri') ||
     auth.email.includes('tchc') ||
@@ -222,7 +221,6 @@ export async function POST(req: Request) {
     const isPrivileged =
       auth.isSuperAdmin ||
       auth.tier === 'youth_union' ||
-      auth.email.toLowerCase().includes('doanthanhnien') ||
       auth.email.toLowerCase().includes('bchdoan');
 
     let finalOrganizationUnit = organization_unit;

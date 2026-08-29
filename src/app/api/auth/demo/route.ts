@@ -257,14 +257,7 @@ export const DEMO_PROFILES: Record<string, SessionUser> = {
   },
 
   // ──── Cấp Phê Duyệt ────
-  youth_union: {
-    mssv: 'DOAN-HV',
-    email: 'doanthanhnien@ptithcm.edu.vn',
-    full_name: 'Thanh Nien Doan (Đoàn Học Viện)',
-    class_id: 'BCH-DOAN',
-    tier: 'youth_union',
-    managed_events: [],
-  },
+
   ctsv: {
     mssv: 'PHONG-CTSV',
     email: 'phongctsv@ptithcm.edu.vn',

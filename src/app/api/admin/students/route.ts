@@ -30,7 +30,6 @@ export async function GET(req: Request) {
         e.startsWith('lcd') ||
         e.startsWith('clb') ||
         e.startsWith('doi') ||
-        e.includes('doanthanhnien') ||
         e.includes('ctsv') ||
         e.includes('quantri') ||
         e.includes('superadmin')

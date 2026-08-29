@@ -59,7 +59,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         const lowerEmail = demoUser.email.toLowerCase();
         const explicitTier = (demoUser.tier || 'user') as UserTier;
         const isSuperAdmin = explicitTier === 'super_admin' || lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
-        const isYouthUnion = explicitTier === 'youth_union' || lowerEmail.includes('doanthanhnien');
+        const isYouthUnion = explicitTier === 'youth_union';
         const isCtsv = explicitTier === 'ctsv' || lowerEmail.includes('phongctsv');
         const isFacility = explicitTier === 'facility' || lowerEmail.includes('phongquantri') || lowerEmail.includes('quantri') || lowerEmail.includes('tchc') || lowerEmail.includes('csvc');
         const isSecurity = explicitTier === 'security' || lowerEmail.includes('baove') || lowerEmail.includes('security');
@@ -109,7 +109,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   if (explicitTier) {
     const lowerEmail = email.toLowerCase();
     const isSuperAdmin = explicitTier === 'super_admin' || lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
-    const isYouthUnion = explicitTier === 'youth_union' || lowerEmail.includes('doanthanhnien');
+    const isYouthUnion = explicitTier === 'youth_union';
     const isCtsv = explicitTier === 'ctsv' || lowerEmail.includes('phongctsv');
     const isFacility = explicitTier === 'facility' || lowerEmail.includes('phongquantri');
     const isSecurity = explicitTier === 'security' || lowerEmail.includes('baove') || lowerEmail.includes('security');
@@ -175,7 +175,6 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     explicitTier === 'super_admin';
 
   const isYouthUnion =
-    lowerEmail.includes('doanthanhnien') ||
     lowerEmail.includes('bchdoan') ||
     assignedOfficerRole?.role_tier === 'youth_union' ||
     assignedOfficerRole?.unit_code === 'BCH_DOAN' ||

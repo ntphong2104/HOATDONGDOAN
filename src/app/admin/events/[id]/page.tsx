@@ -655,7 +655,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const isYouthUnion =
     currentUser?.tier === 'youth_union' ||
-    Boolean(currentUser?.email?.toLowerCase().includes('doanthanhnien')) ||
     Boolean(currentUser?.email?.toLowerCase().includes('bchdoan'));
   const isEventCreator = Boolean(
     event?.created_by &&
@@ -751,7 +750,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     userTier === 'ctsv' ||
     userTier === 'facility' ||
     userTier === 'super_admin' ||
-    userEmail.includes('doanthanhnien') ||
     userEmail.includes('ctsv') ||
     userEmail.includes('quantri') ||
     userEmail.includes('csvc') ||
