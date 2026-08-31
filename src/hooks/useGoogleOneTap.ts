@@ -123,7 +123,23 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
           context: 'signin',
         });
 
-        window.google.accounts.id.prompt(() => {});
+        // Retry prompt with exponential backoff if Google doesn't respond
+        let retryCount = 0;
+        const maxRetries = 3;
+        const tryPrompt = () => {
+          if (!isMounted || retryCount >= maxRetries) return;
+          window.google?.accounts?.id?.prompt((notification: any) => {
+            // If Google skipped/dismissed the prompt, retry after delay
+            if (notification?.isSkippedMoment?.() || notification?.isDismissedMoment?.()) {
+              retryCount++;
+              if (retryCount < maxRetries && isMounted) {
+                const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
+                setTimeout(tryPrompt, delay);
+              }
+            }
+          });
+        };
+        tryPrompt();
       } catch {}
     };
 

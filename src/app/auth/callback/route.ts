@@ -45,37 +45,45 @@ export async function GET(request: Request) {
 
     const email = session.user.email.toLowerCase().trim();
 
-    // 1. Check super admin
-    let superAdmin: any = null;
-    try {
-      const res = await supabase
-        .from('super_admins')
-        .select('email')
-        .ilike('email', email)
-        .maybeSingle();
-      superAdmin = res.data;
-    } catch {}
+    // Run all auth checks in parallel for faster response
+    const [superAdminResult, registeredUserResult, eventRolesResult] = await Promise.all([
+      // 1. Check super admin
+      (async () => {
+        try {
+          const res = await supabase
+            .from('super_admins')
+            .select('email')
+            .ilike('email', email)
+            .maybeSingle();
+          return res.data;
+        } catch { return null; }
+      })(),
+      // 2. Check registered student or unit in users table
+      (async () => {
+        try {
+          const res = await supabase
+            .from('users')
+            .select('email')
+            .ilike('email', email)
+            .maybeSingle();
+          return res.data;
+        } catch { return null; }
+      })(),
+      // 3. Check event role
+      (async () => {
+        try {
+          const res = await supabase
+            .from('event_roles')
+            .select('role_type')
+            .ilike('email', email);
+          return res.data || [];
+        } catch { return []; }
+      })(),
+    ]);
 
-    // 2. Check registered student or unit in users table
-    let registeredUser: any = null;
-    try {
-      const res = await supabase
-        .from('users')
-        .select('email')
-        .ilike('email', email)
-        .maybeSingle();
-      registeredUser = res.data;
-    } catch {}
-
-    // 3. Check event role
-    let eventRoles: any[] = [];
-    try {
-      const res = await supabase
-        .from('event_roles')
-        .select('role_type')
-        .ilike('email', email);
-      eventRoles = res.data || [];
-    } catch {}
+    const superAdmin = superAdminResult;
+    const registeredUser = registeredUserResult;
+    const eventRoles = eventRolesResult;
 
     const isSuperAdmin = !!superAdmin || email === 'n22dccn158@student.ptithcm.edu.vn';
     const isEventAdmin = eventRoles?.some((r) => r.role_type === 'event_admin');
