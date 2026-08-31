@@ -21,18 +21,19 @@ export async function POST(
   const isYouthUnion = auth.tier === 'youth_union';
 
   if (!isSuperAdmin && !isYouthUnion && auth.tier !== 'event_admin') {
-    const { data: eventRole } = await supabase
-      .from('event_roles')
-      .select('role_type')
-      .eq('email', auth.email)
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
-
-    const { data: event } = await supabase
-      .from('events')
-      .select('created_by')
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
+    const [{ data: eventRole }, { data: event }] = await Promise.all([
+      supabase
+        .from('event_roles')
+        .select('role_type')
+        .eq('email', auth.email)
+        .eq('event_id', resolvedParams.id)
+        .maybeSingle(),
+      supabase
+        .from('events')
+        .select('created_by')
+        .eq('event_id', resolvedParams.id)
+        .maybeSingle()
+    ]);
 
     const isCreator = event?.created_by && event.created_by.toLowerCase() === auth.email.toLowerCase();
 
@@ -54,19 +55,19 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Thiếu danh sách ứng viên hoặc trạng thái phê duyệt' }, { status: 400 });
     }
 
-    // 1. Fetch event and department configurations
-    const { data: event } = await supabase
-      .from('events')
-      .select('*')
-      .eq('event_id', resolvedParams.id)
-      .single();
-
-    // 2. Fetch target registrations to check which departments they belong to
-    const { data: targetRegs } = await supabase
-      .from('event_registrations')
-      .select('*')
-      .eq('event_id', resolvedParams.id)
-      .in('mssv', targetMssvs);
+    // 1 & 2. Fetch event/department configurations and target registrations in parallel
+    const [{ data: event }, { data: targetRegs }] = await Promise.all([
+      supabase
+        .from('events')
+        .select('*')
+        .eq('event_id', resolvedParams.id)
+        .single(),
+      supabase
+        .from('event_registrations')
+        .select('*')
+        .eq('event_id', resolvedParams.id)
+        .in('mssv', targetMssvs)
+    ]);
 
     if (!targetRegs || targetRegs.length === 0) {
       return NextResponse.json({ success: false, error: 'Không tìm thấy hồ sơ của các ứng viên được chọn' }, { status: 404 });

@@ -62,11 +62,23 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
 
-    const { data: event, error: eventErr } = await supabase
-      .from('events')
-      .select('event_id, event_name, status, event_date, start_time, end_time')
-      .eq('event_id', event_id)
-      .maybeSingle();
+    const [
+      { data: event, error: eventErr },
+      { data: student },
+      meta
+    ] = await Promise.all([
+      supabase
+        .from('events')
+        .select('event_id, event_name, status, event_date, start_time, end_time')
+        .eq('event_id', event_id)
+        .maybeSingle(),
+      supabase
+        .from('users')
+        .select('mssv, full_name, class_id, email')
+        .eq('mssv', mssv)
+        .maybeSingle(),
+      getEventMeta(supabase, event_id)
+    ]);
 
     if (!event) {
       return NextResponse.json({ success: false, error: 'Not Found', message: 'Sự kiện không tồn tại' }, { status: 404 });
@@ -87,12 +99,6 @@ export async function POST(req: Request) {
         message: `⏳ Chưa đến giờ điểm danh! Cổng điểm danh sẽ tự động mở lúc ${earliestTime} (trước giờ bắt đầu 15 phút).`,
       }, { status: 400 });
     }
-
-    const { data: student } = await supabase
-      .from('users')
-      .select('mssv, full_name, class_id, email')
-      .eq('mssv', mssv)
-      .maybeSingle();
 
     let finalStudent = student;
     if (!finalStudent) {
@@ -128,7 +134,6 @@ export async function POST(req: Request) {
     }
 
     // ── Determine which session to check in for ──
-    const meta = await getEventMeta(supabase, event_id);
     const sessions = meta.sessions || [];
 
     // Auto-detect current session if not specified and event has multiple sessions

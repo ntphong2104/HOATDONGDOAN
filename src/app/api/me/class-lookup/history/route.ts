@@ -45,12 +45,37 @@ export async function GET(request: Request) {
 
     const cleanMssv = decodeURIComponent(mssv).trim().toUpperCase();
 
-    // Fetch target student profile
-    const { data: targetStudent, error: studentErr } = await supabase
-      .from('users')
-      .select('mssv, full_name, class_id, email')
-      .eq('mssv', cleanMssv)
-      .maybeSingle();
+    // Fetch target student profile and check-in records in parallel
+    const [
+      { data: targetStudent, error: studentErr },
+      { data: checkIns, error: checkInErr }
+    ] = await Promise.all([
+      supabase
+        .from('users')
+        .select('mssv, full_name, class_id, email')
+        .eq('mssv', cleanMssv)
+        .maybeSingle(),
+      supabase
+        .from('check_ins')
+        .select(`
+          id,
+          event_id,
+          mssv,
+          participate_role,
+          created_at,
+          events (
+            event_id,
+            event_name,
+            event_date,
+            start_time,
+            end_time,
+            semester,
+            created_by
+          )
+        `)
+        .eq('mssv', cleanMssv)
+        .order('created_at', { ascending: false })
+    ]);
 
     // Class boundary check for class delegates
     if (delegateClassId && targetStudent?.class_id) {
@@ -61,28 +86,6 @@ export async function GET(request: Request) {
         );
       }
     }
-
-    // Fetch check-in records for this MSSV
-    const { data: checkIns, error: checkInErr } = await supabase
-      .from('check_ins')
-      .select(`
-        id,
-        event_id,
-        mssv,
-        participate_role,
-        created_at,
-        events (
-          event_id,
-          event_name,
-          event_date,
-          start_time,
-          end_time,
-          semester,
-          created_by
-        )
-      `)
-      .eq('mssv', cleanMssv)
-      .order('created_at', { ascending: false });
 
     if (checkInErr) {
       console.error('Error fetching check-ins for delegate lookup:', checkInErr);

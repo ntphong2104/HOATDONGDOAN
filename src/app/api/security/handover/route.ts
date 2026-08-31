@@ -80,36 +80,35 @@ export async function POST(req: Request) {
 
     let returnData: any = null;
 
-    try {
-      const { data, error } = await supabase
-        .from('event_proposals')
-        .update(updatePayload)
-        .eq('id', proposal_id)
-        .select()
-        .single();
+    const updateProposalPromise = supabase
+      .from('event_proposals')
+      .update(updatePayload)
+      .eq('id', proposal_id)
+      .select()
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data) {
+          returnData = data;
+        }
+      })
+      .catch(() => {});
 
-      if (!error && data) {
-        returnData = data;
-      }
-    } catch {}
-
-    // Persist to Supabase system_settings (Guaranteed persistent storage across all Vercel serverless instances)
-    try {
-      await saveHandoverRecordToDb(
-        supabase,
-        proposal_id,
-        {
-          key_status: updatePayload.key_status,
-          key_handed_at: updatePayload.key_handed_at,
-          key_handed_by: updatePayload.key_handed_by,
-          key_returned_at: updatePayload.key_returned_at,
-          key_returned_by: updatePayload.key_returned_by,
-        },
-        auth.email
-      );
-    } catch (e) {
+    const saveRecordPromise = saveHandoverRecordToDb(
+      supabase,
+      proposal_id,
+      {
+        key_status: updatePayload.key_status,
+        key_handed_at: updatePayload.key_handed_at,
+        key_handed_by: updatePayload.key_handed_by,
+        key_returned_at: updatePayload.key_returned_at,
+        key_returned_by: updatePayload.key_returned_by,
+      },
+      auth.email
+    ).catch((e) => {
       console.warn('Could not save to DB system_settings handover registry:', e);
-    }
+    });
+
+    await Promise.all([updateProposalPromise, saveRecordPromise]);
 
     // Also update local persistent store
     const storedProp = getStoredProposalById(proposal_id);

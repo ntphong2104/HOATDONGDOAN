@@ -20,19 +20,22 @@ export async function GET() {
     .order('created_at', { ascending: false });
 
   if (!isSuperAdmin && !isYouthUnion) {
-    const { data: eventRoles } = await supabase
-      .from('event_roles')
-      .select('event_id')
-      .ilike('email', auth.email)
-      .eq('role_type', 'event_admin');
+    const [
+      { data: eventRoles },
+      { data: createdEvents }
+    ] = await Promise.all([
+      supabase
+        .from('event_roles')
+        .select('event_id')
+        .ilike('email', auth.email)
+        .eq('role_type', 'event_admin'),
+      supabase
+        .from('events')
+        .select('event_id')
+        .ilike('created_by', auth.email)
+    ]);
 
     const roleEventIds = (eventRoles || []).map((r) => r.event_id);
-
-    const { data: createdEvents } = await supabase
-      .from('events')
-      .select('event_id')
-      .ilike('created_by', auth.email);
-
     const createdEventIds = (createdEvents || []).map((e) => e.event_id);
     const allAccessibleIds = [...new Set([...roleEventIds, ...createdEventIds])];
 

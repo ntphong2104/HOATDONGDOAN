@@ -60,28 +60,26 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // 1. Fetch event (don't check status - super admin can add after closed)
-    const { data: event, error: eventErr } = await supabase
-      .from('events')
-      .select('event_id, event_name, event_date, status')
-      .eq('event_id', resolvedParams.id)
-      .single();
+    // Fetch event, meta, users, and existing checkins in parallel
+    const [
+      { data: event, error: eventErr },
+      meta,
+      { data: existingUsers },
+      existingCheckins
+    ] = await Promise.all([
+      supabase.from('events').select('event_id, event_name, event_date, status').eq('event_id', resolvedParams.id).single(),
+      getEventMeta(supabase, resolvedParams.id),
+      supabase.from('users').select('mssv, full_name, class_id, email').in('mssv', cleanedMssvs),
+      getSessionCheckIns(supabase, resolvedParams.id)
+    ]);
 
     if (eventErr || !event) {
       return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
     }
 
-    // 2. Get event meta for sessions
-    const meta = await getEventMeta(supabase, resolvedParams.id);
     const sessions = meta.sessions || [];
-    const targetSession = sessions.find((s) => s.id === session_id);
+    const targetSession = sessions.find((s: any) => s.id === session_id);
     const sessionName = targetSession?.name || (session_id === 'main' ? 'Buổi chính' : session_id);
-
-    // 3. Fetch existing student info
-    const { data: existingUsers } = await supabase
-      .from('users')
-      .select('mssv, full_name, class_id, email')
-      .in('mssv', cleanedMssvs);
 
     const userMap = new Map<string, { full_name: string; class_id: string; email: string }>();
     (existingUsers || []).forEach((u: any) => {
@@ -96,9 +94,6 @@ export async function POST(
     const actorEmail = auth.email;
     const addedMssvs: string[] = [];
     const skippedMssvs: string[] = [];
-
-    // 4. Get existing session checkins to avoid duplicates
-    const existingCheckins = await getSessionCheckIns(supabase, resolvedParams.id);
 
     for (const mssv of cleanedMssvs) {
       // Check if already checked in for this session

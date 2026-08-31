@@ -15,22 +15,20 @@ export async function POST(
 
   const supabase = await createClient();
 
-  // 1. Fetch event
-  const { data: event, error: eventErr } = await supabase
-    .from('events')
-    .select('*')
-    .eq('event_id', resolvedParams.id)
-    .single();
+  // 1. Fetch event, registrations, and checkins in parallel
+  const [
+    { data: event, error: eventErr },
+    { data: registrations },
+    { data: checkIns }
+  ] = await Promise.all([
+    supabase.from('events').select('*').eq('event_id', resolvedParams.id).single(),
+    supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id),
+    supabase.from('check_ins').select('mssv').eq('event_id', resolvedParams.id)
+  ]);
 
   if (eventErr || !event) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
-
-  // 2. Fetch all registrations for this event
-  const { data: registrations } = await supabase
-    .from('event_registrations')
-    .select('*')
-    .eq('event_id', resolvedParams.id);
 
   if (!registrations || registrations.length === 0) {
     return NextResponse.json({
@@ -44,12 +42,6 @@ export async function POST(
       message: 'Sự kiện chưa có lượt đăng ký nào trước đó.',
     });
   }
-
-  // 3. Fetch all checkins for this event
-  const { data: checkIns } = await supabase
-    .from('check_ins')
-    .select('mssv')
-    .eq('event_id', resolvedParams.id);
 
   // 4. Reconcile attendance
   const { attended, absent } = reconcileAttendance(registrations, checkIns || []);

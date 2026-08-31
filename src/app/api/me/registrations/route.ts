@@ -51,10 +51,18 @@ export async function GET() {
     const enrichedList = await Promise.all(
       (regs || []).map(async (r: any) => {
         const ev = r.events || {};
-        const regExtras = await getRegistrationExtras(supabase, r.event_id);
+        const [regExtras, singleMeta, sessionCheckins, { data: checkInRecords }] = await Promise.all([
+          getRegistrationExtras(supabase, r.event_id),
+          getMetaForEvent(supabase, r.event_id),
+          getSessionCheckIns(supabase, r.event_id),
+          supabase
+            .from('check_ins')
+            .select('checked_by, created_at')
+            .eq('event_id', r.event_id)
+            .eq('mssv', (r.mssv || '').toUpperCase())
+        ]);
+
         const extra = regExtras[(r.mssv || '').toUpperCase()] || {};
-        const singleMeta = await getMetaForEvent(supabase, r.event_id);
-        const sessionCheckins = await getSessionCheckIns(supabase, r.event_id);
         const mySessions = sessionCheckins.filter((s) => s.mssv.toUpperCase() === (r.mssv || '').toUpperCase());
         const totalSessions = (singleMeta.sessions && singleMeta.sessions.length > 0) ? singleMeta.sessions.length : 1;
 
@@ -65,12 +73,6 @@ export async function GET() {
         if (totalSessions > 1) {
           // Multi-session event: cross-reference with check_ins table to find missed sessions
           try {
-            const { data: checkInRecords } = await supabase
-              .from('check_ins')
-              .select('checked_by, created_at')
-              .eq('event_id', r.event_id)
-              .eq('mssv', (r.mssv || '').toUpperCase());
-
             if (checkInRecords && checkInRecords.length > 0) {
               for (const ci of checkInRecords) {
                 const ciTime = new Date(ci.created_at);

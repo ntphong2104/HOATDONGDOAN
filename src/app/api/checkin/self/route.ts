@@ -91,11 +91,24 @@ export async function POST(req: Request) {
 
     // Find student info
     let mssv = extractMSSV(email);
-    const { data: studentUser } = await supabase
-      .from('users')
-      .select('mssv, full_name, class_id')
-      .eq('email', email)
-      .single();
+    // Parallelize studentUser, event, and getEventMeta
+    const [
+      { data: studentUser },
+      { data: event, error: eventErr },
+      meta
+    ] = await Promise.all([
+      supabase
+        .from('users')
+        .select('mssv, full_name, class_id')
+        .eq('email', email)
+        .single(),
+      supabase
+        .from('events')
+        .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
+        .eq('event_id', eventId)
+        .single(),
+      getEventMeta(supabase, eventId)
+    ]);
 
     if (studentUser?.mssv) {
       mssv = studentUser.mssv;
@@ -118,13 +131,6 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Check event status
-    const { data: event, error: eventErr } = await supabase
-      .from('events')
-      .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
-      .eq('event_id', eventId)
-      .single();
-
     if (eventErr || !event) {
       return NextResponse.json({ success: false, error: 'Sự kiện không tồn tại' }, { status: 404 });
     }
@@ -134,7 +140,6 @@ export async function POST(req: Request) {
     }
 
     // Retrieve event sessions and check session-specific time
-    const meta = await getEventMeta(supabase, eventId);
     const sessions = meta.sessions || [];
     const matchedSession = sessions.find((s) => s.id === targetSessionId) || {
       id: 'main',

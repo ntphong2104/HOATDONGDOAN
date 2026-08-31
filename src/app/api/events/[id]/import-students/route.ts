@@ -102,11 +102,17 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Không tìm thấy MSSV hợp lệ trong danh sách cung cấp' }, { status: 400 });
     }
 
-    // Fetch existing student info from `users` table for full_name and class_id
-    const { data: existingUsers } = await supabase
-      .from('users')
-      .select('mssv, full_name, class_id, email, phone, gender')
-      .in('mssv', cleanedMssvs);
+    // Fetch existing student info from `users` table and `getEventMeta` in parallel
+    const [
+      { data: existingUsers },
+      meta
+    ] = await Promise.all([
+      supabase
+        .from('users')
+        .select('mssv, full_name, class_id, email, phone, gender')
+        .in('mssv', cleanedMssvs),
+      getEventMeta(supabase, resolvedParams.id)
+    ]);
 
     const userMap = new Map<string, { full_name: string; class_id: string; email?: string; phone?: string; gender?: string }>();
     (existingUsers || []).forEach((u: any) => {
@@ -145,7 +151,6 @@ export async function POST(
     }
 
     // Auto-create departments in event meta if Excel specified custom department names
-    const meta = await getEventMeta(supabase, resolvedParams.id);
     const currentDepts = meta.departments || [];
     const newDeptNames = Array.from(
       new Set(

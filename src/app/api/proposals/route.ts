@@ -59,13 +59,18 @@ export async function GET(req: Request) {
       query = query.eq('status', status);
     }
 
-    const { data: proposals, error } = await query;
+    const [
+      { data: proposals, error },
+      handoverDbResult,
+      { data: allRatings }
+    ] = await Promise.all([
+      query,
+      getHandoverRegistryFromDb(supabase).catch(() => ({})),
+      supabase.from('unit_ratings').select('*')
+    ]);
 
     if (!error && proposals) {
-      let handoverDb: any = {};
-      try {
-        handoverDb = await getHandoverRegistryFromDb(supabase);
-      } catch {}
+      let handoverDb: any = handoverDbResult;
 
       // Auto-heal: Ensure every approved proposal has an active event in events table
       for (const prop of proposals) {
@@ -129,7 +134,6 @@ export async function GET(req: Request) {
       const stored = getStoredProposals();
       const storedMap = new Map(stored.map(s => [s.id, s]));
 
-      const { data: allRatings } = await supabase.from('unit_ratings').select('*');
       const proposalsWithRatings = proposals.map((prop) => {
         const local = storedMap.get(prop.id);
         const dbHandover = handoverDb[prop.id];
