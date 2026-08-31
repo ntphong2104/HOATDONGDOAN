@@ -304,11 +304,16 @@ export default function ProposalDetailPage({
       if (step === 'youth_union' || step === 'ctsv') return 'skipped';
       if (step === 'facility') {
         if (proposal.current_stage === 'facility') return 'current';
+        if (proposal.current_stage === 'super_admin') return 'done';
+        return 'waiting';
+      }
+      if (step === 'super_admin') {
+        if (proposal.current_stage === 'super_admin') return 'current';
         return 'waiting';
       }
     }
 
-    const stageOrder: ProposalStage[] = ['youth_union', 'ctsv', 'facility'];
+    const stageOrder: ProposalStage[] = ['youth_union', 'ctsv', 'facility', 'super_admin'];
     const currentIdx = stageOrder.indexOf(proposal.current_stage);
     const stepIdx = stageOrder.indexOf(step);
 
@@ -724,7 +729,7 @@ export default function ProposalDetailPage({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <ShieldCheckIcon size={20} color="#2563eb" />
-              <span>Tiến Trình Phê Duyệt Kế Hoạch (Đoàn TN → CTSV → Phòng Tổ Chức):</span>
+              <span>Tiến Trình Phê Duyệt Kế Hoạch:</span>
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -917,7 +922,68 @@ export default function ProposalDetailPage({
                     textTransform: 'uppercase',
                   }}
                 >
-                  {getStepStatus('facility') === 'done' ? 'Đã duyệt' : getStepStatus('facility') === 'skipped' ? 'Miễn duyệt' : 'Chờ duyệt'}
+                  {getStepStatus('facility') === 'done' ? 'Đã duyệt' : getStepStatus('facility') === 'skipped' ? 'Miễn duyệt' : getStepStatus('facility') === 'current' ? 'Chờ duyệt' : 'Chờ đến lượt'}
+                </span>
+              </div>
+
+              {/* Bước 4: Ban Quản Trị Duyệt Chung Cuộc */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1rem 1.25rem',
+                  borderRadius: '14px',
+                  border: getStepStatus('super_admin') === 'done' ? '1.5px solid #86efac' : getStepStatus('super_admin') === 'current' ? '1.5px solid #a78bfa' : '1.5px solid #e2e8f0',
+                  background: getStepStatus('super_admin') === 'done' ? '#f0fdf4' : getStepStatus('super_admin') === 'current' ? '#faf5ff' : '#ffffff',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '10px',
+                      background: getStepStatus('super_admin') === 'done' ? '#16a34a' : getStepStatus('super_admin') === 'current' ? '#7c3aed' : '#94a3b8',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.9rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {getStepStatus('super_admin') === 'done' ? '✓' : '4'}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                      4. Ban Quản Trị Duyệt Chung Cuộc
+                    </div>
+                    <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.15rem' }}>
+                      {getStepStatus('super_admin') === 'done'
+                        ? '✓ Đã phê duyệt chung cuộc — Kế hoạch được phê chuẩn'
+                        : getStepStatus('super_admin') === 'current'
+                        ? 'Đang chờ Ban Quản Trị duyệt chung cuộc...'
+                        : 'Chờ hoàn thành các bước trước'}
+                    </div>
+                  </div>
+                </div>
+
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: '20px',
+                    background: getStepStatus('super_admin') === 'done' ? '#dcfce7' : getStepStatus('super_admin') === 'current' ? '#ede9fe' : '#f1f5f9',
+                    color: getStepStatus('super_admin') === 'done' ? '#166534' : getStepStatus('super_admin') === 'current' ? '#6d28d9' : '#64748b',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {getStepStatus('super_admin') === 'done' ? 'Đã duyệt' : getStepStatus('super_admin') === 'current' ? 'Chờ duyệt' : 'Chờ đến lượt'}
                 </span>
               </div>
             </div>
