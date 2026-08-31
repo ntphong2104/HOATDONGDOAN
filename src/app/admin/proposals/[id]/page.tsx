@@ -1337,7 +1337,21 @@ export default function ProposalDetailPage({
             </div>
             {/* Iframe */}
             <iframe
-              src={proposal.plan_url.replace('/edit', '/preview').replace('/view', '/preview')}
+              src={(() => {
+                const url = proposal.plan_url;
+                // Extract Google Drive/Docs file ID from various URL formats
+                const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (idMatch) {
+                  const fileId = idMatch[1];
+                  if (url.includes('docs.google.com/document')) return `https://docs.google.com/document/d/${fileId}/preview`;
+                  if (url.includes('docs.google.com/spreadsheets')) return `https://docs.google.com/spreadsheets/d/${fileId}/preview`;
+                  if (url.includes('docs.google.com/presentation')) return `https://docs.google.com/presentation/d/${fileId}/embed`;
+                  return `https://drive.google.com/file/d/${fileId}/preview`;
+                }
+                const openMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (openMatch) return `https://drive.google.com/file/d/${openMatch[1]}/preview`;
+                return url;
+              })()}
               style={{
                 flex: 1,
                 width: '100%',
