@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getSessionCheckIns, getEventMeta } from '@/lib/constants/event-meta-store';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -43,28 +44,36 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
   }
 
-  const { data: checkins, error } = await supabase
-    .from('check_ins')
-    .select(`
-      mssv,
-      participate_role,
-      checked_by,
-      created_at,
-      users (full_name, class_id)
-    `)
-    .eq('event_id', resolvedParams.id)
-    .order('created_at', { ascending: false });
+  // Also query attended registrations so attended students are consistently included
+  const [
+    { data: checkins, error },
+    { data: attendedRegistrations },
+    sessionCheckins,
+    meta
+  ] = await Promise.all([
+    supabase
+      .from('check_ins')
+      .select(`
+        mssv,
+        participate_role,
+        checked_by,
+        created_at,
+        users (full_name, class_id)
+      `)
+      .eq('event_id', resolvedParams.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('event_registrations')
+      .select('mssv, full_name, class_id, role_type, created_at')
+      .eq('event_id', resolvedParams.id)
+      .eq('attended', true),
+    getSessionCheckIns(supabase, resolvedParams.id),
+    getEventMeta(supabase, resolvedParams.id)
+  ]);
 
   if (error) {
     console.error('Fetch checkins error:', error);
   }
-
-  // Also query attended registrations so attended students are consistently included
-  const { data: attendedRegistrations } = await supabase
-    .from('event_registrations')
-    .select('mssv, full_name, class_id, role_type, created_at')
-    .eq('event_id', resolvedParams.id)
-    .eq('attended', true);
 
   const checkinsMap = new Map<string, any>();
 
@@ -121,9 +130,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   // Enrich with per-session check-in history
-  const { getSessionCheckIns, getEventMeta } = await import('@/lib/constants/event-meta-store');
-  const sessionCheckins = await getSessionCheckIns(supabase, resolvedParams.id);
-  const meta = await getEventMeta(supabase, resolvedParams.id);
   const totalSessions = (meta.sessions && meta.sessions.length > 0) ? meta.sessions.length : 1;
 
   const exportData = Array.from(checkinsMap.values()).map((c, index) => {

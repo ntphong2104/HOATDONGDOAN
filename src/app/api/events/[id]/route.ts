@@ -11,7 +11,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const resolvedParams = await params;
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
   const supabase = (await getSupabase()) || (await createClient());
-  const { data, error } = await supabase.from('events').select('*').eq('event_id', resolvedParams.id).maybeSingle();
+  const [eventResult, meta] = await Promise.all([
+    supabase.from('events').select('*').eq('event_id', resolvedParams.id).maybeSingle(),
+    getEventMeta(supabase, resolvedParams.id)
+  ]);
+  const { data, error } = eventResult;
   
   if (error || !data) return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện'}, { status: 404 });
   
@@ -20,8 +24,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     data.is_active = false;
     supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', resolvedParams.id).then(() => {});
   }
-
-  const meta = await getEventMeta(supabase, resolvedParams.id);
   const enriched = {
     ...data,
     departments: meta.departments || [],

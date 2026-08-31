@@ -20,17 +20,24 @@ export async function GET(
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
 
-    const { data: event } = await supabase
-      .from('events')
-      .select('event_id, event_name, event_date, start_time, end_time, status')
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
+    const [
+      { data: event },
+      meta,
+      sessionCheckins
+    ] = await Promise.all([
+      supabase
+        .from('events')
+        .select('event_id, event_name, event_date, start_time, end_time, status')
+        .eq('event_id', resolvedParams.id)
+        .maybeSingle(),
+      getEventMeta(supabase, resolvedParams.id),
+      getSessionCheckIns(supabase, resolvedParams.id)
+    ]);
 
     if (!event) {
       return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
     }
 
-    const meta = await getEventMeta(supabase, resolvedParams.id);
     let sessions: EventSession[] = meta.sessions || [];
 
     // Default to at least 1 session if none configured yet
@@ -46,8 +53,6 @@ export async function GET(
         },
       ];
     }
-
-    const sessionCheckins = await getSessionCheckIns(supabase, resolvedParams.id);
 
     // Calculate count per session
     const sessionsWithStats = sessions.map((s) => {

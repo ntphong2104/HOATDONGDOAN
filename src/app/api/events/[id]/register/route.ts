@@ -15,18 +15,38 @@ export async function GET(
   const auth = await getAuthContext();
   const supabase = await createClient();
 
-  // Fetch event details
-  const { data: rawEvent, error: eventErr } = await supabase
-    .from('events')
-    .select('*')
-    .eq('event_id', resolvedParams.id)
-    .maybeSingle();
+  const mssv = auth?.email ? extractMSSV(auth.email) || auth.email : null;
+  const isAdmin = auth?.isSuperAdmin || auth?.isEventAdmin;
+
+  // Parallelize all independent queries
+  const [
+    { data: rawEvent, error: eventErr },
+    meta,
+    { count: totalRegistered },
+    regExtras,
+    { data: reg },
+    { data: penalty },
+    { data: list }
+  ] = await Promise.all([
+    supabase.from('events').select('*').eq('event_id', resolvedParams.id).maybeSingle(),
+    getEventMeta(supabase, resolvedParams.id),
+    supabase.from('event_registrations').select('*', { count: 'exact', head: true }).eq('event_id', resolvedParams.id),
+    getRegistrationExtras(supabase, resolvedParams.id),
+    auth?.email
+      ? supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id).eq('email', auth.email).maybeSingle()
+      : Promise.resolve({ data: null }),
+    mssv
+      ? supabase.from('user_penalties').select('*').eq('mssv', mssv).maybeSingle()
+      : Promise.resolve({ data: null }),
+    isAdmin
+      ? supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id).order('created_at', { ascending: false })
+      : Promise.resolve({ data: null })
+  ]);
 
   if (eventErr || !rawEvent) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
-  const meta = await getEventMeta(supabase, resolvedParams.id);
   const event = {
     ...rawEvent,
     departments: meta.departments || [],
@@ -35,12 +55,6 @@ export async function GET(
     max_participants: meta.max_participants || 0,
     max_volunteers: meta.max_volunteers || 0,
   };
-
-  // Count total registrations
-  const { count: totalRegistered } = await supabase
-    .from('event_registrations')
-    .select('*', { count: 'exact', head: true })
-    .eq('event_id', resolvedParams.id);
 
   let registrationWindow = isRegistrationWindowOpen(
     event.event_date,
@@ -61,55 +75,26 @@ export async function GET(
     };
   }
 
-  const regExtras = await getRegistrationExtras(supabase, resolvedParams.id);
-
   let myRegistration = null;
-  let penaltyStatus = null;
+  let penaltyStatus = penalty || null;
 
-  if (auth?.email) {
-    const mssv = extractMSSV(auth.email) || auth.email;
-
-    // Check my registration
-    const { data: reg } = await supabase
-      .from('event_registrations')
-      .select('*')
-      .eq('event_id', resolvedParams.id)
-      .eq('email', auth.email)
-      .maybeSingle();
-
-    if (reg) {
-      const extra = regExtras[mssv.toUpperCase()] || {};
-      myRegistration = {
-        ...reg,
-        department_id: extra.department_id || reg.department_id || null,
-        department_name: extra.department_name || reg.department_name || null,
-        gender: extra.gender || reg.gender || 'Nam',
-        phone: extra.phone || reg.phone || '',
-        note: extra.note || reg.note || '',
-        review_status: extra.review_status || reg.review_status || (reg.role_type === 'volunteer' ? 'pending' : 'accepted'),
-      };
-    }
-
-    // Check penalty status
-    const { data: penalty } = await supabase
-      .from('user_penalties')
-      .select('*')
-      .eq('mssv', mssv)
-      .maybeSingle();
-
-    penaltyStatus = penalty;
+  if (auth?.email && mssv && reg) {
+    const extra = regExtras[mssv.toUpperCase()] || {};
+    myRegistration = {
+      ...reg,
+      department_id: extra.department_id || reg.department_id || null,
+      department_name: extra.department_name || reg.department_name || null,
+      gender: extra.gender || reg.gender || 'Nam',
+      phone: extra.phone || reg.phone || '',
+      note: extra.note || reg.note || '',
+      review_status: extra.review_status || reg.review_status || (reg.role_type === 'volunteer' ? 'pending' : 'accepted'),
+    };
   }
 
   // If Admin, fetch all registrations for this event
   let allRegistrations = undefined;
-  if (auth?.isSuperAdmin || auth?.isEventAdmin) {
-    const { data: list } = await supabase
-      .from('event_registrations')
-      .select('*')
-      .eq('event_id', resolvedParams.id)
-      .order('created_at', { ascending: false });
-
-    const mssvList = (list || []).map((r) => r.mssv).filter(Boolean);
+  if (isAdmin && list) {
+    const mssvList = list.map((r: any) => r.mssv).filter(Boolean);
     const { data: userProfiles } = await supabase
       .from('users')
       .select('mssv, full_name, class_id')

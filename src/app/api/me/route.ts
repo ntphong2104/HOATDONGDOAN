@@ -146,53 +146,70 @@ export async function GET() {
   
   try {
     const username = email.split('@')[0].toUpperCase();
-    const { data: user } = await adminClient
-      .from('users')
-      .select('mssv, full_name, class_id')
-      .or(`email.ilike.${email},mssv.ilike.${username}`)
-      .maybeSingle();
 
-    let superAdmin = null;
-    try {
-      const q = adminClient.from('super_admins').select('email');
-      const res = typeof q.ilike === 'function' ? await q.ilike('email', email).maybeSingle() : (typeof q.eq === 'function' ? await q.eq('email', email).single() : null);
-      superAdmin = res?.data || null;
-    } catch {
-      try {
-        const q = adminClient.from('super_admins').select('email');
-        const res = typeof q.eq === 'function' ? await q.eq('email', email) : null;
-        superAdmin = Array.isArray(res?.data) ? res.data[0] : res?.data;
-      } catch {}
-    }
+    // Run all 5 user data queries in parallel
+    const [userResult, superAdminResult, officerRolesResult, eventRolesResult, createdEventsResult] = await Promise.all([
+      // 1. User profile
+      adminClient
+        .from('users')
+        .select('mssv, full_name, class_id')
+        .or(`email.ilike.${email},mssv.ilike.${username}`)
+        .maybeSingle()
+        .then(r => r.data)
+        .catch(() => null),
 
-    // Check dynamic officer_roles via persistent store
-    let assignedOfficerRole: any = null;
-    try {
-      const roles = await getStoredOfficerRoles(adminClient);
-      assignedOfficerRole = roles.find((r) => r.email.toLowerCase() === email.toLowerCase());
-    } catch {}
+      // 2. Super admin check
+      (async () => {
+        try {
+          const q = adminClient.from('super_admins').select('email');
+          const res = typeof q.ilike === 'function' ? await q.ilike('email', email).maybeSingle() : (typeof q.eq === 'function' ? await q.eq('email', email).single() : null);
+          return res?.data || null;
+        } catch {
+          try {
+            const q = adminClient.from('super_admins').select('email');
+            const res = typeof q.eq === 'function' ? await q.eq('email', email) : null;
+            return Array.isArray(res?.data) ? res.data[0] : res?.data;
+          } catch { return null; }
+        }
+      })(),
 
-    let eventRoles: any = [];
-    try {
-      const q = adminClient
-        .from('event_roles')
-        .select(`
-          event_id,
-          role_type,
-          events (event_name, status, is_active, event_date, start_time, end_time)
-        `);
-      const res = typeof q.ilike === 'function' ? await q.ilike('email', email) : (typeof q.eq === 'function' ? await q.eq('email', email) : null);
-      eventRoles = res?.data || [];
-    } catch {}
+      // 3. Officer roles
+      getStoredOfficerRoles(adminClient)
+        .then(roles => roles.find((r) => r.email.toLowerCase() === email.toLowerCase()) || null)
+        .catch(() => null),
 
-    let createdEvents: any = [];
-    try {
-      const q = adminClient
-        .from('events')
-        .select('event_id, event_name, status, is_active, event_date, start_time, end_time');
-      const res = typeof q.ilike === 'function' ? await q.ilike('created_by', email) : (typeof q.eq === 'function' ? await q.eq('created_by', email) : null);
-      if (res?.data) createdEvents = res.data;
-    } catch {}
+      // 4. Event roles
+      (async () => {
+        try {
+          const q = adminClient
+            .from('event_roles')
+            .select(`
+              event_id,
+              role_type,
+              events (event_name, status, is_active, event_date, start_time, end_time)
+            `);
+          const res = typeof q.ilike === 'function' ? await q.ilike('email', email) : (typeof q.eq === 'function' ? await q.eq('email', email) : null);
+          return res?.data || [];
+        } catch { return []; }
+      })(),
+
+      // 5. Created events
+      (async () => {
+        try {
+          const q = adminClient
+            .from('events')
+            .select('event_id, event_name, status, is_active, event_date, start_time, end_time');
+          const res = typeof q.ilike === 'function' ? await q.ilike('created_by', email) : (typeof q.eq === 'function' ? await q.eq('created_by', email) : null);
+          return res?.data || [];
+        } catch { return []; }
+      })(),
+    ]);
+
+    const user = userResult;
+    const superAdmin = superAdminResult;
+    const assignedOfficerRole = officerRolesResult;
+    const eventRoles = eventRolesResult;
+    const createdEvents = createdEventsResult;
 
     const lowerEmail = email.toLowerCase();
     const isSubAdminUnit =
