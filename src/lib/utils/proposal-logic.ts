@@ -58,7 +58,7 @@ export function calculateProposalStages(
       requiresYouthUnion: false,
       requiresCtsv: false,
       requiresFacility: true,
-      stagesList: ['facility', 'super_admin'],
+      stagesList: ['facility'],
       initialStage: 'facility',
       isDirectFaculty: true,
     };
@@ -71,7 +71,6 @@ export function calculateProposalStages(
   if (requiresFacility) {
     stagesList.push('facility');
   }
-  stagesList.push('super_admin');
 
   return {
     requiresYouthUnion: true,
@@ -95,26 +94,26 @@ export function getNextStage(
   const isDirectFaculty = isKhoaUnit(organizationUnit);
 
   if (isDirectFaculty) {
-    if (currentStage === 'facility') return 'super_admin';
-    if (currentStage === 'super_admin') return 'approved';
+    if (currentStage === 'facility') return 'approved';
     return 'approved';
   }
 
   if (currentStage === 'youth_union') {
     if (requiresCtsv) return 'ctsv';
     if (requiresFacility) return 'facility';
-    return 'super_admin';
+    return 'approved';
   }
 
   if (currentStage === 'ctsv') {
     if (requiresFacility) return 'facility';
-    return 'super_admin';
+    return 'approved';
   }
 
   if (currentStage === 'facility') {
-    return 'super_admin';
+    return 'approved';
   }
 
+  // Legacy: handle existing proposals still at super_admin
   if (currentStage === 'super_admin') {
     return 'approved';
   }

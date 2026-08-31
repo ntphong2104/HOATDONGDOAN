@@ -110,7 +110,7 @@ export default function ProposalsListPage() {
       : tier === 'facility'
       ? 'Phê duyệt Bước 3: Thẩm định & Cấp phòng / Hội trường / Sân bãi'
       : tier === 'super_admin'
-      ? 'Phê duyệt Bước 4: Chung cuộc & Tự động tạo sự kiện điểm danh'
+      ? 'Giám sát & Quản lý toàn bộ kế hoạch'
       : 'Theo dõi tiến độ duyệt các kế hoạch đã gửi';
 
   const handleApprove = async (id: string, e: React.MouseEvent) => {
