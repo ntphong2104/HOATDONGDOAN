@@ -36,7 +36,7 @@ import styles from './page.module.css';
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [event, setEvent] = useState<Event | null>(null);
   const [checkins, setCheckins] = useState<CheckinExportRow[]>([]);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -103,16 +103,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const fetchData = async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
-      const meRes = await fetch('/api/me');
-      const meData = await meRes.json();
-      if (meData.success && meData.data) {
-        setCurrentUser(meData.data);
-      } else {
-        window.location.replace('/login');
-        return;
-      }
-
-      const [eventRes, checkinsRes, rolesRes, regRes, ratingRes, sessionsRes] = await Promise.all([
+      // Run ALL fetches in parallel including /api/me
+      const [meRes, eventRes, checkinsRes, rolesRes, regRes, ratingRes, sessionsRes] = await Promise.all([
+        fetch('/api/me'),
         fetch(`/api/events/${resolvedParams.id}`, { cache: 'no-store' }),
         fetch(`/api/events/${resolvedParams.id}/checkins`, { cache: 'no-store' }),
         fetch(`/api/events/${resolvedParams.id}/roles`, { cache: 'no-store' }),
@@ -120,6 +113,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         fetch(`/api/events/${resolvedParams.id}/ratings`, { cache: 'no-store' }),
         fetch(`/api/events/${resolvedParams.id}/sessions`, { cache: 'no-store' }),
       ]);
+
+      const meData = await meRes.json();
+      if (meData.success && meData.data) {
+        setCurrentUser(meData.data);
+      } else {
+        window.location.replace('/login');
+        return;
+      }
 
       const [eventData, checkinsData, rolesData, regData, ratingData, sessionsData] = await Promise.all([
         eventRes.json().catch(() => ({ success: false })),

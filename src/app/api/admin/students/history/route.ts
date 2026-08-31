@@ -23,77 +23,37 @@ export async function GET(request: Request) {
     const cleanMssv = decodeURIComponent(mssv).trim().toUpperCase();
     const supabase = await createClient();
 
-    // 1. Fetch student info
-    const { data: user } = await supabase
-      .from('users')
-      .select('*')
-      .eq('mssv', cleanMssv)
-      .maybeSingle();
+    // Run all queries in parallel for performance
+    const [userResult, checkInsResult, attendedRegsResult, penaltyResult] = await Promise.all([
+      supabase.from('users').select('*').eq('mssv', cleanMssv).maybeSingle(),
+      supabase.from('check_ins').select(`
+        id, event_id, participate_role, created_at,
+        events ( event_id, event_name, event_date, start_time, end_time, semester, created_by )
+      `).eq('mssv', cleanMssv).order('created_at', { ascending: false }),
+      supabase.from('event_registrations').select(`
+        id, event_id, role_type, created_at,
+        events ( event_id, event_name, event_date, start_time, end_time, semester, created_by )
+      `).eq('mssv', cleanMssv).eq('attended', true),
+      supabase.from('user_penalties').select('*').eq('mssv', cleanMssv).maybeSingle(),
+    ]);
 
-    // 2. Fetch check-ins with event details
-    const { data: checkIns, error: checkInErr } = await supabase
-      .from('check_ins')
-      .select(`
-        id,
-        event_id,
-        participate_role,
-        created_at,
-        events (
-          event_id,
-          event_name,
-          event_date,
-          start_time,
-          end_time,
-          semester,
-          created_by
-        )
-      `)
-      .eq('mssv', cleanMssv)
-      .order('created_at', { ascending: false });
-
-    if (checkInErr) {
-      console.error('Check-in fetch error:', checkInErr);
-    }
-
-    // Also fetch attended event registrations
-    const { data: attendedRegs, error: regErr } = await supabase
-      .from('event_registrations')
-      .select(`
-        id,
-        event_id,
-        role_type,
-        created_at,
-        events (
-          event_id,
-          event_name,
-          event_date,
-          start_time,
-          end_time,
-          semester,
-          created_by
-        )
-      `)
-      .eq('mssv', cleanMssv)
-      .eq('attended', true);
-
-    if (regErr) {
-      console.error('Attended regs fetch error:', regErr);
-    }
+    const user = userResult.data;
+    const checkIns = checkInsResult.data;
+    if (checkInsResult.error) console.error('Check-in fetch error:', checkInsResult.error);
+    const attendedRegs = attendedRegsResult.data;
+    if (attendedRegsResult.error) console.error('Attended regs fetch error:', attendedRegsResult.error);
+    const penalty = penaltyResult.data;
 
     const historyMap = new Map<string, any>();
 
     (checkIns || []).forEach((ci: any) => {
       historyMap.set(ci.event_id || String(ci.id), {
-        id: ci.id,
-        event_id: ci.event_id,
+        id: ci.id, event_id: ci.event_id,
         event_name: ci.events?.event_name || 'Sự kiện Đoàn Thanh Niên',
-        event_date: ci.events?.event_date,
-        start_time: ci.events?.start_time,
-        end_time: ci.events?.end_time,
-        semester: ci.events?.semester || 'Chưa phân kỳ',
+        event_date: ci.events?.event_date, start_time: ci.events?.start_time,
+        end_time: ci.events?.end_time, semester: ci.events?.semester || 'Chưa phân kỳ',
         organizer: ci.events?.created_by || 'Đoàn trường',
-        participate_role: ci.participate_role || 'participant',
-        checkin_time: ci.created_at,
+        participate_role: ci.participate_role || 'participant', checkin_time: ci.created_at,
       });
     });
 
@@ -101,13 +61,10 @@ export async function GET(request: Request) {
       const key = ar.event_id || String(ar.id);
       if (!historyMap.has(key)) {
         historyMap.set(key, {
-          id: ar.id,
-          event_id: ar.event_id,
+          id: ar.id, event_id: ar.event_id,
           event_name: ar.events?.event_name || 'Sự kiện Đoàn Thanh Niên',
-          event_date: ar.events?.event_date,
-          start_time: ar.events?.start_time,
-          end_time: ar.events?.end_time,
-          semester: ar.events?.semester || 'Chưa phân kỳ',
+          event_date: ar.events?.event_date, start_time: ar.events?.start_time,
+          end_time: ar.events?.end_time, semester: ar.events?.semester || 'Chưa phân kỳ',
           organizer: ar.events?.created_by || 'Đoàn trường',
           participate_role: ar.role_type === 'volunteer' ? 'volunteer' : 'participant',
           checkin_time: ar.created_at,
@@ -116,13 +73,6 @@ export async function GET(request: Request) {
     });
 
     const formattedHistory = Array.from(historyMap.values());
-
-    // 3. Fetch penalty status
-    const { data: penalty } = await supabase
-      .from('user_penalties')
-      .select('*')
-      .eq('mssv', cleanMssv)
-      .maybeSingle();
 
     return NextResponse.json({
       success: true,

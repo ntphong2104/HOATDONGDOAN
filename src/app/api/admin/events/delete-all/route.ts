@@ -16,16 +16,14 @@ export async function POST(req: Request) {
     const ids = (allEvs || []).map((e: any) => e.event_id).filter(Boolean);
 
     if (ids.length > 0) {
-      // Delete check_ins for these events first
-      await supabase.from('check_ins').delete().in('event_id', ids);
-      
-      // Delete event_roles for these events
-      await supabase.from('event_roles').delete().in('event_id', ids);
-      
-      // Delete optional dependent records
-      try { await supabase.from('event_ratings').delete().in('event_id', ids); } catch {}
-      try { await supabase.from('event_registrations').delete().in('event_id', ids); } catch {}
-      try { await supabase.from('event_proposals').delete().in('created_event_id', ids); } catch {}
+      // Delete all dependent records in parallel
+      await Promise.allSettled([
+        supabase.from('check_ins').delete().in('event_id', ids),
+        supabase.from('event_roles').delete().in('event_id', ids),
+        supabase.from('event_ratings').delete().in('event_id', ids),
+        supabase.from('event_registrations').delete().in('event_id', ids),
+        supabase.from('event_proposals').delete().in('created_event_id', ids),
+      ]);
       
       // Finally delete events
       const { error: delErr } = await supabase.from('events').delete().in('event_id', ids);

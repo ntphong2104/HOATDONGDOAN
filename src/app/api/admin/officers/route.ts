@@ -66,89 +66,71 @@ export async function GET() {
       console.warn('Failed to load stored officer roles:', e);
     }
 
-    // 3. Fetch from super_admins table
-    try {
-      const { data: superAdmins } = await supabase.from('super_admins').select('email, created_at');
-      if (superAdmins) {
-        for (const sa of superAdmins) {
-          const emailLower = sa.email.toLowerCase().trim();
-          if (emailLower === ROOT_SUPER_ADMIN.toLowerCase()) continue; // already seeded
-          const key = makeKey(emailLower, 'super_admin', 'BCH_DOAN');
-          if (!officerMap.has(key)) {
-            officerMap.set(key, {
-              id: `sa-${emailLower}`,
-              email: emailLower,
-              role_tier: 'super_admin',
-              unit_code: 'BCH_DOAN',
-              unit_name: 'Ban Quản Trị Toàn Trường',
-              full_name: emailLower.split('@')[0],
-              notes: 'Super Admin Hệ Thống',
-              created_by: 'Super Admin',
-              created_at: sa.created_at || new Date().toISOString(),
-            });
-          }
+    // 3, 4, 5: Fetch super_admins, event_roles, and users in parallel
+    const [superAdminsResult, eventRolesResult, allUsersResult] = await Promise.all([
+      (async () => { try { return (await supabase.from('super_admins').select('email, created_at')).data; } catch { return null; } })(),
+      (async () => { try { return (await supabase.from('event_roles').select('id, email, role_type, created_at, event_id, events(event_name)')).data; } catch { return null; } })(),
+      (async () => { try { return (await supabase.from('users').select('email, full_name, mssv, class_id, tier')).data; } catch { return null; } })(),
+    ]);
+
+    // Process super_admins
+    if (superAdminsResult) {
+      for (const sa of superAdminsResult) {
+        const emailLower = sa.email.toLowerCase().trim();
+        if (emailLower === ROOT_SUPER_ADMIN.toLowerCase()) continue;
+        const key = makeKey(emailLower, 'super_admin', 'BCH_DOAN');
+        if (!officerMap.has(key)) {
+          officerMap.set(key, {
+            id: `sa-${emailLower}`, email: emailLower, role_tier: 'super_admin',
+            unit_code: 'BCH_DOAN', unit_name: 'Ban Quản Trị Toàn Trường',
+            full_name: emailLower.split('@')[0], notes: 'Super Admin Hệ Thống',
+            created_by: 'Super Admin', created_at: sa.created_at || new Date().toISOString(),
+          });
         }
       }
-    } catch {}
+    }
 
-    // 4. Fetch from event_roles table (Admins / Checkers của các sự kiện)
-    try {
-      const { data: eventRoles } = await supabase
-        .from('event_roles')
-        .select('id, email, role_type, created_at, event_id, events(event_name)');
-      if (eventRoles) {
-        for (const er of eventRoles) {
-          const emailLower = er.email.toLowerCase().trim();
-          const roleTier: UserTier = 'event_admin';
-          const eventName = (er.events as any)?.event_name || `Sự kiện #${er.event_id}`;
-          const key = makeKey(emailLower, roleTier, `event-${er.event_id}`);
-          if (!officerMap.has(key)) {
-            officerMap.set(key, {
-              id: String(er.id || `er-${emailLower}-${er.event_id}`),
-              email: emailLower,
-              role_tier: roleTier,
-              unit_code: 'LCD_CLB',
-              unit_name: eventName,
-              full_name: emailLower.split('@')[0],
-              notes: er.role_type === 'event_admin' ? `Admin sự kiện: ${eventName}` : `CTV quét mã sự kiện: ${eventName}`,
-              created_by: 'Ban Tổ Chức',
-              created_at: er.created_at || new Date().toISOString(),
-            });
-          }
+    // Process event_roles
+    if (eventRolesResult) {
+      for (const er of eventRolesResult) {
+        const emailLower = er.email.toLowerCase().trim();
+        const roleTier: UserTier = 'event_admin';
+        const eventName = (er.events as any)?.event_name || `Sự kiện #${er.event_id}`;
+        const key = makeKey(emailLower, roleTier, `event-${er.event_id}`);
+        if (!officerMap.has(key)) {
+          officerMap.set(key, {
+            id: String(er.id || `er-${emailLower}-${er.event_id}`), email: emailLower,
+            role_tier: roleTier, unit_code: 'LCD_CLB', unit_name: eventName,
+            full_name: emailLower.split('@')[0],
+            notes: er.role_type === 'event_admin' ? `Admin sự kiện: ${eventName}` : `CTV quét mã sự kiện: ${eventName}`,
+            created_by: 'Ban Tổ Chức', created_at: er.created_at || new Date().toISOString(),
+          });
         }
       }
-    } catch {}
+    }
 
-    // 5. Populate user profile details (full_name, mssv, class_id)
+    // Process users
     let userMap = new Map<string, any>();
-    try {
-      const { data: allUsers } = await supabase.from('users').select('email, full_name, mssv, class_id, tier');
-      if (allUsers) {
-        userMap = new Map(allUsers.map((u: any) => [u.email.toLowerCase().trim(), u]));
-
-        // Check if any users have elevated tier in users table
-        for (const u of allUsers) {
-          if (u.tier && u.tier !== 'user') {
-            const emailLower = u.email.toLowerCase().trim();
-            if (emailLower === ROOT_SUPER_ADMIN.toLowerCase()) continue;
-            const key = makeKey(emailLower, u.tier, 'BCH_DOAN');
-            if (!Array.from(officerMap.values()).some((o) => o.email.toLowerCase().trim() === emailLower && o.role_tier === u.tier)) {
-              officerMap.set(key, {
-                id: `user-${emailLower}-${u.tier}`,
-                email: emailLower,
-                role_tier: u.tier,
-                unit_code: u.tier === 'super_admin' ? 'BCH_DOAN' : 'BCH_DOAN',
-                unit_name: u.tier === 'super_admin' ? 'Ban Quản Trị Toàn Trường' : 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
-                full_name: u.full_name || emailLower.split('@')[0],
-                notes: `Phân quyền cấp ${u.tier.toUpperCase()}`,
-                created_by: 'Hệ Thống',
-                created_at: new Date().toISOString(),
-              });
-            }
+    if (allUsersResult) {
+      userMap = new Map(allUsersResult.map((u: any) => [u.email.toLowerCase().trim(), u]));
+      for (const u of allUsersResult) {
+        if (u.tier && u.tier !== 'user') {
+          const emailLower = u.email.toLowerCase().trim();
+          if (emailLower === ROOT_SUPER_ADMIN.toLowerCase()) continue;
+          const key = makeKey(emailLower, u.tier, 'BCH_DOAN');
+          if (!Array.from(officerMap.values()).some((o) => o.email.toLowerCase().trim() === emailLower && o.role_tier === u.tier)) {
+            officerMap.set(key, {
+              id: `user-${emailLower}-${u.tier}`, email: emailLower, role_tier: u.tier,
+              unit_code: u.tier === 'super_admin' ? 'BCH_DOAN' : 'BCH_DOAN',
+              unit_name: u.tier === 'super_admin' ? 'Ban Quản Trị Toàn Trường' : 'Đoàn TNCS Học Viện Cơ Sở TP.HCM',
+              full_name: u.full_name || emailLower.split('@')[0],
+              notes: `Phân quyền cấp ${u.tier.toUpperCase()}`,
+              created_by: 'Hệ Thống', created_at: new Date().toISOString(),
+            });
           }
         }
       }
-    } catch {}
+    }
 
     const allOfficers = Array.from(officerMap.values()).map((r) => {
       const u = userMap.get(r.email.toLowerCase().trim());

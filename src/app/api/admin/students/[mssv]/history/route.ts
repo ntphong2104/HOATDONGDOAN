@@ -21,58 +21,33 @@ export async function GET(
 
     const supabase = await createClient();
 
-    // Fetch user info
-    const { data: user } = await supabase
-      .from('users')
-      .select('*')
-      .eq('mssv', cleanMssv)
-      .single();
+    // Run all queries in parallel for performance
+    const [userResult, checkInsResult, attendedRegsResult, penaltyResult] = await Promise.all([
+      // Fetch user info
+      supabase.from('users').select('*').eq('mssv', cleanMssv).single(),
+      // Fetch check-ins
+      supabase.from('check_ins').select(`
+        id, event_id, participate_role, created_at,
+        events ( event_id, event_name, event_date, start_time, end_time, semester, created_by )
+      `).eq('mssv', cleanMssv).order('created_at', { ascending: false }),
+      // Fetch attended event registrations
+      supabase.from('event_registrations').select(`
+        id, event_id, role_type, created_at,
+        events ( event_id, event_name, event_date, start_time, end_time, semester, created_by )
+      `).eq('mssv', cleanMssv).eq('attended', true),
+      // Fetch penalties
+      supabase.from('user_penalties').select('*').eq('mssv', cleanMssv).maybeSingle(),
+    ]);
 
-    // Fetch check-ins
-    const { data: checkIns, error: checkInErr } = await supabase
-      .from('check_ins')
-      .select(`
-        id,
-        event_id,
-        participate_role,
-        created_at,
-        events (
-          event_id,
-          event_name,
-          event_date,
-          start_time,
-          end_time,
-          semester,
-          created_by
-        )
-      `)
-      .eq('mssv', cleanMssv)
-      .order('created_at', { ascending: false });
+    const user = userResult.data;
+    const checkIns = checkInsResult.data;
+    const checkInErr = checkInsResult.error;
+    const attendedRegs = attendedRegsResult.data;
+    const penalty = penaltyResult.data;
 
     if (checkInErr) {
       return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
     }
-
-    // Also fetch attended event registrations
-    const { data: attendedRegs } = await supabase
-      .from('event_registrations')
-      .select(`
-        id,
-        event_id,
-        role_type,
-        created_at,
-        events (
-          event_id,
-          event_name,
-          event_date,
-          start_time,
-          end_time,
-          semester,
-          created_by
-        )
-      `)
-      .eq('mssv', cleanMssv)
-      .eq('attended', true);
 
     const historyMap = new Map<string, any>();
 
@@ -110,13 +85,6 @@ export async function GET(
     });
 
     const formattedHistory = Array.from(historyMap.values());
-
-    // Fetch penalties / missed events
-    const { data: penalty } = await supabase
-      .from('user_penalties')
-      .select('*')
-      .eq('mssv', cleanMssv)
-      .maybeSingle();
 
     return NextResponse.json({
       success: true,
