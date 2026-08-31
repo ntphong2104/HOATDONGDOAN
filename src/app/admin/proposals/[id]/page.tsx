@@ -57,7 +57,6 @@ export default function ProposalDetailPage({
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingFeedback, setRatingFeedback] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
-  const [showPlanModal, setShowPlanModal] = useState(false);
 
   const fetchUser = async () => {
     try {
@@ -1011,8 +1010,10 @@ export default function ProposalDetailPage({
               </div>
 
               {proposal.plan_url && (
-                <button
-                  onClick={() => setShowPlanModal(true)}
+                <a
+                  href={proposal.plan_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1023,15 +1024,14 @@ export default function ProposalDetailPage({
                     borderRadius: '10px',
                     fontWeight: 700,
                     fontSize: '0.875rem',
-                    border: 'none',
-                    cursor: 'pointer',
+                    textDecoration: 'none',
                     boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
                     transition: 'transform 0.15s ease',
                   }}
                 >
                   <FileTextIcon size={16} color="#ffffff" />
-                  <span>Xem File Kế Hoạch Chi Tiết</span>
-                </button>
+                  <span>Xem File Kế Hoạch Chi Tiết ↗</span>
+                </a>
               )}
             </div>
 
@@ -1302,118 +1302,6 @@ export default function ProposalDetailPage({
           )}
         </div>
       </main>
-      {/* ═══════════════ POPUP XEM FILE KẾ HOẠCH ═══════════════ */}
-      {showPlanModal && proposal?.plan_url && (
-        <div
-          onClick={() => setShowPlanModal(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1.5rem',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: 1000,
-              height: '90vh',
-              background: '#ffffff',
-              borderRadius: '20px',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
-            }}
-          >
-            {/* Header */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '1rem 1.5rem',
-              borderBottom: '1px solid #e2e8f0',
-              background: '#f8fafc',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <FileTextIcon size={20} color="#2563eb" />
-                <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>
-                  Kế Hoạch Chi Tiết
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <a
-                  href={proposal.plan_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    padding: '0.4rem 0.85rem',
-                    background: '#f1f5f9',
-                    color: '#2563eb',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    fontSize: '0.8rem',
-                    textDecoration: 'none',
-                    border: '1px solid #e2e8f0',
-                  }}
-                >
-                  Mở trong tab mới ↗
-                </a>
-                <button
-                  onClick={() => setShowPlanModal(false)}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '10px',
-                    border: '1px solid #e2e8f0',
-                    background: '#fff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.2rem',
-                    color: '#64748b',
-                    fontWeight: 700,
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            {/* Iframe */}
-            <iframe
-              src={(() => {
-                const url = proposal.plan_url;
-                // Extract Google Drive/Docs file ID from various URL formats
-                const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if (idMatch) {
-                  const fileId = idMatch[1];
-                  if (url.includes('docs.google.com/document')) return `https://docs.google.com/document/d/${fileId}/preview`;
-                  if (url.includes('docs.google.com/spreadsheets')) return `https://docs.google.com/spreadsheets/d/${fileId}/preview`;
-                  if (url.includes('docs.google.com/presentation')) return `https://docs.google.com/presentation/d/${fileId}/embed`;
-                  return `https://drive.google.com/file/d/${fileId}/preview`;
-                }
-                const openMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-                if (openMatch) return `https://drive.google.com/file/d/${openMatch[1]}/preview`;
-                return url;
-              })()}
-              style={{
-                flex: 1,
-                width: '100%',
-                border: 'none',
-              }}
-              allow="autoplay"
-              title="Kế hoạch chi tiết"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
