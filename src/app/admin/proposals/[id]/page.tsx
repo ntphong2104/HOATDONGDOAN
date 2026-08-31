@@ -736,6 +736,57 @@ export default function ProposalDetailPage({
             </div>
           )}
 
+          {/* ═══════════════ TÓM TẮT THÔNG TIN KẾ HOẠCH ═══════════════ */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '0.75rem',
+            padding: '1.25rem',
+            background: '#f8fafc',
+            border: '1.5px solid #e2e8f0',
+            borderRadius: '16px',
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>📅 Ngày tổ chức</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                {new Date(proposal.start_date).toLocaleDateString('vi-VN')}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>⏰ Thời gian</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                {proposal.start_time?.slice(0, 5)} – {proposal.end_time?.slice(0, 5)}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>👥 Quy mô</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                {(proposal.participant_count || 0) + (proposal.volunteer_count || 0) + (proposal.organizer_count || 0)} người
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>
+                  {' '}({proposal.participant_count || 0} SV, {proposal.volunteer_count || 0} CTV, {proposal.organizer_count || 0} BTC)
+                </span>
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>📍 Địa điểm</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.room_name && proposal.room_name !== 'Không mượn' ? '#0f172a' : '#94a3b8' }}>
+                {proposal.room_name && proposal.room_name !== 'Không mượn' ? proposal.room_name : 'Không mượn phòng'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>🏢 Đơn vị</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                {proposal.organization_unit || 'Không rõ'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>📝 Học kỳ</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                {proposal.semester || '—'}
+              </span>
+            </div>
+          </div>
+
           {/* ═══════════════ TIẾN TRÌNH THẨM ĐỊNH KẾ HOẠCH ═══════════════ */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
