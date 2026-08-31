@@ -296,17 +296,21 @@ export default function ProposalDetailPage({
   }
 
   const isDirectFaculty = isKhoaUnit(proposal.organization_unit);
+  const requiresCtsv = (proposal.participant_count || 0) + (proposal.volunteer_count || 0) + (proposal.organizer_count || 0) > 50;
 
   const getStepStatus = (step: ProposalStage) => {
     if (proposal.status === 'rejected') return 'waiting';
     if (proposal.status === 'approved') {
       if (step === 'facility' && !proposal.requires_facility_approval) return 'skipped';
+      if (step === 'ctsv' && !requiresCtsv) return 'skipped';
+      if (isDirectFaculty && (step === 'youth_union' || step === 'ctsv')) return 'skipped';
       return 'done';
     }
 
     // Legacy: proposals still at super_admin stage → previous steps are done (except skipped ones)
     if (proposal.current_stage === 'super_admin') {
       if (step === 'facility' && !proposal.requires_facility_approval) return 'skipped';
+      if (step === 'ctsv' && !requiresCtsv) return 'skipped';
       if (isDirectFaculty && (step === 'youth_union' || step === 'ctsv')) return 'skipped';
       return 'done';
     }
@@ -324,6 +328,7 @@ export default function ProposalDetailPage({
     const stepIdx = stageOrder.indexOf(step);
 
     if (step === 'facility' && !proposal.requires_facility_approval) return 'skipped';
+    if (step === 'ctsv' && !requiresCtsv) return 'skipped';
 
     if (currentIdx > stepIdx) return 'done';
     if (currentIdx === stepIdx) return 'current';
@@ -838,7 +843,7 @@ export default function ProposalDetailPage({
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
                       2. Phòng Công Tác Sinh Viên (CTSV) Thẩm Định
-                      {getStepStatus('ctsv') === 'skipped' && ' — Tự động miễn duyệt (Đơn vị Khoa)'}
+                      {getStepStatus('ctsv') === 'skipped' && (isDirectFaculty ? ' — Tự động miễn duyệt (Đơn vị Khoa)' : ' — Tự động miễn duyệt (≤50 người)')}
                     </div>
                     <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.15rem' }}>
                       {getStepStatus('ctsv') === 'done'
@@ -846,7 +851,7 @@ export default function ProposalDetailPage({
                         : getStepStatus('ctsv') === 'current'
                         ? 'Đang chờ Phòng CTSV thẩm định phê duyệt...'
                         : getStepStatus('ctsv') === 'skipped'
-                        ? 'Đơn vị Khoa mượn phòng được đẩy thẳng tới Phòng. TC-HC-QT'
+                        ? (isDirectFaculty ? 'Đơn vị Khoa mượn phòng được đẩy thẳng tới Phòng. TC-HC-QT' : 'Quy mô ≤50 người — Không cần CTSV thẩm định')
                         : 'Chờ hoàn thành bước 1'}
                     </div>
                   </div>
