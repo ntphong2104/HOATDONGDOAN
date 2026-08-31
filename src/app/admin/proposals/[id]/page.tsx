@@ -299,10 +299,17 @@ export default function ProposalDetailPage({
 
   const getStepStatus = (step: ProposalStage) => {
     if (proposal.status === 'rejected') return 'waiting';
-    if (proposal.status === 'approved') return 'done';
+    if (proposal.status === 'approved') {
+      if (step === 'facility' && !proposal.requires_facility_approval) return 'skipped';
+      return 'done';
+    }
 
-    // Legacy: proposals still at super_admin stage → all previous steps are done
-    if (proposal.current_stage === 'super_admin') return 'done';
+    // Legacy: proposals still at super_admin stage → previous steps are done (except skipped ones)
+    if (proposal.current_stage === 'super_admin') {
+      if (step === 'facility' && !proposal.requires_facility_approval) return 'skipped';
+      if (isDirectFaculty && (step === 'youth_union' || step === 'ctsv')) return 'skipped';
+      return 'done';
+    }
 
     if (isDirectFaculty) {
       if (step === 'youth_union' || step === 'ctsv') return 'skipped';
