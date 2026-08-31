@@ -393,7 +393,8 @@ export default function StudentDashboardClient({
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
+            background: 'rgba(15, 23, 42, 0.5)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -405,11 +406,11 @@ export default function StudentDashboardClient({
           <div
             style={{
               background: '#ffffff',
-              borderRadius: '16px',
-              padding: '1.5rem',
+              borderRadius: '20px',
+              padding: '2rem',
               width: '100%',
-              maxWidth: '420px',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+              maxWidth: '440px',
+              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.15)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -420,9 +421,9 @@ export default function StudentDashboardClient({
               <button
                 type="button"
                 onClick={() => setShowProfileModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', color: '#64748b', width: 36, height: 36, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                <CloseIcon size={20} />
+                <CloseIcon size={18} />
               </button>
             </div>
 
@@ -463,7 +464,7 @@ export default function StudentDashboardClient({
                 <select
                   value={userGender}
                   onChange={(e) => setUserGender(e.target.value)}
-                  style={{ width: '100%', padding: '0.65rem', border: '1.5px solid #cbd5e1', borderRadius: '8px', background: '#ffffff', fontWeight: 600 }}
+                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', fontWeight: 600, fontSize: '0.95rem', color: '#0f172a', boxSizing: 'border-box' }}
                 >
                   <option value="Nam">Nam</option>
                   <option value="Nữ">Nữ</option>
@@ -479,22 +480,22 @@ export default function StudentDashboardClient({
                   value={userPhone}
                   onChange={(e) => setUserPhone(e.target.value)}
                   placeholder="Ví dụ: 0912345678"
-                  style={{ width: '100%', padding: '0.65rem', border: '1.5px solid #cbd5e1', borderRadius: '8px', boxSizing: 'border-box', fontWeight: 600 }}
+                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', fontWeight: 600, fontSize: '0.95rem', color: '#0f172a', boxSizing: 'border-box' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
                   type="button"
                   onClick={() => setShowProfileModal(false)}
-                  style={{ padding: '0.5rem 1rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ padding: '0.65rem 1.25rem', background: '#f1f5f9', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', color: '#475569' }}
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={savingProfile}
-                  style={{ padding: '0.5rem 1.25rem', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ padding: '0.65rem 1.5rem', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: '#ffffff', border: 'none', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)' }}
                 >
                   {savingProfile ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                 </button>
