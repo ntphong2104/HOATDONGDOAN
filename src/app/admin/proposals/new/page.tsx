@@ -268,6 +268,11 @@ export default function NewProposalPage() {
       return;
     }
 
+    if (!planUrl || !planUrl.trim()) {
+      setErrorMessage('🚫 Vui lòng đính kèm Link File Kế Hoạch Chi Tiết (Google Drive / PDF) trước khi nộp.');
+      return;
+    }
+
     const startDatetime = new Date(`${startDate}T${startTime}`);
     const endDatetime = new Date(`${endDate}T${endTime}`);
 
@@ -1068,8 +1073,8 @@ export default function NewProposalPage() {
               {/* Link file Google Drive / PDF */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Link File Kế Hoạch Chi Tiết (Google Drive / PDF / Docx):</span>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>Không bắt buộc</span>
+                  <span>Link File Kế Hoạch Chi Tiết (Google Drive / PDF / Docx): <span style={{ color: '#dc2626' }}>*</span></span>
+                  <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>Bắt buộc</span>
                 </label>
                 <input
                   type="url"
