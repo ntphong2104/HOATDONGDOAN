@@ -278,7 +278,7 @@ export default function ProposalDetailPage({
     if (stageName === 'youth_union') return 'Đoàn Thanh Niên Học Viện';
     if (stageName === 'ctsv' || actorEmail?.includes('ctsv')) return 'Phòng Công Tác Sinh Viên (CTSV)';
     if (stageName === 'facility' || actorEmail?.includes('quantri') || actorEmail?.includes('csvc') || actorEmail?.includes('tchc')) return 'Phòng. TC-HC-QT';
-    if (stageName === 'super_admin' || actorEmail?.includes('admin')) return 'Super Admin Đoàn Trường';
+    if (stageName === 'super_admin' || actorEmail?.includes('admin')) return 'Ban Quản Trị Duyệt Chung Cuộc';
     return getStageLabel((stageName as ProposalStage) || 'youth_union');
   };
 

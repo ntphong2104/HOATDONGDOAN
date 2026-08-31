@@ -134,7 +134,7 @@ export function getStageLabel(stage: ProposalStage): string {
     case 'facility':
       return 'Phòng. TC-HC-QT (Quản trị & Cấp phòng)';
     case 'super_admin':
-      return 'Super Admin';
+      return 'Ban Quản Trị Duyệt Chung Cuộc';
     case 'approved':
       return 'Đã phê duyệt & Đã tạo sự kiện';
     case 'rejected':

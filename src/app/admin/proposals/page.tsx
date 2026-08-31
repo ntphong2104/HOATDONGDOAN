@@ -99,7 +99,7 @@ export default function ProposalsListPage() {
       : tier === 'facility'
       ? 'Phòng. TC-HC-QT'
       : tier === 'super_admin'
-      ? 'Ban Quản Trị Super Admin'
+      ? 'Ban Quản Trị Duyệt Chung Cuộc'
       : 'Đơn Vị Trình Kế Hoạch';
 
   const departmentTask =
@@ -417,7 +417,7 @@ export default function ProposalsListPage() {
                             : 'Đã Duyệt • Đang Mở')
                         : item.status === 'rejected'
                         ? 'Đã Từ Chối'
-                        : `Đang ở: ${getStageLabel(item.current_stage)}`}
+                        : `Chờ: ${getStageLabel(item.current_stage)}`}
                     </span>
                   </div>
 
