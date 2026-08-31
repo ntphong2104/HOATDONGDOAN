@@ -3,47 +3,209 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  background: #ffffff;
   padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
 }
 
+/* ── Particle Canvas ── */
+.particleCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* ── Login Card ── */
 .card {
-  background-color: #ffffff;
-  padding: 2.5rem;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-  border: 1px solid #e2e8f0;
+  position: relative;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 2.75rem 2.5rem;
+  border-radius: 24px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 8px 40px -8px rgba(0, 0, 0, 0.08),
+    0 20px 60px -15px rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(226, 232, 240, 0.6);
   width: 100%;
   max-width: 440px;
   text-align: center;
+  animation: cardEntry 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardEntry {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .logoArea {
+  display: flex;
+  justify-content: center;
   margin-bottom: 1.25rem;
 }
 
-.logoEmoji {
-  font-size: 3.5rem;
-  display: inline-block;
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
-}
-
 .title {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.35rem;
+  font-weight: 800;
   color: #0f172a;
   margin-bottom: 0.5rem;
   line-height: 1.4;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
   font-size: 0.875rem;
-  color: #334155;
-  margin-bottom: 1.75rem;
-  line-height: 1.5;
+  color: #475569;
+  margin-bottom: 2rem;
+  line-height: 1.6;
 }
 
+/* ── Google Sign-In Button ── */
+.googleSignInBtn {
+  background: #ffffff;
+  color: #1f1f1f;
+  border: 1.5px solid #dadce0;
+  border-radius: 12px;
+  height: 48px;
+  padding: 0 1.5rem;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Google Sans', sans-serif;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.googleSignInBtn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(59, 130, 246, 0.12);
+  transform: translateY(-1px);
+}
+
+.googleSignInBtn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.googleSignInBtn:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ── Dev Panel (localhost only) ── */
+.devPanel {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1.5px dashed #93c5fd;
+  border-radius: 14px;
+  text-align: left;
+}
+
+.devPanelTitle {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #1e40af;
+  margin-bottom: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.devGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.devBtn {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.devBtn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.devBtnDark { background: #1e293b; }
+.devBtnGreen { background: #16a34a; }
+.devBtnBlue { background: #2563eb; }
+.devBtnGray { background: #64748b; }
+
+/* ── Help Box ── */
+.helpBox {
+  margin-top: 1.75rem;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.helpLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.helpLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.18s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.helpLink:hover {
+  border-color: #3b82f6;
+  color: #2563eb;
+  background: #eff6ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+/* ── Error Styles ── */
 .error {
   background-color: #fef2f2;
   color: #991b1b;
@@ -55,139 +217,15 @@
   text-align: left;
 }
 
-.googleSignInBtn {
-  background-color: #ffffff;
-  color: #1f1f1f;
-  border: 1px solid #747775;
-  border-radius: 4px;
-  height: 44px;
-  padding: 0 1.25rem;
-  font-size: 14px;
-  font-weight: 500;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Google Sans', sans-serif;
-  cursor: pointer;
-  width: 100%;
-  transition: all 0.15s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  box-sizing: border-box;
-}
-
-.googleSignInBtn:hover:not(:disabled) {
-  background-color: #f8f9fa;
-  border-color: #5f6368;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
-}
-
-.googleSignInBtn:active:not(:disabled) {
-  background-color: #f1f3f4;
-  box-shadow: none;
-}
-
-.googleSignInBtn:disabled {
-  background-color: #f1f3f4;
-  color: #5f6368;
-  border-color: #dadce0;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.googleEmailHint {
-  font-size: 0.75rem;
-  color: #475569;
-  margin-top: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  margin: 1.75rem 0 1.25rem 0;
-  color: #64748b;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid #cbd5e1;
-}
-
-.dividerSpan {
-  padding: 0 0.75rem;
-}
-
-.demoSection {
-  text-align: left;
-}
-
-.demoLabel {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #334155;
-  margin-bottom: 0.75rem;
-  display: block;
-}
-
-.demoGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.625rem;
-}
-
-.demoBtn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 0.75rem 0.875rem;
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-}
-
-.demoBtn:hover {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
-  transform: translateY(-1px);
-}
-
-.demoBtnTitle {
-  font-size: 0.825rem;
-  font-weight: 700;
-  color: #0f172a;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.demoBtnDesc {
-  font-size: 0.725rem;
-  color: #334155;
-  font-weight: 600;
-  margin-top: 0.2rem;
-}
-
-/* POPUP MODAL STYLES */
+/* ── Modal ── */
 .modalOverlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -198,15 +236,15 @@
 
 .modalContent {
   background: #ffffff;
-  border-radius: 20px;
+  border-radius: 24px;
   max-width: 420px;
   width: 100%;
-  padding: 1.75rem 1.5rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 2rem 1.75rem;
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.2);
   border: 1px solid #f1f5f9;
   text-align: center;
   position: relative;
-  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modalIconBox {
@@ -239,16 +277,17 @@
   background: #2563eb;
   color: #ffffff;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: all 0.2s ease;
 }
 
 .modalConfirmBtn:hover {
-  background: #1d4ed8;
+  filter: brightness(1.08);
   transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
 }
 
 @keyframes fadeIn {
@@ -257,15 +296,20 @@
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ── Responsive ── */
 @media (max-width: 480px) {
-  .card {
-    padding: 1.5rem;
+  .container {
+    padding: 1rem;
   }
-  .demoGrid {
+  .card {
+    padding: 2rem 1.5rem;
+    border-radius: 20px;
+  }
+  .devGrid {
     grid-template-columns: 1fr;
   }
 }
