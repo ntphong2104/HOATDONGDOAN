@@ -2,11 +2,18 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from('system_settings').select('maintenance_mode, maintenance_message').single();
-  
-  if (error) return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
-  return NextResponse.json({ success: true, data });
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from('system_settings').select('maintenance_mode, maintenance_message').maybeSingle();
+    
+    if (error) {
+      console.error('Maintenance API error:', error.message);
+      return NextResponse.json({ success: true, data: { maintenance_mode: false, maintenance_message: '' } });
+    }
+    return NextResponse.json({ success: true, data: data || { maintenance_mode: false, maintenance_message: '' } });
+  } catch (err) {
+    return NextResponse.json({ success: true, data: { maintenance_mode: false, maintenance_message: '' } });
+  }
 }
 
 export async function PATCH(req: Request) {
