@@ -417,6 +417,8 @@ export default function ProposalsListPage() {
                             : 'Đã Duyệt • Đang Mở')
                         : item.status === 'rejected'
                         ? 'Đã Từ Chối'
+                        : item.current_stage === 'super_admin'
+                        ? 'Đã qua các bước — Chờ xác nhận mở'
                         : `Chờ: ${getStageLabel(item.current_stage)}`}
                     </span>
                   </div>

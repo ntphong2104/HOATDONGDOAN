@@ -300,6 +300,9 @@ export default function ProposalDetailPage({
     if (proposal.status === 'rejected') return 'waiting';
     if (proposal.status === 'approved') return 'done';
 
+    // Legacy: proposals still at super_admin stage → all previous steps are done
+    if (proposal.current_stage === 'super_admin') return 'done';
+
     if (isDirectFaculty) {
       if (step === 'youth_union' || step === 'ctsv') return 'skipped';
       if (step === 'facility') {
@@ -627,7 +630,7 @@ export default function ProposalDetailPage({
                     <span>Thao tác phê duyệt thẩm quyền của bạn:</span>
                   </span>
                   <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1e3a8a', marginTop: '0.2rem' }}>
-                    {getStageLabel(proposal.current_stage)}
+                    {proposal.current_stage === 'super_admin' ? 'Xác nhận phê duyệt & Mở sự kiện' : getStageLabel(proposal.current_stage)}
                   </div>
                 </div>
 
