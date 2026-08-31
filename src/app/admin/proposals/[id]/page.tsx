@@ -192,9 +192,57 @@ export default function ProposalDetailPage({
     return (
       <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column' }}>
         <Header showBack backHref="/admin/proposals" title="CHI TIẾT KẾ HOẠCH" />
-        <div style={{ textAlign: 'center', padding: '6rem 1rem' }}>
-          <SpinnerIcon size={44} color="#2563eb" />
-          <p style={{ marginTop: '1rem', color: '#64748b', fontWeight: 700 }}>Đang tải thông tin kế hoạch...</p>
+        <div style={{ maxWidth: 900, margin: '0 auto', width: '100%', padding: '2rem 1.25rem' }}>
+          {/* Skeleton shimmer animation */}
+          <style>{`
+            @keyframes skeletonShimmer {
+              0% { background-position: -400px 0; }
+              100% { background-position: 400px 0; }
+            }
+            .sk-pulse {
+              background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 37%, #e2e8f0 63%);
+              background-size: 800px 100%;
+              animation: skeletonShimmer 1.8s ease-in-out infinite;
+              border-radius: 10px;
+            }
+          `}</style>
+          {/* Title skeleton */}
+          <div style={{ background: '#fff', borderRadius: 20, padding: '1.75rem 2rem', marginBottom: '1.25rem', border: '1px solid #e2e8f0' }}>
+            <div className="sk-pulse" style={{ height: 14, width: '35%', marginBottom: 12 }} />
+            <div className="sk-pulse" style={{ height: 22, width: '70%', marginBottom: 16 }} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div className="sk-pulse" style={{ height: 28, width: 100, borderRadius: 14 }} />
+              <div className="sk-pulse" style={{ height: 28, width: 130, borderRadius: 14 }} />
+            </div>
+          </div>
+          {/* Info skeleton */}
+          <div style={{ background: '#fff', borderRadius: 20, padding: '1.75rem 2rem', marginBottom: '1.25rem', border: '1px solid #e2e8f0' }}>
+            <div className="sk-pulse" style={{ height: 16, width: '40%', marginBottom: 18 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {[1,2,3,4].map(i => (
+                <div key={i}>
+                  <div className="sk-pulse" style={{ height: 12, width: '50%', marginBottom: 8 }} />
+                  <div className="sk-pulse" style={{ height: 16, width: '80%' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Steps skeleton */}
+          <div style={{ background: '#fff', borderRadius: 20, padding: '1.75rem 2rem', border: '1px solid #e2e8f0' }}>
+            <div className="sk-pulse" style={{ height: 16, width: '30%', marginBottom: 20 }} />
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              {[1,2,3].map(i => (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <div className="sk-pulse" style={{ width: 44, height: 44, borderRadius: '50%' }} />
+                  <div className="sk-pulse" style={{ height: 12, width: '70%' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Loading text */}
+          <p style={{ textAlign: 'center', marginTop: '1.5rem', color: '#94a3b8', fontWeight: 600, fontSize: '0.85rem', letterSpacing: '0.02em' }}>
+            Đang tải thông tin kế hoạch...
+          </p>
         </div>
       </div>
     );
