@@ -15,6 +15,10 @@ jest.mock('@/lib/security/rate-limiter', () => ({
   checkRateLimit: jest.fn().mockReturnValue({ allowed: true }),
 }));
 
+jest.mock('@/lib/constants/user-profile-store', () => ({
+  getUserProfileExtra: jest.fn().mockReturnValue({ phone: '0987654321' }),
+}));
+
 describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
   let mockSupabase: any;
 
@@ -29,7 +33,53 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
           data: { session: sessionUser ? { user: sessionUser } : null },
         }),
       },
-      from: jest.fn(),
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'events') {
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: { event_id: 'event-uuid-active', event_name: 'Test Event', status: 'active', is_active: true }, error: null }),
+            single: jest.fn().mockResolvedValue({ data: { event_id: 'event-uuid-active', event_name: 'Test Event', status: 'active', is_active: true }, error: null }),
+          };
+        }
+        if (table === 'users') {
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' }, error: null }),
+            single: jest.fn().mockResolvedValue({ data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' }, error: null }),
+            upsert: jest.fn().mockResolvedValue({ error: null }),
+          };
+        }
+        if (table === 'event_registrations') {
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: { id: 1, role_type: 'participant', attended: false }, error: null }),
+            single: jest.fn().mockResolvedValue({ data: { id: 1, role_type: 'participant', attended: false }, error: null }),
+            upsert: jest.fn().mockResolvedValue({ error: null }),
+            update: jest.fn().mockReturnThis(),
+          };
+        }
+        if (table === 'check_ins') {
+          return {
+            insert: jest.fn().mockResolvedValue({ error: null }),
+            upsert: jest.fn().mockResolvedValue({ error: null }),
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          };
+        }
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          upsert: jest.fn().mockResolvedValue({ error: null }),
+          insert: jest.fn().mockResolvedValue({ error: null }),
+        };
+      }),
     };
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
   };
@@ -80,10 +130,16 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: { status: 'closed' }, error: null }),
           single: jest.fn().mockResolvedValue({ data: { status: 'closed' }, error: null }),
         };
       }
-      return {};
+      return {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      };
     });
 
     const req = new Request('http://localhost:3000/api/checkin', {
@@ -110,17 +166,24 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: { status: 'active' }, error: null }),
+          maybeSingle: jest.fn().mockResolvedValue({ data: { status: 'active', is_active: true }, error: null }),
+          single: jest.fn().mockResolvedValue({ data: { status: 'active', is_active: true }, error: null }),
         };
       }
       if (table === 'users') {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
           single: jest.fn().mockResolvedValue({ data: null, error: null }),
         };
       }
-      return {};
+      return {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      };
     });
 
     const req = new Request('http://localhost:3000/api/checkin', {
@@ -149,17 +212,37 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: { status: 'active' }, error: null }),
+          maybeSingle: jest.fn().mockResolvedValue({ data: { status: 'active', is_active: true }, error: null }),
+          single: jest.fn().mockResolvedValue({ data: { status: 'active', is_active: true }, error: null }),
         };
       }
       if (table === 'users') {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' },
+            error: null,
+          }),
           single: jest.fn().mockResolvedValue({
             data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' },
             error: null,
           }),
+        };
+      }
+      if (table === 'event_registrations') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: 1, role_type: 'participant', attended: false },
+            error: null,
+          }),
+          single: jest.fn().mockResolvedValue({
+            data: { id: 1, role_type: 'participant', attended: false },
+            error: null,
+          }),
+          upsert: jest.fn().mockResolvedValue({ error: null }),
         };
       }
       if (table === 'check_ins') {
@@ -169,13 +252,22 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
           }),
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { created_at: existingTime },
+            error: null,
+          }),
           single: jest.fn().mockResolvedValue({
             data: { created_at: existingTime },
             error: null,
           }),
         };
       }
-      return {};
+      return {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      };
     });
 
     const req = new Request('http://localhost:3000/api/checkin', {
@@ -197,32 +289,6 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
 
   test('Branch 6: Returns 200 Success for valid student check-in', async () => {
     setupMockSupabase();
-
-    mockSupabase.from.mockImplementation((table: string) => {
-      if (table === 'events') {
-        return {
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: { status: 'active' }, error: null }),
-        };
-      }
-      if (table === 'users') {
-        return {
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({
-            data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' },
-            error: null,
-          }),
-        };
-      }
-      if (table === 'check_ins') {
-        return {
-          insert: jest.fn().mockResolvedValue({ error: null }),
-        };
-      }
-      return {};
-    });
 
     const req = new Request('http://localhost:3000/api/checkin', {
       method: 'POST',
@@ -277,32 +343,6 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
       isSuperAdmin: false,
       isEventAdmin: true,
       isChecker: true,
-    });
-
-    mockSupabase.from.mockImplementation((table: string) => {
-      if (table === 'events') {
-        return {
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: { status: 'active' }, error: null }),
-        };
-      }
-      if (table === 'users') {
-        return {
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({
-            data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' },
-            error: null,
-          }),
-        };
-      }
-      if (table === 'check_ins') {
-        return {
-          insert: jest.fn().mockResolvedValue({ error: null }),
-        };
-      }
-      return {};
     });
 
     const req = new Request('http://localhost:3000/api/checkin', {

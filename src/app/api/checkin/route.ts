@@ -133,6 +133,25 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
+    // ── Enforce Registration Requirement if enabled for event ──
+    if (meta.require_registration !== false) {
+      const { data: regData } = await supabase
+        .from('event_registrations')
+        .select('id, role_type, attended')
+        .eq('event_id', event_id)
+        .eq('mssv', mssv)
+        .maybeSingle();
+
+      if (!regData) {
+        return NextResponse.json({
+          success: false,
+          error: 'Not Registered',
+          message: `🚫 Sinh viên ${finalStudent.full_name || mssv} (${mssv}) CHƯA ĐĂNG KÝ tham gia sự kiện này. Yêu cầu sinh viên đăng ký trước khi điểm danh.`,
+          require_registration: true,
+        }, { status: 400 });
+      }
+    }
+
     // ── Determine which session to check in for ──
     const sessions = meta.sessions || [];
 
