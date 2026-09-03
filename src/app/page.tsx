@@ -52,7 +52,7 @@ export default async function HomePage({
     if (auth.tier === 'youth_union' || auth.tier === 'ctsv' || auth.tier === 'facility') {
       redirect('/admin/proposals');
     }
-    if (auth.tier === 'event_admin' || auth.isEventAdmin) {
+    if (auth.tier === 'event_admin') {
       redirect('/admin');
     }
     if (auth.tier === 'security') {

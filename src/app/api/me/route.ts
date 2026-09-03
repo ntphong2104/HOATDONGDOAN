@@ -250,15 +250,22 @@ export async function GET() {
       lowerEmail.includes('security') ||
       assignedOfficerRole?.role_tier === 'security';
 
-    const isEventAdmin =
+    // Students who only have event_roles but are not officers/sub-admin units
+    // should NOT be promoted to event_admin tier — they stay as 'user' with managed_events
+    const isOfficerLevelAdmin =
       isSuperAdmin ||
       isYouthUnion ||
       isCtsv ||
       isFacility ||
       isSubAdminUnit ||
-      assignedOfficerRole?.role_tier === 'event_admin' ||
-      (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
-      createdEvents.length > 0;
+      assignedOfficerRole?.role_tier === 'event_admin';
+
+    const hasEventRolesOnly =
+      !isOfficerLevelAdmin &&
+      ((eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
+        createdEvents.length > 0);
+
+    const isEventAdmin = isOfficerLevelAdmin || hasEventRolesOnly;
 
     const isChecker =
       isSuperAdmin ||
@@ -272,8 +279,9 @@ export async function GET() {
     else if (isCtsv) tier = 'ctsv';
     else if (isFacility) tier = 'facility';
     else if (isSecurity) tier = 'security';
-    else if (isEventAdmin) tier = 'event_admin';
+    else if (isOfficerLevelAdmin) tier = 'event_admin';
     else if (isChecker) tier = 'checker';
+    // hasEventRolesOnly students stay tier = 'user'
 
     const googleName = authMetadata?.full_name || authMetadata?.name;
     const avatarUrl = authMetadata?.avatar_url || authMetadata?.picture;

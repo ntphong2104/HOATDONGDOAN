@@ -292,8 +292,8 @@ export default function UserMenuDropdown({
               </li>
             )}
 
-            {/* If Event Admin or Super Admin */}
-            {(tier === 'super_admin' || tier === 'event_admin' || Boolean(currentUser?.isEventAdmin) || Boolean(currentUser?.isSuperAdmin) || Boolean(currentUser?.managed_events && currentUser.managed_events.length > 0)) && (
+            {/* If Event Admin or Super Admin (FULL admin — not students with event roles) */}
+            {(tier === 'super_admin' || tier === 'event_admin' || Boolean(currentUser?.isSuperAdmin)) && (
               <>
                 <li>
                   <Link
@@ -322,9 +322,51 @@ export default function UserMenuDropdown({
               </>
             )}
 
-            {/* If Checker or above (not pure approver) */}
+            {/* Students who manage specific events (tier=user but have managed_events) */}
+            {tier === 'user' && currentUser?.managed_events && currentUser.managed_events.length > 0 && (
+              <>
+                <li className={styles.divider} />
+                <li style={{ padding: '0.35rem 1rem 0.15rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    📋 Sự kiện tôi quản lý
+                  </span>
+                </li>
+                {currentUser.managed_events
+                  .filter((e: any) => e.status === 'active' && e.is_active !== false)
+                  .slice(0, 5)
+                  .map((evt: any) => (
+                    <li key={evt.event_id}>
+                      <Link
+                        href={`/admin/events/${evt.event_id}`}
+                        className={styles.menuItem}
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <div className={styles.menuItemIcon} style={{ color: '#7c3aed' }}>
+                          <CalendarIcon size={16} />
+                        </div>
+                        <span style={{ fontSize: '0.85rem' }}>{evt.event_name || 'Sự kiện'}</span>
+                      </Link>
+                    </li>
+                  ))}
+                <li>
+                  <Link
+                    href="/scanner"
+                    className={styles.menuItem}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <div className={styles.menuItemIcon} style={{ color: '#2563eb' }}>
+                      <ScanCameraIcon size={16} />
+                    </div>
+                    <span>Máy Quét Điểm Danh (Camera)</span>
+                  </Link>
+                </li>
+              </>
+            )}
+
+            {/* If Checker or above (not pure approver, not student-with-events) */}
             {!isPureApprover &&
-              (tier === 'super_admin' || tier === 'event_admin' || tier === 'checker' || Boolean(currentUser?.isChecker) || Boolean(currentUser?.isEventAdmin) || Boolean(currentUser?.isSuperAdmin) || Boolean(currentUser?.managed_events && currentUser.managed_events.length > 0)) && (
+              tier !== 'user' &&
+              (tier === 'super_admin' || tier === 'event_admin' || tier === 'checker' || Boolean(currentUser?.isChecker) || Boolean(currentUser?.isSuperAdmin)) && (
                 <li>
                   <Link
                     href="/scanner"
