@@ -200,6 +200,22 @@ export async function POST(req: Request) {
       registration = regData;
     }
 
+    // ── Enforce Max Participants Capacity (self check-in cannot bypass) ──
+    const maxParticipants = meta.max_participants || 0;
+    if (maxParticipants > 0) {
+      const { count: currentCheckinCount } = await supabase
+        .from('check_ins')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', eventId);
+
+      if ((currentCheckinCount || 0) >= maxParticipants) {
+        return NextResponse.json({
+          success: false,
+          error: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Không thể điểm danh thêm.`,
+        }, { status: 400 });
+      }
+    }
+
     const effectiveRole =
       assignedRole !== 'participant'
         ? assignedRole

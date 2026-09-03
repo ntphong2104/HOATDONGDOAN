@@ -177,6 +177,7 @@ export async function POST(
     departments: meta.departments || [],
     is_recruitment_open: meta.is_recruitment_open !== false,
     target_scope: meta.target_scope || 'all',
+    max_participants: meta.max_participants || rawEvent.max_participants || 0,
   };
 
   const registrationWindow = isRegistrationWindowOpen(

@@ -47,10 +47,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Bad Request', message: 'Thông tin điểm danh hoặc MSSV không hợp lệ' }, { status: 400 });
     }
 
-    const isSuperOrEventAdmin =
+    const isSuperAdmin =
       auth?.isSuperAdmin ||
+      auth?.tier === 'super_admin';
+
+    const isSuperOrEventAdmin =
+      isSuperAdmin ||
       auth?.isEventAdmin ||
-      auth?.tier === 'super_admin' ||
       auth?.tier === 'youth_union' ||
       auth?.tier === 'event_admin';
 
@@ -148,6 +151,23 @@ export async function POST(req: Request) {
           error: 'Not Registered',
           message: `🚫 Sinh viên ${finalStudent.full_name || mssv} (${mssv}) CHƯA ĐĂNG KÝ tham gia sự kiện này. Yêu cầu sinh viên đăng ký trước khi điểm danh.`,
           require_registration: true,
+        }, { status: 400 });
+      }
+    }
+
+    // ── Enforce Max Participants Capacity ──
+    const maxParticipants = meta.max_participants || 0;
+    if (!isSuperAdmin && maxParticipants > 0) {
+      const { count: currentCheckinCount } = await supabase
+        .from('check_ins')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', event_id);
+
+      if ((currentCheckinCount || 0) >= maxParticipants) {
+        return NextResponse.json({
+          success: false,
+          error: 'Capacity Full',
+          message: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Chỉ Admin Tổng mới có quyền bổ sung thêm.`,
         }, { status: 400 });
       }
     }
