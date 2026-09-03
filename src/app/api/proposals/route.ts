@@ -45,7 +45,7 @@ export async function GET(req: Request) {
       .from('event_proposals')
       .select('*')
       .neq('status', 'deleted')
-      .order('created_at', { ascending: false });
+      .order('start_datetime', { ascending: true });
 
     if (!isApprover) {
       query = query.eq('created_by', auth.email);
