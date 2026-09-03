@@ -786,6 +786,118 @@ export default function ProposalDetailPage({
             </div>
           </div>
 
+          {/* ═══════════════ CHI TIẾT CÁC CA / BUỔI DIỄN RA ═══════════════ */}
+          {proposal.sessions && proposal.sessions.length > 0 && (
+            <div style={{
+              padding: '1.25rem',
+              background: '#faf5ff',
+              border: '1.5px solid #e9d5ff',
+              borderRadius: '16px',
+            }}>
+              <h3 style={{
+                fontSize: '1rem',
+                fontWeight: 800,
+                color: '#581c87',
+                margin: '0 0 0.85rem 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+              }}>
+                🗓️ Chi Tiết Các Ca / Buổi Diễn Ra ({proposal.sessions.length} ca):
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {proposal.sessions.map((sess: any, idx: number) => (
+                  <div
+                    key={sess.id || idx}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'auto 1fr',
+                      gap: '0.5rem 0.75rem',
+                      alignItems: 'start',
+                      padding: '0.85rem 1rem',
+                      borderRadius: '12px',
+                      background: '#ffffff',
+                      border: sess.status === 'rejected' ? '1.5px solid #fca5a5' : sess.status === 'approved' ? '1.5px solid #86efac' : '1.5px solid #e2e8f0',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    <div style={{
+                      gridColumn: '1 / -1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      flexWrap: 'wrap',
+                    }}>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1e1b4b' }}>
+                        Ca {idx + 1}: {sess.name || `Buổi ${idx + 1}`}
+                      </span>
+                      {sess.status && (
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          padding: '0.2rem 0.6rem',
+                          borderRadius: '12px',
+                          background: sess.status === 'approved' ? '#dcfce7' : sess.status === 'rejected' ? '#fee2e2' : '#f1f5f9',
+                          color: sess.status === 'approved' ? '#166534' : sess.status === 'rejected' ? '#991b1b' : '#475569',
+                          textTransform: 'uppercase',
+                        }}>
+                          {sess.status === 'approved' ? '✅ Đã duyệt' : sess.status === 'rejected' ? '❌ Từ chối' : '⏳ Chờ duyệt'}
+                        </span>
+                      )}
+                    </div>
+
+                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>📅 Ngày:</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                      {sess.session_date ? new Date(sess.session_date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                    </span>
+
+                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>⏰ Giờ:</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                      {sess.start_time?.slice(0, 5) || '??'} – {sess.end_time?.slice(0, 5) || '??'}
+                    </span>
+
+                    {(sess.room_name || sess.room_id) && (
+                      <>
+                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>📍 Phòng:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                          {sess.room_name || sess.room_id || '—'}
+                        </span>
+                      </>
+                    )}
+
+                    {sess.participant_count != null && sess.participant_count > 0 && (
+                      <>
+                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>👥 Số lượng:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                          {sess.participant_count} người
+                        </span>
+                      </>
+                    )}
+
+                    {sess.purpose && (
+                      <>
+                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>📝 Mục đích:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                          {sess.purpose}
+                        </span>
+                      </>
+                    )}
+
+                    {sess.rejection_reason && (
+                      <>
+                        <span style={{ fontSize: '0.8rem', color: '#dc2626', fontWeight: 600 }}>⚠️ Lý do từ chối:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#dc2626' }}>
+                          {sess.rejection_reason}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ═══════════════ TIẾN TRÌNH THẨM ĐỊNH KẾ HOẠCH ═══════════════ */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
