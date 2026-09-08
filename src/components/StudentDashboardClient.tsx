@@ -526,14 +526,14 @@ export default function StudentDashboardClient({
         <div className={styles.historyHeader}>
           <h2 className={styles.historyTitle}>
             <CalendarIcon size={20} color="#2563eb" />
-            Sự Kiện Tôi Đã Đăng Ký ({registeredEvents.length})
+            Sự Kiện Tôi Đã Đăng Ký ({registeredEvents.filter((ev) => !ev.attended).length})
           </h2>
         </div>
         {loadingRegistrations ? (
           <p style={{ textAlign: 'center', padding: '1rem', color: '#64748b', fontSize: '0.85rem' }}>
             Đang tải sự kiện đã đăng ký...
           </p>
-        ) : registeredEvents.length === 0 ? (
+        ) : registeredEvents.filter((ev) => !ev.attended).length === 0 ? (
           <div style={{ textAlign: 'center', padding: '1.5rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
             <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
               Bạn chưa đăng ký tham gia sự kiện nào. Khi bạn đăng ký tham gia qua link của Ban Tổ Chức, sự kiện sẽ hiển thị tại đây.
@@ -541,7 +541,7 @@ export default function StudentDashboardClient({
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '1rem' }}>
-            {registeredEvents.map((ev) => (
+            {registeredEvents.filter((ev) => !ev.attended).map((ev) => (
               <div
                 key={ev.id || ev.event_id}
                 style={{
