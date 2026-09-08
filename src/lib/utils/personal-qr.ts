@@ -10,7 +10,7 @@
  */
 
 const WINDOW_SECONDS = 30;
-const TOLERANCE_WINDOWS = 2;
+const TOLERANCE_WINDOWS = 1; // Valid for current + 1 previous window (~60s max)
 
 function getSecret(): string {
   const secret = process.env.DYNAMIC_QR_SECRET || process.env.PERSONAL_QR_SECRET;
