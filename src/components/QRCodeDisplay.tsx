@@ -184,31 +184,7 @@ export default function QRCodeDisplay({
 
           {clientKey && (
             <>
-              <div style={{
-                width: '100%',
-                height: '4px',
-                background: '#e2e8f0',
-                borderRadius: '2px',
-                overflow: 'hidden',
-                margin: '0.35rem 0',
-              }}>
-                <div style={{
-                  width: `${progressPercent}%`,
-                  height: '100%',
-                  background: progressPercent > 30 ? '#22c55e' : progressPercent > 10 ? '#f59e0b' : '#ef4444',
-                  borderRadius: '2px',
-                  transition: 'width 1s linear, background 0.5s ease',
-                }} />
-              </div>
-              <p style={{
-                margin: '0 0 0.25rem',
-                fontSize: '0.7rem',
-                color: '#94a3b8',
-                textAlign: 'center',
-                fontWeight: 600,
-              }}>
-                🔄 Mã QR tự đổi mỗi 30s • Ảnh chụp sẽ hết hạn
-              </p>
+              {/* Timer bar hidden — students don't need to see this */}
             </>
           )}
         </>
