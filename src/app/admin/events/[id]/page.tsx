@@ -2236,6 +2236,53 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><DownloadIcon size={14} /> Nạp DS Đăng Ký (Khán Giả)</span>
                   </button>
                 )}
+
+                {participantRegistrations.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const headers = ['MSSV', 'Họ Và Tên', 'Lớp', 'Vai Trò', 'Trạng Thái', 'Ngày Đăng Ký'];
+                      const rows = participantRegistrations.map((r: any) => [
+                        r.mssv || '',
+                        r.full_name || '',
+                        r.class_id || '',
+                        r.role_type === 'volunteer' ? 'CTV' : 'Người tham gia',
+                        r.attended ? 'Đã điểm danh' : 'Chưa điểm danh',
+                        r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+                      ]);
+                      const csvContent = [headers, ...rows]
+                        .map((row) => row.map((cell: string) => `"${cell.replace(/"/g, '""')}"`).join(','))
+                        .join('\n');
+                      const BOM = '\uFEFF';
+                      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `danh-sach-dang-ky_${eventData?.event_name || 'event'}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                    style={{
+                      padding: '0.45rem 0.95rem',
+                      background: '#16a34a',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)',
+                    }}
+                  >
+                    <DownloadIcon size={15} />
+                    <span>Tải Xuống CSV</span>
+                  </button>
+                )}
               </div>
 
               <DataTable 
