@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
+import { deriveClientKey } from '@/lib/utils/personal-qr';
 import Header from '@/components/Header';
 import StudentDashboardClient from '@/components/StudentDashboardClient';
 import type { HistoryItem, ParticipateRole, SessionUser } from '@/lib/types';
@@ -215,6 +216,7 @@ export default async function HomePage({
           tier={auth.tier}
           initialHistory={history}
           initialRegistrations={initialRegistrations}
+          qrClientKey={deriveClientKey(user.mssv)}
         />
       </main>
     </div>

@@ -6,6 +6,7 @@ import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime 
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, getSessionCheckIns, saveSessionCheckIn } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtra } from '@/lib/constants/user-profile-store';
+import { verifyPersonalQRToken } from '@/lib/utils/personal-qr';
 import type { CheckInRequest } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,26 @@ export async function POST(req: Request) {
   try {
     const body: CheckInRequest = await req.json();
     const { event_id, participate_role = 'participant', session_id } = body;
-    const mssv = sanitizeInput(body.mssv || '').toUpperCase().trim();
+    let mssv = sanitizeInput(body.mssv || '').toUpperCase().trim();
+
+    // ── Detect and verify time-based personal QR token ──
+    // Format: MSSV:window:signature (3 parts separated by colons)
+    const qrParts = mssv.split(':');
+    if (qrParts.length === 3 && !isNaN(parseInt(qrParts[1], 10))) {
+      // This is a dynamic personal QR token
+      const verification = verifyPersonalQRToken(mssv);
+      if (!verification.valid) {
+        return NextResponse.json({
+          success: false,
+          error: 'QR Expired',
+          message: verification.expired
+            ? '⏳ Mã QR đã hết hạn (ảnh chụp cũ). Yêu cầu sinh viên mở lại trang Cổng Sinh Viên trên điện thoại để lấy mã mới.'
+            : '❌ Mã QR không hợp lệ. Yêu cầu sinh viên mở Cổng Sinh Viên để lấy mã QR mới.',
+        }, { status: 400 });
+      }
+      // Use verified MSSV from token
+      mssv = verification.mssv.toUpperCase().trim();
+    }
 
     const validRoles = ['participant', 'volunteer', 'organizer'];
     if (!mssv || !event_id || !validRoles.includes(participate_role)) {

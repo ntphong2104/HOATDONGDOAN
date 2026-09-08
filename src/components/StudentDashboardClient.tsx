@@ -32,6 +32,7 @@ interface StudentDashboardClientProps {
   tier: string;
   initialHistory: HistoryItem[];
   initialRegistrations?: any[];
+  qrClientKey?: string;
 }
 
 export default function StudentDashboardClient({
@@ -39,6 +40,7 @@ export default function StudentDashboardClient({
   tier,
   initialHistory,
   initialRegistrations = [],
+  qrClientKey,
 }: StudentDashboardClientProps) {
   const [currentUser, setCurrentUser] = useState(user);
   const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
@@ -267,6 +269,7 @@ export default function StudentDashboardClient({
           studentName={currentUser.full_name}
           studentClass={currentUser.class_id}
           studentId={currentUser.mssv}
+          clientKey={qrClientKey}
         />
 
         {/* Card 2: Hồ Sơ Đoàn Viên & Thông Tin Cá Nhân */}
