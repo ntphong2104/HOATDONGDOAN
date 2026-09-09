@@ -8,6 +8,7 @@ import QRScanner from '@/components/QRScanner';
 import EventSelector from '@/components/EventSelector';
 import RoleSelector from '@/components/RoleSelector';
 import ScanResultOverlay from '@/components/ScanResultOverlay';
+import { ScanCameraIcon, QrCodeIcon, LightbulbIcon } from '@/components/icons';
 import { audioService } from '@/lib/utils/audio';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import type { SessionUser, ParticipateRole } from '@/lib/types';
@@ -236,7 +237,7 @@ export default function ScannerPage() {
                   boxShadow: scanMode === 'camera' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 }}
               >
-                📷 Camera
+                <ScanCameraIcon size={16} color={scanMode === 'camera' ? '#2563eb' : '#64748b'} /> Camera
               </button>
               <button
                 onClick={() => setScanMode('external')}
@@ -254,7 +255,7 @@ export default function ScannerPage() {
                   boxShadow: scanMode === 'external' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 }}
               >
-                🔫 Máy Quét Ngoài
+                <QrCodeIcon size={16} color={scanMode === 'external' ? '#2563eb' : '#64748b'} /> Máy Quét Ngoài
               </button>
             </div>
           )}
@@ -287,11 +288,9 @@ export default function ScannerPage() {
               border: '2px dashed #bfdbfe',
             }}>
               <div style={{
-                fontSize: '3.5rem',
-                lineHeight: 1,
                 animation: 'pulse 2s ease-in-out infinite',
               }}>
-                🔫
+                <QrCodeIcon size={56} color="#2563eb" />
               </div>
               <div style={{ textAlign: 'center' }}>
                 <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 800, color: '#1e40af' }}>
@@ -308,7 +307,7 @@ export default function ScannerPage() {
                   type="text"
                   autoFocus
                   autoComplete="off"
-                  placeholder={externalProcessing ? '⏳ Đang xử lý...' : '📡 Chờ quét mã...'}
+                  placeholder={externalProcessing ? 'Đang xử lý...' : 'Chờ quét mã...'}
                   disabled={externalProcessing}
                   onKeyDown={handleExternalScan}
                   onBlur={() => {
@@ -342,7 +341,7 @@ export default function ScannerPage() {
                   color: '#94a3b8',
                   fontWeight: 600,
                 }}>
-                  💡 Ô input tự động nhận dữ liệu từ máy quét
+                  <LightbulbIcon size={14} color="#94a3b8" /> Ô input tự động nhận dữ liệu từ máy quét
                 </div>
               </div>
             </div>
