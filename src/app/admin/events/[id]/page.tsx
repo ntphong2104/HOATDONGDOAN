@@ -2204,6 +2204,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     Mỗi ca có khung giờ điểm danh độc lập. Sinh viên đăng ký 1 lần, đến ca nào điểm danh ca đó và không thể điểm danh 2 lần trong cùng 1 ca.
                   </p>
                 </div>
+                {userTier === 'super_admin' && (
                 <button
                   type="button"
                   onClick={() => {
@@ -2228,6 +2229,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 >
                   <span>+ Thêm Ca / Buổi Mới</span>
                 </button>
+                )}
               </div>
 
               {/* Sessions Grid */}
