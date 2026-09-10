@@ -43,6 +43,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [roles, setRoles] = useState<EventRole[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [newEmail, setNewEmail] = useState('');
+  const [newBtcEmail, setNewBtcEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [reconciling, setReconciling] = useState(false);
   const [togglingReg, setTogglingReg] = useState(false);
@@ -635,6 +636,54 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     if (msg) alert(msg);
     if (results.length > 0) {
       setNewEmail('');
+      fetchData();
+    }
+  };
+
+  const addBtc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBtcEmail.trim()) return;
+
+    const inputs = newBtcEmail.trim().split(/[\s,;]+/).filter(Boolean);
+    const results: string[] = [];
+    const errors: string[] = [];
+
+    for (const input of inputs) {
+      let email = input.trim().toLowerCase();
+      const isMSSV = /^[a-z]\d{2}[a-z]{3,5}\d{3}$/i.test(email);
+      if (isMSSV) {
+        email = `${email}@student.ptithcm.edu.vn`;
+      }
+      if (!email.includes('@')) {
+        errors.push(`"${input}" không phải MSSV hoặc email hợp lệ`);
+        continue;
+      }
+
+      try {
+        const res = await fetch(`/api/events/${resolvedParams.id}/roles`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, role_type: 'event_admin' }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          results.push(email);
+        } else if (res.status === 409) {
+          errors.push(`${input}: đã có quyền`);
+        } else {
+          errors.push(`${input}: ${data.message || 'lỗi'}`);
+        }
+      } catch {
+        errors.push(`${input}: lỗi kết nối`);
+      }
+    }
+
+    let msg = '';
+    if (results.length > 0) msg += `✅ Đã thêm ${results.length} BTC thành công!\n`;
+    if (errors.length > 0) msg += `⚠️ Lỗi:\n${errors.join('\n')}`;
+    if (msg) alert(msg);
+    if (results.length > 0) {
+      setNewBtcEmail('');
       fetchData();
     }
   };
@@ -1482,6 +1531,44 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <li className={styles.emptyList}>Chưa có checker nào được gán cho sự kiện này.</li>
             ) : (
               roles.filter(r => r.role_type === 'checker').map(role => (
+                <li key={role.id} className={styles.roleItem}>
+                  <span className={styles.roleEmail}>{role.email}</span>
+                  <button onClick={() => removeRole(role.id)} className={styles.deleteButton} title="Xóa quyền">
+                    Xóa quyền
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </section>
+        )}
+
+        {/* Quản lý Ban Tổ Chức (BTC) */}
+        {(isPrivileged || isEventCreator) && (
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              <ShieldCheckIcon size={20} color="#7c3aed" />
+              Quản lý Ban Tổ Chức Sự Kiện (BTC)
+            </h2>
+          </div>
+          <form onSubmit={addBtc} className={styles.addForm}>
+            <input 
+              type="text" 
+              placeholder="Nhập MSSV hoặc email (nhiều cái cách nhau bằng dấu cách)..." 
+              value={newBtcEmail}
+              onChange={(e) => setNewBtcEmail(e.target.value)}
+              className={styles.input}
+              required
+            />
+            <button type="submit" className={styles.button} style={{ background: '#7c3aed' }}>Thêm BTC</button>
+          </form>
+
+          <ul className={styles.roleList}>
+            {roles.filter(r => r.role_type === 'event_admin').length === 0 ? (
+              <li className={styles.emptyList}>Chưa có BTC nào được gán cho sự kiện này.</li>
+            ) : (
+              roles.filter(r => r.role_type === 'event_admin').map(role => (
                 <li key={role.id} className={styles.roleItem}>
                   <span className={styles.roleEmail}>{role.email}</span>
                   <button onClick={() => removeRole(role.id)} className={styles.deleteButton} title="Xóa quyền">
