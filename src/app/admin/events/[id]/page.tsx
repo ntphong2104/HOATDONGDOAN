@@ -591,23 +591,51 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const addChecker = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmail) return;
-    try {
-      const res = await fetch(`/api/events/${resolvedParams.id}/roles`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newEmail, role_type: 'checker' }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        alert(`Đã thêm quyền quét cho ${newEmail} thành công!`);
-        setNewEmail('');
-        fetchData();
-      } else {
-        alert(data.message || data.error || `Lỗi thêm checker (HTTP ${res.status})`);
+    if (!newEmail.trim()) return;
+
+    // Support batch input: split by space, comma, newline
+    const inputs = newEmail.trim().split(/[\s,;]+/).filter(Boolean);
+    const results: string[] = [];
+    const errors: string[] = [];
+
+    for (const input of inputs) {
+      // Auto-convert MSSV to email
+      let email = input.trim().toLowerCase();
+      const isMSSV = /^[a-z]\d{2}[a-z]{3,5}\d{3}$/i.test(email);
+      if (isMSSV) {
+        email = `${email}@student.ptithcm.edu.vn`;
       }
-    } catch (err) {
-      alert('Lỗi kết nối khi thêm checker');
+      if (!email.includes('@')) {
+        errors.push(`"${input}" không phải MSSV hoặc email hợp lệ`);
+        continue;
+      }
+
+      try {
+        const res = await fetch(`/api/events/${resolvedParams.id}/roles`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, role_type: 'checker' }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          results.push(email);
+        } else if (res.status === 409) {
+          errors.push(`${input}: đã có quyền`);
+        } else {
+          errors.push(`${input}: ${data.message || 'lỗi'}`);
+        }
+      } catch {
+        errors.push(`${input}: lỗi kết nối`);
+      }
+    }
+
+    let msg = '';
+    if (results.length > 0) msg += `✅ Đã thêm ${results.length} checker thành công!\n`;
+    if (errors.length > 0) msg += `⚠️ Lỗi:\n${errors.join('\n')}`;
+    if (msg) alert(msg);
+    if (results.length > 0) {
+      setNewEmail('');
+      fetchData();
     }
   };
 
@@ -1439,8 +1467,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
           <form onSubmit={addChecker} className={styles.addForm}>
             <input 
-              type="email" 
-              placeholder="Nhập email sinh viên (@student.ptithcm.edu.vn)..." 
+              type="text" 
+              placeholder="Nhập MSSV hoặc email (nhiều cái cách nhau bằng dấu cách)..." 
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               className={styles.input}
