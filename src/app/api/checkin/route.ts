@@ -181,7 +181,7 @@ export async function POST(req: Request) {
         organizer: 'organizer',
       };
       const registeredRole = regData.role_type || 'participant';
-      if (!isSuperAdmin && registeredRole !== participate_role) {
+      if (!isSuperOrEventAdmin && registeredRole !== participate_role) {
         const roleLabels: Record<string, string> = {
           participant: 'Người tham gia',
           volunteer: 'Cộng tác viên',
