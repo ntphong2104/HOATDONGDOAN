@@ -77,6 +77,17 @@ export async function POST(req: Request) {
       auth?.tier === 'youth_union' ||
       auth?.tier === 'event_admin';
 
+    // Authorization: only checker, event_admin, or super_admin can use this API
+    // Regular students must use /api/checkin/self (self-checkin with personal QR)
+    const isChecker = auth?.managed_events?.some((e: any) => e.event_id === event_id) || false;
+    if (!isSuperOrEventAdmin && !isChecker) {
+      return NextResponse.json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Bạn không có quyền điểm danh. Chỉ CTV quét mã, BTC, hoặc Admin mới được sử dụng chức năng này.'
+      }, { status: 403 });
+    }
+
     if (participate_role !== 'participant' && !isSuperOrEventAdmin) {
       return NextResponse.json({
         success: false,

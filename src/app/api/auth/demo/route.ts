@@ -412,6 +412,11 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  // SECURITY: Block demo login in production
+  if (process.env.ENABLE_DEMO_MODE !== 'true') {
+    return NextResponse.json({ success: false, error: 'Demo mode is disabled' }, { status: 403 });
+  }
+
   const { searchParams } = new URL(req.url);
   const role = searchParams.get('role') || 'super_admin';
   const targetRedirect = searchParams.get('redirect') || searchParams.get('next');

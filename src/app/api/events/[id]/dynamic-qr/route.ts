@@ -14,6 +14,13 @@ export async function GET(
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Authorization: only event admins, checkers, or super admins can generate dynamic QR
+  const isAuthorized = auth.isSuperAdmin || auth.tier === 'super_admin' || 
+    auth.isEventAdmin || auth.tier === 'event_admin' || auth.tier === 'youth_union';
+  if (!isAuthorized) {
+    return NextResponse.json({ success: false, error: 'Forbidden', message: 'Bạn không có quyền tạo mã QR điểm danh' }, { status: 403 });
+  }
+
   const { searchParams } = new URL(req.url);
   const role = searchParams.get('role') || 'participant';
   const sessionId = searchParams.get('session_id') || searchParams.get('sessionId') || 'main';
