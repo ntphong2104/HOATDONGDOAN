@@ -814,9 +814,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   const stats = {
-    participant: checkins.filter(c => c.participate_role === 'Người tham gia').length,
-    volunteer: checkins.filter(c => c.participate_role === 'Cộng tác viên').length,
-    organizer: checkins.filter(c => c.participate_role === 'Ban tổ chức').length,
+    participant: registrations.filter(r => (r.role_type === 'participant' || (!r.role_type && !isVolunteerApplicant(r))) && r.role_type !== 'organizer' && r.role_type !== 'volunteer').length,
+    volunteer: registrations.filter(r => r.role_type === 'volunteer').length,
+    organizer: registrations.filter(r => r.role_type === 'organizer').length,
+    checkedParticipant: checkins.filter(c => c.participate_role === 'Người tham gia').length,
+    checkedVolunteer: checkins.filter(c => c.participate_role === 'Cộng tác viên').length,
+    checkedOrganizer: checkins.filter(c => c.participate_role === 'Ban tổ chức').length,
   };
 
   const regUrl = typeof window !== 'undefined' ? `${window.location.origin}/events/${event.event_id}/register` : `/events/${event.event_id}/register`;
@@ -1487,21 +1490,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             value={stats.participant}
             color="success"
             icon={<CheckCircleIcon size={20} />}
-            subtitle="Sinh viên đã quét mã"
+            subtitle={`Đã điểm danh: ${stats.checkedParticipant}/${stats.participant}`}
           />
           <StatCard
             title="Cộng tác viên"
             value={stats.volunteer}
             color="warning"
             icon={<UsersIcon size={20} />}
-            subtitle="Hỗ trợ tổ chức"
+            subtitle={`Đã điểm danh: ${stats.checkedVolunteer}/${stats.volunteer}`}
           />
           <StatCard
             title="Ban tổ chức"
             value={stats.organizer}
             color="primary"
             icon={<ShieldCheckIcon size={20} />}
-            subtitle="Điều phối chương trình"
+            subtitle={`Đã điểm danh: ${stats.checkedOrganizer}/${stats.organizer}`}
           />
         </div>
 
