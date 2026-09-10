@@ -238,22 +238,36 @@ export async function POST(req: Request) {
           matchedSessionName = matched.name;
         }
       } else {
-        // Auto-detect: find the session whose time range covers "now"
+        // Auto-detect: find the session whose date and time range covers "now"
         const now = new Date();
+        const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-        let bestSession = sessions[0]; // fallback to first session
+        // First try: match by date AND time
+        let bestSession: typeof sessions[0] | null = null;
         for (const s of sessions) {
+          const sDate = s.session_date || '';
           const sStart = s.start_time || '00:00';
           const sEnd = s.end_time || '23:59';
-          // Give 1-hour buffer after end_time for late check-ins
           const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
           const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
-          if (nowHHMM >= sStart && nowHHMM <= bufferedEnd) {
+          
+          if (sDate === nowDateStr && nowHHMM >= sStart && nowHHMM <= bufferedEnd) {
             bestSession = s;
             break;
           }
         }
+
+        // Second try: match by date only (before/after time window)
+        if (!bestSession) {
+          bestSession = sessions.find(s => s.session_date === nowDateStr) || null;
+        }
+
+        // Fallback: first session
+        if (!bestSession) {
+          bestSession = sessions[0];
+        }
+
         targetSessionId = bestSession.id;
         matchedSessionName = bestSession.name;
       }
