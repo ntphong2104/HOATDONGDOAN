@@ -1899,18 +1899,27 @@ function SuperAdminContent() {
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                                       {(event as any).event_roles && (event as any).event_roles.length > 0 ? (
-                                        (event as any).event_roles.map((r: any) => (
-                                          <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.775rem', color: '#1e40af', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {r.email}
-                                            <button 
-                                              onClick={() => removeAdmin(event.event_id, r.id, r.email)} 
-                                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 'bold', padding: '0 2px' }} 
-                                              title="Thu hồi quyền"
-                                            >
-                                              ×
-                                            </button>
-                                          </span>
-                                        ))
+                                        <details style={{ width: '100%' }}>
+                                          <summary style={{ cursor: 'pointer', listStyle: 'none', fontSize: '0.775rem', color: '#1e40af', fontWeight: 600, userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                            Admin đã gán
+                                            <span style={{ background: '#dbeafe', padding: '1px 7px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 700 }}>{(event as any).event_roles.length}</span>
+                                            <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>▼</span>
+                                          </summary>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.35rem' }}>
+                                            {(event as any).event_roles.map((r: any) => (
+                                              <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.775rem', color: '#1e40af', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {r.email}
+                                                <button 
+                                                  onClick={() => removeAdmin(event.event_id, r.id, r.email)} 
+                                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 'bold', padding: '0 2px' }} 
+                                                  title="Thu hồi quyền"
+                                                >
+                                                  ×
+                                                </button>
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </details>
                                       ) : (
                                         <span style={{ fontSize: '0.775rem', color: '#94a3b8' }}>Chưa gán Admin</span>
                                       )}
