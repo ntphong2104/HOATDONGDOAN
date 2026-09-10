@@ -56,8 +56,28 @@ const PUBLIC_ROUTES = [
   '/maintenance',
   '/api/admin/maintenance',
   '/api/auth/demo',
-  '/events',
-  '/api/events',
+  '/api/auth/logout',
+  '/api/events/public',
+  '/api/rooms',
+  '/api/admin/units',
+];
+
+// Routes that need exact match (not prefix)
+const PUBLIC_EXACT_ROUTES = [
+  '/api/events/public',
+  '/api/rooms',
+  '/api/admin/units',
+];
+
+// Routes that allow prefix matching for public sub-paths
+const PUBLIC_PREFIX_ROUTES = [
+  '/login',
+  '/auth/callback',
+  '/maintenance',
+  '/api/admin/maintenance',
+  '/api/auth/demo',
+  '/api/auth/logout',
+  '/events/',          // /events/[id]/register page (public registration)
 ];
 
 function getValidUrl(url: string | undefined): string {
@@ -92,7 +112,15 @@ function getPublicOriginFromReq(request: NextRequest): string {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isPublicRoute = pathname === '/' || PUBLIC_ROUTES.some((route) => route !== '/' && pathname.startsWith(route));
+  const isPublicRoute = pathname === '/' || 
+    PUBLIC_PREFIX_ROUTES.some((route) => pathname.startsWith(route)) ||
+    PUBLIC_EXACT_ROUTES.some((route) => pathname === route) ||
+    // Allow public event detail pages and registration pages
+    /^\/events\/[^/]+\/register/.test(pathname) ||
+    // Allow public event detail API (GET only, auth checked inside)
+    /^\/api\/events\/[^/]+$/.test(pathname) ||
+    /^\/api\/events\/[^/]+\/register$/.test(pathname) ||
+    /^\/api\/events\/[^/]+\/ratings$/.test(pathname);
   const publicOrigin = getPublicOriginFromReq(request);
 
   // 1. Check Demo Session Cookie
