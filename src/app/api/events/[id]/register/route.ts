@@ -397,18 +397,29 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
-  const mssv = extractMSSV(auth.email) || auth.email;
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
+
+  const isAdmin = auth.isSuperAdmin || auth.tier === 'super_admin' || auth.isEventAdmin || auth.tier === 'event_admin';
+
+  // Admin can specify mssv in body to delete another user's registration
+  let targetMssv = extractMSSV(auth.email) || auth.email;
+  try {
+    const body = await req.json().catch(() => ({}));
+    if (body.mssv && isAdmin) {
+      targetMssv = body.mssv;
+    }
+  } catch {}
 
   const { error } = await supabase
     .from('event_registrations')
     .delete()
     .eq('event_id', resolvedParams.id)
-    .eq('mssv', mssv);
+    .eq('mssv', targetMssv);
 
   if (error) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, message: 'Đã hủy đăng ký thành công' });
+  return NextResponse.json({ success: true, message: 'Đã xóa đăng ký thành công' });
 }

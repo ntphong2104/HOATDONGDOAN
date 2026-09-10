@@ -2527,6 +2527,47 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       );
                     },
                   },
+                  ...(isPrivileged || isEventCreator ? [{
+                    key: 'id',
+                    label: '',
+                    render: (val: any, row: any) => (
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Xóa đăng ký của ${row.full_name || row.mssv}?`)) return;
+                          try {
+                            const getSupabase = typeof window !== 'undefined' ? null : null;
+                            const res = await fetch(`/api/events/${resolvedParams.id}/register`, {
+                              method: 'DELETE',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ mssv: row.mssv }),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (res.ok) {
+                              alert('Đã xóa đăng ký!');
+                              fetchData();
+                            } else {
+                              alert(data.message || data.error || 'Lỗi xóa đăng ký');
+                            }
+                          } catch {
+                            alert('Lỗi kết nối');
+                          }
+                        }}
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid #fecaca',
+                          background: '#fef2f2',
+                          color: '#dc2626',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Xóa
+                      </button>
+                    ),
+                  }] : []),
                 ]}
                 data={participantRegistrations}
                 searchable
