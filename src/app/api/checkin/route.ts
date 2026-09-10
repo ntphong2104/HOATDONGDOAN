@@ -173,6 +173,26 @@ export async function POST(req: Request) {
           require_registration: true,
         }, { status: 400 });
       }
+
+      // ── Enforce Role Match: registered role must match check-in role ──
+      const roleMap: Record<string, string> = {
+        participant: 'participant',
+        volunteer: 'volunteer',
+        organizer: 'organizer',
+      };
+      const registeredRole = regData.role_type || 'participant';
+      if (!isSuperAdmin && registeredRole !== participate_role) {
+        const roleLabels: Record<string, string> = {
+          participant: 'Người tham gia',
+          volunteer: 'Cộng tác viên',
+          organizer: 'Ban tổ chức',
+        };
+        return NextResponse.json({
+          success: false,
+          error: 'Role Mismatch',
+          message: `⚠️ Sinh viên ${finalStudent.full_name || mssv} (${mssv}) đăng ký vai trò "${roleLabels[registeredRole] || registeredRole}", không thể điểm danh với vai trò "${roleLabels[participate_role] || participate_role}". Vui lòng chọn đúng vai trò khi quét.`,
+        }, { status: 400 });
+      }
     }
 
     // ── Enforce Max Participants Capacity ──
