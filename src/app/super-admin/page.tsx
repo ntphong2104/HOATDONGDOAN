@@ -4314,12 +4314,17 @@ function SuperAdminContent() {
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
-                  const finalEmail = selectedUnitCode === 'CUSTOM'
+                  let finalEmail = selectedUnitCode === 'CUSTOM'
                     ? customEmail.trim().toLowerCase()
                     : (unitsList.find(u => u.code === selectedUnitCode)?.email || customEmail.trim().toLowerCase());
                   
+                  // Auto-convert MSSV to email
+                  if (finalEmail && /^[a-z]\d{2}[a-z]{3,5}\d{3}$/i.test(finalEmail)) {
+                    finalEmail = `${finalEmail}@student.ptithcm.edu.vn`;
+                  }
+
                   if (!finalEmail) {
-                    showToast('Vui lòng nhập hoặc chọn email đơn vị', 'error');
+                    showToast('Vui lòng nhập MSSV hoặc email đơn vị', 'error');
                     return;
                   }
 
@@ -4397,15 +4402,15 @@ function SuperAdminContent() {
                 {/* Email Display / Custom Input */}
                 <div>
                   <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 800, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                    2. Email Tài Khoản Tiếp Nhận Quyền
+                    2. MSSV hoặc Email Tài Khoản Tiếp Nhận Quyền
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     required
                     value={selectedUnitCode === 'CUSTOM' ? customEmail : (unitsList.find(u => u.code === selectedUnitCode)?.email || customEmail)}
                     onChange={(e) => setCustomEmail(e.target.value)}
                     readOnly={selectedUnitCode !== 'CUSTOM'}
-                    placeholder="VD: btc.sukien@student.ptithcm.edu.vn"
+                    placeholder="VD: N22DCCN158 hoặc btc.sukien@student.ptithcm.edu.vn"
                     style={{
                       width: '100%',
                       height: '44px',
