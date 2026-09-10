@@ -1511,76 +1511,92 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Quản lý CTV Quét Mã (Checker) */}
         {(isPrivileged || isEventCreator) && (
         <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>
-              <UsersIcon size={20} color="#2563eb" />
-              Quản lý Cộng tác viên quét mã (Checker)
-            </h2>
-          </div>
-          <form onSubmit={addChecker} className={styles.addForm}>
-            <input 
-              type="text" 
-              placeholder="Nhập MSSV hoặc email (nhiều cái cách nhau bằng dấu cách)..." 
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className={styles.input}
-              required
-            />
-            <button type="submit" className={styles.button}>Thêm CTV Quét Mã</button>
-          </form>
+          <details>
+            <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', userSelect: 'none' }}>
+              <h2 className={styles.sectionTitle} style={{ margin: 0 }}>
+                <UsersIcon size={20} color="#2563eb" />
+                Quản lý CTV Quét Mã (Checker)
+                <span style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.5rem' }}>
+                  {roles.filter(r => r.role_type === 'checker').length}
+                </span>
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8', marginLeft: '0.4rem' }}>▼</span>
+              </h2>
+            </summary>
+            <div style={{ marginTop: '0.75rem' }}>
+              <form onSubmit={addChecker} className={styles.addForm}>
+                <input 
+                  type="text" 
+                  placeholder="Nhập MSSV hoặc email (nhiều cái cách nhau bằng dấu cách)..." 
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className={styles.input}
+                  required
+                />
+                <button type="submit" className={styles.button}>Thêm CTV Quét Mã</button>
+              </form>
 
-          <ul className={styles.roleList}>
-            {roles.filter(r => r.role_type === 'checker').length === 0 ? (
-              <li className={styles.emptyList}>Chưa có checker nào được gán cho sự kiện này.</li>
-            ) : (
-              roles.filter(r => r.role_type === 'checker').map(role => (
-                <li key={role.id} className={styles.roleItem}>
-                  <span className={styles.roleEmail}>{role.email}</span>
-                  <button onClick={() => removeRole(role.id)} className={styles.deleteButton} title="Xóa quyền">
-                    Xóa quyền
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
+              <ul className={styles.roleList}>
+                {roles.filter(r => r.role_type === 'checker').length === 0 ? (
+                  <li className={styles.emptyList}>Chưa có checker nào được gán cho sự kiện này.</li>
+                ) : (
+                  roles.filter(r => r.role_type === 'checker').map(role => (
+                    <li key={role.id} className={styles.roleItem}>
+                      <span className={styles.roleEmail}>{role.email}</span>
+                      <button onClick={() => removeRole(role.id)} className={styles.deleteButton} title="Xóa quyền">
+                        Xóa quyền
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </details>
         </section>
         )}
 
         {/* Quản lý Ban Tổ Chức (BTC) */}
         {(isPrivileged || isEventCreator) && (
         <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>
-              <ShieldCheckIcon size={20} color="#7c3aed" />
-              Quản lý Ban Tổ Chức Sự Kiện (BTC)
-            </h2>
-          </div>
-          <form onSubmit={addBtc} className={styles.addForm}>
-            <input 
-              type="text" 
-              placeholder="Nhập MSSV hoặc email (nhiều cái cách nhau bằng dấu cách)..." 
-              value={newBtcEmail}
-              onChange={(e) => setNewBtcEmail(e.target.value)}
-              className={styles.input}
-              required
-            />
-            <button type="submit" className={styles.button} style={{ background: '#7c3aed' }}>Thêm BTC</button>
-          </form>
+          <details>
+            <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', userSelect: 'none' }}>
+              <h2 className={styles.sectionTitle} style={{ margin: 0 }}>
+                <ShieldCheckIcon size={20} color="#7c3aed" />
+                Quản lý Ban Tổ Chức Sự Kiện (BTC)
+                <span style={{ background: '#ede9fe', color: '#6d28d9', padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.5rem' }}>
+                  {roles.filter(r => r.role_type === 'event_admin').length}
+                </span>
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8', marginLeft: '0.4rem' }}>▼</span>
+              </h2>
+            </summary>
+            <div style={{ marginTop: '0.75rem' }}>
+              <form onSubmit={addBtc} className={styles.addForm}>
+                <input 
+                  type="text" 
+                  placeholder="Nhập MSSV hoặc email (nhiều cái cách nhau bằng dấu cách)..." 
+                  value={newBtcEmail}
+                  onChange={(e) => setNewBtcEmail(e.target.value)}
+                  className={styles.input}
+                  required
+                />
+                <button type="submit" className={styles.button} style={{ background: '#7c3aed' }}>Thêm BTC</button>
+              </form>
 
-          <ul className={styles.roleList}>
-            {roles.filter(r => r.role_type === 'event_admin').length === 0 ? (
-              <li className={styles.emptyList}>Chưa có BTC nào được gán cho sự kiện này.</li>
-            ) : (
-              roles.filter(r => r.role_type === 'event_admin').map(role => (
-                <li key={role.id} className={styles.roleItem}>
-                  <span className={styles.roleEmail}>{role.email}</span>
-                  <button onClick={() => removeRole(role.id)} className={styles.deleteButton} title="Xóa quyền">
-                    Xóa quyền
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
+              <ul className={styles.roleList}>
+                {roles.filter(r => r.role_type === 'event_admin').length === 0 ? (
+                  <li className={styles.emptyList}>Chưa có BTC nào được gán cho sự kiện này.</li>
+                ) : (
+                  roles.filter(r => r.role_type === 'event_admin').map(role => (
+                    <li key={role.id} className={styles.roleItem}>
+                      <span className={styles.roleEmail}>{role.email}</span>
+                      <button onClick={() => removeRole(role.id)} className={styles.deleteButton} title="Xóa quyền">
+                        Xóa quyền
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </details>
         </section>
         )}
 
