@@ -126,7 +126,7 @@ export default function NewProposalPage() {
     const newSessions: ProposalSessionItem[] = [];
     let cur = new Date(startObj);
     let day = 1;
-    while (cur <= endObj && day <= 30) {
+    while (cur <= endObj && day <= 90) {
       const dateStr = cur.toISOString().split('T')[0];
       const vnDate = cur.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
       newSessions.push({
