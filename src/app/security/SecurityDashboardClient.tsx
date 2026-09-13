@@ -419,6 +419,70 @@ export default function SecurityDashboardClient({
                         </span>
                       </div>
                     </div>
+
+                    {/* ── Chi tiết lịch trình từng ca ── */}
+                    {item.sessions && item.sessions.length > 0 && (
+                      <div style={{ marginTop: '0.65rem' }}>
+                        <div style={{
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          color: '#475569',
+                          marginBottom: '0.35rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                        }}>
+                          📋 Lịch trình chi tiết ({item.sessions.length} ca):
+                        </div>
+                        <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1.5px solid #e2e8f0' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                            <thead>
+                              <tr style={{ background: '#f1f5f9' }}>
+                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.72rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Ca</th>
+                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.72rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>📅 Ngày</th>
+                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.72rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>⏰ Giờ</th>
+                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.72rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>🔑 Phòng</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {item.sessions.map((sess: any, sIdx: number) => (
+                                <tr key={sess.id || sIdx} style={{ background: sIdx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 700, color: '#1e1b4b', whiteSpace: 'nowrap' }}>
+                                    <span style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      width: '20px', height: '20px', borderRadius: '50%',
+                                      background: '#1d4ed8', color: '#fff',
+                                      fontSize: '0.65rem', fontWeight: 800, marginRight: '0.35rem',
+                                    }}>{sIdx + 1}</span>
+                                    {sess.name || `Buổi ${sIdx + 1}`}
+                                  </td>
+                                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                                    {sess.session_date ? new Date(sess.session_date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' }) : '—'}
+                                  </td>
+                                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                                    {sess.start_time?.slice(0, 5) || '??'} – {sess.end_time?.slice(0, 5) || '??'}
+                                  </td>
+                                  <td style={{
+                                    padding: '0.4rem 0.6rem',
+                                    fontWeight: 700,
+                                    color: sess.room_name && sess.room_name !== 'Không mượn' ? '#0f172a' : '#94a3b8',
+                                  }}>
+                                    {sess.room_name && sess.room_name !== 'Không mượn' ? (
+                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
+                                        {sess.room_name}
+                                      </span>
+                                    ) : (
+                                      item.room_name || 'Không mượn'
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right: Borrower Representative Info & Verification */}
