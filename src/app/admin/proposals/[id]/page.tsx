@@ -766,11 +766,57 @@ export default function ProposalDetailPage({
                 </span>
               </span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>📍 Địa điểm</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.room_name && proposal.room_name !== 'Không mượn' ? '#0f172a' : '#94a3b8' }}>
-                {proposal.room_name && proposal.room_name !== 'Không mượn' ? proposal.room_name : 'Không mượn phòng'}
-              </span>
+            {/* ── BẢNG TÓM TẮT LỊCH TRÌNH & ĐỊA ĐIỂM CÁC CA ── */}
+            <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>📍 Lịch Trình & Địa Điểm Các Ca</span>
+              {proposal.sessions && proposal.sessions.length > 0 ? (
+                <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f1f5f9' }}>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Ca</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>📅 Ngày</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>⏰ Giờ</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>📍 Địa điểm / Phòng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {proposal.sessions.map((sess: any, idx: number) => (
+                        <tr key={sess.id || idx} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: '#1e1b4b', whiteSpace: 'nowrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#7e22ce', color: '#fff', fontSize: '0.7rem', fontWeight: 800, marginRight: '0.4rem' }}>{idx + 1}</span>
+                            {sess.name || `Buổi ${idx + 1}`}
+                          </td>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                            {sess.session_date ? new Date(sess.session_date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' }) : '—'}
+                          </td>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                            {sess.start_time?.slice(0, 5) || '??'} – {sess.end_time?.slice(0, 5) || '??'}
+                          </td>
+                          <td style={{
+                            padding: '0.55rem 0.75rem',
+                            fontWeight: 700,
+                            color: sess.room_name && sess.room_name !== 'Không mượn' ? '#0f172a' : '#94a3b8',
+                          }}>
+                            {sess.room_name && sess.room_name !== 'Không mượn' ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
+                                {sess.room_name}
+                              </span>
+                            ) : (
+                              'Không mượn phòng'
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.room_name && proposal.room_name !== 'Không mượn' ? '#0f172a' : '#94a3b8' }}>
+                  {proposal.room_name && proposal.room_name !== 'Không mượn' ? proposal.room_name : 'Không mượn phòng'}
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>🏢 Đơn vị</span>
