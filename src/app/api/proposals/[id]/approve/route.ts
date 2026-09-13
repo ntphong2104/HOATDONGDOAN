@@ -169,6 +169,8 @@ export async function POST(
               session_date: s.session_date,
               start_time: s.start_time,
               end_time: s.end_time,
+              room_id: s.room_id || null,
+              room_name: s.room_name || null,
               created_at: new Date().toISOString(),
             }));
         }

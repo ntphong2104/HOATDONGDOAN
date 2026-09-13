@@ -16,6 +16,8 @@ export interface EventSession {
   session_date?: string;
   start_time?: string;
   end_time?: string;
+  room_id?: string | null;
+  room_name?: string | null;
   created_at?: string;
 }
 
