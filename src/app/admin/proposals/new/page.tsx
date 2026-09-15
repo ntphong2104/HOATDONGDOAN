@@ -258,10 +258,22 @@ export default function NewProposalPage() {
   const requiresCtsv = totalPersonnel > 50 || Number(participantCount) > 50;
   const isBorrowing = !!selectedRoomId && selectedRoomName !== 'Không mượn';
   const isDirectFaculty = isKhoaUnit(organizationUnit);
+  // ── Chặn Enter trong ô input tự động submit form ──
+  const preventEnterSubmit = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+      e.preventDefault();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    // Xác nhận trước khi nộp
+    const confirmed = window.confirm(
+      '📋 Bạn có chắc chắn muốn GỬI TRÌNH KẾ HOẠCH này?\n\nSau khi gửi, kế hoạch sẽ được chuyển đến các cấp phê duyệt tương ứng.'
+    );
+    if (!confirmed) return;
 
     if (conflictResult.conflict) {
       setErrorMessage('Phòng đang chọn bị trùng lịch. Vui lòng chọn phòng hoặc thời gian khác.');
@@ -377,7 +389,7 @@ export default function NewProposalPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className={styles.formGrid} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <form onSubmit={handleSubmit} onKeyDown={preventEnterSubmit} className={styles.formGrid} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           {/* ═══════════════ MỤC 1: THÔNG TIN CƠ BẢN ═══════════════ */}
           <div className={styles.sectionCard}>
             <div
