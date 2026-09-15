@@ -176,7 +176,7 @@ export async function POST(req: Request) {
     if (!studentPhone || studentPhone.trim().length < 8) {
       return NextResponse.json({
         success: false,
-        error: `Sinh viên ${finalStudent.full_name || mssv} (${mssv}) chưa cập nhật SĐT. Yêu cầu sinh viên cập nhật SĐT trong hồ sơ cá nhân trước khi điểm danh.`,
+        error: `📱 Sinh viên ${finalStudent.full_name || mssv} (${mssv}) chưa cập nhật SĐT!\n\n👉 Hướng dẫn sinh viên:\n1. Mở trang web hệ thống trên điện thoại\n2. Bấm vào ảnh đại diện → "Hồ Sơ Cá Nhân"\n3. Nhập Số Điện Thoại / Zalo\n4. Bấm "Lưu" rồi quay lại quét mã để điểm danh`,
         require_phone: true,
       }, { status: 400 });
     }

@@ -126,7 +126,7 @@ export async function POST(req: Request) {
     if (!userPhone || userPhone.trim().length < 8) {
       return NextResponse.json({
         success: false,
-        error: 'Bạn chưa cập nhật Số Điện Thoại / Zalo. Vui lòng cập nhật SĐT trong hồ sơ cá nhân trước khi điểm danh.',
+        error: '📱 Bạn chưa cập nhật Số Điện Thoại / Zalo!\n\n👉 Cách cập nhật:\n1. Bấm vào ảnh đại diện (góc trên bên phải)\n2. Chọn "Hồ Sơ Cá Nhân"\n3. Nhập Số Điện Thoại / Zalo của bạn\n4. Bấm "Lưu"\n5. Quay lại quét mã QR để điểm danh\n\n⚠️ Đây là yêu cầu bắt buộc để BTC có thể liên hệ bạn khi cần.',
         require_phone: true,
       }, { status: 400 });
     }

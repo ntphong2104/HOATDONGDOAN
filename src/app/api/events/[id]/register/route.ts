@@ -248,7 +248,7 @@ export async function POST(
   if (!resolvedPhone || resolvedPhone.trim().length < 8) {
     return NextResponse.json({
       success: false,
-      error: 'Bạn chưa cập nhật Số Điện Thoại / Zalo. Vui lòng cập nhật SĐT trong hồ sơ cá nhân trước khi đăng ký sự kiện.',
+      error: '📱 Bạn chưa cập nhật Số Điện Thoại / Zalo!\n\n👉 Cách cập nhật:\n1. Bấm vào ảnh đại diện (góc trên bên phải)\n2. Chọn "Hồ Sơ Cá Nhân"\n3. Nhập Số Điện Thoại / Zalo của bạn\n4. Bấm "Lưu"\n5. Quay lại đăng ký sự kiện\n\n⚠️ SĐT là bắt buộc để BTC liên hệ bạn khi cần.',
       require_phone: true,
     }, { status: 400 });
   }
