@@ -66,6 +66,8 @@ export function deleteProposalFromStore(id: string): boolean {
   const store = loadStore();
   const beforeLen = store.proposals.length;
   store.proposals = store.proposals.filter(p => p.id !== id);
+  // Also clean up orphaned logs for this proposal
+  store.logs = store.logs.filter(l => l.proposal_id !== id);
   saveStore(store);
   return store.proposals.length < beforeLen;
 }
@@ -82,6 +84,10 @@ export function addStoredProposalLog(log: Omit<ProposalLog, 'id' | 'created_at'>
     created_at: new Date().toISOString(),
   };
   store.logs.push(newLog);
+  // Keep only the most recent 500 logs to prevent unbounded memory growth
+  if (store.logs.length > 500) {
+    store.logs = store.logs.slice(-500);
+  }
   saveStore(store);
   return newLog;
 }

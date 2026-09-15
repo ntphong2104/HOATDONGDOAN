@@ -62,6 +62,19 @@ function saveToFile(data: Record<string, EventMeta>) {
     fs.writeFileSync(META_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch {}
 }
+// ── Cache eviction helper: prevent unbounded memory growth ──
+const MAX_CACHE_ENTRIES = 50; // max events to keep in memory
+
+function evictOldest<T>(cache: Record<string, T>, maxEntries: number): void {
+  const keys = Object.keys(cache);
+  if (keys.length > maxEntries) {
+    // Remove oldest entries (first inserted = first keys)
+    const toRemove = keys.slice(0, keys.length - maxEntries);
+    for (const key of toRemove) {
+      delete cache[key];
+    }
+  }
+}
 
 let inMemoryMeta: Record<string, EventMeta> = loadFromFile();
 
@@ -108,6 +121,7 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
   };
 
   inMemoryMeta[eventId] = merged;
+  evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
   return merged;
 }
 
@@ -163,6 +177,7 @@ export async function getRegistrationExtras(
         const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         if (parsed && typeof parsed === 'object') {
           inMemoryRegExtras[eventId] = parsed;
+          evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
           return parsed;
         }
       }
@@ -173,6 +188,7 @@ export async function getRegistrationExtras(
   const fromFile = loadRegFromFile();
   if (fromFile[eventId]) {
     inMemoryRegExtras[eventId] = fromFile[eventId];
+    evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
     return fromFile[eventId];
   }
   return {};
@@ -197,6 +213,7 @@ export async function saveRegistrationExtra(
 
   currentEventRegs[normalizedMssv] = updated;
   inMemoryRegExtras[eventId] = currentEventRegs;
+  evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
 
   const allFile = loadRegFromFile();
   allFile[eventId] = currentEventRegs;
@@ -235,6 +252,7 @@ export async function saveRegistrationExtrasBulk(
   }
 
   inMemoryRegExtras[eventId] = currentEventRegs;
+  evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
 
   const allFile = loadRegFromFile();
   allFile[eventId] = currentEventRegs;
@@ -266,6 +284,7 @@ export async function saveEventMeta(
   };
 
   inMemoryMeta[eventId] = updated;
+  evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
   saveToFile({ ...loadFromFile(), [eventId]: updated });
 
   const metaKey = `event_meta_${eventId}`;
@@ -389,6 +408,7 @@ export async function getSessionCheckIns(supabase: any, eventId: string): Promis
         const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         if (Array.isArray(parsed)) {
           inMemorySessionCheckins[eventId] = parsed;
+          evictOldest(inMemorySessionCheckins, MAX_CACHE_ENTRIES);
           return parsed;
         }
       }
@@ -401,6 +421,7 @@ export async function getSessionCheckIns(supabase: any, eventId: string): Promis
 
   const fromFile = loadSessionCheckinsFromFile(eventId);
   inMemorySessionCheckins[eventId] = fromFile;
+  evictOldest(inMemorySessionCheckins, MAX_CACHE_ENTRIES);
   return fromFile;
 }
 
@@ -419,6 +440,7 @@ export async function saveSessionCheckIn(supabase: any, checkIn: SessionCheckIn)
 
   const updated = [checkIn, ...current];
   inMemorySessionCheckins[eventId] = updated;
+  evictOldest(inMemorySessionCheckins, MAX_CACHE_ENTRIES);
   saveSessionCheckinsToFile(eventId, updated);
 
   const sessionKey = `event_session_checkins_${eventId}`;
