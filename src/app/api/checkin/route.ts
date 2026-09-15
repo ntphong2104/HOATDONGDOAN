@@ -60,6 +60,20 @@ export async function POST(req: Request) {
       }
       // Use verified MSSV from token
       mssv = verification.mssv.toUpperCase().trim();
+    } else if (qrParts.length >= 5 && /^[0-9a-fA-F-]{36}$/.test(qrParts[0])) {
+      // This is a dynamic EVENT QR token: EVENT_ID:MSSV:ROLE:SESSION:HASH
+      // Scanner should NOT be scanning event QR codes — those are for self-checkin
+      // But if they do, extract the MSSV portion to prevent corrupting the users table
+      const extractedMssv = qrParts[1];
+      if (extractedMssv && /^\d+$/.test(extractedMssv)) {
+        mssv = extractedMssv.toUpperCase().trim();
+      } else {
+        return NextResponse.json({
+          success: false,
+          error: 'Wrong QR Type',
+          message: '❌ Đây là mã QR sự kiện (dành cho sinh viên tự quét). Vui lòng yêu cầu sinh viên mở Cổng Sinh Viên → hiện mã QR cá nhân để quét.',
+        }, { status: 400 });
+      }
     }
 
     const validRoles = ['participant', 'volunteer', 'organizer'];
