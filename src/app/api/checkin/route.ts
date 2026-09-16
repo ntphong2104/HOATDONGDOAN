@@ -5,7 +5,7 @@ import { sanitizeInput } from '@/lib/security/sanitizer';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, getSessionCheckIns, saveSessionCheckIn } from '@/lib/constants/event-meta-store';
-import { getUserProfileExtra } from '@/lib/constants/user-profile-store';
+import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { verifyPersonalQRToken } from '@/lib/utils/personal-qr';
 import type { CheckInRequest } from '@/lib/types';
 
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
 
     // Check phone number requirement
     const studentEmail = finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
-    const profileExtra = getUserProfileExtra(studentEmail) || getUserProfileExtra(mssv);
+    const profileExtra = await getUserProfileExtraWithFallback(supabase, studentEmail, mssv);
     const studentPhone = profileExtra?.phone || '';
     if (!studentPhone || studentPhone.trim().length < 8) {
       return NextResponse.json({

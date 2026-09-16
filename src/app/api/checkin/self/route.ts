@@ -7,7 +7,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { getEventMeta, getSessionCheckIns, saveSessionCheckIn, type EventSession } from '@/lib/constants/event-meta-store';
-import { getUserProfileExtra } from '@/lib/constants/user-profile-store';
+import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 
 export async function POST(req: Request) {
   try {
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
     }
 
     // Check phone number - require phone to be updated before checkin
-    const profileExtra = getUserProfileExtra(email || '') || getUserProfileExtra(mssv);
+    const profileExtra = await getUserProfileExtraWithFallback(supabase, email || '', mssv);
     const userPhone = profileExtra?.phone || '';
     if (!userPhone || userPhone.trim().length < 8) {
       return NextResponse.json({

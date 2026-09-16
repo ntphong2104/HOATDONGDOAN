@@ -5,7 +5,7 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
-import { getUserProfileExtra } from '@/lib/constants/user-profile-store';
+import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 
 export async function GET(
   req: Request,
@@ -240,8 +240,8 @@ export async function POST(
   const department_id = body.department_id || null;
   let department_name = body.department_name || null;
 
-  // Check phone number from profile store as fallback
-  const profileExtra = getUserProfileExtra(auth.email) || getUserProfileExtra(mssv);
+  // Check phone number from profile store with Supabase fallback
+  const profileExtra = await getUserProfileExtraWithFallback(supabase, auth.email, mssv);
   const resolvedPhone = phone || profileExtra?.phone || '';
 
   // Require phone number for registration

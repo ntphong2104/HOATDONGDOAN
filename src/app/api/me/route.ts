@@ -458,6 +458,16 @@ export async function PATCH(req: Request) {
         saveUserProfileExtra(demoUser.email, { gender: updated.gender, phone: updated.phone });
         if (demoUser.mssv) saveUserProfileExtra(demoUser.mssv, { gender: updated.gender, phone: updated.phone });
 
+        // Persist to Supabase for durability across restarts
+        try {
+          const supabase = await createAdminClient();
+          const profileKey = `user_profile_${demoUser.email.toLowerCase()}`;
+          await supabase.from('system_settings').upsert({
+            key: profileKey,
+            value: { gender: updated.gender, phone: updated.phone, updated_at: new Date().toISOString() },
+          }, { onConflict: 'key' });
+        } catch {}
+
         return NextResponse.json({
           success: true,
           message: 'Đã cập nhật thông tin cá nhân thành công!',
@@ -479,6 +489,16 @@ export async function PATCH(req: Request) {
 
     saveUserProfileExtra(email, { gender, phone });
     saveUserProfileExtra(username, { gender, phone });
+
+    // Persist to Supabase for durability across restarts
+    try {
+      const supabase = await createAdminClient();
+      const profileKey = `user_profile_${email}`;
+      await supabase.from('system_settings').upsert({
+        key: profileKey,
+        value: { gender, phone, updated_at: new Date().toISOString() },
+      }, { onConflict: 'key' });
+    } catch {}
 
     return NextResponse.json({
       success: true,

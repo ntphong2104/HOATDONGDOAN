@@ -44,6 +44,46 @@ export function getUserProfileExtra(key: string): UserProfileExtra | null {
   return all[lower] || all[upper] || null;
 }
 
+/**
+ * Get profile with Supabase fallback - use this when checking phone/gender
+ * so that data persists across server restarts
+ */
+export async function getUserProfileExtraWithFallback(
+  supabase: any,
+  email: string,
+  mssv?: string
+): Promise<UserProfileExtra | null> {
+  // 1. Try in-memory/file first (fastest)
+  const fromLocal = getUserProfileExtra(email) || (mssv ? getUserProfileExtra(mssv) : null);
+  if (fromLocal?.phone && fromLocal.phone.trim().length >= 8) {
+    return fromLocal;
+  }
+
+  // 2. Fallback: check Supabase
+  if (supabase && email) {
+    try {
+      const profileKey = `user_profile_${email.toLowerCase()}`;
+      const { data } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', profileKey)
+        .maybeSingle();
+
+      if (data?.value) {
+        const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (parsed?.phone) {
+          // Sync back to in-memory cache
+          saveUserProfileExtra(email, parsed);
+          if (mssv) saveUserProfileExtra(mssv, parsed);
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+
+  return fromLocal;
+}
+
 export function saveUserProfileExtra(key: string, extra: Partial<UserProfileExtra>) {
   if (!key) return;
   const all = loadProfiles();
