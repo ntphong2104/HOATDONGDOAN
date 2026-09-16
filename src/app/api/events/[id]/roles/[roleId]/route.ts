@@ -8,9 +8,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const auth = await getAuthContext();
     if (!auth) return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
 
-    const parsedRoleId = parseInt(roleId, 10);
-    if (isNaN(parsedRoleId)) {
-      return NextResponse.json({ success: false, error: `ID vai trò không hợp lệ: ${roleId}` }, { status: 400 });
+    if (!roleId || !id) {
+      return NextResponse.json({ success: false, error: 'Thiếu thông tin vai trò hoặc sự kiện' }, { status: 400 });
     }
 
     // Authorization: only super_admin, youth_union, event_admin, or event creator
@@ -33,11 +32,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
 
-    // Verify the role belongs to this event (prevent cross-event deletion)
+    // Support both UUID and integer role IDs
     const { error, count } = await supabase
       .from('event_roles')
       .delete({ count: 'exact' })
-      .eq('id', parsedRoleId)
+      .eq('id', roleId)
       .eq('event_id', id);
 
     if (error) {
