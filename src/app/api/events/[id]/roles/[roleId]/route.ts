@@ -8,6 +8,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const auth = await getAuthContext();
     if (!auth) return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
 
+    const parsedRoleId = parseInt(roleId, 10);
+    if (isNaN(parsedRoleId)) {
+      return NextResponse.json({ success: false, error: `ID vai trò không hợp lệ: ${roleId}` }, { status: 400 });
+    }
+
     // Authorization: only super_admin, youth_union, event_admin, or event creator
     const isSuperOrPrivileged = auth.isSuperAdmin || auth.tier === 'super_admin' || auth.tier === 'youth_union';
     const isEventAdmin = auth.isEventAdmin || auth.tier === 'event_admin';
@@ -21,7 +26,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
         .maybeSingle();
       
       if (eventData?.created_by !== auth.email) {
-        return NextResponse.json({ success: false, error: 'Forbidden', message: 'Bạn không có quyền xóa vai trò này' }, { status: 403 });
+        return NextResponse.json({ success: false, error: 'Bạn không có quyền xóa vai trò này' }, { status: 403 });
       }
     }
 
@@ -29,15 +34,24 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const supabase = (await getSupabase()) || (await createClient());
 
     // Verify the role belongs to this event (prevent cross-event deletion)
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from('event_roles')
-      .delete()
-      .eq('id', parseInt(roleId))
+      .delete({ count: 'exact' })
+      .eq('id', parsedRoleId)
       .eq('event_id', id);
 
-    if (error) return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại', message: error.message }, { status: 500 });
+    if (error) {
+      console.error('Delete role error:', error);
+      return NextResponse.json({ success: false, error: `Lỗi xóa quyền: ${error.message}` }, { status: 500 });
+    }
+
+    if (count === 0) {
+      return NextResponse.json({ success: false, error: 'Không tìm thấy vai trò này (có thể đã bị xóa trước đó)' }, { status: 404 });
+    }
+
     return NextResponse.json({ success: true, data: { deleted: true } });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+  } catch (err: any) {
+    console.error('Delete role catch:', err);
+    return NextResponse.json({ success: false, error: `Lỗi hệ thống: ${err?.message || 'Vui lòng thử lại'}`}, { status: 500 });
   }
 }
