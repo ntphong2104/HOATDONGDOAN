@@ -102,20 +102,22 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Không tìm thấy MSSV hợp lệ trong danh sách cung cấp' }, { status: 400 });
     }
 
-    // Fetch existing student info from `users` table and `getEventMeta` in parallel
-    const [
-      { data: existingUsers },
-      meta
-    ] = await Promise.all([
-      supabase
+    // Fetch existing student info from `users` table in batches (avoid Supabase timeout with large .in())
+    const BATCH_SIZE = 100;
+    const meta = await getEventMeta(supabase, resolvedParams.id);
+    
+    const allUsers: any[] = [];
+    for (let i = 0; i < cleanedMssvs.length; i += BATCH_SIZE) {
+      const batch = cleanedMssvs.slice(i, i + BATCH_SIZE);
+      const { data: batchUsers } = await supabase
         .from('users')
         .select('mssv, full_name, class_id, email, phone, gender')
-        .in('mssv', cleanedMssvs),
-      getEventMeta(supabase, resolvedParams.id)
-    ]);
+        .in('mssv', batch);
+      if (batchUsers) allUsers.push(...batchUsers);
+    }
 
     const userMap = new Map<string, { full_name: string; class_id: string; email?: string; phone?: string; gender?: string }>();
-    (existingUsers || []).forEach((u: any) => {
+    allUsers.forEach((u: any) => {
       userMap.set(u.mssv.toUpperCase(), {
         full_name: u.full_name || u.mssv,
         class_id: u.class_id || '',
@@ -197,17 +199,21 @@ export async function POST(
         };
       });
 
-      // Upsert into check_ins to avoid duplicates
-      const { error: insertErr } = await supabase
-        .from('check_ins')
-        .upsert(checkinRecords as any, { onConflict: 'event_id,mssv' });
+      // Upsert into check_ins in batches to avoid timeout
+      for (let i = 0; i < checkinRecords.length; i += BATCH_SIZE) {
+        const batch = checkinRecords.slice(i, i + BATCH_SIZE);
+        const { error: insertErr } = await supabase
+          .from('check_ins')
+          .upsert(batch as any, { onConflict: 'event_id,mssv' });
 
-      if (insertErr) {
-        console.error('Bulk checkin error:', insertErr);
-        for (const record of checkinRecords) {
-          try {
-            await supabase.from('check_ins').insert(record as any);
-          } catch {}
+        if (insertErr) {
+          console.error('Batch checkin error:', insertErr);
+          // Fallback: insert one by one for this batch
+          for (const record of batch) {
+            try {
+              await supabase.from('check_ins').insert(record as any);
+            } catch {}
+          }
         }
       }
 
@@ -273,17 +279,18 @@ export async function POST(
         };
       });
 
-      const { error: regErr } = await supabase
-        .from('event_registrations')
-        .upsert(regRecords as any, { onConflict: 'event_id,mssv' });
-
-      if (regErr) {
-        console.error('Bulk registration error:', regErr);
-        const { error: insertErr } = await supabase
+      // Upsert registrations in batches to avoid timeout
+      for (let i = 0; i < regRecords.length; i += BATCH_SIZE) {
+        const batch = regRecords.slice(i, i + BATCH_SIZE);
+        const { error: regErr } = await supabase
           .from('event_registrations')
-          .insert(regRecords as any);
-        if (insertErr) {
-          console.error('Fallback insert error:', insertErr);
+          .upsert(batch as any, { onConflict: 'event_id,mssv' });
+
+        if (regErr) {
+          console.error('Batch registration error:', regErr);
+          try {
+            await supabase.from('event_registrations').insert(batch as any);
+          } catch {}
         }
       }
 
