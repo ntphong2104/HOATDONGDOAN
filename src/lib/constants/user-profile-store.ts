@@ -10,16 +10,24 @@ export interface UserProfileExtra {
   updated_at?: string;
 }
 
+// ── In-memory cache to avoid read-after-write race condition ──
+let inMemoryProfiles: Record<string, UserProfileExtra> | null = null;
+
 function loadProfiles(): Record<string, UserProfileExtra> {
+  if (inMemoryProfiles) return inMemoryProfiles;
   try {
     if (fs.existsSync(PROFILE_FILE)) {
-      return JSON.parse(fs.readFileSync(PROFILE_FILE, 'utf-8'));
+      inMemoryProfiles = JSON.parse(fs.readFileSync(PROFILE_FILE, 'utf-8'));
+      return inMemoryProfiles!;
     }
   } catch {}
-  return {};
+  inMemoryProfiles = {};
+  return inMemoryProfiles;
 }
 
 function saveProfiles(data: Record<string, UserProfileExtra>) {
+  // Update in-memory cache immediately
+  inMemoryProfiles = data;
   try {
     if (!fs.existsSync(PROFILE_DIR)) {
       fs.mkdirSync(PROFILE_DIR, { recursive: true });
