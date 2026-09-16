@@ -363,7 +363,7 @@ function saveToFile(list: OfficerRoleItem[]) {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, JSON.stringify(list, null, 2), 'utf8');
+    fs.promises.writeFile(filePath, JSON.stringify(list, null, 2), 'utf8').catch(() => {});
   } catch {}
 }
 

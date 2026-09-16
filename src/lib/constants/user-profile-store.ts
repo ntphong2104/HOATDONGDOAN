@@ -24,7 +24,7 @@ function saveProfiles(data: Record<string, UserProfileExtra>) {
     if (!fs.existsSync(PROFILE_DIR)) {
       fs.mkdirSync(PROFILE_DIR, { recursive: true });
     }
-    fs.writeFileSync(PROFILE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    fs.promises.writeFile(PROFILE_FILE, JSON.stringify(data, null, 2), 'utf-8').catch(() => {});
   } catch {}
 }
 

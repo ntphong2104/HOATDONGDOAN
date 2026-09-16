@@ -59,7 +59,8 @@ function saveToFile(data: Record<string, EventMeta>) {
     if (!fs.existsSync(META_DIR)) {
       fs.mkdirSync(META_DIR, { recursive: true });
     }
-    fs.writeFileSync(META_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    // Non-blocking write to prevent blocking event loop
+    fs.promises.writeFile(META_FILE, JSON.stringify(data, null, 2), 'utf-8').catch(() => {});
   } catch {}
 }
 // ── Cache eviction helper: prevent unbounded memory growth ──
@@ -80,8 +81,8 @@ let inMemoryMeta: Record<string, EventMeta> = loadFromFile();
 
 export async function getEventMeta(supabase: any, eventId: string): Promise<EventMeta> {
   const metaKey = `event_meta_${eventId}`;
-  const fromFile = loadFromFile();
-  const fileMeta = fromFile[eventId] || inMemoryMeta[eventId] || null;
+  // Use in-memory cache (loaded from file on startup, updated on save)
+  const fileMeta = inMemoryMeta[eventId] || null;
 
   // 1. Try Supabase system_settings
   let dbMeta: EventMeta | null = null;
@@ -153,7 +154,7 @@ function saveRegToFile(data: Record<string, Record<string, RegistrationExtra>>) 
     if (!fs.existsSync(META_DIR)) {
       fs.mkdirSync(META_DIR, { recursive: true });
     }
-    fs.writeFileSync(REG_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    fs.promises.writeFile(REG_FILE, JSON.stringify(data, null, 2), 'utf-8').catch(() => {});
   } catch {}
 }
 
@@ -184,14 +185,8 @@ export async function getRegistrationExtras(
     } catch {}
   }
 
-  if (inMemoryRegExtras[eventId]) return inMemoryRegExtras[eventId];
-  const fromFile = loadRegFromFile();
-  if (fromFile[eventId]) {
-    inMemoryRegExtras[eventId] = fromFile[eventId];
-    evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
-    return fromFile[eventId];
-  }
-  return {};
+  // Return from in-memory cache (loaded from file on startup)
+  return inMemoryRegExtras[eventId] || {};
 }
 
 export async function saveRegistrationExtra(
@@ -389,7 +384,7 @@ function saveSessionCheckinsToFile(eventId: string, checkins: SessionCheckIn[]) 
     if (!fs.existsSync(META_DIR)) {
       fs.mkdirSync(META_DIR, { recursive: true });
     }
-    fs.writeFileSync(getSessionCheckinsFile(eventId), JSON.stringify(checkins, null, 2), 'utf-8');
+    fs.promises.writeFile(getSessionCheckinsFile(eventId), JSON.stringify(checkins, null, 2), 'utf-8').catch(() => {});
   } catch {}
 }
 

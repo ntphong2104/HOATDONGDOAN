@@ -36,7 +36,7 @@ function loadStore(): ProposalStoreData {
 function saveStore(data: ProposalStoreData) {
   inMemoryData = data;
   try {
-    fs.writeFileSync(STORE_PATH, JSON.stringify(data, null, 2), 'utf8');
+    fs.promises.writeFile(STORE_PATH, JSON.stringify(data, null, 2), 'utf8').catch(() => {});
   } catch (e) {
     console.warn('Failed to write .proposals_store.json:', e);
   }
