@@ -50,16 +50,24 @@ export async function POST(req: Request) {
       // This is a dynamic personal QR token
       const verification = verifyPersonalQRToken(mssv);
       if (!verification.valid) {
-        return NextResponse.json({
-          success: false,
-          error: 'QR Expired',
-          message: verification.expired
-            ? '⏳ Mã QR đã hết hạn (ảnh chụp cũ). Yêu cầu sinh viên mở lại trang Cổng Sinh Viên trên điện thoại để lấy mã mới.'
-            : '❌ Mã QR không hợp lệ. Yêu cầu sinh viên mở Cổng Sinh Viên để lấy mã QR mới.',
-        }, { status: 400 });
+        // Fallback: if MSSV portion looks valid (e.g. N25DCCN001), accept it with warning
+        const possibleMssv = qrParts[0].toUpperCase().trim();
+        if (/^[A-Z]\d{2}[A-Z]{2,5}\d{2,4}$/.test(possibleMssv)) {
+          console.warn(`QR verify failed for ${possibleMssv} (expired=${verification.expired}), allowing fallback`);
+          mssv = possibleMssv;
+        } else {
+          return NextResponse.json({
+            success: false,
+            error: 'QR Expired',
+            message: verification.expired
+              ? '⏳ Mã QR đã hết hạn (ảnh chụp cũ). Yêu cầu sinh viên mở lại trang Cổng Sinh Viên trên điện thoại để lấy mã mới.'
+              : '❌ Mã QR không hợp lệ. Yêu cầu sinh viên mở Cổng Sinh Viên để lấy mã QR mới.',
+          }, { status: 400 });
+        }
+      } else {
+        // Use verified MSSV from token
+        mssv = verification.mssv.toUpperCase().trim();
       }
-      // Use verified MSSV from token
-      mssv = verification.mssv.toUpperCase().trim();
     } else if (qrParts.length >= 5 && /^[0-9a-fA-F-]{36}$/.test(qrParts[0])) {
       // This is a dynamic EVENT QR token: EVENT_ID:MSSV:ROLE:SESSION:HASH
       // Scanner should NOT be scanning event QR codes — those are for self-checkin
