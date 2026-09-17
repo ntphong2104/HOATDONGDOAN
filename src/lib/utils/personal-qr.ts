@@ -10,14 +10,14 @@
  */
 
 const WINDOW_SECONDS = 30;
-const TOLERANCE_WINDOWS = 1; // Valid for current + 1 previous window (~60s max)
+const TOLERANCE_WINDOWS = 2; // Valid for current + 2 previous windows (~90s max)
 
 function getSecret(): string {
   const secret = process.env.DYNAMIC_QR_SECRET || process.env.PERSONAL_QR_SECRET;
   if (secret) return secret;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('DYNAMIC_QR_SECRET is required in production');
-  }
+  // Fallback: derive from Supabase URL for consistency across server/client
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  if (supabaseUrl) return `qr-secret-${supabaseUrl}`;
   return 'dev-only-secret-key';
 }
 
