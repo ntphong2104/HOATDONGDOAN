@@ -2383,29 +2383,24 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 {participantRegistrations.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      const headers = ['MSSV', 'Họ Và Tên', 'Lớp', 'Vai Trò', 'Trạng Thái', 'Ngày Đăng Ký'];
-                      const rows = participantRegistrations.map((r: any) => [
-                        r.mssv || '',
-                        r.full_name || '',
-                        r.class_id || '',
-                        r.role_type === 'volunteer' ? 'CTV' : 'Người tham gia',
-                        r.attended ? 'Đã điểm danh' : 'Chưa điểm danh',
-                        r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
-                      ]);
-                      const csvContent = [headers, ...rows]
-                        .map((row) => row.map((cell: string) => `"${cell.replace(/"/g, '""')}"`).join(','))
-                        .join('\n');
-                      const BOM = '\uFEFF';
-                      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `danh-sach-dang-ky_${eventData?.event_name || 'event'}.csv`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
+                    onClick={async () => {
+                      try {
+                        const XLSX = await import('xlsx');
+                        const data = participantRegistrations.map((r: any, i: number) => ({
+                          'STT': i + 1,
+                          'MSSV': r.mssv || '',
+                          'Họ Và Tên': r.full_name || '',
+                          'Lớp': r.class_id || '',
+                          'Vai Trò': r.role_type === 'volunteer' ? 'CTV' : r.role_type === 'organizer' ? 'BTC' : 'Người tham gia',
+                          'Trạng Thái': r.attended ? 'Đã điểm danh' : 'Chưa điểm danh',
+                          'Ngày Đăng Ký': r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+                        }));
+                        const ws = XLSX.utils.json_to_sheet(data);
+                        ws['!cols'] = [{ wch: 5 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Danh_Sach_Dang_Ky');
+                        XLSX.writeFile(wb, `Danh_Sach_Dang_Ky_${event?.event_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Su_Kien'}.xlsx`);
+                      } catch { alert('Lỗi xuất file Excel'); }
                     }}
                     style={{
                       padding: '0.45rem 0.95rem',
@@ -2423,7 +2418,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     }}
                   >
                     <DownloadIcon size={15} />
-                    <span>Tải Xuống CSV</span>
+                    <span>Xuất File Excel</span>
                   </button>
                 )}
               </div>
@@ -3216,7 +3211,54 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
           ) : activeTab === 'noshow' ? (
-            <DataTable 
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.65rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                  Chưa Điểm Danh ({registrations.filter(r => !r.attended).length})
+                </h3>
+                {registrations.filter(r => !r.attended).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const XLSX = await import('xlsx');
+                        const noshowList = registrations.filter((r: any) => !r.attended);
+                        const data = noshowList.map((r: any, i: number) => ({
+                          'STT': i + 1,
+                          'MSSV': r.mssv || '',
+                          'Họ Và Tên': r.full_name || '',
+                          'Lớp': r.class_id || '',
+                          'Vai Trò': r.role_type === 'volunteer' ? 'CTV' : r.role_type === 'organizer' ? 'BTC' : 'Người tham gia',
+                          'Ngày Đăng Ký': r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+                        }));
+                        const ws = XLSX.utils.json_to_sheet(data);
+                        ws['!cols'] = [{ wch: 5 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Chua_Diem_Danh');
+                        XLSX.writeFile(wb, `Chua_Diem_Danh_${event?.event_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Su_Kien'}.xlsx`);
+                      } catch { alert('Lỗi xuất file Excel'); }
+                    }}
+                    style={{
+                      padding: '0.45rem 0.95rem',
+                      background: '#dc2626',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+                    }}
+                  >
+                    <DownloadIcon size={15} />
+                    <span>Xuất File Excel</span>
+                  </button>
+                )}
+              </div>
+              <DataTable
               columns={[
                 {
                   key: 'stt',
@@ -3301,6 +3343,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               searchPlaceholder="Tìm kiếm MSSV, Họ tên..."
               emptyMessage="Không có sinh viên nào vắng mặt."
             />
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {isApproverRole && (
