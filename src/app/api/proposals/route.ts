@@ -72,63 +72,55 @@ export async function GET(req: Request) {
     if (!error && proposals) {
       let handoverDb: any = handoverDbResult;
 
-      // Auto-heal: Ensure every approved proposal has an active event in events table
-      for (const prop of proposals) {
-        if (prop.status === 'approved' || prop.current_stage === 'approved') {
+      // Auto-heal: Only for approved proposals missing a real event (rare case)
+      const needsHeal = proposals.filter(p =>
+        (p.status === 'approved' || p.current_stage === 'approved') &&
+        (!p.created_event_id || p.created_event_id.startsWith('ev-'))
+      );
+
+      if (needsHeal.length > 0) {
+        await Promise.all(needsHeal.map(async (prop) => {
           try {
-            let eventExists = false;
-            if (prop.created_event_id && !prop.created_event_id.startsWith('ev-')) {
-              const { data: ev } = await supabase
-                .from('events')
-                .select('event_id')
-                .eq('event_id', prop.created_event_id)
-                .maybeSingle();
-              if (ev?.event_id) eventExists = true;
-            }
+            const participantCount = Number(prop.participant_count) || 0;
+            const volunteerCount = Number((prop as any).volunteer_count) || 0;
+            const { data: newEv } = await supabase
+              .from('events')
+              .insert({
+                event_name: prop.title,
+                event_date: prop.start_date,
+                start_time: prop.start_time,
+                end_time: prop.end_time,
+                status: 'active',
+                is_active: true,
+                created_by: prop.created_by,
+                semester: prop.semester || 'Chưa xếp kỳ',
+                is_registration_open: participantCount > 0,
+              })
+              .select()
+              .maybeSingle();
 
-            if (!eventExists) {
-              const participantCount = Number(prop.participant_count) || 0;
-              const volunteerCount = Number((prop as any).volunteer_count) || 0;
-              const { data: newEv } = await supabase
-                .from('events')
-                .insert({
-                  event_name: prop.title,
-                  event_date: prop.start_date,
-                  start_time: prop.start_time,
-                  end_time: prop.end_time,
-                  status: 'active',
-                  is_active: true,
-                  created_by: prop.created_by,
-                  semester: prop.semester || 'Chưa xếp kỳ',
-                  is_registration_open: participantCount > 0,
-                })
-                .select()
-                .maybeSingle();
-
-              if (newEv?.event_id) {
-                prop.created_event_id = newEv.event_id;
-                await saveEventMeta(supabase, newEv.event_id, {
+            if (newEv?.event_id) {
+              prop.created_event_id = newEv.event_id;
+              await Promise.all([
+                saveEventMeta(supabase, newEv.event_id, {
                   departments: (prop as any).departments || [],
                   target_scope: (prop as any).target_scope || 'all',
                   is_recruitment_open: volunteerCount > 0 || Boolean((prop as any).departments && (prop as any).departments.length > 0),
                   max_participants: participantCount,
                   max_volunteers: volunteerCount,
-                });
-                await supabase.from('event_roles').insert({
+                }),
+                supabase.from('event_roles').insert({
                   event_id: newEv.event_id,
                   email: prop.created_by,
                   role_type: 'event_admin',
-                });
-                await supabase
-                  .from('event_proposals')
-                  .update({ created_event_id: newEv.event_id })
-                  .eq('id', prop.id);
-              }
+                }),
+                supabase.from('event_proposals').update({ created_event_id: newEv.event_id }).eq('id', prop.id),
+              ]);
             }
           } catch (healErr) {
             console.error('Auto-heal proposal event error:', healErr);
           }
-        }
+        }));
       }
 
       const stored = getStoredProposals();
