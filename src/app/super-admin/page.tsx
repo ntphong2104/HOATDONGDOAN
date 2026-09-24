@@ -301,6 +301,33 @@ function SuperAdminContent() {
     }
   };
 
+  const [cleaningExpiredRoles, setCleaningExpiredRoles] = useState(false);
+
+  const handleCleanupExpiredRoles = async () => {
+    if (
+      !confirm(
+        'Hệ thống sẽ quét và thu hồi các quyền Admin / CTV sự kiện được gán cho sinh viên nếu sự kiện đó đã kết thúc quá 3 ngày.\n\n(Tài khoản các Khoa, LCĐ, CLB, Phòng ban, Super Admin sẽ được BẢO LƯU 100%)\n\nBạn có muốn thực hiện ngay không?'
+      )
+    ) {
+      return;
+    }
+    setCleaningExpiredRoles(true);
+    try {
+      const res = await fetch('/api/admin/officers/cleanup-expired', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message, 'success');
+        fetchOfficers();
+      } else {
+        showToast(data.error || 'Có lỗi xảy ra', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setCleaningExpiredRoles(false);
+    }
+  };
+
   const grantOfficerRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!officerEmail || grantingOfficer) return;
@@ -2653,11 +2680,37 @@ function SuperAdminContent() {
             {/* Bảng Danh Sách Cán Bộ Đang Có Quyền */}
             <section className={styles.section}>
               <div className={styles.sectionHeader} style={{ flexWrap: 'wrap', gap: '0.85rem' }}>
-                <div>
-                  <h2 className={styles.sectionTitle} style={{ fontSize: '1.15rem' }}>
-                    <UsersIcon size={18} color="#dc2626" />
-                    Danh Sách Cán Bộ & Phân Quyền ({officers.length})
-                  </h2>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <h2 className={styles.sectionTitle} style={{ fontSize: '1.15rem', marginBottom: '0.2rem' }}>
+                      <UsersIcon size={18} color="#dc2626" />
+                      Danh Sách Cán Bộ & Phân Quyền ({officers.length})
+                    </h2>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
+                      💡 Quyền Admin/CTV sự kiện gán cho sinh viên sẽ tự động thu hồi sau 3 ngày kết thúc SK (LCĐ / CLB / Phòng ban giữ vĩnh viễn).
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCleanupExpiredRoles}
+                    disabled={cleaningExpiredRoles}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      padding: '0.45rem 0.95rem',
+                      background: '#fff1f2',
+                      color: '#e11d48',
+                      border: '1px solid #fecdd3',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: cleaningExpiredRoles ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {cleaningExpiredRoles ? 'Đang dọn dẹp...' : '⚡ Thu hồi quyền SK đã kết thúc (> 3 ngày)'}
+                  </button>
                 </div>
 
                 {/* Filter Pill Tabs */}
