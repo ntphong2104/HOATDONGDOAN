@@ -277,7 +277,7 @@ export default function EventRegisterPage({
                 {registrationWindow?.reason || 'Sự kiện này không mở cổng đăng ký người tham gia / khán giả.'}
               </p>
 
-              {event.is_recruitment_open !== false && (event.departments?.length > 0 || (event as any).max_volunteers > 0) && (
+              {event.is_recruitment_open !== false && ((event.departments?.length ?? 0) > 0 || (event as any).max_volunteers > 0) && (
                 <div style={{ marginTop: '1.25rem' }}>
                   <Link
                     href={`/events/${event.event_id}/recruitment`}

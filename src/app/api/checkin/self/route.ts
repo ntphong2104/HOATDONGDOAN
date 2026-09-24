@@ -6,7 +6,7 @@ import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
-import { getEventMeta, getSessionCheckIns, saveSessionCheckIn, type EventSession } from '@/lib/constants/event-meta-store';
+import { getEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, type EventSession } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 
 export async function POST(req: Request) {
@@ -200,22 +200,6 @@ export async function POST(req: Request) {
       registration = regData;
     }
 
-    // ── Enforce Max Participants Capacity (self check-in cannot bypass) ──
-    const maxParticipants = meta.max_participants || 0;
-    if (maxParticipants > 0) {
-      const { count: currentCheckinCount } = await supabase
-        .from('check_ins')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId);
-
-      if ((currentCheckinCount || 0) >= maxParticipants) {
-        return NextResponse.json({
-          success: false,
-          error: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Không thể điểm danh thêm.`,
-        }, { status: 400 });
-      }
-    }
-
     const effectiveRole =
       assignedRole !== 'participant'
         ? assignedRole
@@ -223,56 +207,85 @@ export async function POST(req: Request) {
         ? 'volunteer'
         : 'participant';
 
-    // 🔒 STRICT DUPLICATE CHECK PER SESSION:
-    // Check if student has already checked in for THIS specific session
-    const existingSessionCheckins = await getSessionCheckIns(supabase, eventId);
-    const hasCheckedInThisSession = existingSessionCheckins.some(
-      (c) => c.session_id === targetSessionId && c.mssv.toUpperCase() === mssv.toUpperCase()
-    );
-
-    if (hasCheckedInThisSession) {
-      return NextResponse.json({
-        success: false,
-        is_duplicate: true,
-        error: `Bạn đã điểm danh "${matchedSession.name}" trước đó rồi! Mỗi ca/buổi chỉ được điểm danh 1 lần duy nhất.`,
-      }, { status: 409 });
-    }
-
-    // Record session check-in
-    await saveSessionCheckIn(supabase, {
+    // ── Try Atomic Check-in via RPC (capacity + duplicate + insert in 1 transaction) ──
+    const atomicResult = await checkinAtomic(supabase, {
       event_id: eventId,
       session_id: targetSessionId,
       session_name: matchedSession.name,
       mssv,
-      participate_role: effectiveRole,
-      checked_at: new Date().toISOString(),
+      role: effectiveRole,
       checked_by: 'Mã QR Động (Tự quét)',
+      max_participants: meta.max_participants || 0,
     });
 
-    // Also record/update global check_ins table (ignore 23505 duplicate if attended previous session)
-    try {
-      await supabase
-        .from('check_ins')
-        .upsert(
-          {
-            event_id: eventId,
-            mssv,
-            participate_role: effectiveRole,
-            checked_by: `Mã QR Động: ${matchedSession.name}`,
-          },
-          { onConflict: 'event_id,mssv' }
-        );
-    } catch {}
+    if (atomicResult.error === 'RPC_NOT_AVAILABLE') {
+      // Fallback: RPC not deployed yet, use old method
+      // ── Enforce Max Participants Capacity ──
+      const maxParticipants = meta.max_participants || 0;
+      if (maxParticipants > 0) {
+        const { count: currentCheckinCount } = await supabase
+          .from('check_ins')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventId);
 
-    // Synchronize event_registrations attended status
-    try {
-      await supabase
-        .from('event_registrations')
-        .update({ attended: true })
-        .eq('event_id', eventId)
-        .eq('mssv', mssv);
-    } catch (syncErr) {
-      console.warn('Could not sync event_registrations:', syncErr);
+        if ((currentCheckinCount || 0) >= maxParticipants) {
+          return NextResponse.json({
+            success: false,
+            error: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Không thể điểm danh thêm.`,
+          }, { status: 400 });
+        }
+      }
+
+      // Duplicate check + save
+      const existingSessionCheckins = await getSessionCheckIns(supabase, eventId);
+      const hasCheckedInThisSession = existingSessionCheckins.some(
+        (c) => c.session_id === targetSessionId && c.mssv.toUpperCase() === mssv.toUpperCase()
+      );
+
+      if (hasCheckedInThisSession) {
+        return NextResponse.json({
+          success: false,
+          is_duplicate: true,
+          error: `Bạn đã điểm danh "${matchedSession.name}" trước đó rồi! Mỗi ca/buổi chỉ được điểm danh 1 lần duy nhất.`,
+        }, { status: 409 });
+      }
+
+      await saveSessionCheckIn(supabase, {
+        event_id: eventId,
+        session_id: targetSessionId,
+        session_name: matchedSession.name,
+        mssv,
+        participate_role: effectiveRole,
+        checked_at: new Date().toISOString(),
+        checked_by: 'Mã QR Động (Tự quét)',
+      });
+
+      try {
+        await supabase
+          .from('check_ins')
+          .upsert(
+            { event_id: eventId, mssv, participate_role: effectiveRole, checked_by: `Mã QR Động: ${matchedSession.name}` },
+            { onConflict: 'event_id,mssv' }
+          );
+      } catch {}
+
+      try {
+        await supabase
+          .from('event_registrations')
+          .update({ attended: true })
+          .eq('event_id', eventId)
+          .eq('mssv', mssv);
+      } catch {}
+    } else if (!atomicResult.success) {
+      // RPC returned an error (duplicate or capacity full)
+      const status = atomicResult.is_duplicate ? 409 : 400;
+      return NextResponse.json({
+        success: false,
+        is_duplicate: atomicResult.is_duplicate || false,
+        error: atomicResult.is_duplicate
+          ? `Bạn đã điểm danh "${matchedSession.name}" trước đó rồi! Mỗi ca/buổi chỉ được điểm danh 1 lần duy nhất.`
+          : atomicResult.error || 'Lỗi điểm danh',
+      }, { status });
     }
 
     return NextResponse.json({

@@ -150,6 +150,7 @@ export async function POST(
         mssv,
         session_id,
         session_name: sessionName,
+        participate_role: role_type === 'organizer' ? 'organizer' : 'volunteer',
         checked_at: now,
         checked_by: `Bổ sung bởi SA: ${actorEmail}`,
       });

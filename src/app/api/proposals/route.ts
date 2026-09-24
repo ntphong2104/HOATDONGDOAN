@@ -416,8 +416,8 @@ export async function POST(req: Request) {
         // Persist proposal sessions and metadata into Supabase system_settings
         await saveProposalMeta(supabase, createdProp.id, {
           sessions: normalizedSessions,
-          description: sanitizedDescription,
-          plan_url: sanitizedPlanUrl,
+          description: sanitizedDescription ?? undefined,
+          plan_url: sanitizedPlanUrl ?? undefined,
         });
         saveProposalToStore(newProposal);
 
@@ -450,8 +450,8 @@ export async function POST(req: Request) {
       };
       await saveProposalMeta(supabase, generatedId, {
         sessions: normalizedSessions,
-        description: sanitizedDescription,
-        plan_url: sanitizedPlanUrl,
+        description: sanitizedDescription ?? undefined,
+        plan_url: sanitizedPlanUrl ?? undefined,
       });
       saveProposalToStore(newProposal);
       addStoredProposalLog({

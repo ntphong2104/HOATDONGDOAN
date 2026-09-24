@@ -6,6 +6,8 @@ export interface DepartmentConfig {
   name: string;
   target_count: number;
   gender_requirement?: 'all' | 'male_only' | 'female_only';
+  gender_req?: string;
+  description?: string;
   note?: string;
   created_at?: string;
 }
@@ -360,94 +362,155 @@ export async function saveProposalMeta(
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Session-based Check-In Storage (Tracks attendance per individual session)
+// Uses dedicated `session_checkins` PostgreSQL table for concurrent safety.
+// Fallback to old JSON method if table doesn't exist yet.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const inMemorySessionCheckins: Record<string, SessionCheckIn[]> = {};
+let useSessionTable = true; // Will be set to false if table doesn't exist
 
-function getSessionCheckinsFile(eventId: string): string {
-  return path.join(META_DIR, `session-checkins-${eventId}.json`);
-}
+export async function getSessionCheckIns(supabase: any, eventId: string): Promise<SessionCheckIn[]> {
+  if (!supabase) return [];
 
-function loadSessionCheckinsFromFile(eventId: string): SessionCheckIn[] {
+  // Try the dedicated session_checkins table first
+  if (useSessionTable) {
+    try {
+      const { data, error } = await supabase
+        .from('session_checkins')
+        .select('event_id, session_id, session_name, mssv, participate_role, checked_at, checked_by')
+        .eq('event_id', eventId)
+        .order('checked_at', { ascending: false });
+
+      if (!error && data) {
+        return data as SessionCheckIn[];
+      }
+
+      // If table doesn't exist, fall back to old JSON method
+      if (error?.code === '42P01' || error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
+        useSessionTable = false;
+      }
+    } catch {
+      useSessionTable = false;
+    }
+  }
+
+  // Fallback: old JSON method in system_settings
+  const sessionKey = `event_session_checkins_${eventId}`;
   try {
-    const fPath = getSessionCheckinsFile(eventId);
-    if (fs.existsSync(fPath)) {
-      const raw = fs.readFileSync(fPath, 'utf-8');
-      return JSON.parse(raw);
+    const { data } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', sessionKey)
+      .maybeSingle();
+
+    if (data?.value) {
+      const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
     }
   } catch {}
+
   return [];
 }
 
-function saveSessionCheckinsToFile(eventId: string, checkins: SessionCheckIn[]) {
-  try {
-    if (!fs.existsSync(META_DIR)) {
-      fs.mkdirSync(META_DIR, { recursive: true });
-    }
-    fs.promises.writeFile(getSessionCheckinsFile(eventId), JSON.stringify(checkins, null, 2), 'utf-8').catch(() => {});
-  } catch {}
-}
-
-export async function getSessionCheckIns(supabase: any, eventId: string): Promise<SessionCheckIn[]> {
-  const sessionKey = `event_session_checkins_${eventId}`;
-
-  if (supabase) {
-    try {
-      const { data } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', sessionKey)
-        .maybeSingle();
-
-      if (data?.value) {
-        const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-        if (Array.isArray(parsed)) {
-          inMemorySessionCheckins[eventId] = parsed;
-          evictOldest(inMemorySessionCheckins, MAX_CACHE_ENTRIES);
-          return parsed;
-        }
-      }
-    } catch {}
-  }
-
-  if (inMemorySessionCheckins[eventId]) {
-    return inMemorySessionCheckins[eventId];
-  }
-
-  const fromFile = loadSessionCheckinsFromFile(eventId);
-  inMemorySessionCheckins[eventId] = fromFile;
-  evictOldest(inMemorySessionCheckins, MAX_CACHE_ENTRIES);
-  return fromFile;
-}
-
 export async function saveSessionCheckIn(supabase: any, checkIn: SessionCheckIn): Promise<SessionCheckIn[]> {
-  const eventId = checkIn.event_id;
-  const current = await getSessionCheckIns(supabase, eventId);
+  if (!supabase) return [];
 
-  // Check if already checked in for THIS session
+  const eventId = checkIn.event_id;
+
+  // Try the dedicated session_checkins table first
+  if (useSessionTable) {
+    try {
+      const { error } = await supabase
+        .from('session_checkins')
+        .insert({
+          event_id: checkIn.event_id,
+          session_id: checkIn.session_id,
+          session_name: checkIn.session_name,
+          mssv: checkIn.mssv.toUpperCase(),
+          participate_role: checkIn.participate_role,
+          checked_at: checkIn.checked_at,
+          checked_by: checkIn.checked_by,
+        });
+
+      // Duplicate = already checked in, no error needed
+      if (error?.code === '23505') {
+        return await getSessionCheckIns(supabase, eventId);
+      }
+
+      if (!error) {
+        return await getSessionCheckIns(supabase, eventId);
+      }
+
+      // If table doesn't exist, fall back
+      if (error?.code === '42P01' || error?.message?.includes('relation')) {
+        useSessionTable = false;
+      }
+    } catch {
+      useSessionTable = false;
+    }
+  }
+
+  // Fallback: old JSON method
+  const current = await getSessionCheckIns(supabase, eventId);
   const exists = current.some(
     (c) => c.session_id === checkIn.session_id && c.mssv.toUpperCase() === checkIn.mssv.toUpperCase()
   );
-
-  if (exists) {
-    return current;
-  }
+  if (exists) return current;
 
   const updated = [checkIn, ...current];
-  inMemorySessionCheckins[eventId] = updated;
-  evictOldest(inMemorySessionCheckins, MAX_CACHE_ENTRIES);
-  saveSessionCheckinsToFile(eventId, updated);
-
   const sessionKey = `event_session_checkins_${eventId}`;
-  if (supabase) {
-    try {
-      await supabase.from('system_settings').upsert({
-        key: sessionKey,
-        value: JSON.stringify(updated),
-        updated_at: new Date().toISOString(),
-      });
-    } catch {}
-  }
+  try {
+    await supabase.from('system_settings').upsert({
+      key: sessionKey,
+      value: JSON.stringify(updated),
+      updated_at: new Date().toISOString(),
+    });
+  } catch {}
 
   return updated;
+}
+
+/**
+ * Atomic check-in via PostgreSQL RPC.
+ * Checks capacity + duplicate + inserts in a single DB transaction.
+ * Returns { success, is_duplicate?, error?, session_id?, mssv? }
+ */
+export async function checkinAtomic(
+  supabase: any,
+  params: {
+    event_id: string;
+    session_id: string;
+    session_name: string;
+    mssv: string;
+    role?: string;
+    checked_by?: string;
+    max_participants?: number;
+  }
+): Promise<{ success: boolean; is_duplicate?: boolean; error?: string }> {
+  if (!supabase) return { success: false, error: 'No database connection' };
+
+  try {
+    const { data, error } = await supabase.rpc('checkin_atomic', {
+      p_event_id: params.event_id,
+      p_session_id: params.session_id,
+      p_session_name: params.session_name,
+      p_mssv: params.mssv.toUpperCase(),
+      p_role: params.role || 'participant',
+      p_checked_by: params.checked_by || 'System',
+      p_max_participants: params.max_participants || 0,
+    });
+
+    if (error) {
+      // RPC doesn't exist yet — caller should fall back to old method
+      if (error.message?.includes('function') || error.code === '42883') {
+        return { success: false, error: 'RPC_NOT_AVAILABLE' };
+      }
+      return { success: false, error: error.message };
+    }
+
+    return data as { success: boolean; is_duplicate?: boolean; error?: string };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Unknown RPC error' };
+  }
 }

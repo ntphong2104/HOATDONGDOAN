@@ -34,6 +34,15 @@ export default function ExcelExportButton({
     return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
   };
 
+  // Prevent Excel Formula Injection (CWE-1236)
+  // Sanitize user-controlled text that starts with =, +, -, @ to prevent formula execution
+  const sanitizeForExcel = (val: any): any => {
+    if (typeof val === 'string' && val.length > 0 && /^[=+\-@]/.test(val)) {
+      return `'${val}`;
+    }
+    return val;
+  };
+
   const handleExport = async () => {
     try {
       setIsLoading(true);
@@ -51,13 +60,29 @@ export default function ExcelExportButton({
         return;
       }
 
+      // Filter out invalid MSSV entries (corrupted data from bad imports)
+      const { isValidMSSV } = await import('@/lib/utils/extract-mssv');
+      const cleanData = exportData.filter((row: any) => !row.mssv || isValidMSSV(row.mssv));
+      const filteredCount = exportData.length - cleanData.length;
+      
+      if (cleanData.length === 0) {
+        alert('Không có dữ liệu hợp lệ để xuất!');
+        return;
+      }
+
+      if (filteredCount > 0) {
+        console.warn(`[ExcelExport] Đã lọc bỏ ${filteredCount} dòng có MSSV không hợp lệ`);
+      }
+
+      exportData = cleanData;
+
       // Format records into full, readable Vietnamese structure
       const formattedRows = exportData.map((row: any, index: number) => {
         const formatted: Record<string, any> = {
           'STT': row.stt || index + 1,
           'Mã Số Sinh Viên': row.mssv || '',
-          'Họ Và Tên': row.full_name || row.name || '',
-          'Lớp Niên Chế': row.class_id || row.class || '',
+          'Họ Và Tên': sanitizeForExcel(row.full_name || row.name || ''),
+          'Lớp Niên Chế': sanitizeForExcel(row.class_id || row.class || ''),
         };
 
         if (row.email || row.mssv) {
@@ -98,7 +123,7 @@ export default function ExcelExportButton({
         }
 
         if (row.feedback_note || row.comment || row.notes) {
-          formatted['Nhận Xét / Góp Ý'] = row.feedback_note || row.comment || row.notes || '';
+          formatted['Nhận Xét / Góp Ý'] = sanitizeForExcel(row.feedback_note || row.comment || row.notes || '');
         }
 
         return formatted;

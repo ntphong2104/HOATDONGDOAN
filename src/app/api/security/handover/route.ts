@@ -80,12 +80,14 @@ export async function POST(req: Request) {
 
     let returnData: any = null;
 
-    const updateProposalPromise = supabase
-      .from('event_proposals')
-      .update(updatePayload)
-      .eq('id', proposal_id)
-      .select()
-      .single()
+    const updateProposalPromise = Promise.resolve(
+      supabase
+        .from('event_proposals')
+        .update(updatePayload)
+        .eq('id', proposal_id)
+        .select()
+        .single()
+    )
       .then(({ data, error }) => {
         if (!error && data) {
           returnData = data;

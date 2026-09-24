@@ -22,7 +22,7 @@ import {
 } from '@/components/icons';
 import { OFFICIAL_UNITS, OFFICIAL_UNIT_GROUPS, resolveUnitForUser } from '@/lib/constants/units';
 import { isKhoaUnit } from '@/lib/utils/proposal-logic';
-import type { Room } from '@/lib/types';
+import type { Room, ProposalSessionItem } from '@/lib/types';
 import styles from './page.module.css';
 
 export default function NewProposalPage() {

@@ -4,7 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizeInput } from '@/lib/security/sanitizer';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { getEventMeta, getSessionCheckIns, saveSessionCheckIn } from '@/lib/constants/event-meta-store';
+import { getEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { verifyPersonalQRToken } from '@/lib/utils/personal-qr';
 import type { CheckInRequest } from '@/lib/types';
@@ -228,44 +228,23 @@ export async function POST(req: Request) {
       }
     }
 
-    // ── Enforce Max Participants Capacity ──
+    // ── Enforce Max Participants Capacity (atomic via RPC or fallback) ──
     const maxParticipants = meta.max_participants || 0;
-    if (!isSuperAdmin && maxParticipants > 0) {
-      const { count: currentCheckinCount } = await supabase
-        .from('check_ins')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', event_id);
-
-      if ((currentCheckinCount || 0) >= maxParticipants) {
-        return NextResponse.json({
-          success: false,
-          error: 'Capacity Full',
-          message: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Chỉ Admin Tổng mới có quyền bổ sung thêm.`,
-        }, { status: 400 });
-      }
-    }
 
     // ── Determine which session to check in for ──
     const sessions = meta.sessions || [];
-
-    // Auto-detect current session if not specified and event has multiple sessions
     let targetSessionId = session_id || '';
     let matchedSessionName = 'Buổi chính';
 
     if (sessions.length > 0) {
       if (targetSessionId) {
-        // Explicit session_id provided
         const matched = sessions.find((s) => s.id === targetSessionId);
-        if (matched) {
-          matchedSessionName = matched.name;
-        }
+        if (matched) matchedSessionName = matched.name;
       } else {
-        // Auto-detect: find the session whose date and time range covers "now"
         const now = new Date();
         const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-        // First try: match by date AND time
         let bestSession: typeof sessions[0] | null = null;
         for (const s of sessions) {
           const sDate = s.session_date || '';
@@ -273,79 +252,105 @@ export async function POST(req: Request) {
           const sEnd = s.end_time || '23:59';
           const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
           const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
-          
           if (sDate === nowDateStr && nowHHMM >= sStart && nowHHMM <= bufferedEnd) {
             bestSession = s;
             break;
           }
         }
-
-        // Second try: match by date only (before/after time window)
-        if (!bestSession) {
-          bestSession = sessions.find(s => s.session_date === nowDateStr) || null;
-        }
-
-        // Fallback: first session
-        if (!bestSession) {
-          bestSession = sessions[0];
-        }
+        if (!bestSession) bestSession = sessions.find(s => s.session_date === nowDateStr) || null;
+        if (!bestSession) bestSession = sessions[0];
 
         targetSessionId = bestSession.id;
         matchedSessionName = bestSession.name;
       }
     }
 
-    // ── Session-aware duplicate check ──
+    // ── Try Atomic Check-in if session exists ──
     if (targetSessionId && sessions.length > 0) {
-      // Multi-session event: check duplicate per session (allows check-in across sessions)
-      const existingSessionCheckins = await getSessionCheckIns(supabase, event_id);
-      const hasCheckedInThisSession = existingSessionCheckins.some(
-        (c) => c.session_id === targetSessionId && c.mssv.toUpperCase() === mssv.toUpperCase()
-      );
-
-      if (hasCheckedInThisSession) {
-        return NextResponse.json({
-          success: false,
-          error: 'Conflict',
-          message: `Sinh viên ${mssv} đã được điểm danh "${matchedSessionName}" trước đó rồi!`,
-          is_duplicate: true,
-          session_name: matchedSessionName,
-        }, { status: 409 });
-      }
-
-      // Record session check-in
-      await saveSessionCheckIn(supabase, {
-        event_id,
+      const atomicResult = await checkinAtomic(supabase, {
+        event_id: event_id,
         session_id: targetSessionId,
         session_name: matchedSessionName,
         mssv,
-        participate_role,
-        checked_at: new Date().toISOString(),
+        role: participate_role,
         checked_by: body.checked_by || userEmail || 'Scanner',
+        max_participants: isSuperAdmin ? 0 : maxParticipants,
       });
 
-      // Also upsert into global check_ins table (won't fail on duplicate)
-      try {
-        await supabase
-          .from('check_ins')
-          .upsert(
-            {
-              event_id,
-              mssv,
-              participate_role,
-              checked_by: body.checked_by || userEmail || `Scanner: ${matchedSessionName}`,
-            },
+      if (atomicResult.error === 'RPC_NOT_AVAILABLE') {
+        // Fallback to old method
+        if (!isSuperAdmin && maxParticipants > 0) {
+          const { count: currentCheckinCount } = await supabase
+            .from('check_ins')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_id', event_id);
+
+          if ((currentCheckinCount || 0) >= maxParticipants) {
+            return NextResponse.json({
+              success: false,
+              error: 'Capacity Full',
+              message: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Chỉ Admin Tổng mới có quyền bổ sung thêm.`,
+            }, { status: 400 });
+          }
+        }
+
+        // Session duplicate check
+        const existingSessionCheckins = await getSessionCheckIns(supabase, event_id);
+        const hasCheckedInThisSession = existingSessionCheckins.some(
+          (c) => c.session_id === targetSessionId && c.mssv.toUpperCase() === mssv.toUpperCase()
+        );
+
+        if (hasCheckedInThisSession) {
+          return NextResponse.json({
+            success: false, error: 'Conflict',
+            message: `Sinh viên ${mssv} đã được điểm danh "${matchedSessionName}" trước đó rồi!`,
+            is_duplicate: true, session_name: matchedSessionName,
+          }, { status: 409 });
+        }
+
+        await saveSessionCheckIn(supabase, {
+          event_id, session_id: targetSessionId, session_name: matchedSessionName,
+          mssv, participate_role, checked_at: new Date().toISOString(),
+          checked_by: body.checked_by || userEmail || 'Scanner',
+        });
+
+        try {
+          await supabase.from('check_ins').upsert(
+            { event_id, mssv, participate_role, checked_by: body.checked_by || userEmail || `Scanner: ${matchedSessionName}` },
             { onConflict: 'event_id,mssv' }
           );
-      } catch {}
+        } catch {}
+      } else if (!atomicResult.success) {
+        const status = atomicResult.is_duplicate ? 409 : 400;
+        return NextResponse.json({
+          success: false, error: atomicResult.is_duplicate ? 'Conflict' : 'Capacity Full',
+          message: atomicResult.is_duplicate
+            ? `Sinh viên ${mssv} đã được điểm danh "${matchedSessionName}" trước đó rồi!`
+            : atomicResult.error || 'Lỗi điểm danh',
+          is_duplicate: atomicResult.is_duplicate || false,
+          session_name: matchedSessionName,
+        }, { status });
+      }
     } else {
-      // Single-session event: use standard insert with duplicate detection
+      // Single-session event: capacity check + standard insert
+      if (!isSuperAdmin && maxParticipants > 0) {
+        const { count: currentCheckinCount } = await supabase
+          .from('check_ins')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', event_id);
+
+        if ((currentCheckinCount || 0) >= maxParticipants) {
+          return NextResponse.json({
+            success: false, error: 'Capacity Full',
+            message: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Chỉ Admin Tổng mới có quyền bổ sung thêm.`,
+          }, { status: 400 });
+        }
+      }
+
       const { error: insertError } = await supabase
         .from('check_ins')
         .insert({
-          mssv,
-          event_id,
-          participate_role,
+          mssv, event_id, participate_role,
           checked_by: body.checked_by || userEmail || 'Điểm danh thủ công',
         });
 
@@ -358,16 +363,14 @@ export async function POST(req: Request) {
             .eq('event_id', event_id)
             .maybeSingle();
 
-          return NextResponse.json({ 
-            success: false, 
-            error: 'Conflict', 
+          return NextResponse.json({
+            success: false, error: 'Conflict',
             message: `Sinh viên ${mssv} đã được điểm danh trước đó!`,
-            checked_at: existing?.created_at
+            checked_at: existing?.created_at,
           }, { status: 409 });
         }
         return NextResponse.json({
-          success: false,
-          error: 'Database Error',
+          success: false, error: 'Database Error',
           message: `Lỗi ghi nhận điểm danh: ${insertError.message}`,
         }, { status: 500 });
       }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getSessionCheckIns, getEventMeta } from '@/lib/constants/event-meta-store';
+import { isValidMSSV } from '@/lib/utils/extract-mssv';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -17,7 +18,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
   const isPrivileged = isSuperAdmin || auth.tier === 'youth_union';
 
-  if (isPrivileged) {
+  // Only sync existing Super Admins to the lookup table — NOT youth_union users
+  if (isSuperAdmin) {
     try {
       await supabase.from('super_admins').upsert({ email: auth.email.toLowerCase() }, { onConflict: 'email' });
     } catch {}
@@ -150,10 +152,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     };
   });
 
+  // Filter out invalid MSSV entries (corrupted data from bad imports)
+  const cleanExportData = exportData
+    .filter((c: any) => isValidMSSV(c.mssv || ''))
+    .map((c: any, index: number) => ({ ...c, stt: index + 1 })); // Re-number STT after filtering
+
+  const cleanSessionCheckins = sessionCheckins.filter((s: any) => isValidMSSV(s.mssv || ''));
+
   return NextResponse.json({
     success: true,
-    data: exportData,
-    count: exportData.length,
-    session_checkins: sessionCheckins,
+    data: cleanExportData,
+    count: cleanExportData.length,
+    session_checkins: cleanSessionCheckins,
   });
 }

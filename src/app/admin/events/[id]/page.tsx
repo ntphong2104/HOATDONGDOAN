@@ -32,7 +32,16 @@ import {
 import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepartment } from '@/lib/types';
 import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin } from '@/lib/utils/event-logic';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
+import { isValidMSSV } from '@/lib/utils/extract-mssv';
 import styles from './page.module.css';
+
+// Prevent Excel Formula Injection (CWE-1236)
+const sanitizeForExcel = (val: any): any => {
+  if (typeof val === 'string' && val.length > 0 && /^[=+\-@]/.test(val)) {
+    return `'${val}`;
+  }
+  return val;
+};
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -336,14 +345,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const isVolunteerApplicant = (r: EventRegistration) => {
     return (
       r.role_type === 'volunteer' ||
-      r.role_type === 'Cộng tác viên' ||
       !!r.department_id ||
       (!!r.department_name && r.department_name !== 'Khán giả')
     );
   };
 
-  const volunteerRegistrations = registrations.filter(isVolunteerApplicant);
-  const participantRegistrations = registrations.filter((r) => !isVolunteerApplicant(r));
+  const validRegistrations = registrations.filter((r) => isValidMSSV(r.mssv || ''));
+  const invalidRegistrationCount = registrations.length - validRegistrations.length;
+  const volunteerRegistrations = validRegistrations.filter(isVolunteerApplicant);
+  const participantRegistrations = validRegistrations.filter((r) => !isVolunteerApplicant(r));
 
   const handleExportCTVExcel = async () => {
     const ctvList = volunteerRegistrations;
@@ -354,15 +364,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
     try {
       const XLSX = await import('xlsx');
-      const data = ctvList.map((r, index) => ({
+      const cleanCtvList = ctvList.filter((r) => isValidMSSV(r.mssv || ''));
+      const data = cleanCtvList.map((r, index) => ({
         'STT': index + 1,
         'Mã Số Sinh Viên': r.mssv,
-        'Họ Và Tên': r.full_name || '',
-        'Lớp Niên Chế': r.class_id || '',
-        'Ban Ứng Tuyển': r.department_name || 'Cộng tác viên',
+        'Họ Và Tên': sanitizeForExcel(r.full_name || ''),
+        'Lớp Niên Chế': sanitizeForExcel(r.class_id || ''),
+        'Ban Ứng Tuyển': sanitizeForExcel(r.department_name || 'Cộng tác viên'),
         'Giới Tính': r.gender || 'Nam',
-        'Số Điện Thoại / Zalo': r.phone || '',
-        'Kỹ Năng / Ghi Chú': r.note || '',
+        'Số Điện Thoại / Zalo': sanitizeForExcel(r.phone || ''),
+        'Kỹ Năng / Ghi Chú': sanitizeForExcel(r.note || ''),
         'Trạng Thái Duyệt': r.review_status === 'accepted' ? 'Trúng Tuyển' : r.review_status === 'rejected' ? 'Từ Chối' : 'Chờ Duyệt',
         'Thời Gian Nộp Đơn': r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
       }));
@@ -814,7 +825,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   const stats = {
-    participant: registrations.filter(r => (r.role_type === 'participant' || (!r.role_type && !isVolunteerApplicant(r))) && r.role_type !== 'organizer' && r.role_type !== 'volunteer').length,
+    participant: registrations.filter(r => (r.role_type === 'participant' || (!r.role_type && !isVolunteerApplicant(r))) && (r.role_type as string) !== 'organizer' && (r.role_type as string) !== 'volunteer').length,
     volunteer: registrations.filter(r => r.role_type === 'volunteer').length,
     organizer: registrations.filter(r => r.role_type === 'organizer').length,
     checkedParticipant: checkins.filter(c => c.participate_role === 'Người tham gia').length,
@@ -1244,11 +1255,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     overflow: 'hidden',
                   }}
                 >
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: event.is_recruitment_open !== false ? 'linear-gradient(90deg, #0d9488, #14b8a6)' : '#94a3b8' }} />
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: event.is_recruitment_open !== false ? 'linear-gradient(90deg, #2563eb, #3b82f6)' : '#94a3b8' }} />
 
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f766e', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e40af', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
                         Cổng Tuyển Ban Chuyên Trách & CTV
                       </span>
                       <span
@@ -1286,7 +1297,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       style={{
                         width: '100%',
                         height: '42px',
-                        background: copiedRecruitment ? '#16a34a' : 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+                        background: copiedRecruitment ? '#16a34a' : '#2563eb',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '10px',
@@ -1297,7 +1308,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '0.4rem',
-                        boxShadow: '0 2px 6px rgba(13, 148, 136, 0.25)',
+                        boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
                         transition: 'all 0.15s ease',
                       }}
                     >
@@ -1313,8 +1324,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         style={{
                           height: '36px',
                           background: '#ffffff',
-                          color: '#0f766e',
-                          border: '1.5px solid #99f6e4',
+                          color: '#1e40af',
+                          border: '1.5px solid #bfdbfe',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.775rem',
@@ -1366,9 +1377,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         }}
                         style={{
                           height: '36px',
-                          background: '#f0fdfa',
-                          color: '#0f766e',
-                          border: '1.5px solid #99f6e4',
+                          background: '#eff6ff',
+                          color: '#1e40af',
+                          border: '1.5px solid #bfdbfe',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.775rem',
@@ -1640,7 +1651,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 type="button"
                 onClick={() => setActiveTab('sessions')}
                 className={`${styles.tabButton} ${activeTab === 'sessions' ? styles.tabButtonActive : styles.tabButtonInactive}`}
-                style={activeTab === 'sessions' ? { background: '#4f46e5', borderColor: '#4f46e5', color: '#ffffff' } : {}}
               >
                 📑 Ca / Buổi Điểm Danh ({sessions.length})
               </button>
@@ -1657,7 +1667,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 type="button"
                 onClick={() => setActiveTab('recruitment')}
                 className={`${styles.tabButton} ${activeTab === 'recruitment' ? styles.tabButtonActive : styles.tabButtonInactive}`}
-                style={activeTab === 'recruitment' ? { background: '#0d9488', borderColor: '#0d9488', color: '#ffffff' } : {}}
               >
                 Tuyển Dụng & CTV ({departments.length} Ban • {volunteerRegistrations.length} đơn)
               </button>
@@ -1667,7 +1676,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 onClick={() => setActiveTab('noshow')}
                 className={`${styles.tabButton} ${activeTab === 'noshow' ? styles.tabButtonActive : styles.tabButtonInactive}`}
               >
-                Chưa Điểm Danh ({registrations.filter(r => !r.attended).length})
+                Chưa Điểm Danh ({validRegistrations.filter(r => !r.attended).length})
               </button>
 
               {(isApproverRole || ratings.length > 0) && (
@@ -1697,15 +1706,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.45rem',
-                      background: '#eff6ff',
-                      color: '#1d4ed8',
-                      border: '1.5px solid #bfdbfe',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
                       borderRadius: '8px',
                       padding: '0.5rem 0.9rem',
                       fontSize: '0.825rem',
                       fontWeight: 700,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
+                      boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
                     }}
                   >
                     <UploadCloudIcon size={16} />
@@ -2233,14 +2243,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     alignItems: 'center',
                     gap: '0.5rem',
                     padding: '0.6rem 1.2rem',
-                    background: '#4f46e5',
+                    background: '#2563eb',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '10px',
                     fontWeight: 700,
                     fontSize: '0.875rem',
                     cursor: 'pointer',
-                    boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)',
+                    boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
                   }}
                 >
                   <span>+ Thêm Ca / Buổi Mới</span>
@@ -2270,8 +2280,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <span style={{
                           fontSize: '0.75rem',
                           fontWeight: 800,
-                          background: '#eef2ff',
-                          color: '#4f46e5',
+                          background: '#eff6ff',
+                          color: '#2563eb',
                           padding: '0.2rem 0.6rem',
                           borderRadius: '6px',
                         }}>
@@ -2350,7 +2360,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
                   Danh Sách Đăng Ký Khán Giả ({participantRegistrations.length})
                 </h3>
-
+                {invalidRegistrationCount > 0 && (
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#dc2626',
+                    background: '#fef2f2',
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: '6px',
+                    border: '1px solid #fecaca',
+                  }}>
+                    ⚠ {invalidRegistrationCount} dòng MSSV sai format đã bị ẩn
+                  </span>
+                )}
                 {canBulkImport && (
                   <button
                     type="button"
@@ -2386,11 +2408,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     onClick={async () => {
                       try {
                         const XLSX = await import('xlsx');
-                        const data = participantRegistrations.map((r: any, i: number) => ({
+                        const cleanRegs = participantRegistrations.filter((r: any) => isValidMSSV(r.mssv || ''));
+                        const data = cleanRegs.map((r: any, i: number) => ({
                           'STT': i + 1,
                           'MSSV': r.mssv || '',
-                          'Họ Và Tên': r.full_name || '',
-                          'Lớp': r.class_id || '',
+                          'Họ Và Tên': sanitizeForExcel(r.full_name || ''),
+                          'Lớp': sanitizeForExcel(r.class_id || ''),
                           'Vai Trò': r.role_type === 'volunteer' ? 'CTV' : r.role_type === 'organizer' ? 'BTC' : 'Người tham gia',
                           'Trạng Thái': r.attended ? 'Đã điểm danh' : 'Chưa điểm danh',
                           'Ngày Đăng Ký': r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
@@ -2667,14 +2690,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       style={{
                         height: '38px',
                         padding: '0 1.25rem',
-                        background: showAddDeptForm ? '#f1f5f9' : 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+                        background: showAddDeptForm ? '#f1f5f9' : '#2563eb',
                         color: showAddDeptForm ? '#475569' : '#ffffff',
                         border: showAddDeptForm ? '1.5px solid #cbd5e1' : 'none',
                         borderRadius: '10px',
                         fontSize: '0.85rem',
                         fontWeight: 700,
                         cursor: 'pointer',
-                        boxShadow: showAddDeptForm ? 'none' : '0 2px 6px rgba(13, 148, 136, 0.25)',
+                        boxShadow: showAddDeptForm ? 'none' : '0 2px 6px rgba(37, 99, 235, 0.25)',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.35rem',
@@ -2826,14 +2849,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         disabled={savingDepts}
                         style={{
                           padding: '0.5rem 1.25rem',
-                          background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+                          background: '#2563eb',
                           color: '#ffffff',
                           border: 'none',
                           borderRadius: '8px',
                           fontSize: '0.825rem',
                           fontWeight: 700,
                           cursor: 'pointer',
-                          boxShadow: '0 2px 6px rgba(13, 148, 136, 0.25)',
+                          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
                         }}
                       >
                         {savingDepts ? 'Đang lưu...' : 'Lưu Ban Mới'}
@@ -2928,7 +2951,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         }}
                         style={{
                           padding: '0.45rem 0.95rem',
-                          background: '#0d9488',
+                          background: '#2563eb',
                           color: '#ffffff',
                           border: 'none',
                           borderRadius: '8px',
@@ -2938,7 +2961,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '0.4rem',
-                          boxShadow: '0 2px 4px rgba(13, 148, 136, 0.2)',
+                          boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
                         }}
                       >
                         <UploadCloudIcon size={15} />
@@ -3214,20 +3237,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.65rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
-                  Chưa Điểm Danh ({registrations.filter(r => !r.attended).length})
+                  Chưa Điểm Danh ({validRegistrations.filter(r => !r.attended).length})
                 </h3>
-                {registrations.filter(r => !r.attended).length > 0 && (
+                {validRegistrations.filter(r => !r.attended).length > 0 && (
                   <button
                     type="button"
                     onClick={async () => {
                       try {
                         const XLSX = await import('xlsx');
-                        const noshowList = registrations.filter((r: any) => !r.attended);
+                        const noshowList = registrations.filter((r: any) => !r.attended && isValidMSSV(r.mssv || ''));
                         const data = noshowList.map((r: any, i: number) => ({
                           'STT': i + 1,
                           'MSSV': r.mssv || '',
-                          'Họ Và Tên': r.full_name || '',
-                          'Lớp': r.class_id || '',
+                          'Họ Và Tên': sanitizeForExcel(r.full_name || ''),
+                          'Lớp': sanitizeForExcel(r.class_id || ''),
                           'Vai Trò': r.role_type === 'volunteer' ? 'CTV' : r.role_type === 'organizer' ? 'BTC' : 'Người tham gia',
                           'Ngày Đăng Ký': r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
                         }));
@@ -3240,7 +3263,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     }}
                     style={{
                       padding: '0.45rem 0.95rem',
-                      background: '#dc2626',
+                      background: '#16a34a',
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: '8px',
@@ -3250,7 +3273,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.4rem',
-                      boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+                      boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)',
                     }}
                   >
                     <DownloadIcon size={15} />
@@ -3338,7 +3361,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   },
                 },
               ]}
-              data={registrations.filter(r => !r.attended)}
+              data={validRegistrations.filter(r => !r.attended)}
               searchable
               searchPlaceholder="Tìm kiếm MSSV, Họ tên..."
               emptyMessage="Không có sinh viên nào vắng mặt."
@@ -3619,7 +3642,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   disabled={savingSession}
                   style={{
                     padding: '0.55rem 1.25rem',
-                    background: '#4f46e5',
+                    background: '#2563eb',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',

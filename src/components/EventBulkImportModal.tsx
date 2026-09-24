@@ -11,6 +11,7 @@ import {
   FileExcelIcon,
   UsersIcon,
 } from '@/components/icons';
+import { isValidMSSV } from '@/lib/utils/extract-mssv';
 import styles from './EventBulkImportModal.module.css';
 
 interface EventBulkImportModalProps {
@@ -73,12 +74,20 @@ export default function EventBulkImportModal({
         text
           .split(/[\r\n,;\t\s]+/)
           .map((s) => s.trim().toUpperCase())
-          .filter((s) => s.length >= 4 && s.length <= 20)
+          .filter((s) => s.length >= 4 && isValidMSSV(s))
       )
     );
   };
 
+  // Count rejected (invalid format) entries for warning display
+  const allEntries = inputText
+    .split(/[\r\n,;\t\s]+/)
+    .map((s) => s.trim().toUpperCase())
+    .filter((s) => s.length >= 4);
   const parsedMssvs = parseMssvList(inputText);
+  const rejectedCount = allEntries.length - new Set(allEntries).size > 0
+    ? allEntries.filter((s) => !isValidMSSV(s)).length
+    : Array.from(new Set(allEntries)).filter((s) => !isValidMSSV(s)).length;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -170,7 +179,7 @@ export default function EventBulkImportModal({
             const row = rows[i];
             if (!Array.isArray(row)) continue;
             const rawMssv = String(row[colMap.mssv] || '').trim().toUpperCase();
-            if (!rawMssv || rawMssv.length < 5 || rawMssv.includes('MSSV') || rawMssv.includes('TỔNG') || rawMssv.includes('DANH SÁCH')) continue;
+            if (!rawMssv || rawMssv.length < 5 || rawMssv.includes('MSSV') || rawMssv.includes('TỔNG') || rawMssv.includes('DANH SÁCH') || !isValidMSSV(rawMssv)) continue;
 
             let fullName = '';
             if (colMap.fullName !== -1 && row[colMap.fullName]) {
@@ -227,7 +236,7 @@ export default function EventBulkImportModal({
               row.forEach((cell) => {
                 if (cell) {
                   const str = String(cell).trim().toUpperCase();
-                  if (/^[A-Z0-9_-]{6,15}$/.test(str) && !str.includes('MSSV') && !str.includes('STT')) {
+                  if (isValidMSSV(str) && !str.includes('STT')) {
                     items.push({ mssv: str });
                     mssvList.push(str);
                   }
@@ -264,6 +273,23 @@ export default function EventBulkImportModal({
     reader.readAsBinaryString(file);
   };
 
+  // Preview validation state
+  const [previewData, setPreviewData] = useState<{
+    total: number;
+    rejected: number;
+    rejected_mssvs: string[];
+    warnings_count: number;
+    students: Array<{
+      mssv: string;
+      full_name: string;
+      class_id: string;
+      in_system: boolean;
+      from_excel: boolean;
+      warnings: string[];
+    }>;
+  } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (parsedMssvs.length === 0) {
@@ -276,6 +302,50 @@ export default function EventBulkImportModal({
 
     setLoading(true);
     setFeedback(null);
+
+    try {
+      const selectedDept = departments.find((d) => d.id === selectedDeptId);
+
+      // Step 1: Validate first — get preview with warnings
+      const validateRes = await fetch(`/api/events/${eventId}/import-students`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mssv_list: parsedMssvs,
+          students_data: parsedStudents.length > 0 ? parsedStudents : undefined,
+          participate_role: role,
+          mode: 'validate',
+        }),
+      });
+
+      const validateData = await validateRes.json();
+      if (!validateData.success) {
+        setFeedback({ type: 'error', message: validateData.error || 'Lỗi kiểm tra danh sách' });
+        setLoading(false);
+        return;
+      }
+
+      // If there are warnings, show preview popup
+      if (validateData.warnings_count > 0 || validateData.rejected > 0) {
+        setPreviewData(validateData);
+        setShowPreview(true);
+        setLoading(false);
+        return;
+      }
+
+      // No warnings → import directly
+      await doImport();
+    } catch (err: any) {
+      console.error(err);
+      setFeedback({ type: 'error', message: 'Lỗi kết nối máy chủ, vui lòng thử lại sau.' });
+      setLoading(false);
+    }
+  };
+
+  const doImport = async () => {
+    setLoading(true);
+    setFeedback(null);
+    setShowPreview(false);
 
     try {
       const selectedDept = departments.find((d) => d.id === selectedDeptId);
@@ -298,22 +368,17 @@ export default function EventBulkImportModal({
           type: 'success',
           message: data.message || `Đã nạp thành công ${data.count} sinh viên!`,
         });
+        setPreviewData(null);
         setTimeout(() => {
           onSuccess();
           onClose();
         }, 1500);
       } else {
-        setFeedback({
-          type: 'error',
-          message: data.error || 'Đã xảy ra lỗi khi nạp danh sách.',
-        });
+        setFeedback({ type: 'error', message: data.error || 'Đã xảy ra lỗi khi nạp danh sách.' });
       }
     } catch (err: any) {
       console.error(err);
-      setFeedback({
-        type: 'error',
-        message: 'Lỗi kết nối máy chủ, vui lòng thử lại sau.',
-      });
+      setFeedback({ type: 'error', message: 'Lỗi kết nối máy chủ, vui lòng thử lại sau.' });
     } finally {
       setLoading(false);
     }
@@ -425,6 +490,11 @@ export default function EventBulkImportModal({
                 <UsersIcon size={14} />
                 <span>{parsedMssvs.length} MSSV hợp lệ</span>
               </span>
+              {rejectedCount > 0 && (
+                <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>
+                  ⚠ {rejectedCount} mã bị loại (sai format)
+                </span>
+              )}
             </div>
             <textarea
               rows={6}
@@ -444,6 +514,146 @@ export default function EventBulkImportModal({
                 <AlertTriangleIcon size={18} color="#dc2626" />
               )}
               <span>{feedback.message}</span>
+            </div>
+          )}
+
+          {/* Preview Warning Popup */}
+          {showPreview && previewData && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+            }} onClick={() => setShowPreview(false)}>
+              <div style={{
+                background: '#fff', borderRadius: '12px', maxWidth: '680px', width: '100%',
+                maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              }} onClick={(e) => e.stopPropagation()}>
+                {/* Preview Header */}
+                <div style={{
+                  padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb',
+                  background: previewData.warnings_count > 0 ? '#fef3c7' : '#ecfdf5',
+                  borderRadius: '12px 12px 0 0',
+                }}>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#1f2937' }}>
+                    ⚠️ Kiểm tra trước khi nạp
+                  </h3>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
+                    Tìm thấy <strong style={{ color: '#dc2626' }}>{previewData.warnings_count}</strong> sinh viên cần kiểm tra
+                    {previewData.rejected > 0 && <> và <strong style={{ color: '#dc2626' }}>{previewData.rejected}</strong> MSSV sai format bị loại</>}
+                  </p>
+                </div>
+
+                {/* Rejected MSSVs */}
+                {previewData.rejected > 0 && previewData.rejected_mssvs.length > 0 && (
+                  <div style={{
+                    padding: '0.75rem 1.25rem', background: '#fef2f2', borderBottom: '1px solid #fecaca',
+                    fontSize: '0.82rem',
+                  }}>
+                    <strong style={{ color: '#dc2626' }}>❌ MSSV bị loại (sai format):</strong>
+                    <div style={{ marginTop: '0.25rem', color: '#991b1b', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                      {previewData.rejected_mssvs.join(', ')}
+                      {previewData.rejected > previewData.rejected_mssvs.length && ` và ${previewData.rejected - previewData.rejected_mssvs.length} mã khác...`}
+                    </div>
+                  </div>
+                )}
+
+                {/* Students Table */}
+                <div style={{ flex: 1, overflow: 'auto', padding: '0.5rem 1rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ position: 'sticky', top: 0, background: '#f9fafb', zIndex: 1 }}>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>STT</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>MSSV</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>Họ tên</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>Lớp</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewData.students.map((s, idx) => {
+                        const hasWarning = s.warnings.length > 0;
+                        return (
+                          <tr key={s.mssv} style={{
+                            background: hasWarning ? '#fef3c7' : idx % 2 === 0 ? '#fff' : '#f9fafb',
+                            borderBottom: '1px solid #f3f4f6',
+                          }}>
+                            <td style={{ padding: '0.4rem 0.5rem', color: '#9ca3af' }}>{idx + 1}</td>
+                            <td style={{ padding: '0.4rem 0.5rem', fontFamily: 'monospace', fontWeight: 600 }}>{s.mssv}</td>
+                            <td style={{
+                              padding: '0.4rem 0.5rem',
+                              color: s.full_name === s.mssv ? '#dc2626' : '#1f2937',
+                              fontStyle: s.full_name === s.mssv ? 'italic' : 'normal',
+                            }}>
+                              {s.full_name === s.mssv ? '⚠️ Không có tên' : s.full_name}
+                            </td>
+                            <td style={{
+                              padding: '0.4rem 0.5rem',
+                              color: s.class_id === 'PTIT-HCM' ? '#9ca3af' : '#1f2937',
+                            }}>{s.class_id}</td>
+                            <td style={{ padding: '0.4rem 0.5rem' }}>
+                              {hasWarning ? (
+                                <span style={{
+                                  display: 'inline-flex', gap: '0.25rem', flexWrap: 'wrap',
+                                }}>
+                                  {s.warnings.map((w, i) => (
+                                    <span key={i} style={{
+                                      background: '#fde68a', color: '#92400e', padding: '0.1rem 0.4rem',
+                                      borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600,
+                                      whiteSpace: 'nowrap',
+                                    }}>{w}</span>
+                                  ))}
+                                </span>
+                              ) : (
+                                <span style={{
+                                  background: '#d1fae5', color: '#065f46', padding: '0.1rem 0.4rem',
+                                  borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600,
+                                }}>✓ OK</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Preview Actions */}
+                <div style={{
+                  padding: '0.75rem 1.25rem', borderTop: '1px solid #e5e7eb',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: '#f9fafb', borderRadius: '0 0 12px 12px',
+                }}>
+                  <div style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+                    ✅ {previewData.total - previewData.warnings_count} OK &nbsp;|&nbsp;
+                    ⚠️ {previewData.warnings_count} cần kiểm tra
+                    {previewData.rejected > 0 && <> &nbsp;|&nbsp; ❌ {previewData.rejected} bị loại</>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowPreview(false)}
+                      style={{
+                        padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #d1d5db',
+                        background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
+                      }}
+                    >
+                      ← Quay lại sửa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={doImport}
+                      disabled={loading}
+                      style={{
+                        padding: '0.5rem 1rem', borderRadius: '8px', border: 'none',
+                        background: '#dc2626', color: '#fff', cursor: 'pointer',
+                        fontWeight: 700, fontSize: '0.85rem',
+                      }}
+                    >
+                      {loading ? 'Đang nạp...' : `⚡ Vẫn nạp ${previewData.total} SV`}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

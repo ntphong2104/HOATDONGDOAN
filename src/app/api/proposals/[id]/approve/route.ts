@@ -4,6 +4,7 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getNextStage, getStageLabel } from '@/lib/utils/proposal-logic';
 import { getStoredProposalById, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
 import { saveEventMeta, getProposalMeta } from '@/lib/constants/event-meta-store';
+import { OFFICIAL_UNITS } from '@/lib/constants/units';
 import type { ProposalStage, EventProposal } from '@/lib/types';
 
 export async function POST(
@@ -223,6 +224,20 @@ export async function POST(
           email: proposal.created_by,
           role_type: 'event_admin',
         });
+
+        // Also assign the managing unit (LCĐ/CLB) as event_admin so they can see the event
+        if (proposal.organization_unit) {
+          const matchedUnit = OFFICIAL_UNITS.find(
+            (u) => u.name === proposal.organization_unit
+          );
+          if (matchedUnit?.email && matchedUnit.email.toLowerCase() !== proposal.created_by.toLowerCase()) {
+            await supabase.from('event_roles').insert({
+              event_id: newEventId,
+              email: matchedUnit.email,
+              role_type: 'event_admin',
+            });
+          }
+        }
       }
     } catch (createErr) {
       console.error('Error auto-creating event from proposal:', createErr);

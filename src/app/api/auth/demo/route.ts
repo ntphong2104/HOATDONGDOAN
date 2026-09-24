@@ -342,7 +342,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (process.env.ENABLE_DEMO_MODE === 'false') {
+  if (process.env.ENABLE_DEMO_MODE !== 'true') {
     return NextResponse.json({ success: false, error: 'Chế độ demo đã tắt' }, { status: 403 });
   }
   try {

@@ -380,7 +380,7 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
 
       if (!error && tableData && Array.isArray(tableData) && tableData.length > 0) {
         // Table exists and query was successful!
-        const mapped = tableData.map((d: any) => ({
+        const mapped: OfficerRoleItem[] = tableData.map((d: any) => ({
           id: String(d.id),
           email: d.email.toLowerCase(),
           role_tier: d.role_tier as UserTier,

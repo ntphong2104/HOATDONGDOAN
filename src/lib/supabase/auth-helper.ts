@@ -13,9 +13,27 @@ export function parseDemoCookie(cookieVal: string): any | null {
     if (str.startsWith('"') && str.endsWith('"')) {
       str = str.slice(1, -1);
     }
+
+    // Extract payload and signature — format: {json_payload}.{64-char-hex-hmac}
     const lastDot = str.lastIndexOf('.');
     if (lastDot !== -1 && str.length - lastDot === 65) {
-      str = str.slice(0, lastDot);
+      const payload = str.slice(0, lastDot);
+      const signature = str.slice(lastDot + 1);
+
+      // Verify HMAC signature before trusting the payload
+      const expectedSig = crypto
+        .createHmac('sha256', COOKIE_SECRET)
+        .update(payload)
+        .digest('hex');
+
+      const sigBuf = Buffer.from(signature, 'hex');
+      const expBuf = Buffer.from(expectedSig, 'hex');
+      if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+        // Invalid signature — cookie may have been tampered with
+        return null;
+      }
+
+      str = payload;
     }
 
     for (let i = 0; i < 3; i++) {
@@ -44,6 +62,7 @@ export interface AuthContext {
   isChecker: boolean;
   isSecurity: boolean;
   tier: UserTier;
+  managed_events?: any[];
 }
 
 export async function getAuthContext(): Promise<AuthContext | null> {

@@ -35,7 +35,8 @@ export interface Event {
   status?: 'active' | 'closed' | 'pending' | 'rejected';
   created_by?: string;
   created_at?: string;
-  departments?: EventDepartment[];
+  max_participants?: number;
+  departments?: any[];
   target_scope?: 'all' | 'unit_only';
   sessions?: EventSession[];
 }
@@ -78,6 +79,22 @@ export interface CheckIn {
   created_at: string;
   session_id?: string;
   session_name?: string;
+}
+
+export interface CheckinExportRow {
+  stt?: number;
+  mssv: string;
+  full_name?: string;
+  class_id?: string;
+  participate_role?: string;
+  checked_by?: string;
+  checkin_time?: string;
+  session_count?: number;
+  total_sessions?: number;
+  session_ratio?: string;
+  session_names?: string;
+  sessions?: any[];
+  [key: string]: any;
 }
 
 export interface EventRegistration {
@@ -275,6 +292,7 @@ export interface EventProposal {
   title: string;
   created_by: string;
   organization_unit?: string;
+  semester?: string;
   start_date: string;
   start_time: string;
   end_date: string;
@@ -304,6 +322,12 @@ export interface EventProposal {
   eventRatings?: UnitRating[];
   created_at: string;
   updated_at: string;
+}
+
+export interface ProposalDetail extends EventProposal {
+  logs?: ProposalLog[];
+  eventRatings?: UnitRating[];
+  semester?: string;
 }
 
 export interface ProposalLog {

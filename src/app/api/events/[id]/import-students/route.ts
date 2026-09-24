@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, saveRegistrationExtrasBulk } from '@/lib/constants/event-meta-store';
+import { isValidMSSV } from '@/lib/utils/extract-mssv';
 
 export async function POST(
   req: Request,
@@ -78,6 +79,7 @@ export async function POST(
       phone?: string;
       gender?: string;
       department_name?: string;
+      role_type?: 'participant' | 'volunteer' | 'organizer';
       note?: string;
     }>();
 
@@ -89,20 +91,85 @@ export async function POST(
       });
     }
 
-    // Clean, uppercase, and deduplicate MSSV list
-    const cleanedMssvs = Array.from(
+    // Clean, uppercase, deduplicate, and VALIDATE MSSV format
+    const allMssvs = Array.from(
       new Set(
         mssv_list
           .map((m: any) => String(m).trim().toUpperCase())
-          .filter((m: string) => m.length >= 4 && m.length <= 20)
+          .filter((m: string) => m.length >= 4)
       )
     );
+    const cleanedMssvs = allMssvs.filter((m) => isValidMSSV(m));
+    const rejectedMssvCount = allMssvs.length - cleanedMssvs.length;
 
     if (cleanedMssvs.length === 0) {
-      return NextResponse.json({ success: false, error: 'Không tìm thấy MSSV hợp lệ trong danh sách cung cấp' }, { status: 400 });
+      return NextResponse.json({
+        success: false,
+        error: rejectedMssvCount > 0
+          ? `Không tìm thấy MSSV hợp lệ. ${rejectedMssvCount} mã bị từ chối do sai format (MSSV chuẩn PTIT: N22DCCN001, D22CQCN01-N, ...)`
+          : 'Không tìm thấy MSSV hợp lệ trong danh sách cung cấp',
+      }, { status: 400 });
     }
 
-    // Fetch existing student info from `users` table in batches (avoid Supabase timeout with large .in())
+    // ── VALIDATE MODE: Preview + warnings before actual import ──
+    if (mode === 'validate') {
+      const BATCH_SIZE = 100;
+      const allUsers: any[] = [];
+      for (let i = 0; i < cleanedMssvs.length; i += BATCH_SIZE) {
+        const batch = cleanedMssvs.slice(i, i + BATCH_SIZE);
+        const { data: batchUsers } = await supabase
+          .from('users')
+          .select('mssv, full_name, class_id, email')
+          .in('mssv', batch);
+        if (batchUsers) allUsers.push(...batchUsers);
+      }
+
+      const existingMap = new Map<string, any>();
+      allUsers.forEach((u: any) => existingMap.set(u.mssv.toUpperCase(), u));
+
+      const rejectedMssvs = allMssvs.filter((m) => !isValidMSSV(m));
+
+      const previewStudents = cleanedMssvs.map((mssv) => {
+        const dbUser = existingMap.get(mssv);
+        const excelData = studentDataMap.get(mssv);
+        const warnings: string[] = [];
+
+        const finalName = excelData?.full_name || dbUser?.full_name || '';
+        const finalClass = excelData?.class_id || dbUser?.class_id || '';
+
+        if (!dbUser) {
+          warnings.push('Chưa có trong hệ thống');
+        }
+        if (!finalName || finalName === mssv || finalName.includes('@')) {
+          warnings.push('Thiếu họ tên');
+        }
+        if (!finalClass || finalClass === 'PTIT-HCM') {
+          warnings.push('Thiếu lớp');
+        }
+
+        return {
+          mssv,
+          full_name: finalName || mssv,
+          class_id: finalClass || 'PTIT-HCM',
+          in_system: !!dbUser,
+          from_excel: !!excelData?.full_name,
+          warnings,
+        };
+      });
+
+      const studentsWithWarnings = previewStudents.filter((s) => s.warnings.length > 0);
+
+      return NextResponse.json({
+        success: true,
+        mode: 'validate',
+        total: cleanedMssvs.length,
+        rejected: rejectedMssvCount,
+        rejected_mssvs: rejectedMssvs.slice(0, 20),
+        warnings_count: studentsWithWarnings.length,
+        students: previewStudents,
+      });
+    }
+
     const BATCH_SIZE = 100;
     const meta = await getEventMeta(supabase, resolvedParams.id);
     
@@ -171,7 +238,7 @@ export async function POST(
         updatedDepts.push({
           id: `dept_${Date.now()}_${idx}`,
           name: dName.trim(),
-          slots: 50,
+          target_count: 50,
           gender_req: 'all',
           description: 'Tự động tạo từ danh sách nạp Excel',
         });
@@ -256,7 +323,8 @@ export async function POST(
       return NextResponse.json({
         success: true,
         count: cleanedMssvs.length,
-        message: `Đã nạp và điểm danh thành công ${cleanedMssvs.length} sinh viên vào sự kiện "${event.event_name}".`,
+        rejected: rejectedMssvCount,
+        message: `Đã nạp và điểm danh thành công ${cleanedMssvs.length} sinh viên vào sự kiện "${event.event_name}".${rejectedMssvCount > 0 ? ` (${rejectedMssvCount} MSSV sai format đã bị bỏ qua)` : ''}`,
       });
     } else {
       // Mode: Pre-register into `event_registrations`
@@ -339,12 +407,14 @@ export async function POST(
         await saveRegistrationExtrasBulk(supabase, resolvedParams.id, extrasMap);
       }
 
+      const rejectedNote = rejectedMssvCount > 0 ? ` (${rejectedMssvCount} MSSV sai format đã bị bỏ qua)` : '';
       return NextResponse.json({
         success: true,
         count: cleanedMssvs.length,
+        rejected: rejectedMssvCount,
         message: participate_role === 'volunteer' || volunteerMssvs.length > 0
-          ? `Đã nạp thành công ${cleanedMssvs.length} sinh viên (gồm ${volunteerMssvs.length} CTV và ${cleanedMssvs.length - volunteerMssvs.length} người tham gia)!`
-          : `Đã nạp thành công ${cleanedMssvs.length} sinh viên vào danh sách đăng ký sự kiện "${event.event_name}".`,
+          ? `Đã nạp thành công ${cleanedMssvs.length} sinh viên (gồm ${volunteerMssvs.length} CTV và ${cleanedMssvs.length - volunteerMssvs.length} người tham gia)!${rejectedNote}`
+          : `Đã nạp thành công ${cleanedMssvs.length} sinh viên vào danh sách đăng ký sự kiện "${event.event_name}".${rejectedNote}`,
       });
     }
   } catch (err: any) {

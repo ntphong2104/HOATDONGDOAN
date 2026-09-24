@@ -150,11 +150,13 @@ export async function GET() {
     // Run all 5 user data queries in parallel
     const [userResult, superAdminResult, officerRolesResult, eventRolesResult, createdEventsResult] = await Promise.all([
       // 1. User profile
-      adminClient
-        .from('users')
-        .select('mssv, full_name, class_id')
-        .or(`email.ilike.${email},mssv.ilike.${username}`)
-        .maybeSingle()
+      Promise.resolve(
+        adminClient
+          .from('users')
+          .select('mssv, full_name, class_id')
+          .or(`email.ilike.${email},mssv.ilike.${username}`)
+          .maybeSingle()
+      )
         .then(r => r.data)
         .catch(() => null),
 
@@ -372,7 +374,7 @@ export async function GET() {
         if (r.event_id && !seenEventIds.has(r.event_id)) {
           managed_events.push({
             event_id: r.event_id,
-            event_name: r.events?.event_name || 'Không rõ',
+            event_name: (r.events as any)?.event_name || 'Không rõ',
             role_type: r.role_type,
             status: (r.events as any)?.status,
             is_active: (r.events as any)?.is_active,

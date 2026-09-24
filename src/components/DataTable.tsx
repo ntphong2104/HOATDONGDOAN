@@ -6,7 +6,7 @@ import styles from './DataTable.module.css';
 
 export interface Column {
   key: string;
-  label: string;
+  label: React.ReactNode;
   render?: (val: any, row: Record<string, any>) => React.ReactNode;
 }
 

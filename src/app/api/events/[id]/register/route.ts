@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { extractMSSV } from '@/lib/utils/extract-mssv';
+import { extractMSSV, isValidMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
@@ -135,7 +135,9 @@ export async function GET(
       totalRegistered: totalRegistered || 0,
       myRegistration,
       penaltyStatus,
-      allRegistrations,
+      allRegistrations: allRegistrations
+        ? allRegistrations.filter((r: any) => isValidMSSV(r.mssv || ''))
+        : undefined,
     },
   });
 }
