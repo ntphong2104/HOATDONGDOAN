@@ -157,10 +157,6 @@ export default function EventBulkImportModal({
 
         nameCandidate = nameCandidate.replace(/^[-–—:]+/, '').replace(/[-–—:]+$/, '').trim();
 
-        if (nameCandidate.startsWith('nguyênNguyễn')) {
-          nameCandidate = nameCandidate.replace(/^nguyênNguyễn/, 'Nguyễn');
-        }
-
         if (nameCandidate.length >= 2 && !isValidMSSV(nameCandidate)) {
           mssvMap.set(foundMssv, { mssv: foundMssv, full_name: nameCandidate });
         } else if (!mssvMap.has(foundMssv)) {

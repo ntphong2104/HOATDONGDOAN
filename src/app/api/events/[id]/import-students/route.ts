@@ -204,8 +204,13 @@ export async function POST(
         const warnings: string[] = [];
         const badges: Array<{ type: 'danger' | 'warning' | 'info' | 'success'; text: string }> = [];
 
-        const finalName = excelData?.full_name || regRecord?.full_name || dbUser?.full_name || '';
-        const finalClass = excelData?.class_id || regRecord?.class_id || dbUser?.class_id || '';
+        // MSSV là khóa chính: Ưu tiên dữ liệu chính thức từ bảng users nếu sinh viên đã có trong hệ thống
+        const finalName = (dbUser?.full_name && !dbUser.full_name.includes('@'))
+          ? dbUser.full_name
+          : (excelData?.full_name || regRecord?.full_name || '');
+        const finalClass = (dbUser?.class_id && dbUser.class_id !== 'PTIT-HCM')
+          ? dbUser.class_id
+          : (excelData?.class_id || regRecord?.class_id || dbUser?.class_id || '');
 
         // Check 1: In-file duplicates
         const isDuplicateInFile = duplicateCount > 1;
@@ -371,19 +376,18 @@ export async function POST(
       }
     });
 
-    // Optionally update `users` table if Excel contained new names/classes
+    // Chỉ tạo mới sinh viên vào bảng `users` nếu chưa từng tồn tại (MSSV là khóa chính duy nhất)
     const userUpserts = cleanedMssvs
+      .filter((mssv) => !userMap.has(mssv))
       .map((mssv) => {
         const sData = studentDataMap.get(mssv);
-        if (!sData?.full_name && !sData?.class_id) return null;
         return {
           mssv,
           email: `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
-          full_name: sData.full_name || mssv,
-          class_id: sData.class_id || 'PTIT-HCM',
+          full_name: sData?.full_name || mssv,
+          class_id: sData?.class_id || 'PTIT-HCM',
         };
-      })
-      .filter(Boolean);
+      });
 
     if (userUpserts.length > 0) {
       try {
@@ -503,8 +507,13 @@ export async function POST(
       const regRecords = cleanedMssvs.map((mssv) => {
         const uInfo = userMap.get(mssv);
         const sData = studentDataMap.get(mssv);
-        const resolvedFullName = sData?.full_name || (uInfo?.full_name && !uInfo.full_name.includes('@') ? uInfo.full_name : null) || mssv;
-        const resolvedClassId = sData?.class_id || uInfo?.class_id || 'PTIT-HCM';
+        // MSSV là khóa chính: Ưu tiên dữ liệu chính thức từ bảng users nếu sinh viên đã có trong hệ thống
+        const resolvedFullName = (uInfo?.full_name && !uInfo.full_name.includes('@'))
+          ? uInfo.full_name
+          : (sData?.full_name || mssv);
+        const resolvedClassId = (uInfo?.class_id && uInfo.class_id !== 'PTIT-HCM')
+          ? uInfo.class_id
+          : (sData?.class_id || uInfo?.class_id || 'PTIT-HCM');
         const resolvedRole = sData?.role_type || (participate_role === 'volunteer' ? 'volunteer' : participate_role === 'organizer' ? 'organizer' : 'participant');
 
         return {
