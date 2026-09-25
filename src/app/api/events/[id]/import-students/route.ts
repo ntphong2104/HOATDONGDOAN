@@ -144,14 +144,14 @@ export async function POST(
 
         const { data: batchUsers, error: userQueryErr } = await supabase
           .from('users')
-          .select('mssv, full_name, class_id, email, phone, gender')
+          .select('mssv, full_name, class_id, email')
           .or(`mssv.in.(${mssvVariants.join(',')}),email.in.(${emailVariants.join(',')})`);
 
         if (userQueryErr) {
           console.error('Batch user query error in preview:', userQueryErr);
           const { data: fallbackUsers } = await supabase
             .from('users')
-            .select('mssv, full_name, class_id, email, phone, gender')
+            .select('mssv, full_name, class_id, email')
             .in('mssv', mssvVariants);
           if (fallbackUsers) allUsers.push(...fallbackUsers);
         } else if (batchUsers) {
@@ -338,14 +338,14 @@ export async function POST(
 
       const { data: batchUsers, error: userQueryErr } = await supabase
         .from('users')
-        .select('mssv, full_name, class_id, email, phone, gender')
+        .select('mssv, full_name, class_id, email')
         .or(`mssv.in.(${mssvVariants.join(',')}),email.in.(${emailVariants.join(',')})`);
 
       if (userQueryErr) {
         console.error('Batch user query error in import:', userQueryErr);
         const { data: fallbackUsers } = await supabase
           .from('users')
-          .select('mssv, full_name, class_id, email, phone, gender')
+          .select('mssv, full_name, class_id, email')
           .in('mssv', mssvVariants);
         if (fallbackUsers) allUsers.push(...fallbackUsers);
       } else if (batchUsers) {
@@ -353,14 +353,12 @@ export async function POST(
       }
     }
 
-    const userMap = new Map<string, { full_name: string; class_id: string; email?: string; phone?: string; gender?: string }>();
+    const userMap = new Map<string, { full_name: string; class_id: string; email?: string }>();
     allUsers.forEach((u: any) => {
       const entry = {
         full_name: u.full_name || u.mssv,
         class_id: u.class_id || '',
         email: u.email || `${u.mssv?.toLowerCase()}@student.ptithcm.edu.vn`,
-        phone: u.phone || '',
-        gender: u.gender || '',
       };
       if (u.mssv) {
         userMap.set(String(u.mssv).trim().toUpperCase(), entry);
@@ -383,11 +381,6 @@ export async function POST(
           email: `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
           full_name: sData.full_name || mssv,
           class_id: sData.class_id || 'PTIT-HCM',
-          phone: sData.phone || '',
-          gender: sData.gender || 'Nam',
-          role: 'student',
-          tier: 'student',
-          status: 'active',
         };
       })
       .filter(Boolean);

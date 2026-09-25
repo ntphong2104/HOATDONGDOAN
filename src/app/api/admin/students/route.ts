@@ -212,7 +212,7 @@ export async function POST(req: Request) {
     const { data, error } = await supabase
       .from('users')
       .upsert(finalRecords, { onConflict: 'mssv' })
-      .select('mssv, full_name, class_id, email, gender, phone');
+      .select('mssv, full_name, class_id, email');
 
     if (error) {
       console.error('Lỗi khi nạp sinh viên:', error);

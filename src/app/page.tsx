@@ -99,7 +99,7 @@ export default async function HomePage({
 
     const { data: dbUser } = await supabase
       .from('users')
-      .select('mssv, full_name, class_id, gender, phone')
+      .select('mssv, full_name, class_id')
       .or(`email.ilike.${auth.email},mssv.ilike.${rawMssv}`)
       .maybeSingle();
 

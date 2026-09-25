@@ -131,7 +131,7 @@ export async function POST(req: Request) {
         .maybeSingle(),
       supabase
         .from('users')
-        .select('mssv, full_name, class_id, email, phone')
+        .select('mssv, full_name, class_id, email')
         .eq('mssv', mssv)
         .maybeSingle(),
       getEventMeta(supabase, event_id),
