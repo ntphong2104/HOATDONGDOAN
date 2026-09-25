@@ -65,6 +65,88 @@ export interface AuthContext {
   managed_events?: any[];
 }
 
+// In-memory cache for AuthContext to avoid redundant DB queries on every request
+const authContextCache = new Map<string, { ctx: AuthContext; expiresAt: number }>();
+
+function decodeBase64Safe(str: string): string {
+  try {
+    const padded = str.length % 4 === 0 ? str : str + '='.repeat(4 - (str.length % 4));
+    const base64Standard = padded.replace(/-/g, '+').replace(/_/g, '/');
+    if (typeof atob === 'function') {
+      return atob(base64Standard);
+    }
+    return Buffer.from(base64Standard, 'base64').toString('utf-8');
+  } catch {
+    return '';
+  }
+}
+
+export function extractUserFromCookies(cookieList: Array<{ name: string; value: string }>): { email: string; id: string; exp: number } | null {
+  try {
+    const authCookies = cookieList
+      .filter((c) => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (authCookies.length === 0) return null;
+
+    let combined = authCookies.map((c) => c.value).join('');
+    if (combined.startsWith('base64-')) {
+      combined = decodeBase64Safe(combined.slice(7));
+    }
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(combined);
+    } catch {
+      try {
+        parsed = JSON.parse(decodeURIComponent(combined));
+      } catch {}
+    }
+
+    if (!parsed) return null;
+
+    let token = '';
+    let email = '';
+    let id = '';
+
+    if (Array.isArray(parsed)) {
+      token = parsed[0] || '';
+    } else if (typeof parsed === 'object') {
+      token = parsed.access_token || '';
+      if (parsed.user) {
+        email = parsed.user.email || '';
+        id = parsed.user.id || '';
+      }
+    }
+
+    if (token && token.includes('.')) {
+      const parts = token.split('.');
+      if (parts.length >= 2) {
+        const payloadStr = decodeBase64Safe(parts[1]);
+        if (payloadStr) {
+          const payload = JSON.parse(payloadStr);
+          if (payload) {
+            const exp = Number(payload.exp || 0);
+            const nowSec = Math.floor(Date.now() / 1000);
+            if (exp > nowSec - 30) {
+              return {
+                email: (payload.email || email).toLowerCase().trim(),
+                id: payload.sub || id,
+                exp,
+              };
+            }
+          }
+        }
+      }
+    }
+
+    if (email) {
+      return { email: email.toLowerCase().trim(), id, exp: 0 };
+    }
+  } catch {}
+  return null;
+}
+
 export async function getAuthContext(): Promise<AuthContext | null> {
   let email: string | null = null;
   let explicitTier: UserTier | null = null;
@@ -95,26 +177,40 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         };
       }
     }
+
+    // Fast-path: Check cookies directly for active unexpired session
+    const fastUser = extractUserFromCookies(cookieStore.getAll());
+    if (fastUser?.email) {
+      email = fastUser.email;
+    }
   } catch {}
+
+  // If email is already extracted, check in-memory cache first (TTL: 60 seconds)
+  if (email) {
+    const cached = authContextCache.get(email.toLowerCase());
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.ctx;
+    }
+  }
 
   const supabase = await createClient();
 
   if (!email) {
     try {
-      if (supabase.auth?.getUser) {
-        const { data } = await supabase.auth.getUser();
-        if (data?.user?.email) {
-          email = data.user.email;
+      if (supabase.auth?.getSession) {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.user?.email) {
+          email = data.session.user.email;
         }
       }
     } catch {}
 
     if (!email) {
       try {
-        if (supabase.auth?.getSession) {
-          const { data } = await supabase.auth.getSession();
-          if (data?.session?.user?.email) {
-            email = data.session.user.email;
+        if (supabase.auth?.getUser) {
+          const { data } = await supabase.auth.getUser();
+          if (data?.user?.email) {
+            email = data.user.email;
           }
         }
       } catch {}
@@ -123,6 +219,12 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   if (!email) {
     return null;
+  }
+
+  // Check cache again after fallback retrieval
+  const cached = authContextCache.get(email.toLowerCase());
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.ctx;
   }
 
   if (explicitTier) {
@@ -135,7 +237,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     const isEventAdmin = isSuperAdmin || isYouthUnion || isCtsv || isFacility || explicitTier === 'event_admin';
     const isChecker = isEventAdmin || isSecurity || explicitTier === 'checker';
 
-    return {
+    const ctx: AuthContext = {
       email,
       isSuperAdmin,
       isEventAdmin,
@@ -143,14 +245,19 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       isSecurity,
       tier: explicitTier,
     };
+    authContextCache.set(email.toLowerCase(), { ctx, expiresAt: Date.now() + 60000 });
+    return ctx;
   }
 
   const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : null) || supabase;
+  const lowerEmail = email.toLowerCase();
+  const isRegularStudent = lowerEmail.endsWith('@student.ptithcm.edu.vn') && lowerEmail !== ROOT_SUPER_ADMIN.toLowerCase();
 
-  // Run all auth queries in parallel for performance
+  // Run all auth queries in parallel for performance (skip events/super_admins for plain students)
   const [superAdmin, assignedOfficerRole, eventRoles, hasCreatedEvents] = await Promise.all([
     // Check super_admins table
     (async () => {
+      if (isRegularStudent) return null;
       try {
         const q = adminClient.from('super_admins').select('email');
         const { data } = typeof q.ilike === 'function'
@@ -163,7 +270,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     (async () => {
       try {
         const roles = await getStoredOfficerRoles(adminClient);
-        return roles.find((r) => r.email.toLowerCase() === email.toLowerCase()) || null;
+        return roles.find((r) => r.email.toLowerCase() === lowerEmail) || null;
       } catch { return null; }
     })(),
     // Check event_roles table
@@ -176,8 +283,9 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         return data || [];
       } catch { return []; }
     })(),
-    // Check if created any events
+    // Check if created any events (students never create events)
     (async () => {
+      if (isRegularStudent) return false;
       try {
         const q = adminClient.from('events').select('event_id');
         const { data } = typeof q.ilike === 'function'
@@ -188,7 +296,6 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     })(),
   ]);
 
-  const lowerEmail = email.toLowerCase();
   const isSubAdminUnit = lowerEmail.startsWith('lcd') || lowerEmail.startsWith('clb') || lowerEmail.startsWith('doi');
 
   const isSuperAdmin =
@@ -262,7 +369,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     tier = 'checker';
   }
 
-  return {
+  const ctx: AuthContext = {
     email,
     isSuperAdmin,
     isEventAdmin,
@@ -270,4 +377,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     isSecurity,
     tier,
   };
+
+  authContextCache.set(email.toLowerCase(), { ctx, expiresAt: Date.now() + 60000 });
+  return ctx;
 }

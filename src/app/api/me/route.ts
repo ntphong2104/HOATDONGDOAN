@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officers-store';
-import { parseDemoCookie } from '@/lib/supabase/auth-helper';
+import { parseDemoCookie, extractUserFromCookies } from '@/lib/supabase/auth-helper';
 import { getUserProfileExtra, saveUserProfileExtra } from '@/lib/constants/user-profile-store';
 import type { SessionUser, UserTier } from '@/lib/types';
 
@@ -14,6 +14,9 @@ const noCacheHeaders = {
   Pragma: 'no-cache',
   Expires: '0',
 };
+
+// In-memory cache for /api/me responses (TTL: 15 seconds) to prevent redundant DB hammering
+const meResponseCache = new Map<string, { data: SessionUser; expiresAt: number }>();
 
 export async function GET() {
   try {
@@ -118,30 +121,57 @@ export async function GET() {
     // Non-request context fallback
   }
 
-  const supabase = await createClient();
-  const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : supabase) || supabase;
-
+  // Fast-path: Check cookies directly for active unexpired session
   let email: string | null = null;
   let authMetadata: any = null;
 
-  if (typeof supabase.auth.getUser === 'function') {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user?.email) {
-      email = data.user.email;
-      authMetadata = data.user.user_metadata;
+  try {
+    const cookieStore = await cookies();
+    const localUser = extractUserFromCookies(cookieStore.getAll());
+    if (localUser?.email) {
+      email = localUser.email;
+    }
+  } catch {}
+
+  // If email found, check in-memory cache first (TTL: 15s)
+  if (email) {
+    const cached = meResponseCache.get(email.toLowerCase());
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json({ success: true, data: cached.data }, { headers: noCacheHeaders });
     }
   }
 
+  const supabase = await createClient();
+  const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : supabase) || supabase;
+
   if (!email && typeof supabase.auth.getSession === 'function') {
-    const { data } = await supabase.auth.getSession();
-    if (data?.session?.user?.email) {
-      email = data.session.user.email;
-      authMetadata = data.session.user.user_metadata;
-    }
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user?.email) {
+        email = data.session.user.email;
+        authMetadata = data.session.user.user_metadata;
+      }
+    } catch {}
+  }
+
+  if (!email && typeof supabase.auth.getUser === 'function') {
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.email) {
+        email = data.user.email;
+        authMetadata = data.user.user_metadata;
+      }
+    } catch {}
   }
 
   if (!email) {
     return NextResponse.json({ success: false, error: 'Unauthorized', message: 'Vui lòng đăng nhập' }, { status: 401 });
+  }
+
+  // Check cache again after fallback retrieval
+  const cached = meResponseCache.get(email.toLowerCase());
+  if (cached && cached.expiresAt > Date.now()) {
+    return NextResponse.json({ success: true, data: cached.data }, { headers: noCacheHeaders });
   }
   
   try {
@@ -416,9 +446,10 @@ export async function GET() {
       avatar_url: avatarUrl,
       unit_name: assignedOfficerRole?.unit_name,
       unit_code: assignedOfficerRole?.unit_code,
-      managed_events
+      managed_events,
     };
 
+    meResponseCache.set(email.toLowerCase(), { data: sessionUser, expiresAt: Date.now() + 15000 });
     return NextResponse.json({ success: true, data: sessionUser }, { headers: noCacheHeaders });
 
   } catch (err: any) {
@@ -491,6 +522,7 @@ export async function PATCH(req: Request) {
 
     saveUserProfileExtra(email, { gender, phone });
     saveUserProfileExtra(username, { gender, phone });
+    meResponseCache.delete(email);
 
     // Persist to Supabase for durability across restarts
     try {

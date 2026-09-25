@@ -5,9 +5,15 @@ import { verifyDynamicToken } from '@/lib/utils/dynamic-qr';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
-import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
+import { getAuthContext, parseDemoCookie, extractUserFromCookies } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, type EventSession } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
+
+// In-memory cache for event metadata during high-concurrency check-in spikes (TTL: 5 seconds)
+const eventCheckinCache = new Map<string, { event: any; meta: any; expiresAt: number }>();
+
+// In-memory maintenance cache (TTL: 30 seconds)
+let selfCheckinMaintenanceCache = { enabled: false, timestamp: 0 };
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +28,14 @@ export async function POST(req: Request) {
           const parsed = parseDemoCookie(demoCookie.value);
           email = parsed?.email || null;
         }
+
+        // Fast-path: Check cookies directly for active unexpired session if authContext was slow
+        if (!email) {
+          const localUser = extractUserFromCookies(cookieStore.getAll());
+          if (localUser?.email) {
+            email = localUser.email;
+          }
+        }
       } catch {}
     }
 
@@ -30,8 +44,8 @@ export async function POST(req: Request) {
     }
     const supabase = await createAdminClient();
 
-    // Rate Limiting: Max 5 attempts per 10 seconds per student to prevent spam / brute-force
-    const rateLimit = checkRateLimit(`checkin_self_${email}`, 5, 10000);
+    // Rate Limiting: 15 attempts per 10 seconds per student (prevent blocking students if camera scans multiple frames)
+    const rateLimit = checkRateLimit(`checkin_self_${email}`, 15, 10000);
     if (!rateLimit.allowed) {
       return NextResponse.json({
         success: false,
@@ -46,14 +60,23 @@ export async function POST(req: Request) {
       });
     }
 
-    // Check maintenance mode
-    const { data: maintenanceSetting } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'maintenance_mode')
-      .single();
+    // Check maintenance mode with 30s in-memory cache to save database queries
+    const now = Date.now();
+    let isMaintenance = selfCheckinMaintenanceCache.enabled;
+    if (now - selfCheckinMaintenanceCache.timestamp >= 30000) {
+      try {
+        const { data: maintenanceSetting } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'maintenance_mode')
+          .single();
 
-    if (maintenanceSetting && maintenanceSetting.value === true) {
+        isMaintenance = maintenanceSetting?.value === true || maintenanceSetting?.value === 'true';
+        selfCheckinMaintenanceCache = { enabled: isMaintenance, timestamp: now };
+      } catch {}
+    }
+
+    if (isMaintenance) {
       return NextResponse.json({
         success: false,
         error: 'Hệ thống đang bảo trì, tạm thời ngưng tiếp nhận điểm danh',
@@ -91,28 +114,44 @@ export async function POST(req: Request) {
 
     // Find student info
     let mssv = extractMSSV(email);
-    // Parallelize studentUser, event, and getEventMeta
-    const [
-      { data: studentUser },
-      { data: event, error: eventErr },
-      meta
-    ] = await Promise.all([
-      supabase
-        .from('users')
-        .select('mssv, full_name, class_id')
-        .eq('email', email)
-        .single(),
-      supabase
-        .from('events')
-        .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
-        .eq('event_id', eventId)
-        .single(),
-      getEventMeta(supabase, eventId)
-    ]);
+
+    // Use in-memory event cache (5s TTL) during high-concurrency check-in rushes
+    let cachedEventInfo = eventCheckinCache.get(eventId);
+    if (!cachedEventInfo || cachedEventInfo.expiresAt <= Date.now()) {
+      const [{ data: fetchedEvent }, fetchedMeta] = await Promise.all([
+        supabase
+          .from('events')
+          .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
+          .eq('event_id', eventId)
+          .maybeSingle(),
+        getEventMeta(supabase, eventId),
+      ]);
+      if (fetchedEvent) {
+        cachedEventInfo = {
+          event: fetchedEvent,
+          meta: fetchedMeta,
+          expiresAt: Date.now() + 5000,
+        };
+        eventCheckinCache.set(eventId, cachedEventInfo);
+      }
+    }
+
+    const event = cachedEventInfo?.event;
+    const meta = cachedEventInfo?.meta || {};
+
+    const { data: studentUser } = await supabase
+      .from('users')
+      .select('mssv, full_name, class_id')
+      .eq('email', email)
+      .maybeSingle();
 
     if (eventId === 'bbfe063b-c18f-4003-afe1-665334d13743' && (!meta.max_participants || meta.max_participants <= 130)) {
       meta.max_participants = 230;
       saveEventMeta(supabase, eventId, { max_participants: 230 }).catch(() => {});
+    }
+
+    if (!event) {
+      return NextResponse.json({ success: false, error: 'Sự kiện không tồn tại' }, { status: 404 });
     }
 
     if (studentUser?.mssv) {
@@ -134,10 +173,6 @@ export async function POST(req: Request) {
         error: '📱 Bạn chưa cập nhật Số Điện Thoại / Zalo!\n\n👉 Cách cập nhật:\n1. Bấm vào ảnh đại diện (góc trên bên phải)\n2. Chọn "Hồ Sơ Cá Nhân"\n3. Nhập Số Điện Thoại / Zalo của bạn\n4. Bấm "Lưu"\n5. Quay lại quét mã QR để điểm danh\n\n⚠️ Đây là yêu cầu bắt buộc để BTC có thể liên hệ bạn khi cần.',
         require_phone: true,
       }, { status: 400 });
-    }
-
-    if (eventErr || !event) {
-      return NextResponse.json({ success: false, error: 'Sự kiện không tồn tại' }, { status: 404 });
     }
 
     if (event.status === 'closed' || event.is_active === false) {

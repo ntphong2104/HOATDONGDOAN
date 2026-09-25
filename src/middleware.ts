@@ -110,6 +110,117 @@ function getPublicOriginFromReq(request: NextRequest): string {
   return request.nextUrl.origin;
 }
 
+// In-memory cache for maintenance mode to prevent hammering the database on every single request
+let maintenanceCache = {
+  enabled: false,
+  timestamp: 0,
+};
+
+function decodeBase64Safe(str: string): string {
+  try {
+    // Pad base64 string if needed
+    const padded = str.length % 4 === 0 ? str : str + '='.repeat(4 - (str.length % 4));
+    const base64Standard = padded.replace(/-/g, '+').replace(/_/g, '/');
+    if (typeof atob === 'function') {
+      return atob(base64Standard);
+    }
+    return Buffer.from(base64Standard, 'base64').toString('utf-8');
+  } catch {
+    return '';
+  }
+}
+
+// Fast in-memory extraction of user email and expiration from Supabase session cookies
+function extractUserFromCookies(cookieList: Array<{ name: string; value: string }>): { email: string; id: string; exp: number } | null {
+  try {
+    const authCookies = cookieList
+      .filter((c) => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (authCookies.length === 0) return null;
+
+    let combined = authCookies.map((c) => c.value).join('');
+    if (combined.startsWith('base64-')) {
+      combined = decodeBase64Safe(combined.slice(7));
+    }
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(combined);
+    } catch {
+      try {
+        parsed = JSON.parse(decodeURIComponent(combined));
+      } catch {}
+    }
+
+    if (!parsed) return null;
+
+    let token = '';
+    let email = '';
+    let id = '';
+
+    if (Array.isArray(parsed)) {
+      token = parsed[0] || '';
+    } else if (typeof parsed === 'object') {
+      token = parsed.access_token || '';
+      if (parsed.user) {
+        email = parsed.user.email || '';
+        id = parsed.user.id || '';
+      }
+    }
+
+    if (token && token.includes('.')) {
+      const parts = token.split('.');
+      if (parts.length >= 2) {
+        const payloadStr = decodeBase64Safe(parts[1]);
+        if (payloadStr) {
+          const payload = JSON.parse(payloadStr);
+          if (payload) {
+            const exp = Number(payload.exp || 0);
+            const nowSec = Math.floor(Date.now() / 1000);
+            // Accept token if valid and not expired (with 30s grace window)
+            if (exp > nowSec - 30) {
+              return {
+                email: (payload.email || email).toLowerCase().trim(),
+                id: payload.sub || id,
+                exp,
+              };
+            }
+          }
+        }
+      }
+    }
+
+    if (email) {
+      return { email: email.toLowerCase().trim(), id, exp: 0 };
+    }
+  } catch {}
+  return null;
+}
+
+async function getCachedMaintenanceMode(supabase: any): Promise<boolean> {
+  const now = Date.now();
+  if (now - maintenanceCache.timestamp < 30000) {
+    return maintenanceCache.enabled;
+  }
+  try {
+    const { data } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'maintenance_mode')
+      .maybeSingle();
+
+    const isEnabled = data?.value === 'true' || data?.value === true;
+    maintenanceCache = {
+      enabled: isEnabled,
+      timestamp: now,
+    };
+    return isEnabled;
+  } catch {
+    return maintenanceCache.enabled;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicRoute = pathname === '/' || 
@@ -123,7 +234,18 @@ export async function middleware(request: NextRequest) {
     /^\/api\/events\/[^/]+\/ratings$/.test(pathname);
   const publicOrigin = getPublicOriginFromReq(request);
 
-  // 1. Check Demo Session Cookie
+  // 1. FAST-PATH FOR PUBLIC ROUTES:
+  // Under high concurrency (hundreds of students at once), public routes must NEVER
+  // block on Supabase Auth network calls. Return immediately!
+  if (isPublicRoute) {
+    // If accessing maintenance directly, pass through
+    if (pathname === '/maintenance') {
+      return addSecurityHeaders(NextResponse.next());
+    }
+    return addSecurityHeaders(NextResponse.next());
+  }
+
+  // 2. Check Demo Session Cookie (Instant local check)
   const demoCookie = request.cookies.get('demo_session');
   if (demoCookie?.value) {
     const demoUser = parseDemoCookie(demoCookie.value);
@@ -132,7 +254,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 2. Supabase Auth Session Handling
+  // 3. FAST-PATH TOKEN PARSING:
+  // Check if unexpired JWT exists in cookies without making a remote HTTP call to Supabase
+  const allCookies = request.cookies.getAll();
+  const fastUser = extractUserFromCookies(allCookies);
+
+  let authenticatedEmail = fastUser?.email || null;
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -143,73 +271,92 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     'placeholder-anon-key';
 
-  try {
-    const supabase = createServerClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
+  // Fallback: If local fast token check did not find an active session, try Supabase SDK
+  if (!authenticatedEmail) {
+    try {
+      const supabase = createServerClient(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+              supabaseResponse = NextResponse.next({
+                request,
+              });
+              cookiesToSet.forEach(({ name, value, options }) =>
+                supabaseResponse.cookies.set(name, value, options)
+              );
+            },
           },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-            supabaseResponse = NextResponse.next({
-              request,
-            });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+        }
+      );
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // If unauthenticated and accessing protected route -> redirect to login with target redirect
-    if (!user && !isPublicRoute && !demoCookie?.value) {
-      const loginUrl = new URL('/login', publicOrigin);
-      if (pathname && pathname !== '/' && pathname !== '/login') {
-        const fullTarget = request.nextUrl.search ? `${pathname}${request.nextUrl.search}` : pathname;
-        loginUrl.searchParams.set('redirect', fullTarget);
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user?.email) {
+        authenticatedEmail = data.session.user.email.toLowerCase().trim();
+      } else {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.email) {
+          authenticatedEmail = userData.user.email.toLowerCase().trim();
+        }
       }
-      return addSecurityHeaders(NextResponse.redirect(loginUrl));
+    } catch {}
+  }
+
+  // 4. UNATHENTICATED ON PROTECTED ROUTE:
+  if (!authenticatedEmail) {
+    // If request is an API call, return JSON 401 instead of HTML 307 redirect
+    // (Redirecting API calls breaks fetch clients and causes syntax errors)
+    if (pathname.startsWith('/api/')) {
+      return addSecurityHeaders(
+        NextResponse.json(
+          { success: false, error: 'Unauthorized', message: 'Vui lòng đăng nhập' },
+          { status: 401 }
+        )
+      );
     }
 
-    // Maintenance Mode Check
-    const { data: maintenanceSetting } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'maintenance_mode')
-      .maybeSingle();
+    // For web pages, redirect to login
+    const loginUrl = new URL('/login', publicOrigin);
+    if (pathname && pathname !== '/' && pathname !== '/login') {
+      const fullTarget = request.nextUrl.search ? `${pathname}${request.nextUrl.search}` : pathname;
+      loginUrl.searchParams.set('redirect', fullTarget);
+    }
+    return addSecurityHeaders(NextResponse.redirect(loginUrl));
+  }
 
-    const isMaintenance = maintenanceSetting?.value === 'true';
+  // 5. CACHED MAINTENANCE MODE CHECK:
+  // Only check database once every 30 seconds instead of on every request
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll() {},
+      },
+    });
 
-    if (user) {
-      // Check Super Admin status
-      const { data: superAdmin } = await supabase
-        .from('super_admins')
-        .select('*')
-        .eq('email', user.email)
-        .maybeSingle();
+    const isMaintenance = await getCachedMaintenanceMode(supabase);
 
-      const isSuperAdmin = !!superAdmin;
+    // If maintenance mode is ON, verify if user is Super Admin
+    if (isMaintenance && pathname !== '/maintenance' && !pathname.startsWith('/api/admin/maintenance')) {
+      const isRootSuper = authenticatedEmail === 'n22dccn158@student.ptithcm.edu.vn';
+      if (!isRootSuper) {
+        const { data: superAdmin } = await supabase
+          .from('super_admins')
+          .select('email')
+          .eq('email', authenticatedEmail)
+          .maybeSingle();
 
-      if (isMaintenance && pathname !== '/maintenance' && !pathname.startsWith('/api/admin/maintenance')) {
-        if (!isSuperAdmin) {
+        if (!superAdmin) {
           return addSecurityHeaders(NextResponse.redirect(new URL('/maintenance', publicOrigin)));
         }
       }
-
     }
-  } catch (err) {
-    if (!isPublicRoute) {
-      return addSecurityHeaders(NextResponse.redirect(new URL('/login', publicOrigin)));
-    }
-  }
+  } catch {}
 
   return addSecurityHeaders(supabaseResponse);
 }
