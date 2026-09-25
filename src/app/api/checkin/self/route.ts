@@ -5,7 +5,7 @@ import { verifyDynamicToken } from '@/lib/utils/dynamic-qr';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
-import { getAuthContext, parseDemoCookie, extractUserFromCookies } from '@/lib/supabase/auth-helper';
+import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, type EventSession } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 
@@ -18,26 +18,7 @@ let selfCheckinMaintenanceCache = { enabled: false, timestamp: 0 };
 export async function POST(req: Request) {
   try {
     const auth = await getAuthContext();
-    let email = auth?.email || null;
-
-    if (!email) {
-      try {
-        const cookieStore = await cookies();
-        const demoCookie = cookieStore.get('demo_session');
-        if (demoCookie?.value) {
-          const parsed = parseDemoCookie(demoCookie.value);
-          email = parsed?.email || null;
-        }
-
-        // Fast-path: Check cookies directly for active unexpired session if authContext was slow
-        if (!email) {
-          const localUser = extractUserFromCookies(cookieStore.getAll());
-          if (localUser?.email) {
-            email = localUser.email;
-          }
-        }
-      } catch {}
-    }
+    const email = auth?.email || null;
 
     if (!email) {
       return NextResponse.json({ success: false, error: 'Vui lòng đăng nhập để điểm danh' }, { status: 401 });

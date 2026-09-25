@@ -3,18 +3,49 @@ import { createServerClient } from '@supabase/ssr';
 
 const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
 
-function parseDemoCookie(cookieVal: string): any | null {
+async function parseDemoCookie(cookieVal: string): Promise<any | null> {
   if (!cookieVal) return null;
+  // SECURITY: Only allow demo mode in development or when explicitly enabled
+  const isDemoAllowed = process.env.ENABLE_DEMO_MODE === 'true' || process.env.NODE_ENV === 'development';
+  if (!isDemoAllowed) return null;
+
   try {
     let str = cookieVal.trim();
     if (str.startsWith('"') && str.endsWith('"')) {
       str = str.slice(1, -1);
     }
     const lastDot = str.lastIndexOf('.');
-    if (lastDot !== -1 && str.length - lastDot === 65) {
-      str = str.slice(0, lastDot);
+    if (lastDot === -1 || str.length - lastDot !== 65) {
+      return null;
     }
 
+    const payload = str.slice(0, lastDot);
+    const signature = str.slice(lastDot + 1);
+
+    // Verify HMAC-SHA256 signature using standard Web Crypto API (Edge-compatible)
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(COOKIE_SECRET);
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const sigBytes = new Uint8Array(
+      signature.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
+    );
+    const isValid = await crypto.subtle.verify(
+      'HMAC',
+      cryptoKey,
+      sigBytes,
+      encoder.encode(payload)
+    );
+
+    if (!isValid) return null;
+
+    str = payload;
     for (let i = 0; i < 3; i++) {
       try {
         const parsed = JSON.parse(str);
@@ -130,8 +161,18 @@ function decodeBase64Safe(str: string): string {
   }
 }
 
-// Fast in-memory extraction of user email and expiration from Supabase session cookies
-function extractUserFromCookies(cookieList: Array<{ name: string; value: string }>): { email: string; id: string; exp: number } | null {
+// In-memory cache for middleware verified tokens: tokenHash -> { email, exp }
+const verifiedMiddlewareTokenCache = new Map<string, { email: string; exp: number }>();
+
+async function hashTokenEdge(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function extractRawTokenFromCookies(cookieList: Array<{ name: string; value: string }>): string | null {
   try {
     const authCookies = cookieList
       .filter((c) => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
@@ -155,44 +196,11 @@ function extractUserFromCookies(cookieList: Array<{ name: string; value: string 
 
     if (!parsed) return null;
 
-    let token = '';
-    let email = '';
-    let id = '';
-
-    if (Array.isArray(parsed)) {
-      token = parsed[0] || '';
-    } else if (typeof parsed === 'object') {
-      token = parsed.access_token || '';
-      if (parsed.user) {
-        email = parsed.user.email || '';
-        id = parsed.user.id || '';
-      }
+    if (Array.isArray(parsed) && typeof parsed[0] === 'string') {
+      return parsed[0];
     }
-
-    if (token && token.includes('.')) {
-      const parts = token.split('.');
-      if (parts.length >= 2) {
-        const payloadStr = decodeBase64Safe(parts[1]);
-        if (payloadStr) {
-          const payload = JSON.parse(payloadStr);
-          if (payload) {
-            const exp = Number(payload.exp || 0);
-            const nowSec = Math.floor(Date.now() / 1000);
-            // Accept token if valid and not expired (with 30s grace window)
-            if (exp > nowSec - 30) {
-              return {
-                email: (payload.email || email).toLowerCase().trim(),
-                id: payload.sub || id,
-                exp,
-              };
-            }
-          }
-        }
-      }
-    }
-
-    if (email) {
-      return { email: email.toLowerCase().trim(), id, exp: 0 };
+    if (typeof parsed === 'object' && typeof parsed.access_token === 'string') {
+      return parsed.access_token;
     }
   } catch {}
   return null;
@@ -245,21 +253,35 @@ export async function middleware(request: NextRequest) {
     return addSecurityHeaders(NextResponse.next());
   }
 
-  // 2. Check Demo Session Cookie (Instant local check)
+  // 2. Check Demo Session Cookie (Instant cryptographically verified check)
   const demoCookie = request.cookies.get('demo_session');
   if (demoCookie?.value) {
-    const demoUser = parseDemoCookie(demoCookie.value);
+    const demoUser = await parseDemoCookie(demoCookie.value);
     if (demoUser?.email) {
       return addSecurityHeaders(NextResponse.next());
     }
   }
 
-  // 3. FAST-PATH TOKEN PARSING:
-  // Check if unexpired JWT exists in cookies without making a remote HTTP call to Supabase
+  // 3. CRYPTOGRAPHIC TOKEN VERIFICATION WITH IN-MEMORY VERIFIED TOKEN CACHE:
   const allCookies = request.cookies.getAll();
-  const fastUser = extractUserFromCookies(allCookies);
+  const rawToken = extractRawTokenFromCookies(allCookies);
 
-  let authenticatedEmail = fastUser?.email || null;
+  let authenticatedEmail: string | null = null;
+  let tokenHash: string | null = null;
+
+  if (rawToken && rawToken.includes('.')) {
+    try {
+      tokenHash = await hashTokenEdge(rawToken);
+      const cached = verifiedMiddlewareTokenCache.get(tokenHash);
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (cached && cached.exp > nowSec + 5) {
+        // Fast-path: Token signature was ALREADY cryptographically verified! Sub-millisecond return!
+        authenticatedEmail = cached.email;
+      } else if (cached) {
+        verifiedMiddlewareTokenCache.delete(tokenHash);
+      }
+    } catch {}
+  }
 
   let supabaseResponse = NextResponse.next({
     request,
@@ -271,7 +293,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     'placeholder-anon-key';
 
-  // Fallback: If local fast token check did not find an active session, try Supabase SDK
+  // 4. Cache-miss: Cryptographically verify token with Supabase Auth SDK
   if (!authenticatedEmail) {
     try {
       const supabase = createServerClient(
@@ -295,13 +317,39 @@ export async function middleware(request: NextRequest) {
         }
       );
 
-      const { data } = await supabase.auth.getSession();
-      if (data?.session?.user?.email) {
-        authenticatedEmail = data.session.user.email.toLowerCase().trim();
-      } else {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user?.email) {
-          authenticatedEmail = userData.user.email.toLowerCase().trim();
+      const { data, error } = rawToken
+        ? await supabase.auth.getUser(rawToken)
+        : await supabase.auth.getUser();
+
+      if (!error && data?.user?.email) {
+        authenticatedEmail = data.user.email.toLowerCase().trim();
+
+        // If we have tokenHash, cache this verified session for 60s
+        if (tokenHash) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          let exp = nowSec + 60;
+          try {
+            const parts = rawToken!.split('.');
+            if (parts.length >= 2) {
+              const payload = JSON.parse(decodeBase64Safe(parts[1]));
+              if (payload?.exp && typeof payload.exp === 'number') {
+                exp = payload.exp;
+              }
+            }
+          } catch {}
+
+          const ttlSec = Math.min(Math.max(exp - nowSec, 5), 60);
+          verifiedMiddlewareTokenCache.set(tokenHash, {
+            email: authenticatedEmail,
+            exp: nowSec + ttlSec,
+          });
+
+          // Cleanup stale cache
+          if (verifiedMiddlewareTokenCache.size > 2000) {
+            for (const [k, v] of verifiedMiddlewareTokenCache.entries()) {
+              if (v.exp < nowSec) verifiedMiddlewareTokenCache.delete(k);
+            }
+          }
         }
       }
     } catch {}

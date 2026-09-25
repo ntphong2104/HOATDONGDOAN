@@ -8,6 +8,10 @@ const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
 
 export function parseDemoCookie(cookieVal: string): any | null {
   if (!cookieVal) return null;
+  // SECURITY: Only honor demo sessions in development or if explicitly enabled
+  const isDemoAllowed = process.env.ENABLE_DEMO_MODE === 'true' || process.env.NODE_ENV === 'development';
+  if (!isDemoAllowed) return null;
+
   try {
     let str = cookieVal.trim();
     if (str.startsWith('"') && str.endsWith('"')) {
@@ -16,25 +20,28 @@ export function parseDemoCookie(cookieVal: string): any | null {
 
     // Extract payload and signature — format: {json_payload}.{64-char-hex-hmac}
     const lastDot = str.lastIndexOf('.');
-    if (lastDot !== -1 && str.length - lastDot === 65) {
-      const payload = str.slice(0, lastDot);
-      const signature = str.slice(lastDot + 1);
-
-      // Verify HMAC signature before trusting the payload
-      const expectedSig = crypto
-        .createHmac('sha256', COOKIE_SECRET)
-        .update(payload)
-        .digest('hex');
-
-      const sigBuf = Buffer.from(signature, 'hex');
-      const expBuf = Buffer.from(expectedSig, 'hex');
-      if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-        // Invalid signature — cookie may have been tampered with
-        return null;
-      }
-
-      str = payload;
+    if (lastDot === -1 || str.length - lastDot !== 65) {
+      // Must have valid 64-character HMAC hex signature
+      return null;
     }
+
+    const payload = str.slice(0, lastDot);
+    const signature = str.slice(lastDot + 1);
+
+    // Verify HMAC signature before trusting the payload
+    const expectedSig = crypto
+      .createHmac('sha256', COOKIE_SECRET)
+      .update(payload)
+      .digest('hex');
+
+    const sigBuf = Buffer.from(signature, 'hex');
+    const expBuf = Buffer.from(expectedSig, 'hex');
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      // Invalid signature — cookie may have been tampered with
+      return null;
+    }
+
+    str = payload;
 
     for (let i = 0; i < 3; i++) {
       try {
@@ -65,8 +72,16 @@ export interface AuthContext {
   managed_events?: any[];
 }
 
-// In-memory cache for AuthContext to avoid redundant DB queries on every request
+// In-memory cache for AuthContext to avoid redundant DB queries on every request (TTL: 60s)
 const authContextCache = new Map<string, { ctx: AuthContext; expiresAt: number }>();
+
+export function invalidateAuthContextCache(email?: string) {
+  if (email) {
+    authContextCache.delete(email.toLowerCase().trim());
+  } else {
+    authContextCache.clear();
+  }
+}
 
 function decodeBase64Safe(str: string): string {
   try {
@@ -81,7 +96,17 @@ function decodeBase64Safe(str: string): string {
   }
 }
 
-export function extractUserFromCookies(cookieList: Array<{ name: string; value: string }>): { email: string; id: string; exp: number } | null {
+// In-memory cache for cryptographically verified tokens: tokenHash -> VerifiedUser
+interface VerifiedTokenCacheItem {
+  email: string;
+  id: string;
+  exp: number; // Unix timestamp in seconds
+  verifiedAt: number; // ms
+}
+
+const verifiedTokenCache = new Map<string, VerifiedTokenCacheItem>();
+
+export function extractRawTokenFromCookies(cookieList: Array<{ name: string; value: string }>): string | null {
   try {
     const authCookies = cookieList
       .filter((c) => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
@@ -105,43 +130,89 @@ export function extractUserFromCookies(cookieList: Array<{ name: string; value: 
 
     if (!parsed) return null;
 
-    let token = '';
-    let email = '';
-    let id = '';
-
-    if (Array.isArray(parsed)) {
-      token = parsed[0] || '';
-    } else if (typeof parsed === 'object') {
-      token = parsed.access_token || '';
-      if (parsed.user) {
-        email = parsed.user.email || '';
-        id = parsed.user.id || '';
-      }
+    if (Array.isArray(parsed) && typeof parsed[0] === 'string') {
+      return parsed[0];
     }
+    if (typeof parsed === 'object' && typeof parsed.access_token === 'string') {
+      return parsed.access_token;
+    }
+  } catch {}
+  return null;
+}
 
-    if (token && token.includes('.')) {
-      const parts = token.split('.');
-      if (parts.length >= 2) {
-        const payloadStr = decodeBase64Safe(parts[1]);
-        if (payloadStr) {
-          const payload = JSON.parse(payloadStr);
-          if (payload) {
-            const exp = Number(payload.exp || 0);
-            const nowSec = Math.floor(Date.now() / 1000);
-            if (exp > nowSec - 30) {
-              return {
-                email: (payload.email || email).toLowerCase().trim(),
-                id: payload.sub || id,
-                exp,
-              };
-            }
+export async function getVerifiedUserFromCookies(
+  supabase: any,
+  cookieList: Array<{ name: string; value: string }>
+): Promise<{ email: string; id: string } | null> {
+  const rawToken = extractRawTokenFromCookies(cookieList);
+  if (!rawToken || !rawToken.includes('.')) return null;
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  // 1. FAST-PATH: Check cryptographic verified token cache (instant sub-millisecond return!)
+  const cached = verifiedTokenCache.get(tokenHash);
+  if (cached) {
+    if (cached.exp > nowSec + 5) {
+      return { email: cached.email, id: cached.id };
+    }
+    verifiedTokenCache.delete(tokenHash);
+  }
+
+  // 2. CACHE-MISS: Verify token cryptographic signature with Supabase Auth
+  try {
+    const { data, error } = await supabase.auth.getUser(rawToken);
+    if (!error && data?.user?.email) {
+      const email = data.user.email.toLowerCase().trim();
+      const id = data.user.id || '';
+
+      // Determine expiration from token payload if available
+      let exp = nowSec + 60;
+      try {
+        const parts = rawToken.split('.');
+        if (parts.length >= 2) {
+          const payload = JSON.parse(decodeBase64Safe(parts[1]));
+          if (payload?.exp && typeof payload.exp === 'number') {
+            exp = payload.exp;
           }
         }
-      }
-    }
+      } catch {}
 
-    if (email) {
-      return { email: email.toLowerCase().trim(), id, exp: 0 };
+      // Cache verified token: TTL = min(token remaining, 60s)
+      const ttlSec = Math.min(Math.max(exp - nowSec, 5), 60);
+      verifiedTokenCache.set(tokenHash, {
+        email,
+        id,
+        exp: nowSec + ttlSec,
+        verifiedAt: Date.now(),
+      });
+
+      // Cleanup cache if too large
+      if (verifiedTokenCache.size > 2000) {
+        const nowMs = Date.now();
+        for (const [k, v] of verifiedTokenCache.entries()) {
+          if (v.exp * 1000 < nowMs) verifiedTokenCache.delete(k);
+        }
+      }
+
+      return { email, id };
+    }
+  } catch (err) {
+    console.error('Cryptographic token verification error:', err);
+  }
+
+  return null;
+}
+
+// Backwards-compatible safe wrapper: only returns user if token was cryptographically verified
+export function extractUserFromCookies(cookieList: Array<{ name: string; value: string }>): { email: string; id: string; exp: number } | null {
+  try {
+    const rawToken = extractRawTokenFromCookies(cookieList);
+    if (!rawToken) return null;
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const cached = verifiedTokenCache.get(tokenHash);
+    if (cached && cached.exp > Math.floor(Date.now() / 1000)) {
+      return { email: cached.email, id: cached.id, exp: cached.exp };
     }
   } catch {}
   return null;
@@ -150,6 +221,8 @@ export function extractUserFromCookies(cookieList: Array<{ name: string; value: 
 export async function getAuthContext(): Promise<AuthContext | null> {
   let email: string | null = null;
   let explicitTier: UserTier | null = null;
+
+  const supabase = await createClient();
 
   try {
     const cookieStore = await cookies();
@@ -178,10 +251,10 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       }
     }
 
-    // Fast-path: Check cookies directly for active unexpired session
-    const fastUser = extractUserFromCookies(cookieStore.getAll());
-    if (fastUser?.email) {
-      email = fastUser.email;
+    // Cryptographic Token Verification with High-Speed Verified Token Cache
+    const verifiedUser = await getVerifiedUserFromCookies(supabase, cookieStore.getAll());
+    if (verifiedUser?.email) {
+      email = verifiedUser.email;
     }
   } catch {}
 
@@ -192,8 +265,6 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       return cached.ctx;
     }
   }
-
-  const supabase = await createClient();
 
   if (!email) {
     try {

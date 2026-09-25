@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/auth-helper';
 
 export async function GET() {
   try {
@@ -17,15 +18,10 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const auth = await getAuthContext();
+  if (!auth) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
-  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-
-  const email = session.user.email!;
-  const { data: superAdmin } = await supabase.from('super_admins').select('email').eq('email', email).single();
-
-  if (!superAdmin) {
+  if (!auth.isSuperAdmin && auth.tier !== 'super_admin') {
     return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
   }
 

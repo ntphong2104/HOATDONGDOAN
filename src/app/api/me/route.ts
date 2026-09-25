@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officers-store';
-import { parseDemoCookie, extractUserFromCookies } from '@/lib/supabase/auth-helper';
+import { parseDemoCookie, getVerifiedUserFromCookies, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 import { getUserProfileExtra, saveUserProfileExtra } from '@/lib/constants/user-profile-store';
 import type { SessionUser, UserTier } from '@/lib/types';
 
@@ -121,15 +121,18 @@ export async function GET() {
     // Non-request context fallback
   }
 
-  // Fast-path: Check cookies directly for active unexpired session
+  const supabase = await createClient();
+  const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : supabase) || supabase;
+
+  // Cryptographic Fast-path: Check verified token cache
   let email: string | null = null;
   let authMetadata: any = null;
 
   try {
     const cookieStore = await cookies();
-    const localUser = extractUserFromCookies(cookieStore.getAll());
-    if (localUser?.email) {
-      email = localUser.email;
+    const verifiedUser = await getVerifiedUserFromCookies(supabase, cookieStore.getAll());
+    if (verifiedUser?.email) {
+      email = verifiedUser.email;
     }
   } catch {}
 
@@ -140,9 +143,6 @@ export async function GET() {
       return NextResponse.json({ success: true, data: cached.data }, { headers: noCacheHeaders });
     }
   }
-
-  const supabase = await createClient();
-  const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : supabase) || supabase;
 
   if (!email && typeof supabase.auth.getSession === 'function') {
     try {
@@ -523,6 +523,7 @@ export async function PATCH(req: Request) {
     saveUserProfileExtra(email, { gender, phone });
     saveUserProfileExtra(username, { gender, phone });
     meResponseCache.delete(email);
+    invalidateAuthContextCache(email);
 
     // Persist to Supabase for durability across restarts
     try {

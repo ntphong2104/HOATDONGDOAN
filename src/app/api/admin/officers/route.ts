@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 import { sanitizeInput } from '@/lib/security/sanitizer';
 import {
   ROOT_SUPER_ADMIN,
@@ -282,6 +282,8 @@ export async function POST(req: Request) {
       await supabase.from('users').update({ tier: roleTier }).eq('email', emailRaw);
     } catch {}
 
+    invalidateAuthContextCache(emailRaw);
+
     return NextResponse.json({
       success: true,
       message: `Đã cấp quyền "${roleTier.toUpperCase()}" cho cán bộ ${officialName} (${emailRaw}) thành công!`,
@@ -350,6 +352,8 @@ export async function DELETE(req: Request) {
     try {
       await supabase.from('users').update({ tier: 'user' }).eq('email', emailRaw);
     } catch {}
+
+    invalidateAuthContextCache(emailRaw);
 
     return NextResponse.json({
       success: true,
