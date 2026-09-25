@@ -673,7 +673,7 @@ export default function EventBulkImportModal({
 
               {parsedStudents.length > 0 && parsedStudents.some((s) => s.full_name || s.class_id || s.phone) && (
                 <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', fontSize: '0.8rem', color: '#047857', fontWeight: 600 }}>
-                  ✨ Đã nhận diện thông tin chi tiết của <strong>{parsedStudents.length}</strong> sinh viên từ file Excel!
+                  Đã nhận diện thông tin chi tiết của <strong>{parsedStudents.length}</strong> sinh viên từ file Excel!
                 </div>
               )}
             </div>
@@ -687,7 +687,7 @@ export default function EventBulkImportModal({
                 </span>
                 {rejectedCount > 0 && (
                   <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>
-                    ⚠ {rejectedCount} mã bị loại (sai format)
+                    {rejectedCount} mã bị loại (sai format)
                   </span>
                 )}
               </div>
@@ -758,7 +758,7 @@ export default function EventBulkImportModal({
               >
                 <div className={styles.capacityHeader}>
                   <span>
-                    🎯 Giới hạn sức chứa:{' '}
+                    Giới hạn sức chứa:{' '}
                     <strong>{previewData.summary.capacity.max_participants}</strong> sinh viên
                   </span>
                   <span>
@@ -811,13 +811,13 @@ export default function EventBulkImportModal({
 
                 {previewData.summary.capacity.is_overflow ? (
                   <div style={{ color: '#b91c1c', fontSize: '0.8rem', fontWeight: 700 }}>
-                    ⚠️ VƯỢT QUÁ SỨC CHỨA SỰ KIỆN: Dự kiến sẽ có{' '}
+                    VƯỢT QUÁ SỨC CHỨA SỰ KIỆN: Dự kiến sẽ có{' '}
                     {previewData.summary.capacity.projected_total} người tham gia (Vượt quá{' '}
                     {previewData.summary.capacity.overflow_count} chỗ). Vui lòng cân nhắc trước khi nạp!
                   </div>
                 ) : (
                   <div style={{ color: '#047857', fontSize: '0.8rem', fontWeight: 600 }}>
-                    ✓ Sức chứa khả dụng: Sau khi nạp sẽ còn{' '}
+                    Sức chứa khả dụng: Sau khi nạp sẽ còn{' '}
                     <strong>{previewData.summary.capacity.remaining_slots}</strong> chỗ trống.
                   </div>
                 )}
@@ -911,7 +911,7 @@ export default function EventBulkImportModal({
                   color: '#991b1b',
                 }}
               >
-                <strong>❌ Các mã bị loại trừ do không đúng format MSSV PTIT:</strong>
+                <strong>Các mã bị loại trừ do không đúng format MSSV PTIT:</strong>
                 <div style={{ marginTop: '0.2rem', fontFamily: 'monospace' }}>
                   {previewData.rejected_mssvs.join(', ')}
                   {previewData.rejected > previewData.rejected_mssvs.length &&
@@ -939,7 +939,7 @@ export default function EventBulkImportModal({
                     previewFilter === 'warnings' ? styles.filterTabBtnActive : ''
                   }`}
                 >
-                  ⚠️ Cần lưu ý ({previewData.warnings_count})
+                  Cần lưu ý ({previewData.warnings_count})
                 </button>
                 {mode === 'checkin' && previewData.summary.already_checked_in > 0 && (
                   <button
@@ -949,7 +949,7 @@ export default function EventBulkImportModal({
                       previewFilter === 'already_checked_in' ? styles.filterTabBtnActive : ''
                     }`}
                   >
-                    🔄 Đã điểm danh ({previewData.summary.already_checked_in})
+                    Đã điểm danh ({previewData.summary.already_checked_in})
                   </button>
                 )}
                 {mode === 'checkin' && previewData.summary.not_registered > 0 && (
@@ -960,7 +960,7 @@ export default function EventBulkImportModal({
                       previewFilter === 'not_registered' ? styles.filterTabBtnActive : ''
                     }`}
                   >
-                    ⚡ Chưa đăng ký ({previewData.summary.not_registered})
+                    Chưa đăng ký ({previewData.summary.not_registered})
                   </button>
                 )}
                 <button
@@ -970,7 +970,7 @@ export default function EventBulkImportModal({
                     previewFilter === 'ready' ? styles.filterTabBtnActive : ''
                   }`}
                 >
-                  ✅ Hợp lệ ({previewData.students.filter((s) => s.warnings.length === 0).length})
+                  Hợp lệ ({previewData.students.filter((s) => s.warnings.length === 0).length})
                 </button>
               </div>
 
@@ -983,7 +983,6 @@ export default function EventBulkImportModal({
                     style={{ borderColor: '#fcd34d', background: '#fffbeb', color: '#b45309' }}
                     title="Bỏ qua các bạn đã điểm danh trước đó để tránh ghi đè"
                   >
-                    <TrashIcon size={13} color="#b45309" />
                     Bỏ qua {previewData.summary.already_checked_in} bạn đã điểm danh
                   </button>
                 )}
@@ -994,7 +993,6 @@ export default function EventBulkImportModal({
                     className={`${styles.quickBtn} ${styles.quickBtnDanger}`}
                     title="Loại bỏ tất cả các dòng có cảnh báo"
                   >
-                    <TrashIcon size={13} color="#b91c1c" />
                     Loại bỏ tất cả cảnh báo
                   </button>
                 )}
@@ -1053,7 +1051,7 @@ export default function EventBulkImportModal({
                                 fontStyle: s.full_name === s.mssv ? 'italic' : 'normal',
                               }}
                             >
-                              {s.full_name === s.mssv ? '⚠️ Chưa có họ tên' : s.full_name}
+                              {s.full_name === s.mssv ? 'Chưa có họ tên' : s.full_name}
                             </td>
                             <td
                               style={{
@@ -1083,7 +1081,7 @@ export default function EventBulkImportModal({
                                   ))
                                 ) : (
                                   <span className={`${styles.badgePill} ${styles.badgeSuccess}`}>
-                                    ✓ Hợp lệ
+                                    Hợp lệ
                                   </span>
                                 )}
                               </div>
@@ -1168,7 +1166,7 @@ export default function EventBulkImportModal({
                       cursor: 'pointer',
                     }}
                   >
-                    ✓ Bỏ qua đã điểm danh & Nạp (
+                    Bỏ qua đã điểm danh & Nạp (
                     {previewData.students.filter((s) => !s.is_already_checked_in).length} SV)
                   </button>
                 )}

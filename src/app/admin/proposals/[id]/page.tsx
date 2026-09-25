@@ -750,19 +750,19 @@ export default function ProposalDetailPage({
             borderRadius: '16px',
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>📅 Ngày tổ chức</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Ngày tổ chức</span>
               <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
                 {new Date(proposal.start_date).toLocaleDateString('vi-VN')}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>⏰ Thời gian</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Thời gian</span>
               <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
                 {proposal.start_time?.slice(0, 5)} – {proposal.end_time?.slice(0, 5)}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>👥 Quy mô</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Quy mô</span>
               <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
                 {(proposal.participant_count || 0) + (proposal.volunteer_count || 0) + (proposal.organizer_count || 0)} người
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>
@@ -772,16 +772,16 @@ export default function ProposalDetailPage({
             </div>
             {/* ── BẢNG TÓM TẮT LỊCH TRÌNH & ĐỊA ĐIỂM CÁC CA ── */}
             <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>📍 Lịch Trình & Địa Điểm Các Ca</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Lịch Trình & Địa Điểm Các Ca</span>
               {proposal.sessions && proposal.sessions.length > 0 ? (
                 <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ background: '#f1f5f9' }}>
                         <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Ca</th>
-                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>📅 Ngày</th>
-                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>⏰ Giờ</th>
-                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>📍 Địa điểm / Phòng</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Ngày</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Giờ</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Địa điểm / Phòng</th>
                       </tr>
                     </thead>
                     <tbody>

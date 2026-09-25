@@ -477,7 +477,7 @@ export default function ScannerPage() {
                 autoFocus
                 autoComplete="off"
                 spellCheck={false}
-                placeholder="👉 Đặt con trỏ tại đây & bấm máy quét mã vạch..."
+                placeholder="Đặt con trỏ tại đây & bấm máy quét mã vạch..."
                 onKeyDown={handleExternalKeyDown}
                 onBlur={() => {
                   setTimeout(() => {

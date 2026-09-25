@@ -92,17 +92,17 @@ export default function DynamicEventQRModal({
         const earlyMins = String(openCheckinTime.getMinutes()).padStart(2, '0');
         setSessionTimeStatus({
           status: 'early',
-          message: `⏳ Chưa đến giờ điểm danh (Cổng mở lúc ${earlyHours}:${earlyMins})`,
+          message: `Chưa đến giờ điểm danh (Cổng mở lúc ${earlyHours}:${earlyMins})`,
         });
       } else if (now > closeCheckinTime) {
         setSessionTimeStatus({
           status: 'late',
-          message: `🔴 Đã quá hạn điểm danh (Kết thúc lúc ${endTimeStr})`,
+          message: `Đã quá hạn điểm danh (Kết thúc lúc ${endTimeStr})`,
         });
       } else {
         setSessionTimeStatus({
           status: 'open',
-          message: `🟢 Đang trong khung giờ điểm danh (${startTimeStr} - ${endTimeStr})`,
+          message: `Đang trong khung giờ điểm danh (${startTimeStr} - ${endTimeStr})`,
         });
       }
     } catch {

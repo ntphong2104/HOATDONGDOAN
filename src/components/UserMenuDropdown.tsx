@@ -328,7 +328,7 @@ export default function UserMenuDropdown({
                 <li className={styles.divider} />
                 <li style={{ padding: '0.35rem 1rem 0.15rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                    📋 Sự kiện tôi quản lý
+                    Sự kiện tôi quản lý
                   </span>
                 </li>
                 {currentUser.managed_events

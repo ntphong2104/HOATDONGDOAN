@@ -194,19 +194,19 @@ export const OFFICIAL_UNITS: OfficialUnit[] = [
 
 export const OFFICIAL_UNIT_GROUPS = [
   {
-    group: '── 🏢 5 KHOA ĐÀO TẠO (MƯỢN PHÒNG TRỰC TIẾP) ──',
+    group: '── 5 KHOA ĐÀO TẠO (MƯỢN PHÒNG TRỰC TIẾP) ──',
     items: ACADEMIC_FACULTIES.map((u) => u.name),
   },
   {
-    group: '── 🏛️ ĐOÀN THANH NIÊN HỌC VIỆN ──',
+    group: '── ĐOÀN THANH NIÊN HỌC VIỆN ──',
     items: ['Đoàn TNCS Học Viện Cơ Sở TP.HCM'],
   },
   {
-    group: '── 🏛️ 8 LIÊN CHI ĐOÀN (LCĐ) ──',
+    group: '── 8 LIÊN CHI ĐOÀN (LCĐ) ──',
     items: OFFICIAL_UNITS.filter((u) => u.code.startsWith('LCD_') || u.type.includes('LCĐ')).map((u) => u.name),
   },
   {
-    group: '── 🎯 16 CÂU LẠC BỘ / ĐỘI / NHÓM ──',
+    group: '── 16 CÂU LẠC BỘ / ĐỘI / NHÓM ──',
     items: OFFICIAL_UNITS.filter((u) => !u.code.startsWith('LCD_') && !u.type.includes('LCĐ') && !u.type.includes('Khoa')).map((u) => u.name),
   },
 ];

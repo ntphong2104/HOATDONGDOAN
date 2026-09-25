@@ -13,6 +13,7 @@ import DataTable from '@/components/DataTable';
 import {
   UsersIcon,
   CalendarIcon,
+  CheckIcon,
   CheckCircleIcon,
   ClockIcon,
   SettingsIcon,
@@ -557,7 +558,7 @@ function SuperAdminContent() {
     if (p.status === 'pending') {
       return {
         type: 'pending' as const,
-        label: `⏳ Chờ: ${getStageLabel(p.current_stage)}`,
+        label: `● Chờ: ${getStageLabel(p.current_stage)}`,
         badgeBg: '#fffbeb',
         badgeColor: '#b45309',
         badgeBorder: '#fde68a',
@@ -1682,7 +1683,7 @@ function SuperAdminContent() {
                   }}
                 >
                   <span>Tất cả đơn vị (Toàn trường)</span>
-                  {selectedUnitFilter === null && <span>✓</span>}
+                  {selectedUnitFilter === null && <CheckIcon size={14} />}
                 </button>
 
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', padding: '0.4rem 0.65rem 0.15rem' }}>
@@ -1714,7 +1715,7 @@ function SuperAdminContent() {
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {unit.name}
                     </span>
-                    {selectedUnitFilter === unit.name && <span>✓</span>}
+                    {selectedUnitFilter === unit.name && <CheckIcon size={14} />}
                   </button>
                 ))}
 
@@ -1747,7 +1748,7 @@ function SuperAdminContent() {
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {unit.name}
                     </span>
-                    {selectedUnitFilter === unit.name && <span>✓</span>}
+                    {selectedUnitFilter === unit.name && <CheckIcon size={14} />}
                   </button>
                 ))}
               </div>
@@ -2511,7 +2512,7 @@ function SuperAdminContent() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  ⏳ Chờ duyệt ({proposalCounts.pending})
+                  Chờ duyệt ({proposalCounts.pending})
                 </button>
                 <button
                   type="button"
@@ -2529,7 +2530,7 @@ function SuperAdminContent() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  🟢 Đang mở sự kiện ({proposalCounts.active})
+                  Đang mở sự kiện ({proposalCounts.active})
                 </button>
                 <button
                   type="button"
@@ -2547,7 +2548,7 @@ function SuperAdminContent() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  ⚪ Đã kết thúc / Đóng ({proposalCounts.closed})
+                  Đã kết thúc / Đóng ({proposalCounts.closed})
                 </button>
               </div>
 
@@ -2617,7 +2618,7 @@ function SuperAdminContent() {
                                           fontSize: '0.75rem',
                                         }}
                                       >
-                                        <span>📄 File Kế Hoạch ↗</span>
+                                        <span>File Kế Hoạch ↗</span>
                                       </a>
                                     </>
                                   )}
@@ -2630,13 +2631,13 @@ function SuperAdminContent() {
                                 {new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time.slice(0, 5)} - {p.end_time.slice(0, 5)})
                               </span>
                               <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.8rem' }}>
-                                👥 {p.total_count} người ({p.participant_count} SV, {p.volunteer_count} CTV)
+                                {p.total_count} người ({p.participant_count} SV, {p.volunteer_count} CTV)
                               </span>
                             </div>
                           </td>
                           <td>
                             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>
-                              📍 {p.room_name || 'Hội trường / Phòng họp'}
+                              {p.room_name || 'Hội trường / Phòng họp'}
                             </span>
                           </td>
                           <td style={{ textAlign: 'center' }}>
@@ -2880,28 +2881,28 @@ function SuperAdminContent() {
                         boxSizing: 'border-box',
                       }}
                     >
-                      <optgroup label="🏢 Khoa Đào Tạo (5 Khoa)">
+                      <optgroup label="Khoa Đào Tạo (5 Khoa)">
                         {ACADEMIC_FACULTIES.map((k) => (
                           <option key={k.code} value={k.code}>
                             {k.name} ({k.code})
                           </option>
                         ))}
                       </optgroup>
-                      <optgroup label="🏛️ Liên Chi Đoàn Khoa (8 LCĐ)">
+                      <optgroup label="Liên Chi Đoàn Khoa (8 LCĐ)">
                         {unitsList.filter(u => u.type.includes('LCĐ') || u.code.startsWith('LCD_')).map((u) => (
                           <option key={u.code} value={u.code}>
                             {u.name} ({u.code})
                           </option>
                         ))}
                       </optgroup>
-                      <optgroup label="🎯 Câu Lạc Bộ / Đội / Nhóm (16 CLB)">
+                      <optgroup label="Câu Lạc Bộ / Đội / Nhóm (16 CLB)">
                         {unitsList.filter(u => !u.type.includes('LCĐ') && !u.code.startsWith('LCD_') && !u.type.includes('Đoàn')).map((u) => (
                           <option key={u.code} value={u.code}>
                             {u.name} ({u.code})
                           </option>
                         ))}
                       </optgroup>
-                      <option value="__NEW_CUSTOM__">➕ Thêm Đơn Vị / LCĐ / Khoa Mới...</option>
+                      <option value="__NEW_CUSTOM__">+ Thêm Đơn Vị / LCĐ / Khoa Mới...</option>
                     </select>
                   </div>
                 )}
@@ -3099,7 +3100,7 @@ function SuperAdminContent() {
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    {cleaningExpiredRoles ? 'Đang dọn dẹp...' : '⚡ Thu hồi quyền SK đã kết thúc (> 3 ngày)'}
+                    {cleaningExpiredRoles ? 'Đang dọn dẹp...' : 'Thu hồi quyền SK đã kết thúc (> 3 ngày)'}
                   </button>
                 </div>
 
@@ -5021,7 +5022,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     title="Quét và chốt sổ tất cả các sự kiện đã kết thúc từ 3 ngày trước"
                   >
                     <ClockIcon size={16} />
-                    <span>{reconcilingAll ? 'Đang chốt sổ toàn trường...' : '⚡ Chốt Sổ Sự Kiện Đã Qua (> 3 Ngày)'}</span>
+                    <span>{reconcilingAll ? 'Đang chốt sổ toàn trường...' : 'Chốt Sổ Sự Kiện Đã Qua (> 3 Ngày)'}</span>
                   </button>
                 </div>
               </div>
@@ -5502,7 +5503,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         </option>
                       ))}
                     </optgroup>
-                    <option value="CUSTOM">-- ✍️ Nhập email cá nhân / Khác --</option>
+                    <option value="CUSTOM">-- Nhập email cá nhân / Khác --</option>
                   </select>
                 </div>
 
@@ -5533,7 +5534,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   />
                   {selectedUnitCode !== 'CUSTOM' && (
                     <p style={{ margin: '0.35rem 0 0', fontSize: '0.775rem', color: '#16a34a', fontWeight: 600 }}>
-                      ✓ Email chính thức của: <strong>{unitsList.find(u => u.code === selectedUnitCode)?.name}</strong>
+                      Email chính thức của: <strong>{unitsList.find(u => u.code === selectedUnitCode)?.name}</strong>
                     </p>
                   )}
                 </div>
@@ -5565,8 +5566,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           checked={selectedRoleType === 'event_admin'}
                           onChange={() => setSelectedRoleType('event_admin')}
                         />
-                        <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#1e40af' }}>
-                          👑 Admin Sự Kiện
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem', color: '#1e40af' }}>
+                          <ShieldCheckIcon size={15} color="#1e40af" /> Admin Sự Kiện
                         </span>
                       </div>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '1.5rem' }}>
@@ -5639,7 +5640,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
                     }}
                   >
-                    {submittingRole ? 'Đang gán...' : '✓ Xác Nhận Gán Quyền'}
+                    {submittingRole ? 'Đang gán...' : 'Xác Nhận Gán Quyền'}
                   </button>
                 </div>
               </form>

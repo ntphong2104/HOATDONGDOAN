@@ -17,6 +17,7 @@ import {
   CloseIcon,
   CalendarIcon,
   AlertTriangleIcon,
+  MapPinIcon,
 } from '@/components/icons';
 import type { HistoryItem } from '@/lib/types';
 import styles from './StudentDashboardClient.module.css';
@@ -591,7 +592,8 @@ export default function StudentDashboardClient({
                     </div>
                     {ev.location && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span>📍 {ev.location}</span>
+                        <MapPinIcon size={14} color="#2563eb" />
+                        <span>{ev.location}</span>
                       </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>

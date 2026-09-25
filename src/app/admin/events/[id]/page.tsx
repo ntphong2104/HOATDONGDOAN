@@ -960,7 +960,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
             border: '1.5px solid #fecaca',
             color: '#b91c1c',
           }}>
-            <p style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>⛔ Bạn không có quyền xem sự kiện này</p>
+            <p style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>Bạn không có quyền xem sự kiện này</p>
             <p style={{ fontSize: '0.875rem', margin: 0, color: '#64748b' }}>Chỉ Super Admin, Đoàn Học Viện hoặc đơn vị tạo sự kiện mới có quyền truy cập.</p>
           </div>
         </main>
@@ -1164,7 +1164,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               <LockIcon size={22} color="#dc2626" />
               <div>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>
-                  🔒 Sự kiện này đã kết thúc quá 3 ngày và đã được chốt sổ toàn hệ thống
+                  Sự kiện này đã kết thúc quá 3 ngày và đã được chốt sổ toàn hệ thống
                 </div>
                 <div style={{ fontSize: '0.82rem', color: '#b91c1c', marginTop: '0.2rem' }}>
                   {isSuperAdmin
@@ -1329,7 +1329,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      <span>{copied ? '✓ Đã sao chép link Khán giả' : 'Sao Chép Link Khán Giả'}</span>
+                      <span>{copied ? 'Đã sao chép link Khán giả' : 'Sao Chép Link Khán Giả'}</span>
                     </button>
 
                     {/* Secondary Actions Row */}
@@ -1500,7 +1500,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      <span>{copiedRecruitment ? '✓ Đã sao chép link Tuyển CTV' : 'Sao Chép Link Tuyển CTV'}</span>
+                      <span>{copiedRecruitment ? 'Đã sao chép link Tuyển CTV' : 'Sao Chép Link Tuyển CTV'}</span>
                     </button>
 
                     {/* Secondary Actions Row */}

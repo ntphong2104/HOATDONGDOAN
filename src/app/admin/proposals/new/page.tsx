@@ -271,7 +271,7 @@ export default function NewProposalPage() {
 
     // Xác nhận trước khi nộp
     const confirmed = window.confirm(
-      '📋 Bạn có chắc chắn muốn GỬI TRÌNH KẾ HOẠCH này?\n\nSau khi gửi, kế hoạch sẽ được chuyển đến các cấp phê duyệt tương ứng.'
+      'Bạn có chắc chắn muốn GỬI TRÌNH KẾ HOẠCH này?\n\nSau khi gửi, kế hoạch sẽ được chuyển đến các cấp phê duyệt tương ứng.'
     );
     if (!confirmed) return;
 
@@ -281,7 +281,7 @@ export default function NewProposalPage() {
     }
 
     if (!planUrl || !planUrl.trim()) {
-      setErrorMessage('🚫 Vui lòng đính kèm Link File Kế Hoạch Chi Tiết (Google Drive / PDF) trước khi nộp.');
+      setErrorMessage('Vui lòng đính kèm Link File Kế Hoạch Chi Tiết (Google Drive / PDF) trước khi nộp.');
       return;
     }
 
@@ -293,7 +293,7 @@ export default function NewProposalPage() {
     const minAllowedTime = new Date(now.getTime() - 5 * 60 * 1000);
 
     if (startDatetime < minAllowedTime) {
-      setErrorMessage('🚫 Thời gian bắt đầu sự kiện không thể ở trong quá khứ! V vui lòng chọn ngày và giờ hiện tại hoặc tương lai.');
+      setErrorMessage('Thời gian bắt đầu sự kiện không thể ở trong quá khứ! Vui lòng chọn ngày và giờ hiện tại hoặc tương lai.');
       return;
     }
 
@@ -490,7 +490,7 @@ export default function NewProposalPage() {
                       fontWeight: 600,
                     }}
                   >
-                    <span>⚡ Kế hoạch của cấp <strong>Khoa</strong> sẽ được ưu tiên chuyển thẳng đến <strong>Phòng TC-HC-QT</strong> phê duyệt cấp phòng mà không qua bước Đoàn trường.</span>
+                    <span>Kế hoạch của cấp <strong>Khoa</strong> sẽ được ưu tiên chuyển thẳng đến <strong>Phòng TC-HC-QT</strong> phê duyệt cấp phòng mà không qua bước Đoàn trường.</span>
                   </div>
                 )}
               </div>
@@ -672,7 +672,7 @@ export default function NewProposalPage() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>👔 Ban tổ chức (BTC)</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#334155' }}>Ban tổ chức (BTC)</span>
                   <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.2rem 0.55rem', borderRadius: '8px', background: '#fee2e2', color: '#991b1b' }}>
                     Điều hành
                   </span>
@@ -862,7 +862,7 @@ export default function NewProposalPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        ⚡ Tự Động Chia Theo Ngày
+                        Tự Động Chia Theo Ngày
                       </button>
                     )}
                     <button
@@ -1183,7 +1183,7 @@ export default function NewProposalPage() {
                   fontWeight: 700,
                 }}
               >
-                <span>🏢</span>
+                <BuildingIcon size={18} color="#166534" />
                 <span>
                   <strong>ĐƠN VỊ KHOA ĐÀO TẠO:</strong> Hồ sơ mượn địa điểm của Khoa được rút gọn, miễn qua Đoàn TN & CTSV, chuyển thẳng tới <strong>Phòng. TC-HC-QT</strong>.
                 </span>

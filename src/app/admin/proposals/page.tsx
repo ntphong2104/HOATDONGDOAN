@@ -458,7 +458,7 @@ export default function ProposalsListPage() {
                           textDecoration: 'none',
                         }}
                       >
-                        <span>📄 File Kế Hoạch ↗</span>
+                        <span>File Kế Hoạch ↗</span>
                       </a>
                     )}
                   </div>

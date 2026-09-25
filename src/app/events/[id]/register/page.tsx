@@ -233,12 +233,12 @@ export default function EventRegisterPage({
                 style={{ color: registrationWindow?.isOpen ? '#16a34a' : '#dc2626' }}
               >
                 {registrationWindow?.isOpen
-                  ? '🟢 Đang mở đăng ký'
+                  ? '● Đang mở đăng ký'
                   : event.is_registration_open === false || event.max_participants === 0
-                  ? '🔴 Không mở đăng ký'
+                  ? '● Không mở đăng ký'
                   : event.max_participants && totalRegistered >= event.max_participants
-                  ? '🔴 Đã đủ chỉ tiêu (Đã đóng)'
-                  : '🔴 Đã đóng đăng ký'}
+                  ? '● Đã đủ chỉ tiêu (Đã đóng)'
+                  : '● Đã đóng đăng ký'}
               </span>
             </div>
           </div>
@@ -299,7 +299,7 @@ export default function EventRegisterPage({
                       boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)',
                     }}
                   >
-                    <span>👉 Xem Cổng Tuyển Dụng Ban Chuyên Trách / CTV</span>
+                    <span>Xem Cổng Tuyển Dụng Ban Chuyên Trách / CTV</span>
                   </Link>
                 </div>
               )}
@@ -424,7 +424,7 @@ export default function EventRegisterPage({
                               transition: 'all 0.15s ease',
                             }}
                           >
-                            <span>👨</span> Nam
+                            Nam
                           </button>
                           <button
                             type="button"
@@ -444,7 +444,7 @@ export default function EventRegisterPage({
                               transition: 'all 0.15s ease',
                             }}
                           >
-                            <span>👩</span> Nữ
+                            Nữ
                           </button>
                         </div>
                       </div>

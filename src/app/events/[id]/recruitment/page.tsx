@@ -254,7 +254,7 @@ export default function EventRecruitmentPage({
                 className={styles.infoValue}
                 style={{ color: registrationWindow?.isOpen ? '#16a34a' : '#dc2626' }}
               >
-                {registrationWindow?.isOpen ? '🟢 Đang mở nhận đơn' : '🔴 Đã đóng cổng'}
+                {registrationWindow?.isOpen ? '● Đang mở nhận đơn' : '● Đã đóng cổng'}
               </span>
             </div>
           </div>
@@ -323,10 +323,10 @@ export default function EventRecruitmentPage({
                 }}
               >
                 {myRegistration.review_status === 'accepted'
-                  ? '✓ ĐÃ TRÚNG TUYỂN CTV'
+                  ? 'ĐÃ TRÚNG TUYỂN CTV'
                   : myRegistration.review_status === 'rejected'
-                  ? '✕ ĐÃ TỪ CHỐI'
-                  : '⏳ ĐƠN ĐANG CHỜ PHÊ DUYỆT'}
+                  ? 'ĐÃ TỪ CHỐI'
+                  : 'ĐƠN ĐANG CHỜ PHÊ DUYỆT'}
               </span>
 
               <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a', fontSize: '1.15rem', fontWeight: 800 }}>
@@ -535,7 +535,7 @@ export default function EventRecruitmentPage({
                             transition: 'all 0.15s ease',
                           }}
                         >
-                          <span>👨</span> Nam
+                          Nam
                         </button>
                         <button
                           type="button"
@@ -555,7 +555,7 @@ export default function EventRecruitmentPage({
                             transition: 'all 0.15s ease',
                           }}
                         >
-                          <span>👩</span> Nữ
+                          Nữ
                         </button>
                       </div>
                     </div>
