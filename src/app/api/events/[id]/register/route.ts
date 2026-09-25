@@ -26,7 +26,8 @@ export async function GET(
     regExtras,
     { data: reg },
     { data: penalty },
-    { data: list }
+    { data: list },
+    { data: checkinList }
   ] = await Promise.all([
     supabase.from('events').select('*').eq('event_id', resolvedParams.id).maybeSingle(),
     getEventMeta(supabase, resolvedParams.id),
@@ -40,6 +41,9 @@ export async function GET(
       : Promise.resolve({ data: null }),
     isAdmin
       ? supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id).order('created_at', { ascending: false })
+      : Promise.resolve({ data: null }),
+    isAdmin
+      ? supabase.from('check_ins').select('mssv').eq('event_id', resolvedParams.id)
       : Promise.resolve({ data: null })
   ]);
 
@@ -102,6 +106,9 @@ export async function GET(
 
     const userProfileMap = new Map((userProfiles || []).map((u) => [u.mssv.toUpperCase(), u]));
 
+    const checkInMssvSet = new Set((checkinList || []).map((c: any) => (c.mssv || '').toUpperCase().trim()));
+    const needsAttendedUpdate: string[] = [];
+
     allRegistrations = (list || []).map((r) => {
       const extra = regExtras[(r.mssv || '').toUpperCase()] || {};
       const uProfile = userProfileMap.get((r.mssv || '').toUpperCase());
@@ -112,9 +119,16 @@ export async function GET(
         : uProfile?.full_name || r.full_name || r.mssv;
 
       const realClass = uProfile?.class_id || r.class_id || 'PTIT-HCM';
+      const cleanMssv = (r.mssv || '').toUpperCase().trim();
+      const isAttended = Boolean(r.attended || checkInMssvSet.has(cleanMssv));
+
+      if (isAttended && !r.attended) {
+        needsAttendedUpdate.push(r.mssv);
+      }
 
       return {
         ...r,
+        attended: isAttended,
         full_name: realName,
         class_id: realClass,
         department_id: extra.department_id || r.department_id || null,
@@ -125,6 +139,16 @@ export async function GET(
         review_status: extra.review_status || r.review_status || (r.role_type === 'volunteer' ? 'pending' : 'accepted'),
       };
     });
+
+    if (needsAttendedUpdate.length > 0) {
+      supabase
+        .from('event_registrations')
+        .update({ attended: true })
+        .eq('event_id', resolvedParams.id)
+        .in('mssv', needsAttendedUpdate)
+        .then(() => {})
+        .catch(() => {});
+    }
   }
 
   return NextResponse.json({

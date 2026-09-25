@@ -391,6 +391,19 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   const volunteerRegistrations = validRegistrations.filter(isVolunteerApplicant);
   const participantRegistrations = validRegistrations.filter((r) => !isVolunteerApplicant(r));
 
+  const attendedMssvSet = useMemo(
+    () => new Set(checkins.map((c) => (c.mssv || '').toUpperCase().trim())),
+    [checkins]
+  );
+  const isStudentAttended = useCallback(
+    (r: EventRegistration) => Boolean(r.attended || attendedMssvSet.has((r.mssv || '').toUpperCase().trim())),
+    [attendedMssvSet]
+  );
+  const unattendedRegistrations = useMemo(
+    () => validRegistrations.filter((r) => !isStudentAttended(r)),
+    [validRegistrations, isStudentAttended]
+  );
+
   const handleExportCTVExcel = async () => {
     const ctvList = volunteerRegistrations;
     if (ctvList.length === 0) {
@@ -1851,7 +1864,7 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                 onClick={() => setActiveTab('noshow')}
                 className={`${styles.tabButton} ${activeTab === 'noshow' ? styles.tabButtonActive : styles.tabButtonInactive}`}
               >
-                Chưa Điểm Danh ({validRegistrations.filter(r => !r.attended).length})
+                Chưa Điểm Danh ({unattendedRegistrations.length})
               </button>
 
               {(isApproverRole || ratings.length > 0) && (
@@ -2786,8 +2799,8 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                   {
                     key: 'attended',
                     label: 'Trạng thái tham gia',
-                    render: (val: boolean) =>
-                      val ? (
+                    render: (_val: boolean, row: any) =>
+                      isStudentAttended(row) ? (
                         <span
                           style={{
                             display: 'inline-flex',
@@ -3504,15 +3517,15 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.65rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
-                  Chưa Điểm Danh ({validRegistrations.filter(r => !r.attended).length})
+                  Chưa Điểm Danh ({unattendedRegistrations.length})
                 </h3>
-                {validRegistrations.filter(r => !r.attended).length > 0 && (
+                {unattendedRegistrations.length > 0 && (
                   <button
                     type="button"
                     onClick={async () => {
                       try {
                         const XLSX = await import('xlsx');
-                        const noshowList = registrations.filter((r: any) => !r.attended && isValidMSSV(r.mssv || ''));
+                        const noshowList = unattendedRegistrations;
                         const data = noshowList.map((r: any, i: number) => ({
                           'STT': i + 1,
                           'MSSV': r.mssv || '',
@@ -3628,7 +3641,7 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                   },
                 },
               ]}
-              data={validRegistrations.filter(r => !r.attended)}
+              data={unattendedRegistrations}
               searchable
               searchPlaceholder="Tìm kiếm MSSV, Họ tên..."
               emptyMessage="Không có sinh viên nào vắng mặt."
