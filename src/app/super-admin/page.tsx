@@ -27,6 +27,7 @@ import {
   TrashIcon,
   QrCodeIcon,
   KeyIcon,
+  SpinnerIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS, ACADEMIC_FACULTIES, type OfficialUnit } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
@@ -143,6 +144,32 @@ function SuperAdminContent() {
   const [selectedStudentMssv, setSelectedStudentMssv] = useState<string | null>(null);
   const [studentHistoryData, setStudentHistoryData] = useState<any | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Manual student entry states
+  const [studentInputMode, setStudentInputMode] = useState<'table' | 'single'>('table');
+  const [manualSingleStudent, setManualSingleStudent] = useState({
+    mssv: '',
+    full_name: '',
+    class_id: '',
+    email: '',
+    gender: '',
+    phone: '',
+  });
+  const [manualTableRows, setManualTableRows] = useState<Array<{
+    id: string;
+    mssv: string;
+    full_name: string;
+    class_id: string;
+    email: string;
+    gender: string;
+    phone: string;
+  }>>([
+    { id: '1', mssv: '', full_name: '', class_id: '', email: '', gender: '', phone: '' },
+    { id: '2', mssv: '', full_name: '', class_id: '', email: '', gender: '', phone: '' },
+    { id: '3', mssv: '', full_name: '', class_id: '', email: '', gender: '', phone: '' },
+  ]);
+  const [submittingManualStudent, setSubmittingManualStudent] = useState(false);
+  const [deletingStudentMssv, setDeletingStudentMssv] = useState<string | null>(null);
 
   useEffect(() => {
     if (tabParam) {
@@ -796,6 +823,179 @@ function SuperAdminContent() {
       console.error(e);
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const handleAddTableRow = (count = 1) => {
+    const newRows = Array.from({ length: count }, () => ({
+      id: Math.random().toString(36).substring(2, 9),
+      mssv: '',
+      full_name: '',
+      class_id: '',
+      email: '',
+      gender: '',
+      phone: '',
+    }));
+    setManualTableRows((prev) => [...prev, ...newRows]);
+  };
+
+  const handleRemoveTableRow = (id: string) => {
+    setManualTableRows((prev) => {
+      if (prev.length <= 1) {
+        return [{ id: '1', mssv: '', full_name: '', class_id: '', email: '', gender: '', phone: '' }];
+      }
+      return prev.filter((r) => r.id !== id);
+    });
+  };
+
+  const handleResetTable = () => {
+    setManualTableRows([
+      { id: '1', mssv: '', full_name: '', class_id: '', email: '', gender: '', phone: '' },
+      { id: '2', mssv: '', full_name: '', class_id: '', email: '', gender: '', phone: '' },
+      { id: '3', mssv: '', full_name: '', class_id: '', email: '', gender: '', phone: '' },
+    ]);
+  };
+
+  const handleTableFieldChange = (id: string, field: string, value: string) => {
+    setManualTableRows((prev) =>
+      prev.map((row) => {
+        if (row.id !== id) return row;
+        const updated = { ...row, [field]: value };
+        if (field === 'mssv') {
+          const upperMssv = value.toUpperCase().trim();
+          updated.mssv = upperMssv;
+          // Auto-generate email if empty or previously matching standard ptithcm format
+          if (!row.email || row.email.endsWith('@student.ptithcm.edu.vn')) {
+            updated.email = upperMssv ? `${upperMssv.toLowerCase()}@student.ptithcm.edu.vn` : '';
+          }
+        } else if (field === 'class_id') {
+          updated.class_id = value.toUpperCase();
+        }
+        return updated;
+      })
+    );
+  };
+
+  const handleSubmitManualTable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const filledRows = manualTableRows.filter(
+      (r) => r.mssv.trim() || r.full_name.trim() || r.class_id.trim()
+    );
+
+    if (filledRows.length === 0) {
+      showToast('Vui lòng điền thông tin ít nhất một sinh viên vào bảng', 'error');
+      return;
+    }
+
+    // Validate all filled rows
+    for (let i = 0; i < filledRows.length; i++) {
+      const r = filledRows[i];
+      if (!r.mssv.trim()) {
+        showToast(`Dòng ${i + 1}: MSSV không được để trống`, 'error');
+        return;
+      }
+      if (!r.full_name.trim()) {
+        showToast(`Dòng ${i + 1} (${r.mssv}): Họ và tên không được để trống`, 'error');
+        return;
+      }
+      if (!r.class_id.trim()) {
+        showToast(`Dòng ${i + 1} (${r.mssv}): Lớp không được để trống`, 'error');
+        return;
+      }
+    }
+
+    setSubmittingManualStudent(true);
+    try {
+      const res = await fetch('/api/admin/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ students: filledRows }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || `Đã lưu thành công ${filledRows.length} sinh viên!`, 'success');
+        handleResetTable();
+        fetchStudents();
+        fetchStats();
+      } else {
+        showToast(data.error || 'Lỗi khi lưu dữ liệu sinh viên', 'error');
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast('Lỗi kết nối máy chủ, vui lòng thử lại sau', 'error');
+    } finally {
+      setSubmittingManualStudent(false);
+    }
+  };
+
+  const handleSubmitSingleStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { mssv, full_name, class_id, email, gender, phone } = manualSingleStudent;
+    if (!mssv.trim() || !full_name.trim() || !class_id.trim()) {
+      showToast('Vui lòng điền đầy đủ MSSV, Họ tên và Lớp', 'error');
+      return;
+    }
+
+    setSubmittingManualStudent(true);
+    try {
+      const res = await fetch('/api/admin/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mssv: mssv.trim().toUpperCase(),
+          full_name: full_name.trim(),
+          class_id: class_id.trim().toUpperCase(),
+          email: email.trim().toLowerCase() || `${mssv.trim().toLowerCase()}@student.ptithcm.edu.vn`,
+          gender: gender ? gender.trim() : undefined,
+          phone: phone ? phone.trim() : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'Đã thêm sinh viên thành công!', 'success');
+        setManualSingleStudent({
+          mssv: '',
+          full_name: '',
+          class_id: '',
+          email: '',
+          gender: '',
+          phone: '',
+        });
+        fetchStudents();
+        fetchStats();
+      } else {
+        showToast(data.error || 'Lỗi khi thêm sinh viên', 'error');
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast('Lỗi kết nối máy chủ, vui lòng thử lại sau', 'error');
+    } finally {
+      setSubmittingManualStudent(false);
+    }
+  };
+
+  const handleDeleteStudent = async (mssvToDelete: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa sinh viên ${mssvToDelete} khỏi hệ thống không?`)) {
+      return;
+    }
+    setDeletingStudentMssv(mssvToDelete);
+    try {
+      const res = await fetch(`/api/admin/students?mssv=${encodeURIComponent(mssvToDelete)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || `Đã xóa sinh viên ${mssvToDelete}!`, 'success');
+        fetchStudents();
+        fetchStats();
+      } else {
+        showToast(data.error || 'Không thể xóa sinh viên', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Lỗi kết nối khi xóa sinh viên', 'error');
+    } finally {
+      setDeletingStudentMssv(null);
     }
   };
 
@@ -3553,12 +3753,498 @@ function SuperAdminContent() {
         {/* TAB 4: QUẢN LÝ SINH VIÊN */}
         {activeTab === 'students' && (
           <div className={styles.tabContent}>
-            {/* Nạp danh sách sinh viên */}
+            {/* Thêm sinh viên thủ công (Bảng điền & Biểu mẫu) */}
+            <section className={styles.section}>
+              <div className={styles.sectionHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h2 className={styles.sectionTitle}>
+                    <UsersIcon size={20} color="#2563eb" />
+                    Thêm & Nạp Sinh Viên Thủ Công
+                  </h2>
+                  <p className={styles.sectionSubtitle}>
+                    Nạp nhanh sinh viên vào hệ thống mà không cần file Excel. Hỗ trợ nhập trực tiếp theo bảng hoặc từng sinh viên.
+                  </p>
+                </div>
+                {/* Mode Selector Tabs */}
+                <div style={{ display: 'flex', gap: '0.4rem', background: '#f1f5f9', padding: '0.25rem', borderRadius: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setStudentInputMode('table')}
+                    style={{
+                      padding: '0.4rem 0.85rem',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: studentInputMode === 'table' ? '#ffffff' : 'transparent',
+                      color: studentInputMode === 'table' ? '#1d4ed8' : '#64748b',
+                      boxShadow: studentInputMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <span>📋 Bảng điền nhiều SV</span>
+                    {manualTableRows.filter((r) => r.mssv.trim() || r.full_name.trim()).length > 0 && (
+                      <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '10px', fontSize: '0.72rem' }}>
+                        {manualTableRows.filter((r) => r.mssv.trim() || r.full_name.trim()).length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStudentInputMode('single')}
+                    style={{
+                      padding: '0.4rem 0.85rem',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: studentInputMode === 'single' ? '#ffffff' : 'transparent',
+                      color: studentInputMode === 'single' ? '#1d4ed8' : '#64748b',
+                      boxShadow: studentInputMode === 'single' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    }}
+                  >
+                    👤 Biểu mẫu điền 1 SV
+                  </button>
+                </div>
+              </div>
+
+              {/* MODE 1: BẢNG ĐIỀN NHIỀU SINH VIÊN */}
+              {studentInputMode === 'table' && (
+                <form onSubmit={handleSubmitManualTable}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.75rem',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    background: '#f8fafc',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                  }}>
+                    <span style={{ fontSize: '0.82rem', color: '#475569' }}>
+                      💡 <strong>Mẹo:</strong> Gõ MSSV thì hệ thống tự động viết hoa và tự sinh email sinh viên.
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleAddTableRow(1)}
+                        style={{
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          color: '#334155',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                        }}
+                      >
+                        <PlusIcon size={13} />
+                        <span>+ 1 Dòng</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddTableRow(5)}
+                        style={{
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          color: '#334155',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        + 5 Dòng
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetTable}
+                        style={{
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          color: '#64748b',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Làm mới
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={submittingManualStudent}
+                        style={{
+                          padding: '0.35rem 0.95rem',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        {submittingManualStudent ? (
+                          <>
+                            <SpinnerIcon size={14} />
+                            <span>Đang lưu...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircleIcon size={14} />
+                            <span>Lưu vào hệ thống ({manualTableRows.filter((r) => r.mssv.trim() && r.full_name.trim()).length} SV)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ overflowX: 'auto', border: '1px solid #cbd5e1', borderRadius: '10px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '40px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>#</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '145px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>MSSV *</th>
+                          <th style={{ padding: '0.6rem 0.5rem', minWidth: '180px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>Họ và tên *</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '150px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>Lớp sinh hoạt *</th>
+                          <th style={{ padding: '0.6rem 0.5rem', minWidth: '220px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Email sinh viên</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '105px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Giới tính</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '130px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>SĐT</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '55px', textAlign: 'center', color: '#64748b' }}>Xóa</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {manualTableRows.map((row, idx) => (
+                          <tr key={row.id} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', color: '#94a3b8', fontWeight: 600 }}>{idx + 1}</td>
+                            <td style={{ padding: '0.4rem' }}>
+                              <input
+                                type="text"
+                                value={row.mssv}
+                                onChange={(e) => handleTableFieldChange(row.id, 'mssv', e.target.value)}
+                                placeholder="N22DCCN001"
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.55rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  fontFamily: 'monospace',
+                                  fontWeight: 700,
+                                  fontSize: '0.85rem',
+                                  textTransform: 'uppercase',
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.4rem' }}>
+                              <input
+                                type="text"
+                                value={row.full_name}
+                                onChange={(e) => handleTableFieldChange(row.id, 'full_name', e.target.value)}
+                                placeholder="Nguyễn Văn A"
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.55rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '0.85rem',
+                                  fontWeight: 600,
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.4rem' }}>
+                              <input
+                                type="text"
+                                value={row.class_id}
+                                onChange={(e) => handleTableFieldChange(row.id, 'class_id', e.target.value)}
+                                placeholder="D22CQCN01-N"
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.55rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '0.85rem',
+                                  textTransform: 'uppercase',
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.4rem' }}>
+                              <input
+                                type="email"
+                                value={row.email}
+                                onChange={(e) => handleTableFieldChange(row.id, 'email', e.target.value)}
+                                placeholder="n22dccn001@student.ptithcm.edu.vn"
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.55rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '0.82rem',
+                                  color: '#334155',
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.4rem' }}>
+                              <select
+                                value={row.gender}
+                                onChange={(e) => handleTableFieldChange(row.id, 'gender', e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.35rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '0.82rem',
+                                  background: '#ffffff',
+                                }}
+                              >
+                                <option value="">--</option>
+                                <option value="Nam">Nam</option>
+                                <option value="Nữ">Nữ</option>
+                              </select>
+                            </td>
+                            <td style={{ padding: '0.4rem' }}>
+                              <input
+                                type="text"
+                                value={row.phone}
+                                onChange={(e) => handleTableFieldChange(row.id, 'phone', e.target.value)}
+                                placeholder="09xxxxxxxx"
+                                style={{
+                                  width: '100%',
+                                  padding: '0.4rem 0.55rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '0.82rem',
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTableRow(row.id)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  padding: '0.25rem',
+                                  borderRadius: '4px',
+                                }}
+                                title="Xóa dòng"
+                              >
+                                <TrashIcon size={14} color="#ef4444" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleAddTableRow(1)}
+                      style={{
+                        padding: '0.45rem 0.85rem',
+                        borderRadius: '8px',
+                        border: '1px dashed #3b82f6',
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                      }}
+                    >
+                      <PlusIcon size={14} />
+                      <span>Thêm dòng sinh viên</span>
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={submittingManualStudent}
+                      style={{
+                        padding: '0.55rem 1.25rem',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        fontSize: '0.88rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)',
+                      }}
+                    >
+                      {submittingManualStudent ? (
+                        <>
+                          <SpinnerIcon size={16} />
+                          <span>Đang lưu dữ liệu...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircleIcon size={16} />
+                          <span>Lưu Danh Sách Vào Hệ Thống</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* MODE 2: BIỂU MẪU ĐIỀN TỪNG SINH VIÊN */}
+              {studentInputMode === 'single' && (
+                <form onSubmit={handleSubmitSingleStudent} style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gap: '1rem',
+                  background: '#f8fafc',
+                  padding: '1.25rem',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                }}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Mã Số Sinh Viên (MSSV) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: N22DCCN001"
+                      value={manualSingleStudent.mssv}
+                      onChange={(e) => {
+                        const mssvVal = e.target.value.toUpperCase().trim();
+                        setManualSingleStudent((prev) => ({
+                          ...prev,
+                          mssv: mssvVal,
+                          email: !prev.email || prev.email.endsWith('@student.ptithcm.edu.vn')
+                            ? (mssvVal ? `${mssvVal.toLowerCase()}@student.ptithcm.edu.vn` : '')
+                            : prev.email,
+                        }));
+                      }}
+                      className={styles.input}
+                      style={{ fontFamily: 'monospace', fontWeight: 700 }}
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Họ và Tên *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: Nguyễn Văn A"
+                      value={manualSingleStudent.full_name}
+                      onChange={(e) => setManualSingleStudent((prev) => ({ ...prev, full_name: e.target.value }))}
+                      className={styles.input}
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Lớp Sinh Hoạt *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: D22CQCN01-N"
+                      value={manualSingleStudent.class_id}
+                      onChange={(e) => setManualSingleStudent((prev) => ({ ...prev, class_id: e.target.value.toUpperCase() }))}
+                      className={styles.input}
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Email Sinh Viên</label>
+                    <input
+                      type="email"
+                      placeholder="n22dccn001@student.ptithcm.edu.vn"
+                      value={manualSingleStudent.email}
+                      onChange={(e) => setManualSingleStudent((prev) => ({ ...prev, email: e.target.value }))}
+                      className={styles.input}
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Giới Tính</label>
+                    <select
+                      value={manualSingleStudent.gender}
+                      onChange={(e) => setManualSingleStudent((prev) => ({ ...prev, gender: e.target.value }))}
+                      className={styles.input}
+                      style={{ background: '#fff' }}
+                    >
+                      <option value="">Chọn giới tính</option>
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                    </select>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Số Điện Thoại</label>
+                    <input
+                      type="text"
+                      placeholder="09xxxxxxxx"
+                      value={manualSingleStudent.phone}
+                      onChange={(e) => setManualSingleStudent((prev) => ({ ...prev, phone: e.target.value }))}
+                      className={styles.input}
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                    <button
+                      type="submit"
+                      disabled={submittingManualStudent}
+                      style={{
+                        padding: '0.6rem 1.5rem',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        fontSize: '0.88rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                      }}
+                    >
+                      {submittingManualStudent ? (
+                        <>
+                          <SpinnerIcon size={16} />
+                          <span>Đang lưu...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircleIcon size={16} />
+                          <span>Lưu Sinh Viên Vào Hệ Thống</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </section>
+
+            {/* Nạp danh sách sinh viên bằng file Excel */}
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>
                   <UsersIcon size={20} color="#16a34a" />
-                  Nạp danh sách sinh viên bằng file Excel
+                  Hoặc Nạp Danh Sách Bằng File Excel (.xlsx, .xls)
                 </h2>
               </div>
               <FileUploadZone
@@ -3609,30 +4295,55 @@ function SuperAdminContent() {
                   { key: 'email', label: 'Email', render: (val) => <span style={{ color: '#64748b' }}>{val}</span> },
                   {
                     key: 'actions',
-                    label: 'Tra Cứu Hoạt Động',
+                    label: 'Thao Tác',
                     render: (_, row) => (
-                      <button
-                        type="button"
-                        onClick={() => openStudentHistory(row as any)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          padding: '0.4rem 0.85rem',
-                          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                          border: '1px solid #bfdbfe',
-                          color: '#1e40af',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          fontSize: '0.8rem',
-                          cursor: 'pointer',
-                          boxShadow: '0 1px 3px rgba(37, 99, 235, 0.1)',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        <CheckCircleIcon size={14} />
-                        <span>Xem Lịch Sử Điểm Danh</span>
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => openStudentHistory(row as any)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.4rem 0.85rem',
+                            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                            border: '1px solid #bfdbfe',
+                            color: '#1e40af',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 3px rgba(37, 99, 235, 0.1)',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <CheckCircleIcon size={14} />
+                          <span>Lịch Sử</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteStudent((row as any).mssv)}
+                          disabled={deletingStudentMssv === (row as any).mssv}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.4rem 0.65rem',
+                            background: '#fee2e2',
+                            border: '1px solid #fecaca',
+                            color: '#dc2626',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            opacity: deletingStudentMssv === (row as any).mssv ? 0.6 : 1,
+                          }}
+                          title="Xóa sinh viên khỏi hệ thống"
+                        >
+                          <TrashIcon size={13} color="#dc2626" />
+                          <span>{deletingStudentMssv === (row as any).mssv ? 'Đang xóa...' : 'Xóa'}</span>
+                        </button>
+                      </div>
                     ),
                   },
                 ]}
