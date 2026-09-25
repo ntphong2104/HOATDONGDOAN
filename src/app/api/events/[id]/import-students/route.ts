@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, saveRegistrationExtrasBulk } from '@/lib/constants/event-meta-store';
-import { isValidMSSV } from '@/lib/utils/extract-mssv';
+import { isValidMSSV, extractMSSV } from '@/lib/utils/extract-mssv';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export async function POST(
@@ -137,15 +137,40 @@ export async function POST(
       const allUsers: any[] = [];
       for (let i = 0; i < cleanedMssvs.length; i += BATCH_SIZE) {
         const batch = cleanedMssvs.slice(i, i + BATCH_SIZE);
-        const { data: batchUsers } = await supabase
+        const mssvVariants = Array.from(
+          new Set([...batch.map((m) => m.toUpperCase()), ...batch.map((m) => m.toLowerCase())])
+        );
+        const emailVariants = batch.map((m) => `${m.toLowerCase()}@student.ptithcm.edu.vn`);
+
+        const { data: batchUsers, error: userQueryErr } = await supabase
           .from('users')
           .select('mssv, full_name, class_id, email, phone, gender')
-          .in('mssv', batch);
-        if (batchUsers) allUsers.push(...batchUsers);
+          .or(`mssv.in.(${mssvVariants.join(',')}),email.in.(${emailVariants.join(',')})`);
+
+        if (userQueryErr) {
+          console.error('Batch user query error in preview:', userQueryErr);
+          const { data: fallbackUsers } = await supabase
+            .from('users')
+            .select('mssv, full_name, class_id, email, phone, gender')
+            .in('mssv', mssvVariants);
+          if (fallbackUsers) allUsers.push(...fallbackUsers);
+        } else if (batchUsers) {
+          allUsers.push(...batchUsers);
+        }
       }
 
       const existingUserMap = new Map<string, any>();
-      allUsers.forEach((u: any) => existingUserMap.set(u.mssv.toUpperCase(), u));
+      allUsers.forEach((u: any) => {
+        if (u.mssv) {
+          existingUserMap.set(String(u.mssv).trim().toUpperCase(), u);
+        }
+        if (u.email) {
+          const emailMssv = extractMSSV(u.email);
+          if (emailMssv) {
+            existingUserMap.set(emailMssv.trim().toUpperCase(), u);
+          }
+        }
+      });
 
       // 1. Fetch check_ins for this event
       const { data: eventCheckins } = await supabase
@@ -306,22 +331,46 @@ export async function POST(
     const allUsers: any[] = [];
     for (let i = 0; i < cleanedMssvs.length; i += BATCH_SIZE) {
       const batch = cleanedMssvs.slice(i, i + BATCH_SIZE);
-      const { data: batchUsers } = await supabase
+      const mssvVariants = Array.from(
+        new Set([...batch.map((m) => m.toUpperCase()), ...batch.map((m) => m.toLowerCase())])
+      );
+      const emailVariants = batch.map((m) => `${m.toLowerCase()}@student.ptithcm.edu.vn`);
+
+      const { data: batchUsers, error: userQueryErr } = await supabase
         .from('users')
         .select('mssv, full_name, class_id, email, phone, gender')
-        .in('mssv', batch);
-      if (batchUsers) allUsers.push(...batchUsers);
+        .or(`mssv.in.(${mssvVariants.join(',')}),email.in.(${emailVariants.join(',')})`);
+
+      if (userQueryErr) {
+        console.error('Batch user query error in import:', userQueryErr);
+        const { data: fallbackUsers } = await supabase
+          .from('users')
+          .select('mssv, full_name, class_id, email, phone, gender')
+          .in('mssv', mssvVariants);
+        if (fallbackUsers) allUsers.push(...fallbackUsers);
+      } else if (batchUsers) {
+        allUsers.push(...batchUsers);
+      }
     }
 
     const userMap = new Map<string, { full_name: string; class_id: string; email?: string; phone?: string; gender?: string }>();
     allUsers.forEach((u: any) => {
-      userMap.set(u.mssv.toUpperCase(), {
+      const entry = {
         full_name: u.full_name || u.mssv,
         class_id: u.class_id || '',
-        email: u.email || `${u.mssv.toLowerCase()}@student.ptithcm.edu.vn`,
+        email: u.email || `${u.mssv?.toLowerCase()}@student.ptithcm.edu.vn`,
         phone: u.phone || '',
         gender: u.gender || '',
-      });
+      };
+      if (u.mssv) {
+        userMap.set(String(u.mssv).trim().toUpperCase(), entry);
+      }
+      if (u.email) {
+        const emailMssv = extractMSSV(u.email);
+        if (emailMssv) {
+          userMap.set(emailMssv.trim().toUpperCase(), entry);
+        }
+      }
     });
 
     // Optionally update `users` table if Excel contained new names/classes
