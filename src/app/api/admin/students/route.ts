@@ -174,6 +174,10 @@ export async function POST(req: Request) {
 
       if (!email) {
         email = `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
+      } else if (email.endsWith('@')) {
+        email = `${email}student.ptithcm.edu.vn`;
+      } else if (!email.includes('@')) {
+        email = `${email}@student.ptithcm.edu.vn`;
       }
 
       validRecords.push({

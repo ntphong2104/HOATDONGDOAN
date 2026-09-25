@@ -199,6 +199,11 @@ export async function POST(request: Request) {
         // Normalize Email
         if (email) {
           email = email.toLowerCase().replace(/\s+/g, '');
+          if (email.endsWith('@')) {
+            email = `${email}student.ptithcm.edu.vn`;
+          } else if (!email.includes('@')) {
+            email = `${email}@student.ptithcm.edu.vn`;
+          }
         } else if (mssv) {
           email = `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
         }

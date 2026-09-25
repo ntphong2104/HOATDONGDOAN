@@ -171,6 +171,8 @@ function SuperAdminContent() {
   ]);
   const [submittingManualStudent, setSubmittingManualStudent] = useState(false);
   const [deletingStudentMssv, setDeletingStudentMssv] = useState<string | null>(null);
+  const [showQuickPaste, setShowQuickPaste] = useState(false);
+  const [quickPasteText, setQuickPasteText] = useState('');
 
   useEffect(() => {
     if (tabParam) {
@@ -879,24 +881,163 @@ function SuperAdminContent() {
     ]);
   };
 
+  const formatStudentEmail = (raw: string, mssv?: string): string => {
+    const clean = (raw || '').trim().toLowerCase();
+    if (!clean) {
+      return mssv ? `${mssv.trim().toLowerCase()}@student.ptithcm.edu.vn` : '';
+    }
+    if (clean.includes('@')) {
+      if (clean.endsWith('@')) {
+        return `${clean}student.ptithcm.edu.vn`;
+      }
+      return clean;
+    }
+    return `${clean}@student.ptithcm.edu.vn`;
+  };
+
+  const inferPTITClass = (mssv: string): string => {
+    const clean = (mssv || '').trim().toUpperCase();
+    const match = clean.match(/^[A-Z](\d{2})DC([A-Z]{2})/);
+    if (match) {
+      const year = match[1];
+      const major = match[2];
+      return `D${year}CQ${major}01-N`;
+    }
+    return '';
+  };
+
   const handleTableFieldChange = (id: string, field: string, value: string) => {
     setManualTableRows((prev) =>
       prev.map((row) => {
         if (row.id !== id) return row;
         const updated = { ...row, [field]: value };
         if (field === 'mssv') {
-          const upperMssv = value.toUpperCase().trim();
+          const upperMssv = value.toUpperCase().replace(/\s+/g, '');
           updated.mssv = upperMssv;
-          // Auto-generate email if empty or previously matching standard ptithcm format
+          // Auto-generate email based on MSSV if empty or matches standard ptithcm domain
           if (!row.email || row.email.endsWith('@student.ptithcm.edu.vn')) {
             updated.email = upperMssv ? `${upperMssv.toLowerCase()}@student.ptithcm.edu.vn` : '';
           }
+          // Auto-suggest class if currently empty
+          if (!row.class_id && upperMssv) {
+            const inferred = inferPTITClass(upperMssv);
+            if (inferred) updated.class_id = inferred;
+          }
         } else if (field === 'class_id') {
-          updated.class_id = value.toUpperCase();
+          updated.class_id = value.toUpperCase().trim();
+        } else if (field === 'email') {
+          updated.email = value.toLowerCase().trim();
         }
         return updated;
       })
     );
+  };
+
+  const handleTableFieldBlur = (id: string, field: string) => {
+    if (field === 'email') {
+      setManualTableRows((prev) =>
+        prev.map((row) => {
+          if (row.id !== id) return row;
+          return { ...row, email: formatStudentEmail(row.email, row.mssv) };
+        })
+      );
+    }
+  };
+
+  const handleParseAndFillTable = () => {
+    if (!quickPasteText.trim()) {
+      showToast('Vui lòng dán danh sách sinh viên vào ô', 'error');
+      return;
+    }
+
+    const lines = quickPasteText.split('\n').map((l) => l.trim()).filter(Boolean);
+    const newRows: Array<{
+      id: string;
+      mssv: string;
+      full_name: string;
+      class_id: string;
+      email: string;
+      gender: string;
+      phone: string;
+    }> = [];
+
+    const mssvRegex = /\b([A-Za-z]\d{2}[A-Za-z0-9]{3,5}\d{3}(?:-[A-Za-z0-9]{1,3})?)\b/;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const parts = line.split(/\t/);
+      let mssv = '';
+      let fullName = '';
+      let classId = '';
+      let email = '';
+      let gender = '';
+      let phone = '';
+
+      if (parts.length >= 2) {
+        for (const p of parts) {
+          const trimmed = p.trim();
+          if (!mssv && mssvRegex.test(trimmed)) {
+            const m = trimmed.match(mssvRegex);
+            if (m) mssv = m[1].toUpperCase();
+          } else if (!classId && /^D\d{2}[A-Z0-9\-]+$/i.test(trimmed)) {
+            classId = trimmed.toUpperCase();
+          } else if (!email && trimmed.includes('@')) {
+            email = trimmed.toLowerCase();
+          } else if (!gender && ['nam', 'nữ', 'nu'].includes(trimmed.toLowerCase())) {
+            gender = trimmed.toLowerCase() === 'nam' ? 'Nam' : 'Nữ';
+          } else if (!phone && /(0\d{9,10})/.test(trimmed)) {
+            phone = trimmed;
+          } else if (!fullName && /^[A-ZÀ-Ỹa-zà-ỹ\s]{3,50}$/.test(trimmed)) {
+            fullName = trimmed;
+          }
+        }
+      }
+
+      if (!mssv) {
+        const match = line.match(mssvRegex);
+        if (match) {
+          mssv = match[1].toUpperCase();
+          const rest = line.replace(match[0], '').replace(/^\d+[\.\-\s]+/, '').trim();
+          let cleanName = rest.replace(/^nguyên\s*/i, '').trim();
+          const classMatch = cleanName.match(/\b(D\d{2}[A-Z0-9\-]+)\b/i);
+          if (classMatch) {
+            classId = classMatch[1].toUpperCase();
+            cleanName = cleanName.replace(classMatch[0], '').trim();
+          }
+          if (cleanName && !fullName) {
+            fullName = cleanName;
+          }
+        }
+      }
+
+      if (mssv) {
+        const finalClass = classId || inferPTITClass(mssv) || 'D24CQCN01-N';
+        const finalEmail = formatStudentEmail(email, mssv);
+        newRows.push({
+          id: `paste_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+          mssv,
+          full_name: fullName,
+          class_id: finalClass,
+          email: finalEmail,
+          gender: gender || '',
+          phone: phone || '',
+        });
+      }
+    }
+
+    if (newRows.length === 0) {
+      showToast('Không tìm thấy MSSV hợp lệ trong văn bản vừa dán', 'error');
+      return;
+    }
+
+    setManualTableRows((prev) => {
+      const existingFilled = prev.filter((r) => r.mssv.trim() || r.full_name.trim());
+      return [...existingFilled, ...newRows];
+    });
+
+    setQuickPasteText('');
+    setShowQuickPaste(false);
+    showToast(`Đã nạp ${newRows.length} sinh viên! Email đã được tự động gắn đuôi @student.ptithcm.edu.vn`, 'success');
   };
 
   const handleSubmitManualTable = async (e: React.FormEvent) => {
@@ -927,16 +1068,29 @@ function SuperAdminContent() {
       }
     }
 
+    const studentsToSubmit = filledRows.map((r) => {
+      const cleanMssv = r.mssv.trim().toUpperCase();
+      return {
+        ...r,
+        mssv: cleanMssv,
+        full_name: r.full_name.trim(),
+        class_id: r.class_id.trim().toUpperCase(),
+        email: formatStudentEmail(r.email, cleanMssv),
+        gender: r.gender ? r.gender.trim() : undefined,
+        phone: r.phone ? r.phone.trim() : undefined,
+      };
+    });
+
     setSubmittingManualStudent(true);
     try {
       const res = await fetch('/api/admin/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students: filledRows }),
+        body: JSON.stringify({ students: studentsToSubmit }),
       });
       const data = await res.json();
       if (data.success) {
-        showToast(data.message || `Đã lưu thành công ${filledRows.length} sinh viên!`, 'success');
+        showToast(data.message || `Đã lưu thành công ${studentsToSubmit.length} sinh viên!`, 'success');
         handleResetTable();
         fetchStudents();
         fetchStats();
@@ -959,16 +1113,19 @@ function SuperAdminContent() {
       return;
     }
 
+    const cleanMssv = mssv.trim().toUpperCase();
+    const cleanEmail = formatStudentEmail(email, cleanMssv);
+
     setSubmittingManualStudent(true);
     try {
       const res = await fetch('/api/admin/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mssv: mssv.trim().toUpperCase(),
+          mssv: cleanMssv,
           full_name: full_name.trim(),
           class_id: class_id.trim().toUpperCase(),
-          email: email.trim().toLowerCase() || `${mssv.trim().toLowerCase()}@student.ptithcm.edu.vn`,
+          email: cleanEmail,
           gender: gender ? gender.trim() : undefined,
           phone: phone ? phone.trim() : undefined,
         }),
@@ -2620,6 +2777,16 @@ function SuperAdminContent() {
                         setOfficerFullName(matched.full_name || '');
                       }
                     }}
+                    onBlur={() => {
+                      if (officerEmail && !officerEmail.includes('@')) {
+                        const formatted = `${officerEmail.trim().toLowerCase()}@student.ptithcm.edu.vn`;
+                        setOfficerEmail(formatted);
+                        const matched = students.find((s) => s.email?.toLowerCase() === formatted);
+                        if (matched && !officerFullName) {
+                          setOfficerFullName(matched.full_name || '');
+                        }
+                      }
+                    }}
                     style={{
                       width: '100%',
                       height: '40px',
@@ -3856,6 +4023,25 @@ function SuperAdminContent() {
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <button
                         type="button"
+                        onClick={() => setShowQuickPaste((prev) => !prev)}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: '6px',
+                          border: '1.5px solid #2563eb',
+                          background: showQuickPaste ? '#2563eb' : '#eff6ff',
+                          color: showQuickPaste ? '#ffffff' : '#1d4ed8',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <span>📋 Dán nhanh văn bản / Excel</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleAddTableRow(1)}
                         style={{
                           padding: '0.35rem 0.65rem',
@@ -3938,6 +4124,86 @@ function SuperAdminContent() {
                     </div>
                   </div>
 
+                  {/* QUICK PASTE BOX */}
+                  {showQuickPaste && (
+                    <div style={{
+                      background: '#eff6ff',
+                      border: '1.5px solid #bfdbfe',
+                      borderRadius: '10px',
+                      padding: '1rem',
+                      marginBottom: '0.85rem',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e40af' }}>
+                          📋 Dán danh sách sinh viên vào đây (mỗi SV 1 dòng):
+                        </label>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          Hỗ trợ: <em>Họ và tên MSSV</em>, <em>MSSV Họ tên</em> hoặc copy từ Excel
+                        </span>
+                      </div>
+                      <textarea
+                        rows={5}
+                        value={quickPasteText}
+                        onChange={(e) => setQuickPasteText(e.target.value)}
+                        placeholder={`Ví dụ dán vào đây:
+Nguyễn Thị Huyền Trang N24DCMR080
+Le Cao Anh Thư N24DCQT074
+Phạm Cao Huyền Trinh N24DCQT083`}
+                        style={{
+                          width: '100%',
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '8px',
+                          border: '1px solid #93c5fd',
+                          fontSize: '0.85rem',
+                          fontFamily: 'monospace',
+                          marginBottom: '0.5rem',
+                          background: '#ffffff',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600 }}>
+                          ✨ Đuôi email @student.ptithcm.edu.vn và mã lớp sẽ được tự động điền ngay lập tức!
+                        </span>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuickPasteText('');
+                              setShowQuickPaste(false);
+                            }}
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              borderRadius: '6px',
+                              border: '1px solid #cbd5e1',
+                              background: '#ffffff',
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Đóng
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleParseAndFillTable}
+                            style={{
+                              padding: '0.35rem 1rem',
+                              borderRadius: '6px',
+                              border: 'none',
+                              background: '#2563eb',
+                              color: '#ffffff',
+                              fontSize: '0.82rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Phân tích & Nạp vào bảng
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ overflowX: 'auto', border: '1px solid #cbd5e1', borderRadius: '10px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead>
@@ -3946,7 +4212,12 @@ function SuperAdminContent() {
                           <th style={{ padding: '0.6rem 0.5rem', width: '145px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>MSSV *</th>
                           <th style={{ padding: '0.6rem 0.5rem', minWidth: '180px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>Họ và tên *</th>
                           <th style={{ padding: '0.6rem 0.5rem', width: '150px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>Lớp sinh hoạt *</th>
-                          <th style={{ padding: '0.6rem 0.5rem', minWidth: '220px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Email sinh viên</th>
+                          <th style={{ padding: '0.6rem 0.5rem', minWidth: '240px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>
+                            <span>Email sinh viên</span>
+                            <span style={{ display: 'block', fontSize: '0.72rem', color: '#16a34a', fontWeight: 600 }}>
+                              ✨ Tự động gắn @student.ptithcm.edu.vn
+                            </span>
+                          </th>
                           <th style={{ padding: '0.6rem 0.5rem', width: '105px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Giới tính</th>
                           <th style={{ padding: '0.6rem 0.5rem', width: '130px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>SĐT</th>
                           <th style={{ padding: '0.6rem 0.5rem', width: '55px', textAlign: 'center', color: '#64748b' }}>Xóa</th>
@@ -4008,10 +4279,11 @@ function SuperAdminContent() {
                             </td>
                             <td style={{ padding: '0.4rem' }}>
                               <input
-                                type="email"
+                                type="text"
                                 value={row.email}
                                 onChange={(e) => handleTableFieldChange(row.id, 'email', e.target.value)}
-                                placeholder="n22dccn001@student.ptithcm.edu.vn"
+                                onBlur={() => handleTableFieldBlur(row.id, 'email')}
+                                placeholder={row.mssv ? `${row.mssv.toLowerCase()}@student.ptithcm.edu.vn` : 'Tự động theo MSSV'}
                                 style={{
                                   width: '100%',
                                   padding: '0.4rem 0.55rem',
@@ -4019,6 +4291,7 @@ function SuperAdminContent() {
                                   border: '1px solid #cbd5e1',
                                   fontSize: '0.82rem',
                                   color: '#334155',
+                                  background: row.email ? '#f0fdf4' : '#ffffff',
                                 }}
                               />
                             </td>
@@ -4153,13 +4426,14 @@ function SuperAdminContent() {
                       placeholder="VD: N22DCCN001"
                       value={manualSingleStudent.mssv}
                       onChange={(e) => {
-                        const mssvVal = e.target.value.toUpperCase().trim();
+                        const mssvVal = e.target.value.toUpperCase().replace(/\s+/g, '');
                         setManualSingleStudent((prev) => ({
                           ...prev,
                           mssv: mssvVal,
                           email: !prev.email || prev.email.endsWith('@student.ptithcm.edu.vn')
                             ? (mssvVal ? `${mssvVal.toLowerCase()}@student.ptithcm.edu.vn` : '')
                             : prev.email,
+                          class_id: prev.class_id || inferPTITClass(mssvVal),
                         }));
                       }}
                       className={styles.input}
@@ -4192,14 +4466,29 @@ function SuperAdminContent() {
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label className={styles.label}>Email Sinh Viên</label>
+                    <label className={styles.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Email Sinh Viên</span>
+                      <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>
+                        ✨ Tự động gắn @student.ptithcm.edu.vn
+                      </span>
+                    </label>
                     <input
-                      type="email"
-                      placeholder="n22dccn001@student.ptithcm.edu.vn"
+                      type="text"
+                      placeholder={manualSingleStudent.mssv ? `${manualSingleStudent.mssv.toLowerCase()}@student.ptithcm.edu.vn` : 'Tự động sinh theo MSSV'}
                       value={manualSingleStudent.email}
                       onChange={(e) => setManualSingleStudent((prev) => ({ ...prev, email: e.target.value }))}
+                      onBlur={() =>
+                        setManualSingleStudent((prev) => ({
+                          ...prev,
+                          email: formatStudentEmail(prev.email, prev.mssv),
+                        }))
+                      }
                       className={styles.input}
+                      style={{ background: manualSingleStudent.email ? '#f0fdf4' : '#ffffff' }}
                     />
+                    <span style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
+                      💡 Tự động điền theo MSSV. Đuôi <code>@student.ptithcm.edu.vn</code> luôn được tự động gắn kèm khi lưu.
+                    </span>
                   </div>
 
                   <div className={styles.formGroup}>
