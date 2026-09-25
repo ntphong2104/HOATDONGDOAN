@@ -9,6 +9,7 @@ import {
   AlertTriangleIcon,
   FileExcelIcon,
   UsersIcon,
+  TrashIcon,
 } from '@/components/icons';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
 import styles from './EventBulkImportModal.module.css';
@@ -68,6 +69,7 @@ export default function EventBulkImportModal({
     }>;
   } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewFilter, setPreviewFilter] = useState<'all' | 'warnings'>('all');
 
   React.useEffect(() => {
     if (isOpen) {
@@ -80,8 +82,57 @@ export default function EventBulkImportModal({
       setFileName(null);
       setShowPreview(false);
       setPreviewData(null);
+      setPreviewFilter('all');
     }
   }, [isOpen, initialRole, initialMode, initialDepartmentId]);
+
+  const handleRemoveStudent = (mssvToRemove: string) => {
+    if (!previewData) return;
+    const targetStudent = previewData.students.find((s) => s.mssv === mssvToRemove);
+    const hadWarning = targetStudent && targetStudent.warnings.length > 0;
+
+    const updatedStudents = previewData.students.filter((s) => s.mssv !== mssvToRemove);
+    const updatedWarningsCount = previewData.warnings_count - (hadWarning ? 1 : 0);
+
+    setPreviewData({
+      ...previewData,
+      total: updatedStudents.length,
+      warnings_count: Math.max(0, updatedWarningsCount),
+      students: updatedStudents,
+    });
+
+    setParsedStudents((prev) => prev.filter((s) => s.mssv !== mssvToRemove));
+    setInputText((prev) =>
+      prev
+        .split(/[\r\n,;\t\s]+/)
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s && s !== mssvToRemove)
+        .join('\n')
+    );
+  };
+
+  const handleRemoveAllWarnings = () => {
+    if (!previewData) return;
+    const warningMssvs = new Set(previewData.students.filter((s) => s.warnings.length > 0).map((s) => s.mssv));
+    const validOnlyStudents = previewData.students.filter((s) => s.warnings.length === 0);
+
+    setPreviewData({
+      ...previewData,
+      total: validOnlyStudents.length,
+      warnings_count: 0,
+      students: validOnlyStudents,
+    });
+
+    setParsedStudents((prev) => prev.filter((s) => !warningMssvs.has(s.mssv)));
+    setInputText((prev) =>
+      prev
+        .split(/[\r\n,;\t\s]+/)
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s && !warningMssvs.has(s))
+        .join('\n')
+    );
+    setPreviewFilter('all');
+  };
 
   if (!isOpen) return null;
 
@@ -344,19 +395,29 @@ export default function EventBulkImportModal({
     }
   };
 
-  const doImport = async () => {
+  const doImport = async (overrideStudents?: Array<{ mssv: string }>) => {
     setLoading(true);
     setFeedback(null);
     setShowPreview(false);
 
     try {
       const selectedDept = departments.find((d) => d.id === selectedDeptId);
+      const activeList =
+        overrideStudents ||
+        (previewData
+          ? previewData.students
+          : parsedStudents.length > 0
+          ? parsedStudents
+          : parsedMssvs.map((m) => ({ mssv: m })));
+      const activeMssvs = activeList.map((s) => s.mssv);
+      const activeStudentData = parsedStudents.filter((ps) => activeMssvs.includes(ps.mssv));
+
       const res = await fetch(`/api/events/${eventId}/import-students`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mssv_list: parsedMssvs,
-          students_data: parsedStudents.length > 0 ? parsedStudents : undefined,
+          mssv_list: activeMssvs,
+          students_data: activeStudentData.length > 0 ? activeStudentData : undefined,
           participate_role: role,
           mode,
           department_id: role === 'volunteer' ? (selectedDeptId || null) : null,
@@ -526,8 +587,8 @@ export default function EventBulkImportModal({
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
             }} onClick={() => setShowPreview(false)}>
               <div style={{
-                background: '#fff', borderRadius: '12px', maxWidth: '680px', width: '100%',
-                maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+                background: '#fff', borderRadius: '12px', maxWidth: '720px', width: '100%',
+                maxHeight: '88vh', display: 'flex', flexDirection: 'column',
                 boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
               }} onClick={(e) => e.stopPropagation()}>
                 {/* Preview Header */}
@@ -536,13 +597,33 @@ export default function EventBulkImportModal({
                   background: previewData.warnings_count > 0 ? '#fef3c7' : '#ecfdf5',
                   borderRadius: '12px 12px 0 0',
                 }}>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#1f2937' }}>
-                    ⚠️ Kiểm tra trước khi nạp
-                  </h3>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
-                    Tìm thấy <strong style={{ color: '#dc2626' }}>{previewData.warnings_count}</strong> sinh viên cần kiểm tra
-                    {previewData.rejected > 0 && <> và <strong style={{ color: '#dc2626' }}>{previewData.rejected}</strong> MSSV sai format bị loại</>}
-                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#1f2937' }}>
+                        {previewData.warnings_count > 0 ? '⚠️ Kiểm tra trước khi nạp' : '✅ Danh sách hợp lệ'}
+                      </h3>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#4b5563' }}>
+                        Tổng cộng: <strong>{previewData.total}</strong> sinh viên
+                        {previewData.warnings_count > 0 ? (
+                          <> — Tìm thấy <strong style={{ color: '#dc2626' }}>{previewData.warnings_count}</strong> sinh viên có cảnh báo cần kiểm tra</>
+                        ) : (
+                          <> — Tất cả sinh viên đã sẵn sàng nạp!</>
+                        )}
+                        {previewData.rejected > 0 && <> (và <strong style={{ color: '#dc2626' }}>{previewData.rejected}</strong> MSSV sai định dạng đã bị loại)</>}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPreview(false)}
+                      style={{
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        color: '#6b7280', fontSize: '1.25rem', lineHeight: 1, padding: '0.2rem',
+                      }}
+                      title="Đóng cửa sổ"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
 
                 {/* Rejected MSSVs */}
@@ -559,64 +640,157 @@ export default function EventBulkImportModal({
                   </div>
                 )}
 
+                {/* Filter & Quick Action Toolbar */}
+                <div style={{
+                  padding: '0.6rem 1.25rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem',
+                }}>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFilter('all')}
+                      style={{
+                        padding: '0.3rem 0.7rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600,
+                        border: previewFilter === 'all' ? '1px solid #2563eb' : '1px solid #d1d5db',
+                        background: previewFilter === 'all' ? '#eff6ff' : '#fff',
+                        color: previewFilter === 'all' ? '#1d4ed8' : '#4b5563',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Tất cả ({previewData.total})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFilter('warnings')}
+                      style={{
+                        padding: '0.3rem 0.7rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600,
+                        border: previewFilter === 'warnings' ? '1px solid #d97706' : '1px solid #d1d5db',
+                        background: previewFilter === 'warnings' ? '#fef3c7' : '#fff',
+                        color: previewFilter === 'warnings' ? '#b45309' : '#4b5563',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ⚠️ Chỉ xem cảnh báo ({previewData.warnings_count})
+                    </button>
+                  </div>
+
+                  {previewData.warnings_count > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveAllWarnings}
+                      style={{
+                        padding: '0.3rem 0.7rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600,
+                        border: '1px solid #fecaca', background: '#fee2e2', color: '#b91c1c',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem',
+                      }}
+                      title="Xóa tất cả sinh viên có cảnh báo ra khỏi danh sách nạp"
+                    >
+                      <TrashIcon size={13} color="#b91c1c" />
+                      Loại bỏ tất cả {previewData.warnings_count} SV cảnh báo
+                    </button>
+                  )}
+                </div>
+
                 {/* Students Table */}
                 <div style={{ flex: 1, overflow: 'auto', padding: '0.5rem 1rem' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                    <thead>
-                      <tr style={{ position: 'sticky', top: 0, background: '#f9fafb', zIndex: 1 }}>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>STT</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>MSSV</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>Họ tên</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>Lớp</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>Trạng thái</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewData.students.map((s, idx) => {
-                        const hasWarning = s.warnings.length > 0;
-                        return (
-                          <tr key={s.mssv} style={{
-                            background: hasWarning ? '#fef3c7' : idx % 2 === 0 ? '#fff' : '#f9fafb',
-                            borderBottom: '1px solid #f3f4f6',
-                          }}>
-                            <td style={{ padding: '0.4rem 0.5rem', color: '#9ca3af' }}>{idx + 1}</td>
-                            <td style={{ padding: '0.4rem 0.5rem', fontFamily: 'monospace', fontWeight: 600 }}>{s.mssv}</td>
-                            <td style={{
-                              padding: '0.4rem 0.5rem',
-                              color: s.full_name === s.mssv ? '#dc2626' : '#1f2937',
-                              fontStyle: s.full_name === s.mssv ? 'italic' : 'normal',
-                            }}>
-                              {s.full_name === s.mssv ? '⚠️ Không có tên' : s.full_name}
-                            </td>
-                            <td style={{
-                              padding: '0.4rem 0.5rem',
-                              color: s.class_id === 'PTIT-HCM' ? '#9ca3af' : '#1f2937',
-                            }}>{s.class_id}</td>
-                            <td style={{ padding: '0.4rem 0.5rem' }}>
-                              {hasWarning ? (
-                                <span style={{
-                                  display: 'inline-flex', gap: '0.25rem', flexWrap: 'wrap',
-                                }}>
-                                  {s.warnings.map((w, i) => (
-                                    <span key={i} style={{
-                                      background: '#fde68a', color: '#92400e', padding: '0.1rem 0.4rem',
-                                      borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600,
-                                      whiteSpace: 'nowrap',
-                                    }}>{w}</span>
-                                  ))}
-                                </span>
-                              ) : (
-                                <span style={{
-                                  background: '#d1fae5', color: '#065f46', padding: '0.1rem 0.4rem',
-                                  borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600,
-                                }}>✓ OK</span>
-                              )}
-                            </td>
+                  {(() => {
+                    const displayedStudents = previewFilter === 'warnings'
+                      ? previewData.students.filter((s) => s.warnings.length > 0)
+                      : previewData.students;
+
+                    if (displayedStudents.length === 0) {
+                      return (
+                        <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.9rem' }}>
+                          {previewFilter === 'warnings'
+                            ? '✨ Tuyệt vời! Không còn sinh viên nào có cảnh báo lỗi.'
+                            : 'Không còn sinh viên nào trong danh sách.'}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                        <thead>
+                          <tr style={{ position: 'sticky', top: 0, background: '#f9fafb', zIndex: 1 }}>
+                            <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280', width: '45px' }}>STT</th>
+                            <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280', width: '110px' }}>MSSV</th>
+                            <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>Họ tên</th>
+                            <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280', width: '90px' }}>Lớp</th>
+                            <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280' }}>Trạng thái</th>
+                            <th style={{ padding: '0.5rem', textAlign: 'center', borderBottom: '2px solid #e5e7eb', fontWeight: 600, color: '#6b7280', width: '80px' }}>Thao tác</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {displayedStudents.map((s, idx) => {
+                            const hasWarning = s.warnings.length > 0;
+                            return (
+                              <tr key={s.mssv} style={{
+                                background: hasWarning ? '#fef3c7' : idx % 2 === 0 ? '#fff' : '#f9fafb',
+                                borderBottom: '1px solid #f3f4f6',
+                              }}>
+                                <td style={{ padding: '0.4rem 0.5rem', color: '#9ca3af' }}>{idx + 1}</td>
+                                <td style={{ padding: '0.4rem 0.5rem', fontFamily: 'monospace', fontWeight: 600 }}>{s.mssv}</td>
+                                <td style={{
+                                  padding: '0.4rem 0.5rem',
+                                  color: s.full_name === s.mssv ? '#dc2626' : '#1f2937',
+                                  fontStyle: s.full_name === s.mssv ? 'italic' : 'normal',
+                                }}>
+                                  {s.full_name === s.mssv ? '⚠️ Không có tên' : s.full_name}
+                                </td>
+                                <td style={{
+                                  padding: '0.4rem 0.5rem',
+                                  color: s.class_id === 'PTIT-HCM' ? '#9ca3af' : '#1f2937',
+                                }}>{s.class_id}</td>
+                                <td style={{ padding: '0.4rem 0.5rem' }}>
+                                  {hasWarning ? (
+                                    <span style={{
+                                      display: 'inline-flex', gap: '0.25rem', flexWrap: 'wrap',
+                                    }}>
+                                      {s.warnings.map((w, i) => (
+                                        <span key={i} style={{
+                                          background: '#fde68a', color: '#92400e', padding: '0.1rem 0.4rem',
+                                          borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600,
+                                          whiteSpace: 'nowrap',
+                                        }}>{w}</span>
+                                      ))}
+                                    </span>
+                                  ) : (
+                                    <span style={{
+                                      background: '#d1fae5', color: '#065f46', padding: '0.1rem 0.4rem',
+                                      borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600,
+                                    }}>✓ OK</span>
+                                  )}
+                                </td>
+                                <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveStudent(s.mssv)}
+                                    style={{
+                                      padding: '0.25rem 0.5rem',
+                                      borderRadius: '6px',
+                                      border: hasWarning ? '1px solid #fca5a5' : '1px solid #e5e7eb',
+                                      background: hasWarning ? '#fef2f2' : '#fff',
+                                      color: hasWarning ? '#dc2626' : '#6b7280',
+                                      cursor: 'pointer',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.2rem',
+                                    }}
+                                    title={`Xóa ${s.mssv} khỏi danh sách nạp`}
+                                  >
+                                    <TrashIcon size={12} color={hasWarning ? '#dc2626' : '#6b7280'} />
+                                    Xóa
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
                 </div>
 
                 {/* Preview Actions */}
@@ -624,34 +798,60 @@ export default function EventBulkImportModal({
                   padding: '0.75rem 1.25rem', borderTop: '1px solid #e5e7eb',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   background: '#f9fafb', borderRadius: '0 0 12px 12px',
+                  flexWrap: 'wrap', gap: '0.5rem',
                 }}>
                   <div style={{ fontSize: '0.82rem', color: '#6b7280' }}>
-                    ✅ {previewData.total - previewData.warnings_count} OK &nbsp;|&nbsp;
-                    ⚠️ {previewData.warnings_count} cần kiểm tra
-                    {previewData.rejected > 0 && <> &nbsp;|&nbsp; ❌ {previewData.rejected} bị loại</>}
+                    <strong style={{ color: '#059669' }}>✅ {previewData.total - previewData.warnings_count}</strong> hợp lệ &nbsp;|&nbsp;
+                    <strong style={{ color: previewData.warnings_count > 0 ? '#d97706' : '#6b7280' }}>⚠️ {previewData.warnings_count}</strong> cần kiểm tra
+                    {previewData.rejected > 0 && <> &nbsp;|&nbsp; <strong style={{ color: '#dc2626' }}>❌ {previewData.rejected}</strong> bị loại</>}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       onClick={() => setShowPreview(false)}
                       style={{
-                        padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #d1d5db',
+                        padding: '0.5rem 0.85rem', borderRadius: '8px', border: '1px solid #d1d5db',
                         background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
+                        color: '#374151',
                       }}
                     >
                       ← Quay lại sửa
                     </button>
+                    {previewData.warnings_count > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const validOnes = previewData.students.filter((s) => s.warnings.length === 0);
+                          handleRemoveAllWarnings();
+                          doImport(validOnes);
+                        }}
+                        disabled={loading || (previewData.total - previewData.warnings_count) === 0}
+                        style={{
+                          padding: '0.5rem 1rem', borderRadius: '8px', border: 'none',
+                          background: '#059669', color: '#fff', cursor: 'pointer',
+                          fontWeight: 700, fontSize: '0.85rem',
+                        }}
+                        title="Bỏ qua các sinh viên cảnh báo và chỉ nạp các bạn hợp lệ"
+                      >
+                        {loading ? 'Đang nạp...' : `✓ Bỏ lỗi & Nạp ${previewData.total - previewData.warnings_count} SV hợp lệ`}
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={doImport}
-                      disabled={loading}
+                      onClick={() => doImport()}
+                      disabled={loading || previewData.total === 0}
                       style={{
                         padding: '0.5rem 1rem', borderRadius: '8px', border: 'none',
-                        background: '#dc2626', color: '#fff', cursor: 'pointer',
+                        background: previewData.warnings_count > 0 ? '#dc2626' : '#2563eb',
+                        color: '#fff', cursor: 'pointer',
                         fontWeight: 700, fontSize: '0.85rem',
                       }}
                     >
-                      {loading ? 'Đang nạp...' : `⚡ Vẫn nạp ${previewData.total} SV`}
+                      {loading
+                        ? 'Đang nạp...'
+                        : previewData.warnings_count > 0
+                        ? `⚡ Vẫn nạp tất cả (${previewData.total} SV)`
+                        : `✓ Xác nhận nạp ${previewData.total} SV`}
                     </button>
                   </div>
                 </div>
