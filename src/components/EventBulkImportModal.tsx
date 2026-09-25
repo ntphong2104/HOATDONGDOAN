@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
 import {
   UploadCloudIcon,
   CloseIcon,
@@ -62,6 +61,10 @@ export default function EventBulkImportModal({
       if (initialDepartmentId) setSelectedDeptId(initialDepartmentId);
       setFeedback(null);
       setParsedStudents([]);
+      setInputText('');
+      setFileName(null);
+      setShowPreview(false);
+      setPreviewData(null);
     }
   }, [isOpen, initialRole, initialMode, initialDepartmentId]);
 
@@ -97,10 +100,11 @@ export default function EventBulkImportModal({
     setFeedback(null);
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
+        const XLSX = await import('xlsx');
+        const buffer = evt.target?.result as ArrayBuffer;
+        const wb = XLSX.read(buffer, { type: 'array' });
         const wsName = wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
         const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
@@ -270,7 +274,7 @@ export default function EventBulkImportModal({
         });
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   };
 
   // Preview validation state

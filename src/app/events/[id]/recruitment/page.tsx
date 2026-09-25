@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import DualLogos from '@/components/DualLogos';
 import {
@@ -21,9 +21,19 @@ import styles from '../register/page.module.css';
 export default function EventRecruitmentPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params?: Promise<{ id: string }> | { id: string };
 }) {
-  const resolvedParams = use(params);
+  const routeParams = useParams();
+  let resolvedId = typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '';
+  if (!resolvedId && params) {
+    if (typeof (params as any)?.then === 'function') {
+      const unwrapped = use(params as Promise<any>);
+      resolvedId = unwrapped?.id || '';
+    } else if ((params as any)?.id) {
+      resolvedId = (params as any).id;
+    }
+  }
+  const resolvedParams = { id: resolvedId };
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [event, setEvent] = useState<Event | null>(null);

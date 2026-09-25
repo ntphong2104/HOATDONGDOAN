@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Header from '@/components/Header';
 import StatCard from '@/components/StatCard';
@@ -43,8 +44,18 @@ const sanitizeForExcel = (val: any): any => {
   return val;
 };
 
-export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function EventDetailPage({ params }: { params?: Promise<{ id: string }> | { id: string } }) {
+  const routeParams = useParams();
+  let resolvedId = typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '';
+  if (!resolvedId && params) {
+    if (typeof (params as any)?.then === 'function') {
+      const unwrapped = use(params as Promise<any>);
+      resolvedId = unwrapped?.id || '';
+    } else if ((params as any)?.id) {
+      resolvedId = (params as any).id;
+    }
+  }
+  const resolvedParams = { id: resolvedId };
   const [supabase] = useState(() => createClient());
   const [event, setEvent] = useState<Event | null>(null);
   const [checkins, setCheckins] = useState<CheckinExportRow[]>([]);
