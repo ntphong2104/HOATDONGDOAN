@@ -3077,7 +3077,7 @@ function SuperAdminContent() {
                       Danh Sách Cán Bộ & Phân Quyền ({officers.length})
                     </h2>
                     <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
-                      💡 Quyền Admin/CTV sự kiện gán cho sinh viên sẽ tự động thu hồi sau 3 ngày kết thúc SK (LCĐ / CLB / Phòng ban giữ vĩnh viễn).
+                      Quyền Admin/CTV sự kiện gán cho sinh viên sẽ tự động thu hồi sau 3 ngày kết thúc SK (LCĐ / CLB / Phòng ban giữ vĩnh viễn).
                     </p>
                   </div>
                   <button
@@ -3975,7 +3975,7 @@ function SuperAdminContent() {
                       gap: '0.35rem',
                     }}
                   >
-                    <span>📋 Bảng điền nhiều SV</span>
+                    <span>Bảng điền nhiều SV</span>
                     {manualTableRows.filter((r) => r.mssv.trim() || r.full_name.trim()).length > 0 && (
                       <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '10px', fontSize: '0.72rem' }}>
                         {manualTableRows.filter((r) => r.mssv.trim() || r.full_name.trim()).length}
@@ -3997,7 +3997,7 @@ function SuperAdminContent() {
                       boxShadow: studentInputMode === 'single' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                     }}
                   >
-                    👤 Biểu mẫu điền 1 SV
+                    Biểu mẫu điền 1 SV
                   </button>
                 </div>
               </div>
@@ -4018,7 +4018,7 @@ function SuperAdminContent() {
                     border: '1px solid #e2e8f0',
                   }}>
                     <span style={{ fontSize: '0.82rem', color: '#475569' }}>
-                      💡 <strong>Mẹo:</strong> Gõ MSSV thì hệ thống tự động viết hoa và tự sinh email sinh viên.
+                      <strong>Mẹo:</strong> Gõ MSSV thì hệ thống tự động viết hoa và tự sinh email sinh viên.
                     </span>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <button
@@ -4038,7 +4038,7 @@ function SuperAdminContent() {
                           gap: '0.35rem',
                         }}
                       >
-                        <span>📋 Dán nhanh văn bản / Excel</span>
+                        <span>Dán nhanh văn bản / Excel</span>
                       </button>
                       <button
                         type="button"
@@ -4135,7 +4135,7 @@ function SuperAdminContent() {
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e40af' }}>
-                          📋 Dán danh sách sinh viên vào đây (mỗi SV 1 dòng):
+                          Dán danh sách sinh viên vào đây (mỗi SV 1 dòng):
                         </label>
                         <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                           Hỗ trợ: <em>Họ và tên MSSV</em>, <em>MSSV Họ tên</em> hoặc copy từ Excel
@@ -4163,7 +4163,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       />
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600 }}>
-                          ✨ Đuôi email @student.ptithcm.edu.vn và mã lớp sẽ được tự động điền ngay lập tức!
+                          Đuôi email @student.ptithcm.edu.vn và mã lớp sẽ được tự động điền ngay lập tức!
                         </span>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                           <button
@@ -4215,7 +4215,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           <th style={{ padding: '0.6rem 0.5rem', minWidth: '240px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>
                             <span>Email sinh viên</span>
                             <span style={{ display: 'block', fontSize: '0.72rem', color: '#16a34a', fontWeight: 600 }}>
-                              ✨ Tự động gắn @student.ptithcm.edu.vn
+                              (Tự động gắn @student.ptithcm.edu.vn)
                             </span>
                           </th>
                           <th style={{ padding: '0.6rem 0.5rem', width: '105px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Giới tính</th>
@@ -4469,7 +4469,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     <label className={styles.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Email Sinh Viên</span>
                       <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>
-                        ✨ Tự động gắn @student.ptithcm.edu.vn
+                        (Tự động gắn @student.ptithcm.edu.vn)
                       </span>
                     </label>
                     <input
@@ -4487,7 +4487,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       style={{ background: manualSingleStudent.email ? '#f0fdf4' : '#ffffff' }}
                     />
                     <span style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
-                      💡 Tự động điền theo MSSV. Đuôi <code>@student.ptithcm.edu.vn</code> luôn được tự động gắn kèm khi lưu.
+                      Tự động điền theo MSSV. Đuôi <code>@student.ptithcm.edu.vn</code> luôn được tự động gắn kèm khi lưu.
                     </span>
                   </div>
 
