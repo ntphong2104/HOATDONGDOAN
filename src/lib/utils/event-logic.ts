@@ -86,9 +86,10 @@ export function getEarliestCheckinTime(
  * If end_time is not specified, defaults to 22:00.
  */
 export function isEventPastDeadline(
-  event: EventScheduleInfo,
+  event?: EventScheduleInfo | null,
   currentTimeMs: number = Date.now()
 ): boolean {
+  if (!event) return false;
   if (event.status === 'closed') return true;
   if (!event.event_date) return false;
 
@@ -163,10 +164,10 @@ export function getEffectiveEventStatus(
  * based purely on schedule date/time, ignoring the current status field.
  */
 export function isEventScheduleExpired(
-  event: EventScheduleInfo,
+  event?: EventScheduleInfo | null,
   currentTimeMs: number = Date.now()
 ): boolean {
-  if (!event.event_date) return false;
+  if (!event || !event.event_date) return false;
 
   try {
     const datePart = event.event_date.includes('T')
@@ -203,7 +204,7 @@ export function isEventScheduleExpired(
  * Only Super Admin retains full edit permissions.
  */
 export function isEventLockedPast3Days(
-  event: EventScheduleInfo,
+  event?: EventScheduleInfo | null,
   currentTimeMs: number = Date.now()
 ): boolean {
   if (!event) return false;

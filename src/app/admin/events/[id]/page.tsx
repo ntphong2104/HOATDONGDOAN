@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -44,11 +44,10 @@ const sanitizeForExcel = (val: any): any => {
   return val;
 };
 
-export default function EventDetailPage({ params }: { params?: Promise<{ id: string }> | { id: string } }) {
+export default function EventDetailPage({ params }: { params?: any }) {
   const routeParams = useParams();
   const rawId =
     (typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '') ||
-    (params && typeof params === 'object' && 'id' in params ? (params as any).id : '') ||
     '';
   const resolvedParams = { id: rawId };
   const [supabase] = useState(() => createClient());
@@ -122,6 +121,7 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   }, [resolvedParams.id]);
 
   const fetchData = async (isInitial = false) => {
+    if (!resolvedParams.id) return;
     if (isInitial) setLoading(true);
     try {
       // Run ALL fetches in parallel including /api/me

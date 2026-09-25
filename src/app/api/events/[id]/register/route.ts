@@ -142,13 +142,13 @@ export async function GET(
     });
 
     if (needsAttendedUpdate.length > 0) {
-      supabase
-        .from('event_registrations')
-        .update({ attended: true })
-        .eq('event_id', resolvedParams.id)
-        .in('mssv', needsAttendedUpdate)
-        .then(() => {})
-        .catch(() => {});
+      Promise.resolve(
+        supabase
+          .from('event_registrations')
+          .update({ attended: true })
+          .eq('event_id', resolvedParams.id)
+          .in('mssv', needsAttendedUpdate)
+      ).catch(() => {});
     }
   }
 

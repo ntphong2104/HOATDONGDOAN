@@ -388,24 +388,24 @@ export async function POST(req: Request) {
 
     // Synchronize event_registrations attended status asynchronously if needed
     if (!regData?.attended) {
-      supabase
-        .from('event_registrations')
-        .upsert(
-          {
-            event_id,
-            email: finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
-            mssv,
-            full_name: finalStudent.full_name || mssv,
-            class_id: finalStudent.class_id || 'PTIT-HCM',
-            role_type: participate_role === 'volunteer' ? 'volunteer' : 'participant',
-            attended: true,
-          },
-          { onConflict: 'event_id,mssv' }
-        )
-        .then(() => {})
-        .catch((syncErr) => {
-          console.warn('Could not sync event_registrations in checkin:', syncErr);
-        });
+      Promise.resolve(
+        supabase
+          .from('event_registrations')
+          .upsert(
+            {
+              event_id,
+              email: finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
+              mssv,
+              full_name: finalStudent.full_name || mssv,
+              class_id: finalStudent.class_id || 'PTIT-HCM',
+              role_type: participate_role === 'volunteer' ? 'volunteer' : 'participant',
+              attended: true,
+            },
+            { onConflict: 'event_id,mssv' }
+          )
+      ).catch((syncErr: any) => {
+        console.warn('Could not sync event_registrations in checkin:', syncErr);
+      });
     }
 
     return NextResponse.json({

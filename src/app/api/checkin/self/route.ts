@@ -162,7 +162,7 @@ export async function POST(req: Request) {
 
     // Retrieve event sessions and check session-specific time
     const sessions = meta.sessions || [];
-    const matchedSession = sessions.find((s) => s.id === targetSessionId) || {
+    const matchedSession = sessions.find((s: any) => s.id === targetSessionId) || {
       id: 'main',
       name: 'Buổi chính',
       session_date: event.event_date || new Date().toISOString().split('T')[0],

@@ -26,6 +26,7 @@ export async function PATCH(req: Request) {
   }
 
   const { enabled, message } = await req.json();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('system_settings')

@@ -35,12 +35,11 @@ interface ProposalDetail extends EventProposal {
 export default function ProposalDetailPage({
   params,
 }: {
-  params?: Promise<{ id: string }> | { id: string };
+  params?: any;
 }) {
   const routeParams = useParams();
   const rawId =
     (typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '') ||
-    (params && typeof params === 'object' && 'id' in params ? (params as any).id : '') ||
     '';
   const resolvedParams = { id: rawId };
   const router = useRouter();
