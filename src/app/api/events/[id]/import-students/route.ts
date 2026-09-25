@@ -91,16 +91,20 @@ export async function POST(
       });
     }
 
+    // Count raw occurrences of each MSSV in input to detect duplicates within the file/input
+    const rawMssvCounts = new Map<string, number>();
+    (mssv_list || []).forEach((m: any) => {
+      const raw = String(m || '').trim().toUpperCase();
+      if (raw.length >= 4) {
+        rawMssvCounts.set(raw, (rawMssvCounts.get(raw) || 0) + 1);
+      }
+    });
+
     // Clean, uppercase, deduplicate, and VALIDATE MSSV format
-    const allMssvs = Array.from(
-      new Set(
-        mssv_list
-          .map((m: any) => String(m).trim().toUpperCase())
-          .filter((m: string) => m.length >= 4)
-      )
-    );
+    const allMssvs = Array.from(rawMssvCounts.keys());
     const cleanedMssvs = allMssvs.filter((m) => isValidMSSV(m));
-    const rejectedMssvCount = allMssvs.length - cleanedMssvs.length;
+    const rejectedMssvs = allMssvs.filter((m) => !isValidMSSV(m));
+    const rejectedMssvCount = rejectedMssvs.length;
 
     if (cleanedMssvs.length === 0) {
       return NextResponse.json({
@@ -111,7 +115,11 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // ── VALIDATE MODE: Preview + warnings before actual import ──
+    const meta = await getEventMeta(supabase, resolvedParams.id);
+    const maxParticipants = Number((event as any).max_participants || meta.max_participants || 0);
+    const targetMode = body.target_mode || (mode === 'validate' ? 'checkin' : mode);
+
+    // ── VALIDATE MODE: Comprehensive Preview + cross-checks before import ──
     if (mode === 'validate') {
       const BATCH_SIZE = 100;
       const allUsers: any[] = [];
@@ -119,27 +127,98 @@ export async function POST(
         const batch = cleanedMssvs.slice(i, i + BATCH_SIZE);
         const { data: batchUsers } = await supabase
           .from('users')
-          .select('mssv, full_name, class_id, email')
+          .select('mssv, full_name, class_id, email, phone, gender')
           .in('mssv', batch);
         if (batchUsers) allUsers.push(...batchUsers);
       }
 
-      const existingMap = new Map<string, any>();
-      allUsers.forEach((u: any) => existingMap.set(u.mssv.toUpperCase(), u));
+      const existingUserMap = new Map<string, any>();
+      allUsers.forEach((u: any) => existingUserMap.set(u.mssv.toUpperCase(), u));
 
-      const rejectedMssvs = allMssvs.filter((m) => !isValidMSSV(m));
+      // 1. Fetch check_ins for this event
+      const { data: eventCheckins } = await supabase
+        .from('check_ins')
+        .select('mssv, participate_role, checked_by, created_at')
+        .eq('event_id', resolvedParams.id);
+
+      const checkinMap = new Map<string, any>();
+      (eventCheckins || []).forEach((c: any) => {
+        checkinMap.set(String(c.mssv).trim().toUpperCase(), c);
+      });
+
+      // 2. Fetch event_registrations for this event
+      const { data: eventRegs } = await supabase
+        .from('event_registrations')
+        .select('mssv, full_name, class_id, role_type, attended, attended_at')
+        .eq('event_id', resolvedParams.id);
+
+      const regMap = new Map<string, any>();
+      (eventRegs || []).forEach((r: any) => {
+        regMap.set(String(r.mssv).trim().toUpperCase(), r);
+      });
 
       const previewStudents = cleanedMssvs.map((mssv) => {
-        const dbUser = existingMap.get(mssv);
+        const dbUser = existingUserMap.get(mssv);
         const excelData = studentDataMap.get(mssv);
+        const checkinRecord = checkinMap.get(mssv);
+        const regRecord = regMap.get(mssv);
+        const duplicateCount = rawMssvCounts.get(mssv) || 1;
+
         const warnings: string[] = [];
+        const badges: Array<{ type: 'danger' | 'warning' | 'info' | 'success'; text: string }> = [];
 
-        const finalName = excelData?.full_name || dbUser?.full_name || '';
-        const finalClass = excelData?.class_id || dbUser?.class_id || '';
+        const finalName = excelData?.full_name || regRecord?.full_name || dbUser?.full_name || '';
+        const finalClass = excelData?.class_id || regRecord?.class_id || dbUser?.class_id || '';
 
-        if (!dbUser) {
-          warnings.push('Chưa có trong hệ thống');
+        // Check 1: In-file duplicates
+        const isDuplicateInFile = duplicateCount > 1;
+        if (isDuplicateInFile) {
+          warnings.push(`Trùng lặp trong danh sách nạp (${duplicateCount} lần)`);
+          badges.push({ type: 'danger', text: `Trùng ${duplicateCount}x` });
         }
+
+        // Check 2: Already checked in
+        const isAlreadyCheckedIn = Boolean(checkinRecord);
+        if (isAlreadyCheckedIn) {
+          if (targetMode === 'checkin') {
+            const timeStr = checkinRecord.created_at
+              ? new Date(checkinRecord.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+              : '';
+            warnings.push(`Đã điểm danh trước đó${timeStr ? ` (lúc ${timeStr})` : ''}`);
+            badges.push({ type: 'warning', text: 'Đã điểm danh rồi' });
+          } else {
+            badges.push({ type: 'info', text: 'Đã điểm danh' });
+          }
+        }
+
+        // Check 3: Registered status
+        const isRegistered = Boolean(regRecord);
+        if (targetMode === 'checkin') {
+          if (isRegistered) {
+            badges.push({ type: 'success', text: 'Đã đăng ký trước' });
+          } else {
+            warnings.push('Chưa đăng ký sự kiện trước (Khách vãng lai)');
+            badges.push({ type: 'info', text: 'Chưa đăng ký (Vãng lai)' });
+          }
+        } else if (targetMode === 'register') {
+          if (isRegistered) {
+            warnings.push('Đã có trong danh sách đăng ký sự kiện');
+            badges.push({ type: 'warning', text: 'Đã đăng ký rồi' });
+          } else {
+            badges.push({ type: 'success', text: 'Chưa đăng ký' });
+          }
+        }
+
+        // Check 4: System User Account
+        const inSystem = Boolean(dbUser);
+        if (!inSystem) {
+          warnings.push('Chưa có trong danh bạ sinh viên (Sẽ tự tạo tài khoản)');
+          badges.push({ type: 'info', text: 'Chưa có tài khoản' });
+        } else {
+          badges.push({ type: 'success', text: 'Đã có tài khoản' });
+        }
+
+        // Check 5: Name & Class completeness
         if (!finalName || finalName === mssv || finalName.includes('@')) {
           warnings.push('Thiếu họ tên');
         }
@@ -151,27 +230,66 @@ export async function POST(
           mssv,
           full_name: finalName || mssv,
           class_id: finalClass || 'PTIT-HCM',
-          in_system: !!dbUser,
-          from_excel: !!excelData?.full_name,
+          phone: excelData?.phone || dbUser?.phone || '',
+          gender: excelData?.gender || dbUser?.gender || '',
+          department_name: excelData?.department_name || '',
+          role_type: excelData?.role_type || participate_role,
+          in_system: inSystem,
+          from_excel: Boolean(excelData?.full_name),
+          is_already_checked_in: isAlreadyCheckedIn,
+          checked_in_at: checkinRecord?.created_at || null,
+          checked_by: checkinRecord?.checked_by || null,
+          is_registered: isRegistered,
+          registered_role: regRecord?.role_type || null,
+          is_duplicate_in_file: isDuplicateInFile,
+          duplicate_count: duplicateCount,
           warnings,
+          badges,
         };
       });
 
       const studentsWithWarnings = previewStudents.filter((s) => s.warnings.length > 0);
+      const currentCount = targetMode === 'checkin' ? (eventCheckins?.length || 0) : (eventRegs?.length || 0);
+      const newAddCount = targetMode === 'checkin'
+        ? previewStudents.filter((s) => !s.is_already_checked_in).length
+        : previewStudents.filter((s) => !s.is_registered).length;
+      const projectedTotal = currentCount + newAddCount;
+      const isOverflow = maxParticipants > 0 && projectedTotal > maxParticipants;
+      const overflowCount = isOverflow ? projectedTotal - maxParticipants : 0;
+      const remainingSlots = maxParticipants > 0 ? Math.max(0, maxParticipants - currentCount) : null;
 
       return NextResponse.json({
         success: true,
         mode: 'validate',
+        target_mode: targetMode,
         total: cleanedMssvs.length,
         rejected: rejectedMssvCount,
-        rejected_mssvs: rejectedMssvs.slice(0, 20),
+        rejected_mssvs: rejectedMssvs.slice(0, 30),
         warnings_count: studentsWithWarnings.length,
+        summary: {
+          total_valid: cleanedMssvs.length,
+          rejected: rejectedMssvCount,
+          in_file_duplicates: previewStudents.filter((s) => s.is_duplicate_in_file).length,
+          already_checked_in: previewStudents.filter((s) => s.is_already_checked_in).length,
+          already_registered: previewStudents.filter((s) => s.is_registered).length,
+          not_registered: previewStudents.filter((s) => !s.is_registered).length,
+          not_in_system: previewStudents.filter((s) => !s.in_system).length,
+          ready_to_import: newAddCount,
+          capacity: {
+            max_participants: maxParticipants,
+            current_count: currentCount,
+            new_add_count: newAddCount,
+            projected_total: projectedTotal,
+            is_overflow: isOverflow,
+            overflow_count: overflowCount,
+            remaining_slots: remainingSlots,
+          },
+        },
         students: previewStudents,
       });
     }
 
     const BATCH_SIZE = 100;
-    const meta = await getEventMeta(supabase, resolvedParams.id);
     
     const allUsers: any[] = [];
     for (let i = 0; i < cleanedMssvs.length; i += BATCH_SIZE) {

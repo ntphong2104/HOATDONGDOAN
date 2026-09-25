@@ -346,3 +346,224 @@
     transform: rotate(360deg);
   }
 }
+
+/* ──── Preview & Verification Dashboard Styles ──── */
+.modalWide {
+  max-width: 880px;
+}
+
+.previewContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  max-height: calc(88vh - 140px);
+  padding: 1.25rem 1.5rem;
+}
+
+.capacityCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.capacityCardOverflow {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.capacityHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.capacityProgressBar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+}
+
+.capacityProgressFillCurrent {
+  height: 100%;
+  background: #3b82f6;
+}
+
+.capacityProgressFillNew {
+  height: 100%;
+  background: #10b981;
+}
+
+.capacityProgressFillOverflow {
+  height: 100%;
+  background: #ef4444;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.65rem;
+}
+
+.statCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.statCardTitle {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.statCardValue {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.filterToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.filterTabs {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.filterTabBtn {
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filterTabBtnActive {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.quickActions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.quickBtn {
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  transition: all 0.15s ease;
+}
+
+.quickBtnDanger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.quickBtnDanger:hover {
+  background: #fee2e2;
+}
+
+.tableWrapper {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 380px;
+  background: #ffffff;
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.previewTable th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  padding: 0.55rem 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-align: left;
+  border-bottom: 1.5px solid #e2e8f0;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.previewTable td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+
+.badgePill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badgeSuccess {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badgeWarning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badgeDanger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badgeInfo {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
