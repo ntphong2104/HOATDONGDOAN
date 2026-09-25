@@ -121,7 +121,8 @@ export async function POST(req: Request) {
     const [
       { data: event, error: eventErr },
       { data: student },
-      meta
+      meta,
+      { data: regData }
     ] = await Promise.all([
       supabase
         .from('events')
@@ -130,10 +131,16 @@ export async function POST(req: Request) {
         .maybeSingle(),
       supabase
         .from('users')
-        .select('mssv, full_name, class_id, email')
+        .select('mssv, full_name, class_id, email, phone')
         .eq('mssv', mssv)
         .maybeSingle(),
-      getEventMeta(supabase, event_id)
+      getEventMeta(supabase, event_id),
+      supabase
+        .from('event_registrations')
+        .select('id, role_type, attended')
+        .eq('event_id', event_id)
+        .eq('mssv', mssv)
+        .maybeSingle(),
     ]);
 
     if (event_id === 'bbfe063b-c18f-4003-afe1-665334d13743' && (!meta.max_participants || meta.max_participants <= 130)) {
@@ -169,9 +176,10 @@ export async function POST(req: Request) {
           full_name: mssv,
           class_id: 'PTIT-HCM',
           email: `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
+          phone: '',
         };
         try {
-          await supabase.from('users').upsert(finalStudent, { onConflict: 'mssv' });
+          supabase.from('users').upsert(finalStudent, { onConflict: 'mssv' }).then(() => {});
         } catch {}
       } else {
         return NextResponse.json({
@@ -182,11 +190,15 @@ export async function POST(req: Request) {
       }
     }
 
-    // Check phone number requirement
-    const studentEmail = finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
-    const profileExtra = await getUserProfileExtraWithFallback(supabase, studentEmail, mssv);
-    const studentPhone = profileExtra?.phone || '';
-    if (!studentPhone || studentPhone.trim().length < 8) {
+    // Check phone number requirement (fast path from users table, fallback only if missing)
+    let studentPhone = (finalStudent.phone || '').trim();
+    if (!studentPhone || studentPhone.length < 8) {
+      const studentEmail = finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
+      const profileExtra = await getUserProfileExtraWithFallback(supabase, studentEmail, mssv);
+      studentPhone = (profileExtra?.phone || '').trim();
+    }
+
+    if (!studentPhone || studentPhone.length < 8) {
       return NextResponse.json({
         success: false,
         error: `📱 Sinh viên ${finalStudent.full_name || mssv} (${mssv}) chưa cập nhật SĐT!\n\n👉 Hướng dẫn sinh viên:\n1. Mở trang web hệ thống trên điện thoại\n2. Bấm vào ảnh đại diện → "Hồ Sơ Cá Nhân"\n3. Nhập Số Điện Thoại / Zalo\n4. Bấm "Lưu" rồi quay lại quét mã để điểm danh`,
@@ -196,13 +208,6 @@ export async function POST(req: Request) {
 
     // ── Enforce Registration Requirement if enabled for event ──
     if (meta.require_registration !== false) {
-      const { data: regData } = await supabase
-        .from('event_registrations')
-        .select('id, role_type, attended')
-        .eq('event_id', event_id)
-        .eq('mssv', mssv)
-        .maybeSingle();
-
       if (!regData) {
         return NextResponse.json({
           success: false,
@@ -381,9 +386,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // Synchronize event_registrations attended status
-    try {
-      await supabase
+    // Synchronize event_registrations attended status asynchronously if needed
+    if (!regData?.attended) {
+      supabase
         .from('event_registrations')
         .upsert(
           {
@@ -396,9 +401,11 @@ export async function POST(req: Request) {
             attended: true,
           },
           { onConflict: 'event_id,mssv' }
-        );
-    } catch (syncErr) {
-      console.warn('Could not sync event_registrations in checkin:', syncErr);
+        )
+        .then(() => {})
+        .catch((syncErr) => {
+          console.warn('Could not sync event_registrations in checkin:', syncErr);
+        });
     }
 
     return NextResponse.json({

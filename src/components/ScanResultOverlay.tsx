@@ -13,6 +13,7 @@ interface ScanResultOverlayProps {
   errorMessage?: string;
   onDone?: () => void;
   result?: { type: 'success' | 'error'; message: string; info?: string } | null;
+  autoCloseMs?: number;
 }
 
 export default function ScanResultOverlay({
@@ -23,18 +24,21 @@ export default function ScanResultOverlay({
   errorMessage,
   onDone,
   result,
+  autoCloseMs,
 }: ScanResultOverlayProps) {
   useEffect(() => {
     if (onDone && status && status !== 'idle') {
-      const timer = setTimeout(onDone, 2000);
+      const defaultDuration = status === 'success' ? 900 : 1800;
+      const duration = autoCloseMs !== undefined ? autoCloseMs : defaultDuration;
+      const timer = setTimeout(onDone, duration);
       return () => clearTimeout(timer);
     }
-  }, [status, onDone]);
+  }, [status, onDone, autoCloseMs]);
 
   if (result) {
     const isSuccess = result.type === 'success';
     return (
-      <div className={styles.overlay}>
+      <div className={styles.overlay} onClick={onDone} style={{ cursor: 'pointer' }}>
         <div className={`${styles.card} ${styles[result.type]}`}>
           <div className={styles.iconWrapper}>
             {isSuccess ? <CheckIcon size={32} /> : <CloseIcon size={32} />}
@@ -52,7 +56,7 @@ export default function ScanResultOverlay({
   const isDuplicate = status === 'duplicate';
 
   return (
-    <div className={styles.overlay}>
+    <div className={styles.overlay} onClick={onDone} style={{ cursor: 'pointer' }}>
       <div className={`${styles.card} ${styles[status]}`}>
         <div className={styles.iconWrapper}>
           {isSuccess && <CheckIcon size={32} />}

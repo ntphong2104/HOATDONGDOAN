@@ -80,8 +80,15 @@ function evictOldest<T>(cache: Record<string, T>, maxEntries: number): void {
 }
 
 let inMemoryMeta: Record<string, EventMeta> = loadFromFile();
+const inMemoryMetaExpiry: Record<string, number> = {};
+const META_CACHE_TTL_MS = 30000; // 30 seconds TTL for high-throughput scanning
 
 export async function getEventMeta(supabase: any, eventId: string): Promise<EventMeta> {
+  const now = Date.now();
+  if (inMemoryMeta[eventId] && (inMemoryMetaExpiry[eventId] || 0) > now) {
+    return inMemoryMeta[eventId];
+  }
+
   const metaKey = `event_meta_${eventId}`;
   // Use in-memory cache (loaded from file on startup, updated on save)
   const fileMeta = inMemoryMeta[eventId] || null;
@@ -138,6 +145,7 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
   }
 
   inMemoryMeta[eventId] = merged;
+  inMemoryMetaExpiry[eventId] = Date.now() + META_CACHE_TTL_MS;
   evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
 
   if (supabase && fileMeta?.max_participants && dbMeta && dbMeta.max_participants !== fileMeta.max_participants) {
@@ -306,6 +314,7 @@ export async function saveEventMeta(
   };
 
   inMemoryMeta[eventId] = updated;
+  inMemoryMetaExpiry[eventId] = Date.now() + META_CACHE_TTL_MS;
   evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
   saveToFile({ ...loadFromFile(), [eventId]: updated });
 

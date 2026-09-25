@@ -176,7 +176,7 @@ export default function QRScanner({
       };
 
       const config = {
-        fps: 25,
+        fps: 15,
         qrbox: qrboxFunction,
         aspectRatio: 1.0,
         videoConstraints: {
