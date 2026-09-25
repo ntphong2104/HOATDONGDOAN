@@ -123,6 +123,18 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
     max_volunteers: fileMeta?.max_volunteers ?? dbMeta?.max_volunteers ?? 0,
   };
 
+  // Ensure event bbfe063b-c18f-4003-afe1-665334d13743 has at least 230 capacity
+  if (eventId === 'bbfe063b-c18f-4003-afe1-665334d13743' && (merged.max_participants || 0) < 230) {
+    merged.max_participants = 230;
+    if (supabase) {
+      supabase.from('system_settings').upsert({
+        key: metaKey,
+        value: JSON.stringify(merged),
+        updated_at: new Date().toISOString(),
+      }).then(() => {}).catch(() => {});
+    }
+  }
+
   inMemoryMeta[eventId] = merged;
   evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
   return merged;

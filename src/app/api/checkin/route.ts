@@ -265,6 +265,9 @@ export async function POST(req: Request) {
       }
     }
 
+    // Pre-registered students and organizers/volunteers must not be blocked by capacity
+    const effectiveMax = (isSuperAdmin || regData || participate_role !== 'participant') ? 0 : maxParticipants;
+
     // ── Try Atomic Check-in if session exists ──
     if (targetSessionId && sessions.length > 0) {
       const atomicResult = await checkinAtomic(supabase, {
@@ -274,12 +277,12 @@ export async function POST(req: Request) {
         mssv,
         role: participate_role,
         checked_by: body.checked_by || userEmail || 'Scanner',
-        max_participants: isSuperAdmin ? 0 : maxParticipants,
+        max_participants: effectiveMax,
       });
 
       if (atomicResult.error === 'RPC_NOT_AVAILABLE') {
         // Fallback to old method
-        if (!isSuperAdmin && maxParticipants > 0) {
+        if (effectiveMax > 0) {
           const { count: currentCheckinCount } = await supabase
             .from('check_ins')
             .select('*', { count: 'exact', head: true })

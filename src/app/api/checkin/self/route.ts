@@ -207,6 +207,9 @@ export async function POST(req: Request) {
         ? 'volunteer'
         : 'participant';
 
+    // Registered students and organizers/volunteers already have reserved slots and must NOT be blocked by capacity
+    const effectiveCapacity = (registration || effectiveRole !== 'participant') ? 0 : (meta.max_participants || 0);
+
     // ── Try Atomic Check-in via RPC (capacity + duplicate + insert in 1 transaction) ──
     const atomicResult = await checkinAtomic(supabase, {
       event_id: eventId,
@@ -215,13 +218,13 @@ export async function POST(req: Request) {
       mssv,
       role: effectiveRole,
       checked_by: 'Mã QR Động (Tự quét)',
-      max_participants: meta.max_participants || 0,
+      max_participants: effectiveCapacity,
     });
 
     if (atomicResult.error === 'RPC_NOT_AVAILABLE') {
       // Fallback: RPC not deployed yet, use old method
-      // ── Enforce Max Participants Capacity ──
-      const maxParticipants = meta.max_participants || 0;
+      // ── Enforce Max Participants Capacity for walk-ins without pre-registration ──
+      const maxParticipants = effectiveCapacity;
       if (maxParticipants > 0) {
         const { count: currentCheckinCount } = await supabase
           .from('check_ins')

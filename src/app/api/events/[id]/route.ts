@@ -31,6 +31,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     is_recruitment_open: meta.is_recruitment_open !== false,
     require_registration: meta.require_registration !== false,
     target_scope: meta.target_scope || 'all',
+    max_participants: meta.max_participants || 0,
   };
 
   return NextResponse.json({ success: true, data: enriched }, {
@@ -69,7 +70,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     auth.tier === 'youth_union';
 
   const body = await req.json().catch(() => ({}));
-  const { status, event_name, event_date, start_time, end_time, semester, departments, target_scope, is_recruitment_open, require_registration } = body;
+  const { status, event_name, event_date, start_time, end_time, semester, departments, target_scope, is_recruitment_open, require_registration, max_participants } = body;
 
   // Kiểm tra quyền MỞ LẠI sự kiện khi đã quá 1 tiếng sau giờ kết thúc
   if (status === 'active') {
@@ -114,6 +115,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (target_scope !== undefined) metaUpdates.target_scope = target_scope;
   if (is_recruitment_open !== undefined) metaUpdates.is_recruitment_open = is_recruitment_open;
   if (require_registration !== undefined) metaUpdates.require_registration = require_registration;
+  if (max_participants !== undefined) metaUpdates.max_participants = Number(max_participants);
 
   if (Object.keys(metaUpdates).length > 0) {
     await saveEventMeta(supabase, resolvedParams.id, metaUpdates);
