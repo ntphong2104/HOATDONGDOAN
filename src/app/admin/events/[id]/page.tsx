@@ -79,6 +79,8 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   const [showAddDeptForm, setShowAddDeptForm] = useState(false);
   const [reviewingMssv, setReviewingMssv] = useState<string | null>(null);
   const [selectedMssvs, setSelectedMssvs] = useState<string[]>([]);
+  const [selectedRegMssvs, setSelectedRegMssvs] = useState<string[]>([]);
+  const [deletingRegs, setDeletingRegs] = useState(false);
   const [togglingRecruitment, setTogglingRecruitment] = useState(false);
   const [bulkReviewing, setBulkReviewing] = useState(false);
   const [ratings, setRatings] = useState<any[]>([]);
@@ -327,6 +329,31 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
       alert('Lỗi kết nối khi phê duyệt hàng loạt');
     } finally {
       setBulkReviewing(false);
+    }
+  };
+
+  const handleDeleteSelectedRegs = async () => {
+    if (selectedRegMssvs.length === 0) return;
+    if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedRegMssvs.length} sinh viên đã chọn khỏi danh sách đăng ký sự kiện này?`)) return;
+    setDeletingRegs(true);
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}/register`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mssvs: selectedRegMssvs }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(data.message || `Đã xóa ${selectedRegMssvs.length} sinh viên!`);
+        setSelectedRegMssvs([]);
+        fetchData(false);
+      } else {
+        alert(data.error || 'Lỗi khi xóa đăng ký');
+      }
+    } catch {
+      alert('Lỗi kết nối máy chủ');
+    } finally {
+      setDeletingRegs(false);
     }
   };
 
@@ -2575,8 +2602,100 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                 )}
               </div>
 
+              {selectedRegMssvs.length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.65rem 1rem',
+                  background: '#fef2f2',
+                  border: '1.5px solid #fecaca',
+                  borderRadius: '10px',
+                  marginBottom: '0.85rem',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                }}>
+                  <div style={{ fontSize: '0.85rem', color: '#991b1b', fontWeight: 600 }}>
+                    Đã chọn: <strong style={{ color: '#dc2626' }}>{selectedRegMssvs.length}</strong> sinh viên đăng ký
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      disabled={deletingRegs}
+                      onClick={handleDeleteSelectedRegs}
+                      style={{
+                        padding: '0.4rem 0.9rem',
+                        borderRadius: '8px',
+                        background: '#dc2626',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        cursor: deletingRegs ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+                      }}
+                    >
+                      <TrashIcon size={14} />
+                      <span>{deletingRegs ? 'Đang xóa...' : `Xóa ${selectedRegMssvs.length} sinh viên đã chọn`}</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deletingRegs}
+                      onClick={() => setSelectedRegMssvs([])}
+                      style={{
+                        padding: '0.4rem 0.75rem',
+                        borderRadius: '8px',
+                        background: '#ffffff',
+                        color: '#475569',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Bỏ chọn
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <DataTable 
                 columns={[
+                  ...((isPrivileged || isEventCreator) ? [{
+                    key: 'select',
+                    label: (
+                      <input
+                        type="checkbox"
+                        checked={
+                          participantRegistrations.length > 0 &&
+                          selectedRegMssvs.length === participantRegistrations.length
+                        }
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedRegMssvs(participantRegistrations.map((r: any) => r.mssv));
+                          } else {
+                            setSelectedRegMssvs([]);
+                          }
+                        }}
+                      />
+                    ),
+                    render: (_val: any, row: any) => (
+                      <input
+                        type="checkbox"
+                        checked={selectedRegMssvs.includes(row.mssv)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedRegMssvs((prev) => [...prev, row.mssv]);
+                          } else {
+                            setSelectedRegMssvs((prev) => prev.filter((m) => m !== row.mssv));
+                          }
+                        }}
+                      />
+                    ),
+                  }] : []),
                   {
                     key: 'mssv',
                     label: 'MSSV',

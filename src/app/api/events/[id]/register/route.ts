@@ -402,26 +402,80 @@ export async function DELETE(
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
   const supabase = (await getSupabase()) || (await createClient());
 
-  const isAdmin = auth.isSuperAdmin || auth.tier === 'super_admin' || auth.isEventAdmin || auth.tier === 'event_admin';
+  const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
+  const isYouthUnion = auth.tier === 'youth_union';
+  const isEventAdmin = auth.isEventAdmin || auth.tier === 'event_admin';
 
-  // Admin can specify mssv in body to delete another user's registration
-  let targetMssv = extractMSSV(auth.email) || auth.email;
+  let isCreator = false;
   try {
-    const body = await req.json().catch(() => ({}));
-    if (body.mssv && isAdmin) {
-      targetMssv = body.mssv;
-    }
+    const { data: event } = await supabase
+      .from('events')
+      .select('created_by')
+      .eq('event_id', resolvedParams.id)
+      .maybeSingle();
+    isCreator = !!(event?.created_by && auth.email && event.created_by.toLowerCase() === auth.email.toLowerCase());
   } catch {}
 
-  const { error } = await supabase
-    .from('event_registrations')
-    .delete()
-    .eq('event_id', resolvedParams.id)
-    .eq('mssv', targetMssv);
+  const canManage = isSuperAdmin || isYouthUnion || isEventAdmin || isCreator;
 
-  if (error) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
+  try {
+    const body = await req.json().catch(() => ({}));
+
+    // 1. Bulk delete by array of MSSVs
+    if (canManage && Array.isArray(body.mssvs) && body.mssvs.length > 0) {
+      const cleanMssvs = body.mssvs.map((m: any) => String(m).trim().toUpperCase());
+      const { error, count } = await supabase
+        .from('event_registrations')
+        .delete({ count: 'exact' })
+        .eq('event_id', resolvedParams.id)
+        .in('mssv', cleanMssvs);
+
+      if (error) {
+        return NextResponse.json({ success: false, error: 'Lỗi khi xóa hàng loạt đăng ký' }, { status: 500 });
+      }
+      return NextResponse.json({
+        success: true,
+        count: count ?? cleanMssvs.length,
+        message: `Đã xóa thành công ${count ?? cleanMssvs.length} sinh viên khỏi danh sách đăng ký!`,
+      });
+    }
+
+    // 2. Rollback a batch created after a specific timestamp
+    if (canManage && body.created_after) {
+      const { error, count } = await supabase
+        .from('event_registrations')
+        .delete({ count: 'exact' })
+        .eq('event_id', resolvedParams.id)
+        .gte('created_at', body.created_after);
+
+      if (error) {
+        return NextResponse.json({ success: false, error: 'Lỗi khi khứ hồi đợt đăng ký' }, { status: 500 });
+      }
+      return NextResponse.json({
+        success: true,
+        count: count ?? 0,
+        message: `Đã khứ hồi xóa ${count ?? 0} sinh viên vừa nạp!`,
+      });
+    }
+
+    // 3. Single delete
+    let targetMssv = extractMSSV(auth.email) || auth.email;
+    if (body.mssv && canManage) {
+      targetMssv = String(body.mssv).trim().toUpperCase();
+    }
+
+    const { error } = await supabase
+      .from('event_registrations')
+      .delete()
+      .eq('event_id', resolvedParams.id)
+      .eq('mssv', targetMssv);
+
+    if (error) {
+      return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Đã xóa đăng ký thành công' });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err?.message || 'Lỗi xử lý yêu cầu' }, { status: 500 });
   }
-
-  return NextResponse.json({ success: true, message: 'Đã xóa đăng ký thành công' });
 }
