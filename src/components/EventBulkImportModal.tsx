@@ -127,23 +127,67 @@ export default function EventBulkImportModal({
 
   if (!isOpen) return null;
 
-  // Extract valid MSSVs from text
-  const parseMssvList = (text: string): string[] => {
-    return Array.from(
-      new Set(
-        text
-          .split(/[\r\n,;\t\s]+/)
-          .map((s) => s.trim().toUpperCase())
-          .filter((s) => s.length >= 4 && isValidMSSV(s))
-      )
-    );
+  // Extract valid MSSVs and optional student full names from pasted text
+  const parsePastedText = (text: string) => {
+    const lines = text.split(/[\r\n]+/);
+    const mssvMap = new Map<string, { mssv: string; full_name?: string }>();
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      const tokens = trimmed.split(/[\t\s]+/);
+      let foundMssv = '';
+
+      for (const tok of tokens) {
+        const clean = tok.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        if (clean.length >= 8 && isValidMSSV(clean)) {
+          foundMssv = clean;
+          break;
+        }
+      }
+
+      if (foundMssv) {
+        let nameCandidate = trimmed
+          .replace(new RegExp(`\\b${foundMssv}\\b`, 'i'), '')
+          .replace(new RegExp(`${foundMssv}`, 'i'), '')
+          .replace(/^\s*\d+[\.\-\)\s]+/, '') // Strip leading STT "1. ", "2 - "
+          .replace(/[\t,;|]+/g, ' ')
+          .trim();
+
+        nameCandidate = nameCandidate.replace(/^[-–—:]+/, '').replace(/[-–—:]+$/, '').trim();
+
+        if (nameCandidate.startsWith('nguyênNguyễn')) {
+          nameCandidate = nameCandidate.replace(/^nguyênNguyễn/, 'Nguyễn');
+        }
+
+        if (nameCandidate.length >= 2 && !isValidMSSV(nameCandidate)) {
+          mssvMap.set(foundMssv, { mssv: foundMssv, full_name: nameCandidate });
+        } else if (!mssvMap.has(foundMssv)) {
+          mssvMap.set(foundMssv, { mssv: foundMssv });
+        }
+      } else {
+        tokens.forEach((tok) => {
+          const clean = tok.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+          if (clean.length >= 8 && isValidMSSV(clean) && !mssvMap.has(clean)) {
+            mssvMap.set(clean, { mssv: clean });
+          }
+        });
+      }
+    });
+
+    const studentList = Array.from(mssvMap.values());
+    return {
+      mssvList: studentList.map((s) => s.mssv),
+      studentList,
+    };
   };
 
+  const { mssvList: parsedMssvs, studentList: pastedStudents } = parsePastedText(inputText);
   const allEntries = inputText
     .split(/[\r\n,;\t\s]+/)
     .map((s) => s.trim().toUpperCase())
     .filter((s) => s.length >= 4);
-  const parsedMssvs = parseMssvList(inputText);
   const rejectedCount = allEntries.filter((s) => !isValidMSSV(s)).length;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -333,13 +377,19 @@ export default function EventBulkImportModal({
 
   // Run comprehensive validation check
   const handleValidateAndPreview = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (parsedMssvs.length === 0) {
+    const effectiveStudents = parsedStudents.length > 0 ? parsedStudents : pastedStudents;
+    const effectiveMssvs = parsedStudents.length > 0 ? parsedStudents.map((s) => s.mssv) : parsedMssvs;
+
+    if (effectiveMssvs.length === 0) {
       setFeedback({
         type: 'error',
         message: 'Vui lòng nhập hoặc dán ít nhất một mã số sinh viên hợp lệ.',
       });
       return;
+    }
+
+    if (parsedStudents.length === 0 && pastedStudents.length > 0) {
+      setParsedStudents(pastedStudents);
     }
 
     setLoading(true);
@@ -350,8 +400,8 @@ export default function EventBulkImportModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mssv_list: parsedMssvs,
-          students_data: parsedStudents.length > 0 ? parsedStudents : undefined,
+          mssv_list: effectiveMssvs,
+          students_data: effectiveStudents.length > 0 ? effectiveStudents : undefined,
           participate_role: role,
           mode: 'validate',
           target_mode: mode,
@@ -469,7 +519,8 @@ export default function EventBulkImportModal({
           : parsedMssvs.map((m) => ({ mssv: m })));
 
       const activeMssvs = activeList.map((s) => s.mssv);
-      const activeStudentData = parsedStudents.filter((ps) => activeMssvs.includes(ps.mssv));
+      const effectiveStudentList = parsedStudents.length > 0 ? parsedStudents : pastedStudents;
+      const activeStudentData = effectiveStudentList.filter((ps) => activeMssvs.includes(ps.mssv));
 
       const res = await fetch(`/api/events/${eventId}/import-students`, {
         method: 'POST',
