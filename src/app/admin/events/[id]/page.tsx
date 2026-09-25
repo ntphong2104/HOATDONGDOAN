@@ -1639,7 +1639,7 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                       color: stats.checkedParticipant >= (event.max_participants || 0) ? '#dc2626' : '#059669',
                     }}>
                       {stats.checkedParticipant >= (event.max_participants || 0)
-                        ? `🚫 Đã ĐẦY (${stats.checkedParticipant}/${event.max_participants})`
+                        ? `Đã đầy (${stats.checkedParticipant}/${event.max_participants})`
                         : `Còn ${Math.max(0, (event.max_participants || 0) - stats.checkedParticipant)} chỗ trống`}
                     </span>
                   )}
@@ -1673,7 +1673,7 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                   transition: 'all 0.15s ease',
                 }}
               >
-                <span>✏️ Chỉnh sửa sức chứa (Super Admin)</span>
+                <span>Thay đổi sức chứa</span>
               </button>
             ) : (
               <div style={{
@@ -1688,7 +1688,7 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                 borderRadius: '8px',
                 border: '1px dashed #cbd5e1',
               }}>
-                🔒 Chỉ Super Admin có quyền sửa sức chứa
+                Chỉ Super Admin có quyền sửa sức chứa
               </div>
             )}
           </div>
@@ -3956,8 +3956,8 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span>🎯</span> Chỉnh Sửa Sức Chứa Sự Kiện
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+                Chỉnh Sửa Sức Chứa Sự Kiện
               </h3>
               <button
                 type="button"
@@ -4047,15 +4047,15 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                 fontSize: '0.8rem',
                 color: '#475569',
               }}>
-                📊 Hiện tại đã có <strong>{stats.checkedParticipant}</strong> người tham gia điểm danh thực tế.
+                Hiện tại đã có <strong>{stats.checkedParticipant}</strong> người tham gia điểm danh thực tế.
                 {newCapacity > 0 && stats.checkedParticipant >= newCapacity && (
                   <div style={{ color: '#dc2626', fontWeight: 700, marginTop: '0.25rem' }}>
-                    ⚠️ Lưu ý: Với sức chứa {newCapacity}, hệ thống sẽ khóa điểm danh vì đã đạt/vượt số lượng!
+                    Lưu ý: Với sức chứa {newCapacity}, hệ thống sẽ khóa điểm danh vì đã đạt/vượt số lượng!
                   </div>
                 )}
                 {newCapacity > 0 && stats.checkedParticipant < newCapacity && (
                   <div style={{ color: '#059669', fontWeight: 600, marginTop: '0.25rem' }}>
-                    ✅ Còn trống {newCapacity - stats.checkedParticipant} chỗ điểm danh.
+                    Còn trống {newCapacity - stats.checkedParticipant} chỗ điểm danh.
                   </div>
                 )}
               </div>
@@ -4091,7 +4091,7 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                     cursor: savingCapacity ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {savingCapacity ? 'Đang lưu...' : '💾 Cập Nhật Sức Chứa'}
+                  {savingCapacity ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                 </button>
               </div>
             </form>
