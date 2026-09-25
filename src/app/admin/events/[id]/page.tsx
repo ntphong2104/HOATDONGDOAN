@@ -103,8 +103,8 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   const [copiedRecruitment, setCopiedRecruitment] = useState(false);
   const [showDynamicQR, setShowDynamicQR] = useState(false);
   const [projectorRole, setProjectorRole] = useState<'participant' | 'volunteer' | 'organizer'>('participant');
-  const [editingCapacity, setEditingCapacity] = useState(false);
-  const [capacityInput, setCapacityInput] = useState<number | string>(130);
+  const [showCapacityModal, setShowCapacityModal] = useState(false);
+  const [newCapacity, setNewCapacity] = useState<number>(0);
   const [savingCapacity, setSavingCapacity] = useState(false);
 
   useEffect(() => {
@@ -153,9 +153,6 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
       if (eventData.success && eventData.data) {
         setEvent(eventData.data);
         setDepartments(eventData.data.departments || []);
-        if (eventData.data.max_participants !== undefined) {
-          setCapacityInput(eventData.data.max_participants);
-        }
       } else {
         const { data: directEvent } = await supabase
           .from('events')
@@ -165,9 +162,6 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
         if (directEvent) {
           setEvent(directEvent);
           setDepartments(directEvent.departments || []);
-          if ((directEvent as any).max_participants !== undefined) {
-            setCapacityInput((directEvent as any).max_participants);
-          }
         }
       }
 
@@ -247,35 +241,6 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
       setDepartments(previousDepts);
     } finally {
       setSavingDepts(false);
-    }
-  };
-
-  const handleSaveCapacity = async (newVal?: number) => {
-    const val = newVal !== undefined ? newVal : Number(capacityInput);
-    if (isNaN(val) || val < 0) {
-      alert('Vui lòng nhập số lượng hợp lệ (0 nếu không muốn giới hạn)');
-      return;
-    }
-    setSavingCapacity(true);
-    try {
-      const res = await fetch(`/api/events/${resolvedParams.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ max_participants: val }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setEvent((prev: any) => (prev ? { ...prev, max_participants: val } : null));
-        setCapacityInput(val);
-        setEditingCapacity(false);
-        alert(`Đã cập nhật sức chứa tối đa thành công: ${val > 0 ? `${val} người` : 'Không giới hạn'}!`);
-      } else {
-        alert(data.error || 'Lỗi khi cập nhật sức chứa');
-      }
-    } catch {
-      alert('Lỗi kết nối khi cập nhật sức chứa');
-    } finally {
-      setSavingCapacity(false);
     }
   };
 
@@ -500,6 +465,38 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
       }
     } catch {
       alert('Lỗi kết nối');
+    }
+  };
+
+  const handleUpdateCapacity = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!event) return;
+    setSavingCapacity(true);
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          max_participants: Math.max(0, Number(newCapacity)),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(
+          newCapacity > 0
+            ? `Đã cập nhật sức chứa sự kiện thành ${newCapacity} người!`
+            : 'Đã hủy giới hạn số lượng người tham gia (không giới hạn)!'
+        );
+        setEvent((prev) => prev ? { ...prev, max_participants: Math.max(0, Number(newCapacity)) } : prev);
+        setShowCapacityModal(false);
+        fetchData(false);
+      } else {
+        alert(data.error || 'Lỗi khi cập nhật sức chứa');
+      }
+    } catch {
+      alert('Lỗi kết nối máy chủ');
+    } finally {
+      setSavingCapacity(false);
     }
   };
 
@@ -1563,170 +1560,93 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
           />
         </div>
 
-        {/* Capacity / Sức chứa tối đa widget */}
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '12px',
-          padding: '1rem 1.25rem',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: '#eff6ff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#2563eb',
-              fontSize: '1.25rem'
-            }}>
-              👥
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.95rem', color: '#1e293b' }}>
-                  Giới hạn sức chứa (Số người tối đa được điểm danh)
-                </span>
-                <span style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  padding: '2px 8px',
-                  borderRadius: '9999px',
-                  background: Number(event.max_participants) > 0 ? '#eff6ff' : '#f1f5f9',
-                  color: Number(event.max_participants) > 0 ? '#1d4ed8' : '#475569',
-                }}>
-                  {Number(event.max_participants) > 0 ? `${event.max_participants} người` : 'Không giới hạn'}
-                </span>
+        {/* Capacity / Max Participants Banner */}
+        {event && (
+          <div style={{
+            marginTop: '1.25rem',
+            padding: '1rem 1.25rem',
+            background: '#ffffff',
+            borderRadius: '16px',
+            border: '1.5px solid #e2e8f0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: (event.max_participants || 0) > 0 && stats.checkedParticipant >= (event.max_participants || 0) ? '#fee2e2' : '#eff6ff',
+                color: (event.max_participants || 0) > 0 && stats.checkedParticipant >= (event.max_participants || 0) ? '#dc2626' : '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <UsersIcon size={22} />
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                Tổng đã điểm danh thực tế: <strong>{(stats.checkedParticipant || 0) + (stats.checkedVolunteer || 0) + (stats.checkedOrganizer || 0)}</strong> người
-                {Number(event.max_participants) > 0 && ` / ${event.max_participants} tối đa`}
-                <span style={{ marginLeft: '8px', color: '#10b981', fontWeight: 500 }}>
-                  (Sinh viên đã đăng ký trong danh sách luôn được ưu tiên điểm danh)
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {(isPrivileged || isEventCreator) && (
-            <div>
-              {!editingCapacity ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCapacityInput(event.max_participants || 0);
-                    setEditingCapacity(true);
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    fontSize: '0.85rem',
-                    fontWeight: 500,
-                    color: '#334155',
-                    cursor: 'pointer',
-                  }}
-                >
-                  ✏️ Thay đổi sức chứa
-                </button>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <input
-                    type="number"
-                    min="0"
-                    step="10"
-                    value={capacityInput}
-                    onChange={(e) => setCapacityInput(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="0 = Vô hạn"
-                    style={{
-                      width: '110px',
-                      padding: '6px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #3b82f6',
-                      fontSize: '0.875rem',
-                      outline: 'none',
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button
-                      type="button"
-                      disabled={savingCapacity}
-                      onClick={() => handleSaveCapacity(230)}
-                      style={{ padding: '4px 8px', fontSize: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
-                      title="Nâng nhanh lên 230 người"
-                    >
-                      230
-                    </button>
-                    <button
-                      type="button"
-                      disabled={savingCapacity}
-                      onClick={() => handleSaveCapacity(300)}
-                      style={{ padding: '4px 8px', fontSize: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
-                      title="Nâng nhanh lên 300 người"
-                    >
-                      300
-                    </button>
-                    <button
-                      type="button"
-                      disabled={savingCapacity}
-                      onClick={() => handleSaveCapacity(0)}
-                      style={{ padding: '4px 8px', fontSize: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
-                      title="Không giới hạn người"
-                    >
-                      Vô hạn (0)
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={savingCapacity}
-                    onClick={() => handleSaveCapacity()}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      background: '#2563eb',
-                      color: '#ffffff',
-                      border: 'none',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      cursor: savingCapacity ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {savingCapacity ? 'Đang lưu...' : '💾 Lưu'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={savingCapacity}
-                    onClick={() => setEditingCapacity(false)}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: '6px',
-                      background: '#f1f5f9',
-                      color: '#475569',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Hủy
-                  </button>
+              <div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Giới Hạn Người Tham Gia (Sức Chứa Điểm Danh)
                 </div>
-              )}
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span>
+                    {(event.max_participants || 0) > 0
+                      ? `${event.max_participants} người`
+                      : 'Không giới hạn (Tự do)'}
+                  </span>
+                  {(event.max_participants || 0) > 0 && (
+                    <span style={{
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '8px',
+                      background: stats.checkedParticipant >= (event.max_participants || 0) ? '#fee2e2' : '#ecfdf5',
+                      color: stats.checkedParticipant >= (event.max_participants || 0) ? '#dc2626' : '#059669',
+                    }}>
+                      {stats.checkedParticipant >= (event.max_participants || 0)
+                        ? `🚫 Đã ĐẦY (${stats.checkedParticipant}/${event.max_participants})`
+                        : `Còn ${Math.max(0, (event.max_participants || 0) - stats.checkedParticipant)} chỗ trống`}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
+                  Hệ thống tự động chặn điểm danh khi đạt tối đa <strong>{(event.max_participants || 0) > 0 ? `${event.max_participants} người` : 'vô hạn'}</strong> để đảm bảo an toàn hội trường.
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+
+            {(isPrivileged || isEventCreator) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNewCapacity(event.max_participants || 0);
+                  setShowCapacityModal(true);
+                }}
+                style={{
+                  padding: '0.55rem 1.15rem',
+                  borderRadius: '10px',
+                  border: '1.5px solid #2563eb',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 1px 3px rgba(37, 99, 235, 0.1)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>✏️ Chỉnh sửa sức chứa</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Quản lý CTV Quét Mã (Checker) */}
         {(isPrivileged || isEventCreator) && (
@@ -3861,6 +3781,179 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                   }}
                 >
                   {savingSession ? 'Đang lưu...' : 'Lưu Ca Điểm Danh'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showCapacityModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1rem',
+          }}
+          onClick={() => setShowCapacityModal(false)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '460px',
+              width: '100%',
+              padding: '1.5rem',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>🎯</span> Chỉnh Sửa Sức Chứa Sự Kiện
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowCapacityModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '1.25rem',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
+              Điều chỉnh giới hạn số lượng sinh viên tham gia tối đa được phép điểm danh vào sự kiện.
+              Điểm danh sẽ bị hệ thống tự động khóa khi chạm ngưỡng này để đảm bảo sức chứa hội trường.
+            </p>
+
+            <form onSubmit={handleUpdateCapacity} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  Số người tham gia tối đa (0 = Không giới hạn):
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={newCapacity}
+                    onChange={(e) => setNewCapacity(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    style={{
+                      width: '100%',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '8px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      color: '#0f172a',
+                      boxSizing: 'border-box',
+                    }}
+                    required
+                  />
+                  <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    người
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                  Chọn nhanh:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  {[130, 200, 230, 250, 300, 500, 0].map((cap) => (
+                    <button
+                      key={cap}
+                      type="button"
+                      onClick={() => setNewCapacity(cap)}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '6px',
+                        border: newCapacity === cap ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                        background: newCapacity === cap ? '#eff6ff' : '#f8fafc',
+                        color: newCapacity === cap ? '#1d4ed8' : '#475569',
+                        fontWeight: newCapacity === cap ? 700 : 500,
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {cap === 0 ? 'Vô hạn (0)' : `${cap} người`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '0.65rem 0.85rem',
+                fontSize: '0.8rem',
+                color: '#475569',
+              }}>
+                📊 Hiện tại đã có <strong>{stats.checkedParticipant}</strong> người tham gia điểm danh thực tế.
+                {newCapacity > 0 && stats.checkedParticipant >= newCapacity && (
+                  <div style={{ color: '#dc2626', fontWeight: 700, marginTop: '0.25rem' }}>
+                    ⚠️ Lưu ý: Với sức chứa {newCapacity}, hệ thống sẽ khóa điểm danh vì đã đạt/vượt số lượng!
+                  </div>
+                )}
+                {newCapacity > 0 && stats.checkedParticipant < newCapacity && (
+                  <div style={{ color: '#059669', fontWeight: 600, marginTop: '0.25rem' }}>
+                    ✅ Còn trống {newCapacity - stats.checkedParticipant} chỗ điểm danh.
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCapacityModal(false)}
+                  style={{
+                    padding: '0.55rem 1rem',
+                    background: '#f1f5f9',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCapacity}
+                  style={{
+                    padding: '0.55rem 1.25rem',
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: savingCapacity ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {savingCapacity ? 'Đang lưu...' : '💾 Cập Nhật Sức Chứa'}
                 </button>
               </div>
             </form>

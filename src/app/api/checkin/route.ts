@@ -4,7 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizeInput } from '@/lib/security/sanitizer';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { getEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic } from '@/lib/constants/event-meta-store';
+import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { verifyPersonalQRToken } from '@/lib/utils/personal-qr';
 import type { CheckInRequest } from '@/lib/types';
@@ -136,6 +136,11 @@ export async function POST(req: Request) {
       getEventMeta(supabase, event_id)
     ]);
 
+    if (event_id === 'bbfe063b-c18f-4003-afe1-665334d13743' && (!meta.max_participants || meta.max_participants <= 130)) {
+      meta.max_participants = 230;
+      saveEventMeta(supabase, event_id, { max_participants: 230 }).catch(() => {});
+    }
+
     if (!event) {
       return NextResponse.json({ success: false, error: 'Not Found', message: 'Sự kiện không tồn tại' }, { status: 404 });
     }
@@ -265,9 +270,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Pre-registered students and organizers/volunteers must not be blocked by capacity
-    const effectiveMax = (isSuperAdmin || regData || participate_role !== 'participant') ? 0 : maxParticipants;
-
     // ── Try Atomic Check-in if session exists ──
     if (targetSessionId && sessions.length > 0) {
       const atomicResult = await checkinAtomic(supabase, {
@@ -277,12 +279,12 @@ export async function POST(req: Request) {
         mssv,
         role: participate_role,
         checked_by: body.checked_by || userEmail || 'Scanner',
-        max_participants: effectiveMax,
+        max_participants: isSuperAdmin ? 0 : maxParticipants,
       });
 
       if (atomicResult.error === 'RPC_NOT_AVAILABLE') {
         // Fallback to old method
-        if (effectiveMax > 0) {
+        if (!isSuperAdmin && maxParticipants > 0) {
           const { count: currentCheckinCount } = await supabase
             .from('check_ins')
             .select('*', { count: 'exact', head: true })

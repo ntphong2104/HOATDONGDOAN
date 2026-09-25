@@ -6,7 +6,7 @@ import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
-import { getEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, type EventSession } from '@/lib/constants/event-meta-store';
+import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, type EventSession } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 
 export async function POST(req: Request) {
@@ -110,6 +110,11 @@ export async function POST(req: Request) {
       getEventMeta(supabase, eventId)
     ]);
 
+    if (eventId === 'bbfe063b-c18f-4003-afe1-665334d13743' && (!meta.max_participants || meta.max_participants <= 130)) {
+      meta.max_participants = 230;
+      saveEventMeta(supabase, eventId, { max_participants: 230 }).catch(() => {});
+    }
+
     if (studentUser?.mssv) {
       mssv = studentUser.mssv;
     } else if (!mssv && email) {
@@ -207,9 +212,6 @@ export async function POST(req: Request) {
         ? 'volunteer'
         : 'participant';
 
-    // Registered students and organizers/volunteers already have reserved slots and must NOT be blocked by capacity
-    const effectiveCapacity = (registration || effectiveRole !== 'participant') ? 0 : (meta.max_participants || 0);
-
     // ── Try Atomic Check-in via RPC (capacity + duplicate + insert in 1 transaction) ──
     const atomicResult = await checkinAtomic(supabase, {
       event_id: eventId,
@@ -218,13 +220,13 @@ export async function POST(req: Request) {
       mssv,
       role: effectiveRole,
       checked_by: 'Mã QR Động (Tự quét)',
-      max_participants: effectiveCapacity,
+      max_participants: meta.max_participants || 0,
     });
 
     if (atomicResult.error === 'RPC_NOT_AVAILABLE') {
       // Fallback: RPC not deployed yet, use old method
-      // ── Enforce Max Participants Capacity for walk-ins without pre-registration ──
-      const maxParticipants = effectiveCapacity;
+      // ── Enforce Max Participants Capacity ──
+      const maxParticipants = meta.max_participants || 0;
       if (maxParticipants > 0) {
         const { count: currentCheckinCount } = await supabase
           .from('check_ins')

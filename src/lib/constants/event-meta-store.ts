@@ -123,20 +123,33 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
     max_volunteers: fileMeta?.max_volunteers ?? dbMeta?.max_volunteers ?? 0,
   };
 
-  // Ensure event bbfe063b-c18f-4003-afe1-665334d13743 has at least 230 capacity
-  if (eventId === 'bbfe063b-c18f-4003-afe1-665334d13743' && (merged.max_participants || 0) < 230) {
+  // Ensure event bbfe063b-c18f-4003-afe1-665334d13743 has 230 capacity if not yet set or <= 130
+  if (eventId === 'bbfe063b-c18f-4003-afe1-665334d13743' && (!merged.max_participants || merged.max_participants <= 130)) {
     merged.max_participants = 230;
     if (supabase) {
-      supabase.from('system_settings').upsert({
-        key: metaKey,
-        value: JSON.stringify(merged),
-        updated_at: new Date().toISOString(),
-      }).then(() => {}).catch(() => {});
+      try {
+        supabase.from('system_settings').upsert({
+          key: metaKey,
+          value: JSON.stringify(merged),
+          updated_at: new Date().toISOString(),
+        }).then(() => {}).catch(() => {});
+      } catch {}
     }
   }
 
   inMemoryMeta[eventId] = merged;
   evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
+
+  if (supabase && fileMeta?.max_participants && dbMeta && dbMeta.max_participants !== fileMeta.max_participants) {
+    try {
+      supabase.from('system_settings').upsert({
+        key: metaKey,
+        value: JSON.stringify(merged),
+        updated_at: new Date().toISOString(),
+      }).then(() => {}).catch(() => {});
+    } catch {}
+  }
+
   return merged;
 }
 

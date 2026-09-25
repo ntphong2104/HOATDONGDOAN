@@ -1,0 +1,58 @@
+{
+  "e3476f18-7cb5-4ab2-a7d2-c6cbbea9192b": {
+    "sessions": [
+      {
+        "id": "session_1_sang_2208",
+        "name": "Buổi 1: Sáng (22-08)",
+        "session_date": "2026-08-22",
+        "start_time": "07:00:00",
+        "end_time": "11:30:00",
+        "created_at": "2026-08-21T15:22:37.251Z"
+      },
+      {
+        "id": "session_2_chieu_2208",
+        "name": "Buổi 2: Chiều (22-08)",
+        "session_date": "2026-08-22",
+        "start_time": "13:00:00",
+        "end_time": "17:00:00",
+        "created_at": "2026-08-21T15:22:37.252Z"
+      },
+      {
+        "id": "session_3_sang_2308",
+        "name": "Buổi 3: Sáng (23-08)",
+        "session_date": "2026-08-23",
+        "start_time": "07:00:00",
+        "end_time": "11:30:00",
+        "created_at": "2026-08-21T15:22:37.252Z"
+      },
+      {
+        "id": "session_4_chieu_2308",
+        "name": "Buổi 4: Chiều (23-08)",
+        "session_date": "2026-08-23",
+        "start_time": "13:00:00",
+        "end_time": "17:00:00",
+        "created_at": "2026-08-21T15:22:37.252Z"
+      }
+    ]
+  },
+  "bbfe063b-c18f-4003-afe1-665334d13743": {
+    "departments": [],
+    "sessions": [
+      {
+        "id": "session_1",
+        "name": "Buổi 1 (Buổi chính)",
+        "session_date": "2026-09-25",
+        "start_time": "08:00",
+        "end_time": "11:30",
+        "room_id": null,
+        "room_name": "Không mượn",
+        "created_at": "2026-09-24T14:33:00.902Z"
+      }
+    ],
+    "is_recruitment_open": true,
+    "require_registration": true,
+    "target_scope": "all",
+    "max_participants": 230,
+    "max_volunteers": 22
+  }
+}

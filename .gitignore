@@ -22,8 +22,9 @@
 
 # misc
 .DS_Store
-*.pem
-/data/
+/data/*
+!data/officer-roles.json
+!data/event-metadata.json
 
 # debug
 npm-debug.log*
