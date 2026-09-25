@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -29,27 +30,36 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const auth = await getAuthContext();
     if (!auth) return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
 
+    const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
+
+    const { data: eventData } = await supabase
+      .from('events')
+      .select('event_id, event_date, end_time, status, created_by')
+      .eq('event_id', id)
+      .maybeSingle();
+
+    if (eventData && isEventLockedPast3Days(eventData) && !isSuperAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền gán vai trò.',
+        },
+        { status: 403 }
+      );
+    }
+
     // Authorization: only super_admin, youth_union, or event creator/admin can assign roles
-    const isSuperOrPrivileged = auth.isSuperAdmin || auth.tier === 'super_admin' || auth.tier === 'youth_union';
+    const isSuperOrPrivileged = isSuperAdmin || auth.tier === 'youth_union';
     const isEventAdmin = auth.isEventAdmin || auth.tier === 'event_admin';
     
     if (!isSuperOrPrivileged && !isEventAdmin) {
-      // Check if user is the event creator
-      const checkSupabase = (typeof createAdminClient === 'function' ? await createAdminClient() : null) || await createClient();
-      const { data: eventData } = await checkSupabase
-        .from('events')
-        .select('created_by')
-        .eq('event_id', id)
-        .maybeSingle();
-      
       const isCreator = eventData?.created_by === auth.email;
       if (!isCreator) {
         return NextResponse.json({ success: false, error: 'Forbidden', message: 'Bạn không có quyền gán vai trò cho sự kiện này' }, { status: 403 });
       }
     }
-
-    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
-    const supabase = (await getSupabase()) || (await createClient());
 
     const body = await request.json();
     const { email, role_type } = body;

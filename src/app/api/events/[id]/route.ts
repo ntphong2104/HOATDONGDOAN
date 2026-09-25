@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta, saveEventMeta, type EventMeta } from '@/lib/constants/event-meta-store';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +33,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     target_scope: meta.target_scope || 'all',
     max_participants: meta.max_participants || 0,
     max_volunteers: meta.max_volunteers || 0,
+    is_locked_past_3_days: isEventLockedPast3Days(data),
   };
 
   return NextResponse.json({ success: true, data: enriched }, {
@@ -64,6 +65,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (fetchError || !currentEvent) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
+  }
+
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
+
+  // Khóa toàn bộ quyền chỉnh sửa khi sự kiện đã kết thúc quá 3 ngày (trừ Super Admin)
+  if (isEventLockedPast3Days(currentEvent) && !isSuperAdmin) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền điều chỉnh.',
+      },
+      { status: 403 }
+    );
   }
 
   const isPrivileged =
@@ -122,8 +136,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       );
     }
   }
-
-  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
 
   // Chỉ Super Admin mới có quyền điều chỉnh sức chứa sự kiện
   if ((max_participants !== undefined || max_volunteers !== undefined) && !isSuperAdmin) {
@@ -212,8 +224,31 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
   const supabase = (await getSupabase()) || (await createClient());
 
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
+
+  const { data: currentEvent } = await supabase
+    .from('events')
+    .select('event_id, event_date, end_time, status, created_by')
+    .eq('event_id', resolvedParams.id)
+    .maybeSingle();
+
+  if (!currentEvent) {
+    return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
+  }
+
+  // Khóa quyền xóa khi sự kiện đã kết thúc quá 3 ngày (trừ Super Admin)
+  if (isEventLockedPast3Days(currentEvent) && !isSuperAdmin) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền xóa sự kiện này.',
+      },
+      { status: 403 }
+    );
+  }
+
   // If not super admin, check if this event admin is authorized for this event
-  if (!auth.isSuperAdmin) {
+  if (!isSuperAdmin) {
     const { data: role } = await supabase
       .from('event_roles')
       .select('id')

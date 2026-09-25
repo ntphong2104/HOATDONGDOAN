@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, getSessionCheckIns, type EventSession } from '@/lib/constants/event-meta-store';
+import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -99,6 +100,23 @@ export async function POST(
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
 
+    const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
+    const { data: currentEvent } = await supabase
+      .from('events')
+      .select('event_id, event_date, end_time, status')
+      .eq('event_id', resolvedParams.id)
+      .maybeSingle();
+
+    if (currentEvent && isEventLockedPast3Days(currentEvent) && !isSuperAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền điều chỉnh ca/buổi.',
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const { session, sessions: bulkSessions } = body;
 
@@ -159,6 +177,23 @@ export async function DELETE(
 
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
+
+    const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
+    const { data: currentEvent } = await supabase
+      .from('events')
+      .select('event_id, event_date, end_time, status')
+      .eq('event_id', resolvedParams.id)
+      .maybeSingle();
+
+    if (currentEvent && isEventLockedPast3Days(currentEvent) && !isSuperAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền xóa ca/buổi.',
+        },
+        { status: 403 }
+      );
+    }
 
     const meta = await getEventMeta(supabase, resolvedParams.id);
     const updatedSessions = (meta.sessions || []).filter((s) => s.id !== sessionId);

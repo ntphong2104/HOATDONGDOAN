@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV, isValidMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
+import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 
@@ -426,19 +427,31 @@ export async function DELETE(
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
   const supabase = (await getSupabase()) || (await createClient());
 
-  const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
   const isYouthUnion = auth.tier === 'youth_union';
   const isEventAdmin = auth.isEventAdmin || auth.tier === 'event_admin';
 
   let isCreator = false;
+  let eventRecord: any = null;
   try {
     const { data: event } = await supabase
       .from('events')
-      .select('created_by')
+      .select('event_id, event_date, end_time, status, created_by')
       .eq('event_id', resolvedParams.id)
       .maybeSingle();
+    eventRecord = event;
     isCreator = !!(event?.created_by && auth.email && event.created_by.toLowerCase() === auth.email.toLowerCase());
   } catch {}
+
+  if (eventRecord && isEventLockedPast3Days(eventRecord) && !isSuperAdmin) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền xóa đăng ký.',
+      },
+      { status: 403 }
+    );
+  }
 
   const canManage = isSuperAdmin || isYouthUnion || isEventAdmin || isCreator;
 

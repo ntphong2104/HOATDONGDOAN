@@ -196,3 +196,51 @@ export function isEventScheduleExpired(
     return false;
   }
 }
+
+/**
+ * Checks whether an event has been closed or ended for more than 3 days (72 hours).
+ * After 3 days, no event admin or regular officer can modify, delete, supplement or edit anything in this event.
+ * Only Super Admin retains full edit permissions.
+ */
+export function isEventLockedPast3Days(
+  event: EventScheduleInfo,
+  currentTimeMs: number = Date.now()
+): boolean {
+  if (!event) return false;
+  if (!event.event_date) return false;
+
+  const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
+  try {
+    const datePart = event.event_date.includes('T')
+      ? event.event_date.split('T')[0]
+      : event.event_date;
+    const endTimePart = event.end_time ? event.end_time.slice(0, 5) : '22:00';
+    const [hoursStr, minutesStr] = endTimePart.split(':');
+    const hours = parseInt(hoursStr || '22', 10);
+    const minutes = parseInt(minutesStr || '0', 10);
+
+    let endDateTime: Date;
+    if (datePart.includes('/')) {
+      const parts = datePart.split('/');
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const year = parseInt(parts[2], 10);
+      endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    } else {
+      const [yearStr, monthStr, dayStr] = datePart.split('-');
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      const day = parseInt(dayStr, 10);
+      endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    }
+
+    if (isNaN(endDateTime.getTime())) return false;
+
+    // Check if current time is past event end date/time by more than 3 days
+    return currentTimeMs - endDateTime.getTime() > THREE_DAYS_MS;
+  } catch {
+    return false;
+  }
+}
+

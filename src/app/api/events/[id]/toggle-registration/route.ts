@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
-import { isEventScheduleExpired } from '@/lib/utils/event-logic';
+import { isEventScheduleExpired, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export async function POST(
   req: Request,
@@ -14,7 +14,8 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const isPrivileged = auth.isSuperAdmin || auth.tier === 'youth_union';
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
+  const isPrivileged = isSuperAdmin || auth.tier === 'youth_union';
 
   const supabase = await createClient();
 
@@ -27,6 +28,17 @@ export async function POST(
 
   if (eventErr || !event) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
+  }
+
+  // Khóa thay đổi cổng đăng ký khi sự kiện đã kết thúc quá 3 ngày (trừ Super Admin)
+  if (isEventLockedPast3Days(event) && !isSuperAdmin) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền điều chỉnh cổng đăng ký.',
+      },
+      { status: 403 }
+    );
   }
 
   const currentWindow = isRegistrationWindowOpen(

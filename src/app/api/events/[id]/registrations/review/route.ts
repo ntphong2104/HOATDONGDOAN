@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { saveRegistrationExtra } from '@/lib/constants/event-meta-store';
+import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export async function POST(
   req: Request,
@@ -68,6 +69,16 @@ export async function POST(
         .eq('event_id', resolvedParams.id)
         .in('mssv', targetMssvs)
     ]);
+
+    if (event && isEventLockedPast3Days(event) && !isSuperAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền duyệt nhân sự.',
+        },
+        { status: 403 }
+      );
+    }
 
     if (!targetRegs || targetRegs.length === 0) {
       return NextResponse.json({ success: false, error: 'Không tìm thấy hồ sơ của các ứng viên được chọn' }, { status: 404 });

@@ -162,3 +162,191 @@ export function isRegistrationWindowOpen(
     eventStartTime: eventStart,
   };
 }
+
+export interface ReconcileSummary {
+  totalProcessedEvents: number;
+  reconciledEvents: {
+    event_id: string;
+    event_name: string;
+    event_date: string;
+    attendedCount: number;
+    absentCount: number;
+    penalizedCount: number;
+  }[];
+  totalAttended: number;
+  totalAbsent: number;
+  totalPenaltiesAdded: number;
+  totalNewlyBlacklisted: string[];
+}
+
+/**
+ * Reconciles all events ended >= 3 days ago.
+ * Finds all students who registered but did not check in,
+ * marks them in event_registrations, and adds penalties into user_penalties.
+ */
+export async function reconcileAllPastEvents(supabase: any): Promise<ReconcileSummary> {
+  const summary: ReconcileSummary = {
+    totalProcessedEvents: 0,
+    reconciledEvents: [],
+    totalAttended: 0,
+    totalAbsent: 0,
+    totalPenaltiesAdded: 0,
+    totalNewlyBlacklisted: [],
+  };
+
+  if (!supabase) return summary;
+
+  // 1. Calculate threshold: 3 days ago
+  const thresholdDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  // 2. Fetch past events
+  const { data: pastEvents, error: evErr } = await supabase
+    .from('events')
+    .select('event_id, event_name, event_date, start_time, end_time, status, is_active')
+    .lte('event_date', thresholdDate)
+    .order('event_date', { ascending: false });
+
+  if (evErr || !pastEvents || pastEvents.length === 0) {
+    return summary;
+  }
+
+  // 3. Process each past event
+  for (const event of pastEvents) {
+    try {
+      // Check registrations and checkins
+      const [{ data: registrations }, { data: checkIns }] = await Promise.all([
+        supabase.from('event_registrations').select('*').eq('event_id', event.event_id),
+        supabase.from('check_ins').select('mssv').eq('event_id', event.event_id),
+      ]);
+
+      if (!registrations || registrations.length === 0) {
+        // If event had no registrations, just ensure it is closed
+        if (event.status !== 'closed') {
+          await supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', event.event_id);
+        }
+        continue;
+      }
+
+      // Check if event was a duplicate or test event where 0 checkins occurred across all students
+      // If checkIns is 0 and registrations > 10, check if this is an abandoned entry
+      if ((!checkIns || checkIns.length === 0) && registrations.length > 50) {
+        const sampleMssvs = registrations.slice(0, 10).map((r: any) => r.mssv);
+        const { data: otherCheckins } = await supabase
+          .from('check_ins')
+          .select('mssv')
+          .in('mssv', sampleMssvs);
+
+        if (otherCheckins && otherCheckins.length >= 5) {
+          // These students checked in to other events; this was a duplicate registration container (like d0086402)
+          if (event.status !== 'closed') {
+            await supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', event.event_id);
+          }
+          continue;
+        }
+      }
+
+      const { attended, absent } = reconcileAttendance(registrations, checkIns || []);
+
+      // Update attended status in event_registrations
+      if (attended.length > 0) {
+        const attendedMssvs = attended.map((a) => a.mssv);
+        await supabase
+          .from('event_registrations')
+          .update({ attended: true })
+          .eq('event_id', event.event_id)
+          .in('mssv', attendedMssvs);
+      }
+
+      let eventPenaltiesAdded = 0;
+
+      if (absent.length > 0) {
+        const absentMssvs = absent.map((a) => a.mssv);
+        await supabase
+          .from('event_registrations')
+          .update({ attended: false })
+          .eq('event_id', event.event_id)
+          .in('mssv', absentMssvs);
+
+        // Fetch existing penalties for these absent students
+        const { data: existingPenalties } = await supabase
+          .from('user_penalties')
+          .select('*')
+          .in('mssv', absentMssvs);
+
+        const penaltyMap = new Map((existingPenalties || []).map((p: any) => [p.mssv.toUpperCase().trim(), p]));
+        const eventIdentifier = `[${event.event_id}]`;
+        const eventShortName = event.event_name ? event.event_name.slice(0, 40) : 'Sự kiện';
+
+        const upsertRows: any[] = [];
+
+        for (const abs of absent) {
+          const cleanMssv = abs.mssv.toUpperCase().trim();
+          const existing: any = penaltyMap.get(cleanMssv);
+
+          // Check if already penalized for this event
+          if (existing?.notes && (existing.notes.includes(eventIdentifier) || existing.notes.includes(eventShortName))) {
+            continue; // Already penalized for this event
+          }
+
+          const currentMissed = existing?.missed_count || 0;
+          const newMissed = currentMissed + 1;
+          const willBeBlacklisted = newMissed >= MAX_MISSED_STRIKES || Boolean(existing?.is_blacklisted);
+
+          if (willBeBlacklisted && !existing?.is_blacklisted) {
+            summary.totalNewlyBlacklisted.push(cleanMssv);
+          }
+
+          const penaltyNote = `Vắng: ${eventShortName} (${event.event_date}) ${eventIdentifier}`;
+          const updatedNotes = existing?.notes ? `${existing.notes}; ${penaltyNote}` : penaltyNote;
+
+          upsertRows.push({
+            mssv: cleanMssv,
+            email: abs.email,
+            full_name: abs.full_name || abs.email,
+            class_id: abs.class_id || 'PTIT-HCM',
+            missed_count: newMissed,
+            is_blacklisted: willBeBlacklisted,
+            blacklisted_at: willBeBlacklisted && !existing?.is_blacklisted ? new Date().toISOString() : existing?.blacklisted_at,
+            notes: updatedNotes,
+            updated_at: new Date().toISOString(),
+          });
+        }
+
+        // Batch upsert in chunks of 50
+        const CHUNK_SIZE = 50;
+        for (let i = 0; i < upsertRows.length; i += CHUNK_SIZE) {
+          const chunk = upsertRows.slice(i, i + CHUNK_SIZE);
+          await supabase.from('user_penalties').upsert(chunk, { onConflict: 'mssv' });
+        }
+
+        eventPenaltiesAdded = upsertRows.length;
+      }
+
+      // Close event
+      if (event.status !== 'closed' || event.is_active !== false) {
+        await supabase
+          .from('events')
+          .update({ status: 'closed', is_active: false })
+          .eq('event_id', event.event_id);
+      }
+
+      summary.totalProcessedEvents++;
+      summary.totalAttended += attended.length;
+      summary.totalAbsent += absent.length;
+      summary.totalPenaltiesAdded += eventPenaltiesAdded;
+      summary.reconciledEvents.push({
+        event_id: event.event_id,
+        event_name: event.event_name,
+        event_date: event.event_date,
+        attendedCount: attended.length,
+        absentCount: absent.length,
+        penalizedCount: eventPenaltiesAdded,
+      });
+    } catch (err) {
+      console.error(`Error reconciling event ${event.event_id}:`, err);
+    }
+  }
+
+  return summary;
+}
+

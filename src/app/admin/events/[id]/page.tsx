@@ -31,7 +31,7 @@ import {
   PlusIcon,
 } from '@/components/icons';
 import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepartment } from '@/lib/types';
-import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
 import styles from './page.module.css';
@@ -197,6 +197,13 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   };
 
   const handleAddDepartment = async () => {
+    const isLocked = isEventLockedPast3Days(event);
+    const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
+    if (isLocked && !isSuper) {
+      alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền thêm ban chuyên trách.');
+      return;
+    }
+
     if (!newDeptName.trim()) {
       alert('Vui lòng nhập tên Ban!');
       return;
@@ -247,6 +254,13 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   };
 
   const handleDeleteDepartment = async (deptId: string) => {
+    const isLocked = isEventLockedPast3Days(event);
+    const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
+    if (isLocked && !isSuper) {
+      alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền xóa ban chuyên trách.');
+      return;
+    }
+
     if (!confirm('Bạn có chắc chắn muốn xóa Ban này?')) return;
     const previousDepts = [...departments];
     const updatedDepts = departments.filter((d) => d.id !== deptId);
@@ -281,6 +295,13 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   };
 
   const handleReviewApplicant = async (mssv: string, review_status: 'accepted' | 'rejected') => {
+    const isLocked = isEventLockedPast3Days(event);
+    const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
+    if (isLocked && !isSuper) {
+      alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền duyệt hồ sơ.');
+      return;
+    }
+
     setReviewingMssv(mssv);
     try {
       const res = await fetch(`/api/events/${resolvedParams.id}/registrations/review`, {
@@ -303,6 +324,13 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   };
 
   const handleBulkReview = async (review_status: 'accepted' | 'rejected') => {
+    const isLocked = isEventLockedPast3Days(event);
+    const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
+    if (isLocked && !isSuper) {
+      alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền duyệt hồ sơ.');
+      return;
+    }
+
     if (selectedMssvs.length === 0) {
       alert('Vui lòng chọn ít nhất 1 ứng viên để phê duyệt!');
       return;
@@ -333,6 +361,13 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   };
 
   const handleDeleteSelectedRegs = async () => {
+    const isLocked = isEventLockedPast3Days(event);
+    const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
+    if (isLocked && !isSuper) {
+      alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền xóa đăng ký.');
+      return;
+    }
+
     if (selectedRegMssvs.length === 0) return;
     if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedRegMssvs.length} sinh viên đã chọn khỏi danh sách đăng ký sự kiện này?`)) return;
     setDeletingRegs(true);
@@ -640,6 +675,14 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   const handleManualCheckin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualMSSV.trim()) return;
+
+    const isLocked = isEventLockedPast3Days(event);
+    const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
+    if (isLocked && !isSuper) {
+      setManualCheckinStatus('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền điểm danh thủ công.');
+      return;
+    }
+
     setManualCheckinStatus('Đang xử lý...');
     try {
       const res = await fetch('/api/checkin', {
@@ -666,6 +709,13 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
   };
 
   const handleReconcileAttendance = async () => {
+    const isLocked = isEventLockedPast3Days(event);
+    const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
+    if (isLocked && !isSuper) {
+      alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền chốt lại điểm danh.');
+      return;
+    }
+
     if (!confirm('Xác nhận chốt danh sách điểm danh và tự động xử lý vắng mặt (No-Show)?\n\nSinh viên đã đăng ký nhưng không quét mã sẽ bị tính +1 lần vắng mặt. Nếu đủ 3 lần vắng sẽ tự động bị khóa Blacklist.')) return;
     setReconciling(true);
     try {
@@ -804,6 +854,10 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
 
   const handleDeleteEvent = async () => {
     if (!event) return;
+    if (isLockedPast3Days && !isSuperAdmin) {
+      alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền xóa sự kiện này.');
+      return;
+    }
     if (!confirm(`Bạn có chắc chắn muốn XÓA VĨNH VIỄN sự kiện "${event.event_name}"?\n\nToàn bộ dữ liệu điểm danh, đánh giá và phân quyền của sự kiện này sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu.`)) {
       return;
     }
@@ -841,13 +895,18 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
     (r: any) => r.email?.toLowerCase() === currentUser?.email?.toLowerCase()
   );
   const isPrivileged = isSuperAdmin || isYouthUnion;
-  const canBulkImport = isSuperAdmin || isYouthUnion || isEventCreator || hasEventRole || Boolean(currentUser?.isEventAdmin);
+  const isLockedPast3Days = isEventLockedPast3Days(event);
+  const canBulkImport = isSuperAdmin || (!isLockedPast3Days && (isYouthUnion || isEventCreator || hasEventRole || Boolean(currentUser?.isEventAdmin)));
 
   // Authorization: super admin, youth union, event creator, assigned role or officer can view
   const hasEventAccess = isSuperAdmin || isYouthUnion || isPrivileged || isEventCreator || hasEventRole || Boolean(currentUser?.isEventAdmin) || (currentUser?.tier && currentUser?.tier !== 'user');
 
   const handleToggleEventStatus = async () => {
     if (!event) return;
+    if (isLockedPast3Days && !isSuperAdmin) {
+      alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền điều chỉnh sự kiện này.');
+      return;
+    }
     const newStatus = event.status === 'active' ? 'closed' : 'active';
     const isPast = isEventPastDeadline(event);
 
@@ -1017,7 +1076,25 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                 </span>
               );
             })()}
-            {event.status === 'active' ? (
+            {isLockedPast3Days && !isSuperAdmin ? (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '8px',
+                  border: '1.5px solid #fecaca',
+                  background: '#fef2f2',
+                  color: '#b91c1c',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                }}
+                title="Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền điều chỉnh."
+              >
+                <LockIcon size={14} /> Đã chốt sổ (&gt; 3 ngày) - Đã khóa sửa
+              </span>
+            ) : event.status === 'active' ? (
               <button
                 type="button"
                 onClick={handleToggleEventStatus}
@@ -1071,6 +1148,32 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
               </span>
             )}
           </div>
+
+          {isLockedPast3Days && (
+            <div style={{
+              background: '#fff1f2',
+              border: '1.5px solid #fecaca',
+              borderRadius: '12px',
+              padding: '0.85rem 1.25rem',
+              marginTop: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              color: '#991b1b',
+            }}>
+              <LockIcon size={22} color="#dc2626" />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>
+                  🔒 Sự kiện này đã kết thúc quá 3 ngày và đã được chốt sổ toàn hệ thống
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#b91c1c', marginTop: '0.2rem' }}>
+                  {isSuperAdmin
+                    ? 'Bạn đang quản trị với tư cách Super Admin: Bạn có quyền mở khóa hoặc chỉnh sửa bổ sung nếu có trường hợp đặc biệt.'
+                    : 'Toàn bộ quyền điều chỉnh thông tin, thêm/xóa ca, duyệt nhân sự và nạp danh sách đã bị khóa tự động theo quy định. Chỉ Super Admin mới có quyền can thiệp.'}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Require Registration Toggle (Super Admin Only) */}
           {isSuperAdmin && (

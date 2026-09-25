@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, saveRegistrationExtrasBulk } from '@/lib/constants/event-meta-store';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
+import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export async function POST(
   req: Request,
@@ -31,6 +32,17 @@ export async function POST(
 
   if (eventErr || !event) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
+  }
+
+  // Khóa nạp danh sách khi sự kiện đã kết thúc quá 3 ngày (trừ Super Admin)
+  if (isEventLockedPast3Days(event) && !isSuperAdmin) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền nạp danh sách.',
+      },
+      { status: 403 }
+    );
   }
 
   const isEventCreator = event.created_by && auth.email && event.created_by.toLowerCase() === auth.email.toLowerCase();

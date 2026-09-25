@@ -82,6 +82,7 @@ function SuperAdminContent() {
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [penaltiesLoading, setPenaltiesLoading] = useState(true);
   const [delegatesLoading, setDelegatesLoading] = useState(true);
+  const [reconcilingAll, setReconcilingAll] = useState(false);
   const [eventStatusFilter, setEventStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
   const [proposalStatusFilter, setProposalStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
   const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
@@ -725,6 +726,28 @@ function SuperAdminContent() {
       alert('Lỗi kết nối');
     } finally {
       setBanning(false);
+    }
+  };
+
+  const handleReconcileAllPastEvents = async () => {
+    if (!confirm('Xác nhận quét & chốt sổ TOÀN BỘ các sự kiện đã kết thúc từ 3 ngày trước trên hệ thống?\n\n- Tự động đối chiếu Danh sách đăng ký và Điểm danh\n- Sinh viên đăng ký nhưng vắng mặt sẽ bị ghi nhận phạt (+1 strike)\n- Sinh viên vắng từ 3 lần sẽ tự động bị đưa vào Blacklist\n- Sự kiện sẽ được chốt sổ và khóa chỉnh sửa với các admin cấp dưới')) return;
+
+    setReconcilingAll(true);
+    try {
+      const res = await fetch('/api/admin/blacklist/reconcile-all', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(data.message || 'Đã chốt sổ toàn bộ sự kiện thành công!');
+        fetchPenalties();
+      } else {
+        alert(data.error || 'Lỗi khi chốt sổ sự kiện');
+      }
+    } catch (err: any) {
+      alert(`Lỗi kết nối: ${err.message || 'Vui lòng thử lại'}`);
+    } finally {
+      setReconcilingAll(false);
     }
   };
 
@@ -4680,7 +4703,7 @@ function SuperAdminContent() {
 
             {/* Danh sách sinh viên vi phạm & Blacklist */}
             <section className={styles.section}>
-              <div className={styles.sectionHeader}>
+              <div className={styles.sectionHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                   <h2 className={styles.sectionTitle}>
                     <ShieldCheckIcon size={20} color="#dc2626" />
@@ -4689,6 +4712,28 @@ function SuperAdminContent() {
                   <p className={styles.sectionSubtitle}>
                     Hệ thống tự động khóa đăng ký khi sinh viên tích lũy đủ 3 lần vắng mặt sau khi đã đăng ký. Super Admin có quyền xóa khỏi Blacklist / mở khóa.
                   </p>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleReconcileAllPastEvents}
+                    disabled={reconcilingAll}
+                    className={styles.submitBtn}
+                    style={{
+                      background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+                      padding: '0.65rem 1.25rem',
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      cursor: reconcilingAll ? 'not-allowed' : 'pointer',
+                      opacity: reconcilingAll ? 0.7 : 1,
+                    }}
+                    title="Quét và chốt sổ tất cả các sự kiện đã kết thúc từ 3 ngày trước"
+                  >
+                    <ClockIcon size={16} />
+                    <span>{reconcilingAll ? 'Đang chốt sổ toàn trường...' : '⚡ Chốt Sổ Sự Kiện Đã Qua (> 3 Ngày)'}</span>
+                  </button>
                 </div>
               </div>
 

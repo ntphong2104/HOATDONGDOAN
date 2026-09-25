@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { reconcileAttendance, MAX_MISSED_STRIKES } from '@/lib/utils/blacklist-logic';
+import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export async function POST(
   req: Request,
@@ -13,6 +14,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Bạn không có quyền chốt điểm danh sự kiện này' }, { status: 403 });
   }
 
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
   const supabase = await createClient();
 
   // 1. Fetch event, registrations, and checkins in parallel
@@ -28,6 +30,16 @@ export async function POST(
 
   if (eventErr || !event) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
+  }
+
+  if (isEventLockedPast3Days(event) && !isSuperAdmin) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền chốt lại điểm danh sự kiện này.',
+      },
+      { status: 403 }
+    );
   }
 
   if (!registrations || registrations.length === 0) {

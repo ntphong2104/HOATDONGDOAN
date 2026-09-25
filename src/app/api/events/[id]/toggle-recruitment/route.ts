@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta } from '@/lib/constants/event-meta-store';
+import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export async function POST(
   req: Request,
@@ -17,20 +18,30 @@ export async function POST(
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
   const supabase = (await getSupabase()) || (await createClient());
 
-  const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
   const isYouthUnion = auth.tier === 'youth_union';
+
+  const { data: event } = await supabase
+    .from('events')
+    .select('event_id, event_date, end_time, status, created_by')
+    .eq('event_id', resolvedParams.id)
+    .maybeSingle();
+
+  if (event && isEventLockedPast3Days(event) && !isSuperAdmin) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền điều chỉnh cổng tuyển dụng.',
+      },
+      { status: 403 }
+    );
+  }
 
   if (!isSuperAdmin && !isYouthUnion && auth.tier !== 'event_admin') {
     const { data: eventRole } = await supabase
       .from('event_roles')
       .select('role_type')
       .eq('email', auth.email)
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
-
-    const { data: event } = await supabase
-      .from('events')
-      .select('created_by')
       .eq('event_id', resolvedParams.id)
       .maybeSingle();
 
