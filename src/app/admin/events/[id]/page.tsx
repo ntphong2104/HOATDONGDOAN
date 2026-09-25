@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -46,16 +46,11 @@ const sanitizeForExcel = (val: any): any => {
 
 export default function EventDetailPage({ params }: { params?: Promise<{ id: string }> | { id: string } }) {
   const routeParams = useParams();
-  let resolvedId = typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '';
-  if (!resolvedId && params) {
-    if (typeof (params as any)?.then === 'function') {
-      const unwrapped = use(params as Promise<any>);
-      resolvedId = unwrapped?.id || '';
-    } else if ((params as any)?.id) {
-      resolvedId = (params as any).id;
-    }
-  }
-  const resolvedParams = { id: resolvedId };
+  const rawId =
+    (typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '') ||
+    (params && typeof params === 'object' && 'id' in params ? (params as any).id : '') ||
+    '';
+  const resolvedParams = { id: rawId };
   const [supabase] = useState(() => createClient());
   const [event, setEvent] = useState<Event | null>(null);
   const [checkins, setCheckins] = useState<CheckinExportRow[]>([]);

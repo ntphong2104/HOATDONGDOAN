@@ -53,6 +53,21 @@ export default function EventBulkImportModal({
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [previewData, setPreviewData] = useState<{
+    total: number;
+    rejected: number;
+    rejected_mssvs: string[];
+    warnings_count: number;
+    students: Array<{
+      mssv: string;
+      full_name: string;
+      class_id: string;
+      in_system: boolean;
+      from_excel: boolean;
+      warnings: string[];
+    }>;
+  } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -276,23 +291,6 @@ export default function EventBulkImportModal({
     };
     reader.readAsArrayBuffer(file);
   };
-
-  // Preview validation state
-  const [previewData, setPreviewData] = useState<{
-    total: number;
-    rejected: number;
-    rejected_mssvs: string[];
-    warnings_count: number;
-    students: Array<{
-      mssv: string;
-      full_name: string;
-      class_id: string;
-      in_system: boolean;
-      from_excel: boolean;
-      warnings: string[];
-    }>;
-  } | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

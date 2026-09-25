@@ -449,7 +449,16 @@ export async function GET(req: Request) {
     if (profile.tier === 'super_admin') redirectUrl = '/super-admin';
   }
 
-  const res = NextResponse.redirect(new URL(redirectUrl, req.url));
+  const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+  const baseOrigin =
+    process.env.NODE_ENV === 'production'
+      ? 'https://ptithcm.com'
+      : forwardedHost && !forwardedHost.includes('127.0.0.1') && !forwardedHost.includes('localhost')
+      ? `${forwardedProto}://${forwardedHost}`
+      : new URL(req.url).origin;
+
+  const res = NextResponse.redirect(new URL(redirectUrl, baseOrigin));
   res.cookies.set('demo_session', signCookie(JSON.stringify(profile)), {
     path: '/',
     httpOnly: true,
