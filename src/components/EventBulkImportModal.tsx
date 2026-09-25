@@ -376,7 +376,11 @@ export default function EventBulkImportModal({
   };
 
   // Run comprehensive validation check
-  const handleValidateAndPreview = async (e?: React.FormEvent) => {
+  const handleValidateAndPreview = async (e?: React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const effectiveStudents = parsedStudents.length > 0 ? parsedStudents : pastedStudents;
     const effectiveMssvs = parsedStudents.length > 0 ? parsedStudents.map((s) => s.mssv) : parsedMssvs;
 
@@ -590,7 +594,14 @@ export default function EventBulkImportModal({
 
         {/* ── STEP 1: INPUT FORM ── */}
         {step === 'input' && (
-          <form onSubmit={handleValidateAndPreview} className={styles.body}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleValidateAndPreview(e);
+            }}
+            className={styles.body}
+          >
             <div className={styles.permissionBanner}>
               <span className={styles.permissionTag}>Quyền hạn Ban Tổ Chức</span>
               <span>Hệ thống sẽ tự động kiểm tra tính hợp lệ, trùng lặp và tình trạng điểm danh trước khi nạp.</span>
@@ -710,7 +721,12 @@ export default function EventBulkImportModal({
                 Hủy
               </button>
               <button
-                type="submit"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleValidateAndPreview(e);
+                }}
                 className={styles.submitButton}
                 disabled={loading || parsedMssvs.length === 0}
               >
