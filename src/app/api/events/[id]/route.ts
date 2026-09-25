@@ -123,14 +123,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
+
+  // Chỉ Super Admin mới có quyền điều chỉnh sức chứa sự kiện
+  if ((max_participants !== undefined || max_volunteers !== undefined) && !isSuperAdmin) {
+    return NextResponse.json(
+      { success: false, error: 'Chỉ Super Admin mới có quyền điều chỉnh sức chứa sự kiện' },
+      { status: 403 }
+    );
+  }
+
   // Save departments, max_participants & recruitment custom metadata safely
   const metaUpdates: Partial<EventMeta> = {};
   if (departments !== undefined) metaUpdates.departments = departments;
   if (target_scope !== undefined) metaUpdates.target_scope = target_scope;
   if (is_recruitment_open !== undefined) metaUpdates.is_recruitment_open = is_recruitment_open;
   if (require_registration !== undefined) metaUpdates.require_registration = require_registration;
-  if (max_participants !== undefined) metaUpdates.max_participants = Math.max(0, Number(max_participants));
-  if (max_volunteers !== undefined) metaUpdates.max_volunteers = Math.max(0, Number(max_volunteers));
+  if (max_participants !== undefined && isSuperAdmin) metaUpdates.max_participants = Math.max(0, Number(max_participants));
+  if (max_volunteers !== undefined && isSuperAdmin) metaUpdates.max_volunteers = Math.max(0, Number(max_volunteers));
 
   if (Object.keys(metaUpdates).length > 0) {
     await saveEventMeta(supabase, resolvedParams.id, metaUpdates);

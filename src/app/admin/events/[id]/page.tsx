@@ -497,6 +497,10 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
 
   const handleUpdateCapacity = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!isSuperAdmin) {
+      alert('Chỉ Super Admin mới có quyền điều chỉnh sức chứa sự kiện!');
+      return;
+    }
     if (!event) return;
     setSavingCapacity(true);
     try {
@@ -1646,7 +1650,7 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
               </div>
             </div>
 
-            {(isPrivileged || isEventCreator) && (
+            {isSuperAdmin ? (
               <button
                 type="button"
                 onClick={() => {
@@ -1669,8 +1673,23 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
                   transition: 'all 0.15s ease',
                 }}
               >
-                <span>✏️ Chỉnh sửa sức chứa</span>
+                <span>✏️ Chỉnh sửa sức chứa (Super Admin)</span>
               </button>
+            ) : (
+              <div style={{
+                fontSize: '0.8rem',
+                color: '#64748b',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.5rem 0.85rem',
+                background: '#f8fafc',
+                borderRadius: '8px',
+                border: '1px dashed #cbd5e1',
+              }}>
+                🔒 Chỉ Super Admin có quyền sửa sức chứa
+              </div>
             )}
           </div>
         )}
@@ -3907,7 +3926,7 @@ export default function EventDetailPage({ params }: { params?: Promise<{ id: str
         </div>
       )}
 
-      {showCapacityModal && (
+      {showCapacityModal && isSuperAdmin && (
         <div
           style={{
             position: 'fixed',
