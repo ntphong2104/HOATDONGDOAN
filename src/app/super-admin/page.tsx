@@ -29,11 +29,16 @@ import {
   QrCodeIcon,
   KeyIcon,
   SpinnerIcon,
+  RotateCcwIcon,
+  UnlockIcon,
+  SearchIcon,
+  AlertTriangleIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS, ACADEMIC_FACULTIES, type OfficialUnit } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
 import { isSameUnit } from '@/lib/utils/rating-logic';
 import { getEffectiveEventStatus, isEventPastDeadline, getEventLifecycleState, getEarliestCheckinTime } from '@/lib/utils/event-logic';
+import { parsePenaltyNotes, type ParsedPenaltyItem } from '@/lib/utils/blacklist-logic';
 import type { Event, User, EventProposal, Room, UserPenalty, UserTier } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -85,8 +90,19 @@ function SuperAdminContent() {
   const [delegatesLoading, setDelegatesLoading] = useState(true);
   const [reconcilingAll, setReconcilingAll] = useState(false);
   const [eventStatusFilter, setEventStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
-  const [proposalStatusFilter, setProposalStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
   const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
+
+  // Blacklist & Penalty Pardon states
+  const [pardonModalOpen, setPardonModalOpen] = useState(false);
+  const [pardonTarget, setPardonTarget] = useState<{
+    student: UserPenalty;
+    action: 'single_event' | 'unban_all';
+    eventItem?: ParsedPenaltyItem;
+  } | null>(null);
+  const [pardonReason, setPardonReason] = useState('');
+  const [pardonSubmitting, setPardonSubmitting] = useState(false);
+  const [blacklistFilter, setBlacklistFilter] = useState<'all' | 'blacklisted' | 'warning' | 'pardoned'>('all');
+  const [blacklistSearch, setBlacklistSearch] = useState('');
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -686,23 +702,84 @@ function SuperAdminContent() {
     }
   };
 
-  const unbanStudent = async (mssv: string) => {
-    if (!confirm(`Xác nhận mở khóa và xóa sinh viên ${mssv} khỏi Danh Sách Đen?`)) return;
+  const SINGLE_EVENT_REASONS = [
+    'Có giấy xin phép của Khoa / Cố vấn học tập',
+    'Lý do ốm đau / sức khỏe (có xác nhận y tế)',
+    'Trùng lịch thi chính khóa / học phần',
+    'Được Ban Tổ Chức / Đoàn TN xét miễn trừ',
+    'Sinh viên có tham gia nhưng gặp sự cố quét mã',
+  ];
+
+  const UNBAN_ALL_REASONS = [
+    'Đã hoàn thành giải trình và bản kiểm điểm',
+    'Được Ban Thường vụ Đoàn trường phục hồi quyền lợi',
+    'Tích cực tham gia hoạt động khắc phục vi phạm',
+    'Mở khóa do sự cố dữ liệu kỹ thuật',
+  ];
+
+  const openPardonSingleModal = (student: UserPenalty, item: ParsedPenaltyItem) => {
+    setPardonTarget({
+      student,
+      action: 'single_event',
+      eventItem: item,
+    });
+    setPardonReason('Có giấy xin phép của Khoa / Cố vấn học tập');
+    setPardonModalOpen(true);
+  };
+
+  const openUnbanAllModal = (student: UserPenalty) => {
+    setPardonTarget({
+      student,
+      action: 'unban_all',
+    });
+    setPardonReason('Đã hoàn thành giải trình và bản kiểm điểm');
+    setPardonModalOpen(true);
+  };
+
+  const handlePardonSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!pardonTarget) return;
+
+    if (!pardonReason.trim()) {
+      alert('Vui lòng nhập lý do / ghi chú nghiệp vụ để lưu vết xử lý');
+      return;
+    }
+
+    setPardonSubmitting(true);
     try {
-      const res = await fetch('/api/admin/blacklist/unban', {
+      const res = await fetch('/api/admin/blacklist/pardon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mssv }),
+        body: JSON.stringify({
+          mssv: pardonTarget.student.mssv,
+          action: pardonTarget.action,
+          event_id: pardonTarget.eventItem?.eventId,
+          reason: pardonReason.trim(),
+        }),
       });
+
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        showToast(data.message, 'success');
+        setPardonModalOpen(false);
+        setPardonTarget(null);
+        setPardonReason('');
         fetchPenalties();
       } else {
-        alert(data.error || 'Lỗi mở khóa');
+        alert(data.error || 'Có lỗi xảy ra khi xử lý nghiệp vụ');
       }
-    } catch (e) {
-      alert('Lỗi kết nối');
+    } catch (err) {
+      console.error('Error submitting pardon:', err);
+      alert('Lỗi kết nối máy chủ');
+    } finally {
+      setPardonSubmitting(false);
+    }
+  };
+
+  const unbanStudent = (mssv: string) => {
+    const found = penalties.find((p) => p.mssv === mssv);
+    if (found) {
+      openUnbanAllModal(found);
     }
   };
 
@@ -4991,6 +5068,159 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               </form>
             </section>
 
+            {/* Hướng dẫn nghiệp vụ xử lý khiếu nại & miễn vắng */}
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                borderRadius: '12px',
+                padding: '1.25rem 1.5rem',
+                marginBottom: '1.5rem',
+                display: 'flex',
+                gap: '1rem',
+                alignItems: 'flex-start',
+              }}
+            >
+              <div
+                style={{
+                  background: '#eff6ff',
+                  color: '#2563eb',
+                  borderRadius: '10px',
+                  padding: '0.6rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <ShieldCheckIcon size={24} />
+              </div>
+              <div style={{ flex: 1, fontSize: '0.88rem', color: '#334155', lineHeight: 1.6 }}>
+                <strong style={{ color: '#0f172a', fontSize: '0.95rem', display: 'block', marginBottom: '0.25rem' }}>
+                  Quy trình nghiệp vụ xử lý khiếu nại & Miễn trừ điểm vắng (Super Admin)
+                </strong>
+                <span>
+                  • Sinh viên tích lũy đủ <strong>3 lần vắng mặt</strong> sau khi đã đăng ký sẽ tự động bị hệ thống khóa quyền đăng ký sự kiện (Blacklist).
+                </span>
+                <br />
+                <span>
+                  • Khi có khiếu nại kèm minh chứng hợp lệ (giấy xin phép Khoa, lịch thi trùng, giấy y tế), Super Admin có thể nhấn <strong>&quot;Xóa đánh dấu&quot;</strong> cho từng sự kiện tương ứng hoặc <strong>&quot;Mở Khóa Toàn Bộ&quot;</strong>.
+                </span>
+                <br />
+                <span>
+                  • Mỗi thao tác gỡ vắng bắt buộc nhập <strong>Lý do nghiệp vụ</strong> để lưu vết thanh tra (người duyệt, thời gian, căn cứ). Khi số lần vắng giảm dưới 3, hệ thống sẽ tự động mở khóa quyền đăng ký cho sinh viên.
+                </span>
+              </div>
+            </div>
+
+            {/* Bộ lọc & Tìm kiếm sinh viên kỷ luật */}
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '1.25rem',
+                background: '#ffffff',
+                padding: '1rem 1.25rem',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setBlacklistFilter('all')}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    border: '1px solid',
+                    borderColor: blacklistFilter === 'all' ? '#2563eb' : '#e2e8f0',
+                    background: blacklistFilter === 'all' ? '#eff6ff' : '#ffffff',
+                    color: blacklistFilter === 'all' ? '#1d4ed8' : '#64748b',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Tất cả ({penalties.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlacklistFilter('blacklisted')}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    border: '1px solid',
+                    borderColor: blacklistFilter === 'blacklisted' ? '#ef4444' : '#e2e8f0',
+                    background: blacklistFilter === 'blacklisted' ? '#fef2f2' : '#ffffff',
+                    color: blacklistFilter === 'blacklisted' ? '#b91c1c' : '#64748b',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Đang Khóa Blacklist ({penalties.filter((p) => p.is_blacklisted).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlacklistFilter('warning')}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    border: '1px solid',
+                    borderColor: blacklistFilter === 'warning' ? '#f59e0b' : '#e2e8f0',
+                    background: blacklistFilter === 'warning' ? '#fffbeb' : '#ffffff',
+                    color: blacklistFilter === 'warning' ? '#b45309' : '#64748b',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cảnh Báo 1-2 Lần ({penalties.filter((p) => !p.is_blacklisted && p.missed_count > 0).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlacklistFilter('pardoned')}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    border: '1px solid',
+                    borderColor: blacklistFilter === 'pardoned' ? '#10b981' : '#e2e8f0',
+                    background: blacklistFilter === 'pardoned' ? '#f0fdf4' : '#ffffff',
+                    color: blacklistFilter === 'pardoned' ? '#15803d' : '#64748b',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Đã Mở Khóa / Miễn Trừ ({penalties.filter((p) => !p.is_blacklisted && p.missed_count === 0).length})
+                </button>
+              </div>
+
+              <div style={{ position: 'relative', minWidth: '260px' }}>
+                <input
+                  type="text"
+                  placeholder="Tìm theo MSSV, tên, lớp, sự kiện..."
+                  value={blacklistSearch}
+                  onChange={(e) => setBlacklistSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem 0.5rem 2.2rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                  <SearchIcon size={15} />
+                </div>
+              </div>
+            </div>
+
             {/* Danh sách sinh viên vi phạm & Blacklist */}
             <section className={styles.section}>
               <div className={styles.sectionHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -5035,7 +5265,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       <th>Lớp & Email</th>
                       <th>Số Lần Vắng Mặt</th>
                       <th>Trạng Thái</th>
-                      <th>Lý Do / Ghi Chú</th>
+                      <th>Lý Do & Chi Tiết Từng Sự Kiện Vi Phạm</th>
                       <th>Thao Tác</th>
                     </tr>
                   </thead>
@@ -5055,8 +5285,34 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           Hiện tại không có sinh viên nào trong danh sách đen hoặc bị cảnh cáo.
                         </td>
                       </tr>
-                    ) : (
-                      penalties.map((pen) => (
+                    ) : (() => {
+                      const displayedList = penalties.filter((pen) => {
+                        if (blacklistSearch.trim()) {
+                          const q = blacklistSearch.toLowerCase().trim();
+                          const matchMssv = pen.mssv.toLowerCase().includes(q);
+                          const matchName = (pen.full_name || '').toLowerCase().includes(q);
+                          const matchClass = (pen.class_id || '').toLowerCase().includes(q);
+                          const matchNotes = (pen.notes || '').toLowerCase().includes(q);
+                          if (!matchMssv && !matchName && !matchClass && !matchNotes) return false;
+                        }
+
+                        if (blacklistFilter === 'blacklisted') return pen.is_blacklisted;
+                        if (blacklistFilter === 'warning') return !pen.is_blacklisted && pen.missed_count > 0;
+                        if (blacklistFilter === 'pardoned') return !pen.is_blacklisted && pen.missed_count === 0;
+                        return true;
+                      });
+
+                      if (displayedList.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={6} className={styles.emptyState} style={{ padding: '2.5rem 1rem' }}>
+                              Không tìm thấy sinh viên nào phù hợp với bộ lọc hiện tại.
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return displayedList.map((pen) => (
                         <tr key={pen.mssv}>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -5075,8 +5331,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               <span
                                 style={{
                                   padding: '0.25rem 0.65rem',
-                                  background: pen.missed_count >= 3 ? '#fee2e2' : pen.missed_count === 2 ? '#fef3c7' : '#eff6ff',
-                                  color: pen.missed_count >= 3 ? '#b91c1c' : pen.missed_count === 2 ? '#b45309' : '#1e40af',
+                                  background: pen.missed_count >= 3 ? '#fee2e2' : pen.missed_count === 2 ? '#fef3c7' : pen.missed_count === 1 ? '#eff6ff' : '#dcfce7',
+                                  color: pen.missed_count >= 3 ? '#b91c1c' : pen.missed_count === 2 ? '#b45309' : pen.missed_count === 1 ? '#1e40af' : '#15803d',
                                   borderRadius: '12px',
                                   fontWeight: 800,
                                   fontSize: '0.85rem',
@@ -5103,7 +5359,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               >
                                 Đã Blacklist
                               </span>
-                            ) : (
+                            ) : pen.missed_count > 0 ? (
                               <span
                                 style={{
                                   padding: '0.3rem 0.75rem',
@@ -5116,35 +5372,205 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               >
                                 Cảnh Báo ({pen.missed_count}/3)
                               </span>
+                            ) : (
+                              <span
+                                style={{
+                                  padding: '0.3rem 0.75rem',
+                                  background: '#dcfce7',
+                                  color: '#15803d',
+                                  borderRadius: '16px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Bình Thường (Đã gỡ)
+                              </span>
                             )}
                           </td>
-                          <td style={{ fontSize: '0.85rem', color: '#475569', maxWidth: '240px' }}>
-                            {pen.notes || 'Vắng mặt sự kiện'}
+                          <td style={{ fontSize: '0.85rem', color: '#475569', minWidth: '320px', maxWidth: '440px' }}>
+                            {(() => {
+                              const items = parsePenaltyNotes(pen.notes);
+                              if (items.length === 0) {
+                                return (
+                                  <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                                    {pen.notes || 'Chưa có ghi chú vi phạm cụ thể'}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                  {items.map((item, idx) => {
+                                    if (item.isPardoned) {
+                                      return (
+                                        <div
+                                          key={item.id || idx}
+                                          style={{
+                                            background: '#f0fdf4',
+                                            border: '1px solid #bbf7d0',
+                                            borderRadius: '8px',
+                                            padding: '0.5rem 0.65rem',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.2rem',
+                                          }}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                              <span
+                                                style={{
+                                                  background: '#dcfce7',
+                                                  color: '#15803d',
+                                                  fontSize: '0.72rem',
+                                                  fontWeight: 800,
+                                                  padding: '0.15rem 0.45rem',
+                                                  borderRadius: '4px',
+                                                  display: 'inline-flex',
+                                                  alignItems: 'center',
+                                                  gap: '0.25rem',
+                                                }}
+                                              >
+                                                <CheckCircleIcon size={12} />
+                                                Đã miễn vắng
+                                              </span>
+                                              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#166534' }}>
+                                                {item.eventName}
+                                              </span>
+                                            </div>
+                                            {item.eventDate && (
+                                              <span style={{ fontSize: '0.72rem', color: '#16a34a', whiteSpace: 'nowrap' }}>
+                                                {item.eventDate}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {item.pardonReason && (
+                                            <div style={{ fontSize: '0.78rem', color: '#14532d', fontWeight: 600 }}>
+                                              Lý do: {item.pardonReason}
+                                            </div>
+                                          )}
+                                          {item.pardonedBy && (
+                                            <div style={{ fontSize: '0.7rem', color: '#15803d', opacity: 0.9 }}>
+                                              Xử lý: <strong>{item.pardonedBy}</strong> {item.pardonedAt ? `• ${item.pardonedAt}` : ''}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+
+                                    // Active strike or custom note
+                                    return (
+                                      <div
+                                        key={item.id || idx}
+                                        style={{
+                                          background: '#fff1f2',
+                                          border: '1px solid #fecdd3',
+                                          borderRadius: '8px',
+                                          padding: '0.5rem 0.65rem',
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          gap: '0.35rem',
+                                        }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                            <span
+                                              style={{
+                                                background: '#fee2e2',
+                                                color: '#b91c1c',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 800,
+                                                padding: '0.15rem 0.45rem',
+                                                borderRadius: '4px',
+                                              }}
+                                            >
+                                              Vắng mặt
+                                            </span>
+                                            <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e293b' }}>
+                                              {item.eventName}
+                                            </span>
+                                          </div>
+                                          {item.eventDate && (
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                              {item.eventDate}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.15rem' }}>
+                                          <button
+                                            type="button"
+                                            onClick={() => openPardonSingleModal(pen, item)}
+                                            style={{
+                                              padding: '0.25rem 0.6rem',
+                                              background: '#ffffff',
+                                              border: '1px solid #f87171',
+                                              color: '#b91c1c',
+                                              borderRadius: '6px',
+                                              fontSize: '0.75rem',
+                                              fontWeight: 700,
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '0.3rem',
+                                              cursor: 'pointer',
+                                              transition: 'all 0.15s ease',
+                                            }}
+                                            title="Gỡ vắng sự kiện này & cập nhật hồ sơ nghiệp vụ"
+                                          >
+                                            <RotateCcwIcon size={12} />
+                                            Xóa đánh dấu (Gỡ vắng)
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td>
-                            <button
-                              type="button"
-                              onClick={() => unbanStudent(pen.mssv)}
-                              style={{
-                                padding: '0.4rem 0.85rem',
-                                background: '#16a34a',
-                                color: '#ffffff',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontWeight: 700,
-                                fontSize: '0.8rem',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.3rem',
-                              }}
-                            >
-                              Mở Khóa / Xóa Blacklist
-                            </button>
+                            {pen.is_blacklisted || pen.missed_count > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => openUnbanAllModal(pen)}
+                                style={{
+                                  padding: '0.45rem 0.85rem',
+                                  background: '#16a34a',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  fontWeight: 700,
+                                  fontSize: '0.8rem',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.35rem',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title="Mở khóa toàn bộ và xóa khỏi danh sách đen"
+                              >
+                                <UnlockIcon size={14} />
+                                Mở Khóa Toàn Bộ
+                              </button>
+                            ) : (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.3rem',
+                                  color: '#15803d',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 700,
+                                  background: '#f0fdf4',
+                                  padding: '0.35rem 0.65rem',
+                                  borderRadius: '6px',
+                                }}
+                              >
+                                <CheckCircleIcon size={15} />
+                                Đã xử lý xong
+                              </span>
+                            )}
                           </td>
                         </tr>
-                      ))
-                    )}
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -5641,6 +6067,355 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     }}
                   >
                     {submittingRole ? 'Đang gán...' : 'Xác Nhận Gán Quyền'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL GỠ ĐÁNH DẤU VẮNG MẶT / MỞ KHÓA BLACKLIST */}
+        {pardonModalOpen && pardonTarget && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem',
+            }}
+            onClick={() => {
+              if (!pardonSubmitting) {
+                setPardonModalOpen(false);
+                setPardonTarget(null);
+              }
+            }}
+          >
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '20px',
+                maxWidth: '600px',
+                width: '100%',
+                maxHeight: '90vh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                border: '1px solid #e2e8f0',
+                overflow: 'hidden',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  padding: '1.25rem 1.5rem',
+                  background:
+                    pardonTarget.action === 'single_event'
+                      ? 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)'
+                      : 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  {pardonTarget.action === 'single_event' ? (
+                    <RotateCcwIcon size={22} color="#ffffff" />
+                  ) : (
+                    <UnlockIcon size={22} color="#ffffff" />
+                  )}
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>
+                      {pardonTarget.action === 'single_event'
+                        ? 'Xóa Đánh Dấu Vắng Mặt Sự Kiện'
+                        : 'Mở Khóa Toàn Bộ & Xóa Blacklist'}
+                    </h3>
+                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.85)' }}>
+                      Cập nhật căn cứ nghiệp vụ và lưu vết thanh tra xử lý kỷ luật
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!pardonSubmitting) {
+                      setPardonModalOpen(false);
+                      setPardonTarget(null);
+                    }
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    color: '#ffffff',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <CloseIcon size={16} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <form onSubmit={handlePardonSubmit} style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Sinh viên Info Card */}
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                      Sinh viên vi phạm
+                    </span>
+                    <span
+                      style={{
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        background: pardonTarget.student.is_blacklisted ? '#fee2e2' : '#fef3c7',
+                        color: pardonTarget.student.is_blacklisted ? '#b91c1c' : '#b45309',
+                      }}
+                    >
+                      {pardonTarget.student.is_blacklisted ? 'Đang bị Blacklist' : 'Cảnh báo vi phạm'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'baseline' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                      {pardonTarget.student.full_name}
+                    </div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2563eb' }}>
+                      MSSV: {pardonTarget.student.mssv}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#475569' }}>
+                      Lớp: <strong>{pardonTarget.student.class_id}</strong>
+                    </div>
+                  </div>
+
+                  {/* Penalty change impact preview */}
+                  <div
+                    style={{
+                      marginTop: '0.25rem',
+                      padding: '0.65rem 0.85rem',
+                      background: '#ffffff',
+                      border: '1px dashed #cbd5e1',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      color: '#334155',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <span>Số lần vắng hiện tại: <strong>{pardonTarget.student.missed_count}/3</strong></span>
+                    <span>&rarr;</span>
+                    <span style={{ color: '#16a34a', fontWeight: 800 }}>
+                      Sau khi gỡ:{' '}
+                      {pardonTarget.action === 'single_event'
+                        ? `${Math.max(0, pardonTarget.student.missed_count - 1)}/3 lần`
+                        : '0/3 lần (Xóa sạch)'}
+                    </span>
+                    {pardonTarget.action === 'single_event' &&
+                      pardonTarget.student.is_blacklisted &&
+                      Math.max(0, pardonTarget.student.missed_count - 1) < 3 && (
+                        <span style={{ color: '#2563eb', fontWeight: 700 }}>
+                          (Tự động mở khóa đăng ký)
+                        </span>
+                      )}
+                  </div>
+                </div>
+
+                {/* Chi tiết sự kiện (nếu gỡ sự kiện đơn lẻ) */}
+                {pardonTarget.action === 'single_event' && (
+                  <div
+                    style={{
+                      background: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '12px',
+                      padding: '0.85rem 1rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.25rem',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1d4ed8', textTransform: 'uppercase' }}>
+                      Sự kiện được miễn điểm vắng
+                    </span>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1e3a8a' }}>
+                      {pardonTarget.eventItem?.eventName || 'Sự kiện đã chọn'}
+                    </div>
+                    {pardonTarget.eventItem?.eventDate && (
+                      <div style={{ fontSize: '0.8rem', color: '#2563eb' }}>
+                        Thời gian diễn ra: {pardonTarget.eventItem.eventDate}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Chọn nhanh lý do nghiệp vụ */}
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.82rem',
+                      fontWeight: 800,
+                      color: '#334155',
+                      marginBottom: '0.45rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    Chọn nhanh căn cứ nghiệp vụ
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+                    {(pardonTarget.action === 'single_event' ? SINGLE_EVENT_REASONS : UNBAN_ALL_REASONS).map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => setPardonReason(reason)}
+                        style={{
+                          padding: '0.35rem 0.65rem',
+                          background: pardonReason === reason ? '#2563eb' : '#f1f5f9',
+                          color: pardonReason === reason ? '#ffffff' : '#334155',
+                          border: '1px solid',
+                          borderColor: pardonReason === reason ? '#2563eb' : '#e2e8f0',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Textarea nhập lý do cụ thể */}
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.82rem',
+                      fontWeight: 800,
+                      color: '#334155',
+                      marginBottom: '0.45rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    Ghi chú chi tiết / Căn cứ lưu vết nghiệp vụ <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={pardonReason}
+                    onChange={(e) => setPardonReason(e.target.value)}
+                    placeholder="VD: Sinh viên có đơn xin phép số 12/Đ-CNTT có chữ ký Cố vấn học tập, hoặc có giấy hẹn thi lại môn..."
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '10px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.88rem',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    Thông tin này sẽ được lưu cố định vào nhật ký kỷ luật và ghi nhận tài khoản Super Admin thực hiện để phục vụ công tác thanh tra.
+                  </p>
+                </div>
+
+                {/* Modal Footer Actions */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '0.75rem',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid #e2e8f0',
+                  }}
+                >
+                  <button
+                    type="button"
+                    disabled={pardonSubmitting}
+                    onClick={() => {
+                      setPardonModalOpen(false);
+                      setPardonTarget(null);
+                    }}
+                    style={{
+                      padding: '0.6rem 1.25rem',
+                      background: '#f1f5f9',
+                      color: '#475569',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Hủy Bỏ
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pardonSubmitting}
+                    style={{
+                      padding: '0.6rem 1.5rem',
+                      background:
+                        pardonTarget.action === 'single_event'
+                          ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
+                          : 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: pardonSubmitting ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                    }}
+                  >
+                    {pardonSubmitting ? (
+                      <>
+                        <SpinnerIcon size={16} />
+                        <span>Đang lưu nghiệp vụ...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckIcon size={16} />
+                        <span>
+                          {pardonTarget.action === 'single_event'
+                            ? 'Xác Nhận Xóa Đánh Dấu'
+                            : 'Xác Nhận Mở Khóa Toàn Bộ'}
+                        </span>
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

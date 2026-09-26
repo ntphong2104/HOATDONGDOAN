@@ -21,9 +21,9 @@ export async function GET() {
   const { data: penalties, error } = await supabase
     .from('user_penalties')
     .select('*')
-    .or('is_blacklisted.eq.true,missed_count.gt.0')
     .order('is_blacklisted', { ascending: false })
-    .order('missed_count', { ascending: false });
+    .order('missed_count', { ascending: false })
+    .order('updated_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });

@@ -79,6 +79,14 @@ export async function POST(
       .eq('mssv', abs.mssv)
       .single();
 
+    const eventIdentifier = `[${resolvedParams.id}]`;
+    const eventShortName = event.event_name ? event.event_name.slice(0, 40) : 'Sự kiện';
+
+    // Skip if already penalized or pardoned for this event
+    if (existing?.notes && (existing.notes.includes(eventIdentifier) || existing.notes.includes(eventShortName))) {
+      continue;
+    }
+
     const currentMissed = existing?.missed_count || 0;
     const newMissed = currentMissed + 1;
     const willBeBlacklisted = newMissed >= MAX_MISSED_STRIKES;
@@ -86,6 +94,9 @@ export async function POST(
     if (willBeBlacklisted && !existing?.is_blacklisted) {
       newlyBlacklisted.push(abs.mssv);
     }
+
+    const penaltyNote = `Vắng: ${eventShortName} (${event.event_date || new Date().toLocaleDateString('vi-VN')}) ${eventIdentifier}`;
+    const updatedNotes = existing?.notes ? `${existing.notes}; ${penaltyNote}` : penaltyNote;
 
     await supabase.from('user_penalties').upsert(
       {
@@ -96,7 +107,7 @@ export async function POST(
         missed_count: newMissed,
         is_blacklisted: willBeBlacklisted || existing?.is_blacklisted || false,
         blacklisted_at: willBeBlacklisted && !existing?.is_blacklisted ? new Date().toISOString() : existing?.blacklisted_at,
-        notes: `Vắng mặt tại sự kiện: ${event.event_name} (${new Date().toLocaleDateString('vi-VN')})`,
+        notes: updatedNotes,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'mssv' }

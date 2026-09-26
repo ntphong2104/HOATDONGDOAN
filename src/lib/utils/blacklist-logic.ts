@@ -43,6 +43,232 @@ export function evaluatePenaltyStanding(missedCount: number, manualBlacklist = f
   };
 }
 
+export interface ParsedPenaltyItem {
+  id: string;
+  raw: string;
+  isPardoned: boolean;
+  eventName: string;
+  eventDate?: string;
+  eventId?: string;
+  pardonReason?: string;
+  pardonedBy?: string;
+  pardonedAt?: string;
+}
+
+/**
+ * Parses the raw `user_penalties.notes` text into structured items,
+ * differentiating active missed event strikes from pardoned strikes and admin notes.
+ */
+export function parsePenaltyNotes(notesStr?: string | null): ParsedPenaltyItem[] {
+  if (!notesStr || !notesStr.trim()) return [];
+
+  const rawSegments = notesStr
+    .split(/;|\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return rawSegments.map((segment, idx) => {
+    const isPardoned =
+      segment.startsWith('[Đã miễn vắng:') ||
+      segment.startsWith('[Đã mở khóa') ||
+      segment.startsWith('[Đã xóa vi phạm:') ||
+      segment.includes('Đã miễn vắng');
+
+    let eventId: string | undefined;
+    const eventIdMatch = segment.match(/\[([a-zA-Z0-9_-]{6,})\]/);
+    if (eventIdMatch) {
+      eventId = eventIdMatch[1];
+    }
+
+    if (isPardoned) {
+      let eventName = 'Sự kiện đã miễn trừ';
+      let eventDate: string | undefined;
+      let pardonReason: string | undefined;
+      let pardonedBy: string | undefined;
+      let pardonedAt: string | undefined;
+
+      const titleMatch = segment.match(/\[(?:Đã miễn vắng|Đã xóa vi phạm|Đã mở khóa)(?::\s*([^\]]+))?\]/i);
+      if (titleMatch && titleMatch[1]) {
+        const titleContent = titleMatch[1].trim();
+        const dateMatch = titleContent.match(/^(.*?)\s*\(([^)]+)\)$/);
+        if (dateMatch) {
+          eventName = dateMatch[1].trim();
+          eventDate = dateMatch[2].trim();
+        } else {
+          eventName = titleContent;
+        }
+      } else if (segment.startsWith('[Đã mở khóa')) {
+        eventName = 'Mở khóa toàn bộ vi phạm';
+      }
+
+      const reasonMatch = segment.match(/Lý do:\s*([^(\[]+)/i);
+      if (reasonMatch) {
+        pardonReason = reasonMatch[1].trim();
+      }
+
+      const metaMatch = segment.match(/\(Bởi\s+([^\s)]+)(?:\s+lúc\s+([^)]+))?\)/i);
+      if (metaMatch) {
+        pardonedBy = metaMatch[1].trim();
+        pardonedAt = metaMatch[2]?.trim();
+      }
+
+      return {
+        id: `pardoned-${idx}-${eventId || idx}`,
+        raw: segment,
+        isPardoned: true,
+        eventName,
+        eventDate,
+        eventId,
+        pardonReason,
+        pardonedBy,
+        pardonedAt,
+      };
+    }
+
+    const absentMatch = segment.match(/^(?:Vắng mặt tại sự kiện|Vắng mặt|Vắng):\s*(.*?)(?:\s*\[([a-zA-Z0-9_-]+)\])?$/i);
+    if (absentMatch) {
+      let mainTitle = absentMatch[1].trim();
+      if (!eventId && absentMatch[2]) {
+        eventId = absentMatch[2];
+      }
+
+      let eventName = mainTitle;
+      let eventDate: string | undefined;
+      const dateMatch = mainTitle.match(/^(.*?)\s*\(([^)]+)\)$/);
+      if (dateMatch) {
+        eventName = dateMatch[1].trim();
+        eventDate = dateMatch[2].trim();
+      }
+
+      return {
+        id: `absent-${idx}-${eventId || idx}`,
+        raw: segment,
+        isPardoned: false,
+        eventName,
+        eventDate,
+        eventId,
+      };
+    }
+
+    return {
+      id: `note-${idx}`,
+      raw: segment,
+      isPardoned: false,
+      eventName: segment,
+      eventId,
+    };
+  });
+}
+
+/**
+ * Waives a single event absence strike in the notes text while retaining the [eventId] marker
+ * so future automatic reconciliations do not re-penalize the student.
+ */
+export function pardonEventInNotes({
+  notesStr,
+  targetEventId,
+  targetIndex,
+  reason,
+  adminEmail,
+  nowFormatted,
+}: {
+  notesStr?: string | null;
+  targetEventId?: string;
+  targetIndex?: number;
+  reason?: string;
+  adminEmail?: string;
+  nowFormatted?: string;
+}): string {
+  if (!notesStr || !notesStr.trim()) return '';
+
+  const rawSegments = notesStr
+    .split(/;|\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const cleanReason = (reason || 'Miễn trừ theo quyết định của Ban Tổ Chức').trim();
+  const timeStr = nowFormatted || new Date().toLocaleString('vi-VN');
+  const adminTag = adminEmail ? ` (Bởi ${adminEmail} lúc ${timeStr})` : ` (Lúc ${timeStr})`;
+
+  const updatedSegments = rawSegments.map((segment, idx) => {
+    const hasEventId = Boolean(targetEventId && segment.includes(`[${targetEventId}]`));
+    const isTarget = hasEventId || (targetIndex !== undefined && targetIndex === idx);
+
+    if (!isTarget) return segment;
+
+    if (segment.startsWith('[Đã miễn vắng:') || segment.includes('Đã miễn vắng')) {
+      return segment;
+    }
+
+    let nameAndDate = '';
+    const absentMatch = segment.match(/^(?:Vắng mặt tại sự kiện|Vắng mặt|Vắng):\s*(.*?)(?:\s*\[([a-zA-Z0-9_-]+)\])?$/i);
+    let eventIdTag = targetEventId ? ` [${targetEventId}]` : '';
+
+    if (absentMatch) {
+      nameAndDate = absentMatch[1].trim();
+      if (!eventIdTag && absentMatch[2]) {
+        eventIdTag = ` [${absentMatch[2]}]`;
+      }
+    } else {
+      nameAndDate = segment.replace(/\[([a-zA-Z0-9_-]+)\]/, '').trim();
+    }
+
+    return `[Đã miễn vắng: ${nameAndDate}] Lý do: ${cleanReason}${adminTag}${eventIdTag}`;
+  });
+
+  return updatedSegments.join('; ');
+}
+
+/**
+ * Pardons all active strikes for a student and records the admin note.
+ */
+export function pardonAllInNotes({
+  notesStr,
+  reason,
+  adminEmail,
+  nowFormatted,
+}: {
+  notesStr?: string | null;
+  reason?: string;
+  adminEmail?: string;
+  nowFormatted?: string;
+}): string {
+  const cleanReason = (reason || 'Ban Tổ Chức mở khóa toàn bộ').trim();
+  const timeStr = nowFormatted || new Date().toLocaleString('vi-VN');
+  const adminTag = adminEmail ? ` (Bởi ${adminEmail} lúc ${timeStr})` : ` (Lúc ${timeStr})`;
+
+  if (!notesStr || !notesStr.trim()) {
+    return `[Đã mở khóa toàn bộ] Lý do: ${cleanReason}${adminTag}`;
+  }
+
+  const rawSegments = notesStr
+    .split(/;|\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  let pardonedCount = 0;
+  const updatedSegments = rawSegments.map((segment) => {
+    if (segment.startsWith('[Đã miễn vắng:') || segment.startsWith('[Đã mở khóa') || segment.includes('Đã miễn vắng')) {
+      return segment;
+    }
+    pardonedCount++;
+    const eventName = segment
+      .replace(/^Vắng:\s*/i, '')
+      .replace(/^Vắng mặt tại sự kiện:\s*/i, '')
+      .replace(/^Vắng mặt:\s*/i, '');
+    const eventIdMatch = segment.match(/\[([a-zA-Z0-9_-]+)\]/);
+    const eventIdTag = eventIdMatch ? ` [${eventIdMatch[1]}]` : '';
+    const nameWithoutId = eventName.replace(/\[([a-zA-Z0-9_-]+)\]/, '').trim();
+    return `[Đã miễn vắng: ${nameWithoutId}] Lý do: ${cleanReason}${adminTag}${eventIdTag}`;
+  });
+
+  if (pardonedCount === 0) {
+    updatedSegments.push(`[Đã mở khóa toàn bộ] Lý do: ${cleanReason}${adminTag}`);
+  }
+
+  return updatedSegments.join('; ');
+}
+
 /**
  * Reconciles registrations against actual check-ins.
  * Returns array of attended students and absent students.
