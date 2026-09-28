@@ -297,6 +297,29 @@ export default function EventRecruitmentPage({
             </div>
           )}
 
+          {/* CẢNH BÁO SỚM: SV vắng 1-2 lần, chưa bị khóa */}
+          {!isBlacklisted && penaltyStatus && penaltyStatus.missed_count > 0 && (
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                border: '1.5px solid #f59e0b',
+                borderRadius: '16px',
+                padding: '1.25rem 1.5rem',
+                marginBottom: '1rem',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <AlertTriangleIcon size={18} color="#d97706" />
+                <span>Cảnh báo: Bạn đã vắng mặt {penaltyStatus.missed_count}/3 lần</span>
+              </h3>
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#78350f', lineHeight: 1.5 }}>
+                {penaltyStatus.missed_count === 1
+                  ? 'Nếu vắng thêm 2 lần nữa, tài khoản sẽ bị khóa đăng ký sự kiện. Hãy tham gia đầy đủ các sự kiện đã đăng ký!'
+                  : 'Chỉ còn 1 lần vắng nữa, tài khoản sẽ bị KHÓA đăng ký sự kiện. Hãy đảm bảo tham gia đầy đủ!'}
+              </p>
+            </div>
+          )}
+
           {/* ALREADY APPLIED STATUS */}
           {isVolunteerApplied && !isBlacklisted && (
             <div className={styles.successCard}>
