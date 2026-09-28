@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { reconcileAttendance, MAX_MISSED_STRIKES } from '@/lib/utils/blacklist-logic';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
@@ -15,7 +15,7 @@ export async function POST(
   }
 
   const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
-  const supabase = await createClient();
+  const supabase = typeof createAdminClient === 'function' ? await createAdminClient() : await createClient();
 
   // 1. Fetch event, registrations, and checkins in parallel
   const [

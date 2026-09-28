@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
 import type { ProposalStage } from '@/lib/types';
@@ -14,7 +14,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = typeof createAdminClient === 'function' ? await createAdminClient() : await createClient();
 
   const { data: proposal, error: propErr } = await supabase
     .from('event_proposals')
