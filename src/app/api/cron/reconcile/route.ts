@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { reconcileAllPastEvents } from '@/lib/utils/blacklist-logic';
+import { cleanupExpiredStudentEventRoles } from '@/lib/constants/event-roles-cleanup';
 
 /**
- * Cron Job: Tự động chốt điểm danh + xử lý vi phạm
+ * Cron Job: Tự động chốt điểm danh + xử lý vi phạm + thu hồi quyền
  * Chạy mỗi ngày lúc 2:00 AM (UTC) = 9:00 AM (VN)
  * 
- * Vercel Cron gọi route này → reconcile tất cả sự kiện
- * đã kết thúc quá 3 ngày mà chưa được chốt.
+ * 1. reconcileAllPastEvents: Chốt điểm danh tất cả sự kiện > 3 ngày
+ * 2. cleanupExpiredStudentEventRoles: Thu hồi quyền Admin/CTV sự kiện > 3 ngày
  */
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Cho phép chạy tối đa 60s (Vercel Pro) hoặc 10s (Hobby)
+export const maxDuration = 60;
 
 export async function GET(req: Request) {
   // Xác thực: chỉ Vercel Cron mới gọi được
@@ -31,18 +32,35 @@ export async function GET(req: Request) {
       ? await createAdminClient()
       : await createClient();
 
-    const result = await reconcileAllPastEvents(supabase);
+    // 1. Chốt điểm danh + xử lý vi phạm
+    const reconcileResult = await reconcileAllPastEvents(supabase);
 
-    console.log(`[CRON] Reconcile completed:`, {
-      eventsProcessed: result.eventsProcessed,
-      totalAbsent: result.totalAbsent,
-      newBlacklisted: result.newBlacklisted,
+    // 2. Thu hồi quyền Admin/CTV sự kiện đã kết thúc > 3 ngày
+    let cleanupResult = { cleanedCount: 0 };
+    try {
+      cleanupResult = await cleanupExpiredStudentEventRoles(supabase, 3);
+    } catch (cleanupErr: any) {
+      console.error('[CRON] Cleanup expired roles error:', cleanupErr);
+    }
+
+    console.log(`[CRON] Daily job completed:`, {
+      reconcile: {
+        eventsProcessed: reconcileResult.eventsProcessed,
+        totalAbsent: reconcileResult.totalAbsent,
+        newBlacklisted: reconcileResult.newBlacklisted,
+      },
+      cleanup: {
+        rolesRevoked: cleanupResult.cleanedCount,
+      },
       timestamp: new Date().toISOString(),
     });
 
     return NextResponse.json({
       success: true,
-      data: result,
+      data: {
+        reconcile: reconcileResult,
+        cleanup: cleanupResult,
+      },
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {

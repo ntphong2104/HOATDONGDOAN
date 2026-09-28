@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { cleanupExpiredStudentEventRoles } from '@/lib/constants/event-roles-cleanup';
 
@@ -15,7 +15,7 @@ export async function POST() {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = typeof createAdminClient === 'function' ? await createAdminClient() : await createClient();
     const result = await cleanupExpiredStudentEventRoles(supabase, 3);
 
     return NextResponse.json({
