@@ -13,17 +13,13 @@ export async function GET() {
 
   const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
 
-  // Auto reconcile past events ended >= 3 days ago in background
-  if (auth.isSuperAdmin || auth.tier === 'super_admin') {
-    reconcileAllPastEvents(supabase).catch((e) => console.warn('Background past events reconcile error:', e));
-  }
-
   const { data: penalties, error } = await supabase
     .from('user_penalties')
     .select('*')
     .order('is_blacklisted', { ascending: false })
     .order('missed_count', { ascending: false })
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .limit(1000);
 
   if (error) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });

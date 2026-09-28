@@ -90,6 +90,7 @@ function SuperAdminContent() {
   const [delegatesLoading, setDelegatesLoading] = useState(true);
   const [reconcilingAll, setReconcilingAll] = useState(false);
   const [eventStatusFilter, setEventStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
+  const [proposalStatusFilter, setProposalStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
   const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
 
   // Blacklist & Penalty Pardon states
@@ -103,6 +104,33 @@ function SuperAdminContent() {
   const [pardonSubmitting, setPardonSubmitting] = useState(false);
   const [blacklistFilter, setBlacklistFilter] = useState<'all' | 'blacklisted' | 'warning' | 'pardoned'>('all');
   const [blacklistSearch, setBlacklistSearch] = useState('');
+  const [blacklistPage, setBlacklistPage] = useState(1);
+  const BLACKLIST_PAGE_SIZE = 25;
+
+  const displayedPenalties = React.useMemo(() => {
+    return penalties.filter((pen) => {
+      if (blacklistSearch.trim()) {
+        const q = blacklistSearch.toLowerCase().trim();
+        const matchMssv = (pen.mssv || '').toLowerCase().includes(q);
+        const matchName = (pen.full_name || '').toLowerCase().includes(q);
+        const matchClass = (pen.class_id || '').toLowerCase().includes(q);
+        const matchNotes = (pen.notes || '').toLowerCase().includes(q);
+        if (!matchMssv && !matchName && !matchClass && !matchNotes) return false;
+      }
+
+      if (blacklistFilter === 'blacklisted') return pen.is_blacklisted;
+      if (blacklistFilter === 'warning') return !pen.is_blacklisted && pen.missed_count > 0;
+      if (blacklistFilter === 'pardoned') return !pen.is_blacklisted && pen.missed_count === 0;
+      return true;
+    });
+  }, [penalties, blacklistSearch, blacklistFilter]);
+
+  const totalBlacklistPages = Math.max(1, Math.ceil(displayedPenalties.length / BLACKLIST_PAGE_SIZE));
+  const currentBlacklistPage = Math.min(Math.max(1, blacklistPage), totalBlacklistPages);
+  const paginatedPenalties = React.useMemo(() => {
+    const start = (currentBlacklistPage - 1) * BLACKLIST_PAGE_SIZE;
+    return displayedPenalties.slice(start, start + BLACKLIST_PAGE_SIZE);
+  }, [displayedPenalties, currentBlacklistPage]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -5131,7 +5159,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={() => setBlacklistFilter('all')}
+                  onClick={() => { setBlacklistFilter('all'); setBlacklistPage(1); }}
                   style={{
                     padding: '0.45rem 0.9rem',
                     borderRadius: '8px',
@@ -5148,7 +5176,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBlacklistFilter('blacklisted')}
+                  onClick={() => { setBlacklistFilter('blacklisted'); setBlacklistPage(1); }}
                   style={{
                     padding: '0.45rem 0.9rem',
                     borderRadius: '8px',
@@ -5165,7 +5193,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBlacklistFilter('warning')}
+                  onClick={() => { setBlacklistFilter('warning'); setBlacklistPage(1); }}
                   style={{
                     padding: '0.45rem 0.9rem',
                     borderRadius: '8px',
@@ -5182,7 +5210,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBlacklistFilter('pardoned')}
+                  onClick={() => { setBlacklistFilter('pardoned'); setBlacklistPage(1); }}
                   style={{
                     padding: '0.45rem 0.9rem',
                     borderRadius: '8px',
@@ -5204,7 +5232,10 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   type="text"
                   placeholder="Tìm theo MSSV, tên, lớp, sự kiện..."
                   value={blacklistSearch}
-                  onChange={(e) => setBlacklistSearch(e.target.value)}
+                  onChange={(e) => {
+                    setBlacklistSearch(e.target.value);
+                    setBlacklistPage(1);
+                  }}
                   style={{
                     width: '100%',
                     padding: '0.5rem 0.75rem 0.5rem 2.2rem',
@@ -5285,34 +5316,14 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           Hiện tại không có sinh viên nào trong danh sách đen hoặc bị cảnh cáo.
                         </td>
                       </tr>
-                    ) : (() => {
-                      const displayedList = penalties.filter((pen) => {
-                        if (blacklistSearch.trim()) {
-                          const q = blacklistSearch.toLowerCase().trim();
-                          const matchMssv = pen.mssv.toLowerCase().includes(q);
-                          const matchName = (pen.full_name || '').toLowerCase().includes(q);
-                          const matchClass = (pen.class_id || '').toLowerCase().includes(q);
-                          const matchNotes = (pen.notes || '').toLowerCase().includes(q);
-                          if (!matchMssv && !matchName && !matchClass && !matchNotes) return false;
-                        }
-
-                        if (blacklistFilter === 'blacklisted') return pen.is_blacklisted;
-                        if (blacklistFilter === 'warning') return !pen.is_blacklisted && pen.missed_count > 0;
-                        if (blacklistFilter === 'pardoned') return !pen.is_blacklisted && pen.missed_count === 0;
-                        return true;
-                      });
-
-                      if (displayedList.length === 0) {
-                        return (
-                          <tr>
-                            <td colSpan={6} className={styles.emptyState} style={{ padding: '2.5rem 1rem' }}>
-                              Không tìm thấy sinh viên nào phù hợp với bộ lọc hiện tại.
-                            </td>
-                          </tr>
-                        );
-                      }
-
-                      return displayedList.map((pen) => (
+                    ) : displayedPenalties.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className={styles.emptyState} style={{ padding: '2.5rem 1rem' }}>
+                          Không tìm thấy sinh viên nào phù hợp với bộ lọc hiện tại.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedPenalties.map((pen) => (
                         <tr key={pen.mssv}>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -5569,10 +5580,62 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                             )}
                           </td>
                         </tr>
-                      ));
-                    })()}
+                      ))
+                    )}
                   </tbody>
                 </table>
+
+                {!penaltiesLoading && displayedPenalties.length > 0 && (
+                  <div className={styles.tableFooter}>
+                    <div>
+                      Hiển thị <strong>{(currentBlacklistPage - 1) * BLACKLIST_PAGE_SIZE + 1} - {Math.min(currentBlacklistPage * BLACKLIST_PAGE_SIZE, displayedPenalties.length)}</strong> / Tổng <strong>{displayedPenalties.length}</strong> sinh viên vi phạm
+                    </div>
+
+                    {totalBlacklistPages > 1 && (
+                      <div className={styles.tablePagination}>
+                        <button
+                          type="button"
+                          className={styles.tablePageBtn}
+                          onClick={() => setBlacklistPage(1)}
+                          disabled={currentBlacklistPage <= 1}
+                          title="Trang đầu"
+                        >
+                          «
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.tablePageBtn}
+                          onClick={() => setBlacklistPage((p) => Math.max(1, p - 1))}
+                          disabled={currentBlacklistPage <= 1}
+                          title="Trang trước"
+                        >
+                          ‹ Trước
+                        </button>
+                        <span className={styles.tablePageInfo}>
+                          Trang {currentBlacklistPage} / {totalBlacklistPages}
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.tablePageBtn}
+                          onClick={() => setBlacklistPage((p) => Math.min(totalBlacklistPages, p + 1))}
+                          disabled={currentBlacklistPage >= totalBlacklistPages}
+                          title="Trang sau"
+                        >
+                          Sau ›
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.tablePageBtn}
+                          onClick={() => setBlacklistPage(totalBlacklistPages)}
+                          disabled={currentBlacklistPage >= totalBlacklistPages}
+                          title="Trang cuối"
+                        >
+                          »
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </section>
           </div>
