@@ -102,6 +102,10 @@ function SuperAdminContent() {
   } | null>(null);
   const [pardonReason, setPardonReason] = useState('');
   const [pardonSubmitting, setPardonSubmitting] = useState(false);
+  const [pardonEventModalOpen, setPardonEventModalOpen] = useState(false);
+  const [pardonEventId, setPardonEventId] = useState('');
+  const [pardonEventReason, setPardonEventReason] = useState('');
+  const [pardonEventSubmitting, setPardonEventSubmitting] = useState(false);
   const [blacklistFilter, setBlacklistFilter] = useState<'all' | 'blacklisted' | 'warning' | 'pardoned'>('all');
   const [blacklistSearch, setBlacklistSearch] = useState('');
   const [blacklistPage, setBlacklistPage] = useState(1);
@@ -834,6 +838,41 @@ function SuperAdminContent() {
       alert('Lỗi kết nối');
     } finally {
       setBanning(false);
+    }
+  };
+
+  const handlePardonEvent = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!pardonEventId || !pardonEventReason.trim()) {
+      addToast('error', 'Vui lòng chọn sự kiện và nhập lý do');
+      return;
+    }
+    setPardonEventSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/blacklist/pardon-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: pardonEventId, reason: pardonEventReason.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        addToast('error', json.error || 'Lỗi gỡ vi phạm theo sự kiện');
+        return;
+      }
+      addToast('success', json.message || 'Đã gỡ vi phạm thành công!');
+      setPardonEventModalOpen(false);
+      setPardonEventId('');
+      setPardonEventReason('');
+      // Refresh penalties list
+      const refreshRes = await fetch('/api/admin/blacklist');
+      const refreshJson = await refreshRes.json();
+      if (refreshJson.success !== false && refreshJson.data) {
+        setPenalties(refreshJson.data);
+      }
+    } catch (err: any) {
+      addToast('error', err?.message || 'Lỗi kết nối');
+    } finally {
+      setPardonEventSubmitting(false);
     }
   };
 
@@ -5264,7 +5303,24 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     Hệ thống tự động khóa đăng ký khi sinh viên tích lũy đủ 3 lần vắng mặt sau khi đã đăng ký. Super Admin có quyền xóa khỏi Blacklist / mở khóa.
                   </p>
                 </div>
-                <div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPardonEventModalOpen(true)}
+                    className={styles.submitBtn}
+                    style={{
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      padding: '0.65rem 1.25rem',
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                    }}
+                    title="Gỡ vi phạm hàng loạt cho tất cả SV bị đánh vắng ở 1 sự kiện cụ thể"
+                  >
+                    <ShieldCheckIcon size={16} />
+                    <span>Gỡ VP Theo Sự Kiện</span>
+                  </button>
                   <button
                     type="button"
                     onClick={handleReconcileAllPastEvents}
@@ -6130,6 +6186,134 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     }}
                   >
                     {submittingRole ? 'Đang gán...' : 'Xác Nhận Gán Quyền'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL GỠ VI PHẠM THEO SỰ KIỆN */}
+        {pardonEventModalOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(4px)',
+            }}
+            onClick={() => !pardonEventSubmitting && setPardonEventModalOpen(false)}
+          >
+            <div
+              style={{
+                background: 'white',
+                borderRadius: '16px',
+                width: '100%',
+                maxWidth: '520px',
+                margin: '1rem',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                overflow: 'hidden',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{
+                padding: '1.25rem 1.5rem',
+                borderBottom: '1px solid #e2e8f0',
+                background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+              }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#92400e' }}>
+                  🛡️ Gỡ Vi Phạm Theo Sự Kiện
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#a16207' }}>
+                  Tất cả SV bị đánh vắng ở sự kiện được chọn sẽ được giảm 1 lần vắng và cập nhật trạng thái
+                </p>
+              </div>
+              <form onSubmit={handlePardonEvent} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: '#374151' }}>
+                    Chọn sự kiện *
+                  </label>
+                  <select
+                    value={pardonEventId}
+                    onChange={(e) => setPardonEventId(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.75rem',
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value="">-- Chọn sự kiện cần gỡ vi phạm --</option>
+                    {(events || [])
+                      .filter((ev: any) => ev.status === 'closed' || ev.status === 'active')
+                      .sort((a: any, b: any) => (b.event_date || '').localeCompare(a.event_date || ''))
+                      .map((ev: any) => (
+                        <option key={ev.event_id} value={ev.event_id}>
+                          {ev.event_name} ({ev.event_date || 'N/A'})
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: '#374151' }}>
+                    Lý do nghiệp vụ *
+                  </label>
+                  <textarea
+                    value={pardonEventReason}
+                    onChange={(e) => setPardonEventReason(e.target.value)}
+                    required
+                    placeholder="VD: Sự kiện bị hủy do mưa bão, gỡ vi phạm cho toàn bộ SV..."
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.75rem',
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                      resize: 'vertical',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPardonEventModalOpen(false)}
+                    disabled={pardonEventSubmitting}
+                    style={{
+                      padding: '0.55rem 1.25rem',
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      background: 'white',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pardonEventSubmitting || !pardonEventId || !pardonEventReason.trim()}
+                    className={styles.submitBtn}
+                    style={{
+                      padding: '0.55rem 1.25rem',
+                      fontSize: '0.85rem',
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      opacity: pardonEventSubmitting ? 0.7 : 1,
+                      cursor: pardonEventSubmitting ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {pardonEventSubmitting ? 'Đang xử lý...' : 'Xác nhận gỡ vi phạm'}
                   </button>
                 </div>
               </form>
