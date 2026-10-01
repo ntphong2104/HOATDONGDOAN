@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     auth.email.includes('security');
 
   try {
-    const supabase = await createAdminClient();
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || await createClient();
 
     let query = supabase
       .from('event_proposals')
