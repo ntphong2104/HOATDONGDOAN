@@ -428,11 +428,24 @@ export async function POST(
     const now = new Date().toISOString();
     const actorEmail = auth.email;
 
+    // Fetch existing registrations to preserve role_type (e.g., CTV/volunteer)
+    const { data: existingRegs } = await supabase
+      .from('event_registrations')
+      .select('mssv, role_type')
+      .eq('event_id', resolvedParams.id)
+      .in('mssv', cleanedMssvs);
+
+    const regMap = new Map<string, any>();
+    (existingRegs || []).forEach((r: any) => {
+      regMap.set(String(r.mssv).trim().toUpperCase(), r);
+    });
+
     if (mode === 'checkin') {
       // Prepare records for `check_ins`
       const checkinRecords = cleanedMssvs.map((mssv) => {
         const sData = studentDataMap.get(mssv);
-        const resolvedRole = sData?.role_type || (participate_role === 'volunteer' ? 'volunteer' : participate_role === 'organizer' ? 'organizer' : 'participant');
+        const regRecord = regMap.get(mssv);
+        const resolvedRole = sData?.role_type || regRecord?.role_type || (participate_role === 'volunteer' ? 'volunteer' : participate_role === 'organizer' ? 'organizer' : 'participant');
         return {
           event_id: resolvedParams.id,
           mssv,
@@ -472,7 +485,8 @@ export async function POST(
       // Also save department info + importer for CTV in checkin mode
       const checkinVolunteers = cleanedMssvs.filter((mssv) => {
         const sData = studentDataMap.get(mssv);
-        const r = sData?.role_type || participate_role;
+        const regRecord = regMap.get(mssv);
+        const r = sData?.role_type || regRecord?.role_type || participate_role;
         return r === 'volunteer';
       });
 
@@ -514,7 +528,8 @@ export async function POST(
         const resolvedClassId = (uInfo?.class_id && uInfo.class_id !== 'PTIT-HCM')
           ? uInfo.class_id
           : (sData?.class_id || uInfo?.class_id || 'PTIT-HCM');
-        const resolvedRole = sData?.role_type || (participate_role === 'volunteer' ? 'volunteer' : participate_role === 'organizer' ? 'organizer' : 'participant');
+        const existingReg = regMap.get(mssv);
+        const resolvedRole = sData?.role_type || existingReg?.role_type || (participate_role === 'volunteer' ? 'volunteer' : participate_role === 'organizer' ? 'organizer' : 'participant');
 
         return {
           event_id: resolvedParams.id,
@@ -546,7 +561,8 @@ export async function POST(
       // If any imported students are volunteers / CTV, link to department and set accepted status in registration extra store
       const volunteerMssvs = cleanedMssvs.filter((mssv) => {
         const sData = studentDataMap.get(mssv);
-        const r = sData?.role_type || participate_role;
+        const existingReg = regMap.get(mssv);
+        const r = sData?.role_type || existingReg?.role_type || participate_role;
         return r === 'volunteer';
       });
 
