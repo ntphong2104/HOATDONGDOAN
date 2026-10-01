@@ -220,6 +220,8 @@ function SuperAdminContent() {
   ]);
   const [submittingManualStudent, setSubmittingManualStudent] = useState(false);
   const [deletingStudentMssv, setDeletingStudentMssv] = useState<string | null>(null);
+  const [editStudent, setEditStudent] = useState<{ mssv: string; full_name: string; class_id: string } | null>(null);
+  const [editStudentSaving, setEditStudentSaving] = useState(false);
   const [showQuickPaste, setShowQuickPaste] = useState(false);
   const [quickPasteText, setQuickPasteText] = useState('');
 
@@ -1321,6 +1323,40 @@ function SuperAdminContent() {
       showToast('Lỗi kết nối khi xóa sinh viên', 'error');
     } finally {
       setDeletingStudentMssv(null);
+    }
+  };
+
+  const handleSaveEditStudent = async () => {
+    if (!editStudent) return;
+    setEditStudentSaving(true);
+    try {
+      const res = await fetch('/api/admin/students', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mssv: editStudent.mssv,
+          full_name: editStudent.full_name,
+          class_id: editStudent.class_id,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        alert(json.error || 'Lỗi cập nhật');
+        return;
+      }
+      setStudents((prev) =>
+        prev.map((s: any) =>
+          s.mssv === editStudent.mssv
+            ? { ...s, full_name: editStudent.full_name, class_id: editStudent.class_id }
+            : s
+        )
+      );
+      setEditStudent(null);
+      showToast('Đã cập nhật thông tin sinh viên', 'success');
+    } catch {
+      alert('Lỗi kết nối');
+    } finally {
+      setEditStudentSaving(false);
     }
   };
 
@@ -4757,6 +4793,26 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                         <button
                           type="button"
+                          onClick={() => setEditStudent({ mssv: (row as any).mssv, full_name: (row as any).full_name || '', class_id: (row as any).class_id || '' })}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.4rem 0.65rem',
+                            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                            border: '1px solid #bbf7d0',
+                            color: '#15803d',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                          }}
+                          title="Sửa thông tin sinh viên"
+                        >
+                          ✏️ <span>Sửa</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openStudentHistory(row as any)}
                           style={{
                             display: 'inline-flex',
@@ -6671,6 +6727,78 @@ Phạm Cao Huyền Trinh N24DCQT083`}
         )}
         </div>
       </main>
+      {/* MODAL: Sửa thông tin sinh viên */}
+      {editStudent && (
+        <div
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => setEditStudent(null)}
+        >
+          <div
+            style={{
+              background: 'white', borderRadius: '16px', padding: '2rem',
+              width: '90%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1.5rem', fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>
+              ✏️ Sửa thông tin: {editStudent.mssv}
+            </h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Họ và tên</label>
+              <input
+                type="text"
+                value={editStudent.full_name}
+                onChange={(e) => setEditStudent({ ...editStudent, full_name: e.target.value })}
+                style={{
+                  width: '100%', padding: '0.6rem 0.8rem', border: '1.5px solid #d1d5db',
+                  borderRadius: '10px', fontSize: '0.9rem', outline: 'none',
+                }}
+                placeholder="Nhập họ và tên"
+              />
+            </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Lớp</label>
+              <input
+                type="text"
+                value={editStudent.class_id}
+                onChange={(e) => setEditStudent({ ...editStudent, class_id: e.target.value })}
+                style={{
+                  width: '100%', padding: '0.6rem 0.8rem', border: '1.5px solid #d1d5db',
+                  borderRadius: '10px', fontSize: '0.9rem', outline: 'none',
+                }}
+                placeholder="Nhập mã lớp"
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setEditStudent(null)}
+                style={{
+                  padding: '0.5rem 1.25rem', background: '#f1f5f9', border: '1px solid #e2e8f0',
+                  borderRadius: '10px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveEditStudent}
+                disabled={editStudentSaving}
+                style={{
+                  padding: '0.5rem 1.25rem', background: '#2563eb', color: 'white',
+                  border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.85rem',
+                  cursor: 'pointer', opacity: editStudentSaving ? 0.7 : 1,
+                }}
+              >
+                {editStudentSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

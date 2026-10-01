@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
@@ -298,5 +298,51 @@ export async function DELETE(req: Request) {
       { success: false, error: 'Đã xảy ra lỗi hệ thống' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * PATCH /api/admin/students
+ * Cập nhật thông tin SV (full_name, class_id)
+ * Body: { mssv: string, full_name?: string, class_id?: string }
+ */
+export async function PATCH(req: Request) {
+  try {
+    const auth = await getAuthContext();
+    if (!auth || !auth.isSuperAdmin) {
+      return NextResponse.json({ success: false, error: 'Chỉ Super Admin mới có quyền sửa thông tin SV' }, { status: 403 });
+    }
+
+    const { mssv, full_name, class_id } = await req.json();
+    if (!mssv) {
+      return NextResponse.json({ success: false, error: 'Thiếu MSSV' }, { status: 400 });
+    }
+
+    const updatePayload: Record<string, any> = {};
+    if (full_name !== undefined) updatePayload.full_name = full_name.trim();
+    if (class_id !== undefined) updatePayload.class_id = class_id.trim();
+
+    if (Object.keys(updatePayload).length === 0) {
+      return NextResponse.json({ success: false, error: 'Không có thông tin cần cập nhật' }, { status: 400 });
+    }
+
+    const supabase = typeof createAdminClient === 'function' ? await createAdminClient() : await createClient();
+
+    const { data, error } = await supabase
+      .from('users')
+      .update(updatePayload)
+      .eq('mssv', mssv)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.error('Update student error:', error);
+      return NextResponse.json({ success: false, error: 'Lỗi cập nhật: ' + error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, data });
+  } catch (err: any) {
+    console.error('API /api/admin/students PATCH error:', err);
+    return NextResponse.json({ success: false, error: 'Đã xảy ra lỗi hệ thống' }, { status: 500 });
   }
 }
