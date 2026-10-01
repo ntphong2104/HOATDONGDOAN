@@ -1803,8 +1803,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 width: '42px',
                 height: '42px',
                 borderRadius: '12px',
-                background: (event.max_participants || 0) > 0 && stats.checkedParticipant >= (event.max_participants || 0) ? '#fee2e2' : '#eff6ff',
-                color: (event.max_participants || 0) > 0 && stats.checkedParticipant >= (event.max_participants || 0) ? '#dc2626' : '#2563eb',
+                background: (event.max_participants || 0) > 0 && stats.participant >= (event.max_participants || 0) ? '#fee2e2' : '#eff6ff',
+                color: (event.max_participants || 0) > 0 && stats.participant >= (event.max_participants || 0) ? '#dc2626' : '#2563eb',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1813,7 +1813,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </div>
               <div>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Giới Hạn Người Tham Gia (Sức Chứa Điểm Danh)
+                  Giới Hạn Số Lượng Đăng Ký
                 </div>
                 <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span>
@@ -1827,17 +1827,17 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       fontWeight: 700,
                       padding: '0.2rem 0.6rem',
                       borderRadius: '8px',
-                      background: stats.checkedParticipant >= (event.max_participants || 0) ? '#fee2e2' : '#ecfdf5',
-                      color: stats.checkedParticipant >= (event.max_participants || 0) ? '#dc2626' : '#059669',
+                      background: stats.participant >= (event.max_participants || 0) ? '#fee2e2' : '#ecfdf5',
+                      color: stats.participant >= (event.max_participants || 0) ? '#dc2626' : '#059669',
                     }}>
-                      {stats.checkedParticipant >= (event.max_participants || 0)
-                        ? `Đã đầy (${stats.checkedParticipant}/${event.max_participants})`
-                        : `Còn ${Math.max(0, (event.max_participants || 0) - stats.checkedParticipant)} chỗ trống`}
+                      {stats.participant >= (event.max_participants || 0)
+                        ? `Đã đầy (${stats.participant}/${event.max_participants})`
+                        : `Còn ${Math.max(0, (event.max_participants || 0) - stats.participant)} chỗ trống`}
                     </span>
                   )}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
-                  Hệ thống tự động chặn điểm danh khi đạt tối đa <strong>{(event.max_participants || 0) > 0 ? `${event.max_participants} người` : 'vô hạn'}</strong> để đảm bảo an toàn hội trường.
+                  Hệ thống tự động chặn đăng ký khi đạt tối đa <strong>{(event.max_participants || 0) > 0 ? `${event.max_participants} người` : 'vô hạn'}</strong>. Đã đăng ký: <strong>{stats.participant}</strong> | Đã điểm danh: <strong>{stats.checkedParticipant}</strong>
                 </div>
               </div>
             </div>
