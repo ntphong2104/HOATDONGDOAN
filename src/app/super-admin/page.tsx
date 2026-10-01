@@ -33,6 +33,7 @@ import {
   UnlockIcon,
   SearchIcon,
   AlertTriangleIcon,
+  PencilIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS, ACADEMIC_FACULTIES, type OfficialUnit } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
@@ -4809,7 +4810,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           }}
                           title="Sửa thông tin sinh viên"
                         >
-                          ✏️ <span>Sửa</span>
+                          <PencilIcon size={13} color="#15803d" />
+                          <span>Sửa</span>
                         </button>
                         <button
                           type="button"
