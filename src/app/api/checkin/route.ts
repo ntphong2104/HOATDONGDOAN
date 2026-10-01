@@ -11,6 +11,10 @@ import type { CheckInRequest } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+// ═══ Cache event data — checker quét cùng 1 event liên tục, không cần query mỗi lần ═══
+const checkinEventCache = new Map<string, { data: any; meta: any; ts: number }>();
+const CHECKIN_CACHE_TTL = 10000; // 10 giây
+
 export async function POST(req: Request) {
   const auth = await getAuthContext();
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
@@ -118,30 +122,55 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
 
+    // Check cache for event + meta (same event for every scan, rarely changes)
+    const cachedEvent = checkinEventCache.get(event_id);
+    let event: any, eventErr: any, meta: any;
+
     const [
-      { data: event, error: eventErr },
-      { data: student },
-      meta,
-      { data: regData }
+      studentResult,
+      regResult,
+      ...eventResults
     ] = await Promise.all([
       supabase
-        .from('events')
-        .select('event_id, event_name, status, event_date, start_time, end_time')
-        .eq('event_id', event_id)
-        .maybeSingle(),
-      supabase
         .from('users')
-        .select('mssv, full_name, class_id, email')
+        .select('mssv, full_name, class_id, email, phone')
         .eq('mssv', mssv)
         .maybeSingle(),
-      getEventMeta(supabase, event_id),
       supabase
         .from('event_registrations')
         .select('id, role_type, attended')
         .eq('event_id', event_id)
         .eq('mssv', mssv)
         .maybeSingle(),
+      // Only fetch event + meta if cache expired
+      ...(cachedEvent && Date.now() - cachedEvent.ts < CHECKIN_CACHE_TTL
+        ? []
+        : [
+            supabase
+              .from('events')
+              .select('event_id, event_name, status, event_date, start_time, end_time')
+              .eq('event_id', event_id)
+              .maybeSingle(),
+            getEventMeta(supabase, event_id),
+          ]),
     ]);
+
+    const { data: student } = studentResult;
+    const { data: regData } = regResult;
+
+    if (cachedEvent && Date.now() - cachedEvent.ts < CHECKIN_CACHE_TTL) {
+      event = cachedEvent.data;
+      meta = cachedEvent.meta;
+    } else {
+      const eventResult = eventResults[0] as any;
+      event = eventResult?.data;
+      eventErr = eventResult?.error;
+      meta = eventResults[1] as any || {};
+      // Save to cache
+      if (event) {
+        checkinEventCache.set(event_id, { data: event, meta, ts: Date.now() });
+      }
+    }
 
     if (event_id === 'bbfe063b-c18f-4003-afe1-665334d13743' && (!meta.max_participants || meta.max_participants <= 130)) {
       meta.max_participants = 230;
