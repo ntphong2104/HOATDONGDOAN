@@ -1314,6 +1314,7 @@ function SuperAdminContent() {
       const data = await res.json();
       if (data.success) {
         showToast(data.message || `Đã xóa sinh viên ${mssvToDelete}!`, 'success');
+        setStudents((prev) => prev.filter((s: any) => s.mssv !== mssvToDelete));
         fetchStudents();
         fetchStats();
       } else {
