@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 import { sanitizeInput } from '@/lib/security/sanitizer';
 import {
@@ -22,7 +22,7 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Chỉ Super Admin mới có quyền xem danh sách cán bộ' }, { status: 403 });
     }
 
-    const supabase = await createClient();
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient());
     const officerMap = new Map<string, OfficerRoleItem>();
 
     const makeKey = (email: string, tier: string, unit: string = '') =>
@@ -222,7 +222,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Vai trò cấp quyền không hợp lệ' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient());
 
     // Look up user in users table for official name
     let dbUser: any = null;
@@ -325,7 +325,7 @@ export async function DELETE(req: Request) {
       }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient());
 
     // 1. Remove from stored officer roles
     await removeOfficerRole(emailRaw, roleTier, id, supabase);
