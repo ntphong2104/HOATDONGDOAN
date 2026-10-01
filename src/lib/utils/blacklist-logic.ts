@@ -2,7 +2,6 @@
 // src/lib/utils/blacklist-logic.ts — No-Show & Blacklist Utilities
 // ════════════════════════════════════════════════════════════════
 
-import { getEventMeta } from '@/lib/constants/event-meta-store';
 
 export const MAX_MISSED_STRIKES = 3;
 
@@ -443,16 +442,23 @@ export async function reconcileAllPastEvents(supabase: any): Promise<ReconcileSu
     try {
       // Skip if event has sessions that haven't ended yet (multi-session events)
       try {
-        const meta = await getEventMeta(supabase, event.event_id);
-        if (meta?.sessions && Array.isArray(meta.sessions) && meta.sessions.length > 0) {
-          const sessionDates = meta.sessions
-            .map((s: any) => s.session_date)
-            .filter(Boolean)
-            .sort();
-          const lastSessionDate = sessionDates[sessionDates.length - 1];
-          if (lastSessionDate && lastSessionDate > thresholdDate) {
-            // Last session hasn't passed threshold yet — skip this event
-            continue;
+        const { data: metaRow } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', `event_meta_${event.event_id}`)
+          .maybeSingle();
+        if (metaRow?.value) {
+          const meta = typeof metaRow.value === 'string' ? JSON.parse(metaRow.value) : metaRow.value;
+          if (meta?.sessions && Array.isArray(meta.sessions) && meta.sessions.length > 0) {
+            const sessionDates = meta.sessions
+              .map((s: any) => s.session_date)
+              .filter(Boolean)
+              .sort();
+            const lastSessionDate = sessionDates[sessionDates.length - 1];
+            if (lastSessionDate && lastSessionDate > thresholdDate) {
+              // Last session hasn't passed threshold yet — skip this event
+              continue;
+            }
           }
         }
       } catch {}
