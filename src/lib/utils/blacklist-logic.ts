@@ -2,6 +2,8 @@
 // src/lib/utils/blacklist-logic.ts — No-Show & Blacklist Utilities
 // ════════════════════════════════════════════════════════════════
 
+import { getEventMeta } from '@/lib/constants/event-meta-store';
+
 export const MAX_MISSED_STRIKES = 3;
 
 export interface PenaltyEvaluation {
@@ -439,6 +441,22 @@ export async function reconcileAllPastEvents(supabase: any): Promise<ReconcileSu
   // 3. Process each past event
   for (const event of pastEvents) {
     try {
+      // Skip if event has sessions that haven't ended yet (multi-session events)
+      try {
+        const meta = await getEventMeta(supabase, event.event_id);
+        if (meta?.sessions && Array.isArray(meta.sessions) && meta.sessions.length > 0) {
+          const sessionDates = meta.sessions
+            .map((s: any) => s.session_date)
+            .filter(Boolean)
+            .sort();
+          const lastSessionDate = sessionDates[sessionDates.length - 1];
+          if (lastSessionDate && lastSessionDate > thresholdDate) {
+            // Last session hasn't passed threshold yet — skip this event
+            continue;
+          }
+        }
+      } catch {}
+
       // Check registrations and checkins
       const [{ data: registrations }, { data: checkIns }] = await Promise.all([
         supabase.from('event_registrations').select('*').eq('event_id', event.event_id),
