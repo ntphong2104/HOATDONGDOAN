@@ -19,7 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   
   if (error || !data) return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện'}, { status: 404 });
   
-  if (data && data.status === 'active' && isEventPastDeadline(data)) {
+  if (data && data.status === 'active' && isEventPastDeadline({ ...data, sessions: meta.sessions || [] })) {
     data.status = 'closed';
     data.is_active = false;
     supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', resolvedParams.id).then(() => {});
