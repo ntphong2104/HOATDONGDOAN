@@ -39,6 +39,7 @@ export interface Event {
   departments?: any[];
   target_scope?: 'all' | 'unit_only';
   sessions?: EventSession[];
+  allowed_cohorts?: string[] | null;
 }
 
 export interface EventSession {

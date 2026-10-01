@@ -844,7 +844,7 @@ function SuperAdminContent() {
   const handlePardonEvent = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!pardonEventId || !pardonEventReason.trim()) {
-      addToast('error', 'Vui lòng chọn sự kiện và nhập lý do');
+      showToast('Vui lòng chọn sự kiện và nhập lý do', 'error');
       return;
     }
     setPardonEventSubmitting(true);
@@ -856,10 +856,10 @@ function SuperAdminContent() {
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        addToast('error', json.error || 'Lỗi gỡ vi phạm theo sự kiện');
+        showToast(json.error || 'Lỗi gỡ vi phạm theo sự kiện', 'error');
         return;
       }
-      addToast('success', json.message || 'Đã gỡ vi phạm thành công!');
+      showToast(json.message || 'Đã gỡ vi phạm thành công!', 'success');
       setPardonEventModalOpen(false);
       setPardonEventId('');
       setPardonEventReason('');
@@ -870,7 +870,7 @@ function SuperAdminContent() {
         setPenalties(refreshJson.data);
       }
     } catch (err: any) {
-      addToast('error', err?.message || 'Lỗi kết nối');
+      showToast(err?.message || 'Lỗi kết nối', 'error');
     } finally {
       setPardonEventSubmitting(false);
     }
