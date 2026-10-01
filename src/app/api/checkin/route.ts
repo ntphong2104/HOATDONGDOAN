@@ -172,10 +172,8 @@ export async function POST(req: Request) {
       }
     }
 
-    if (event_id === 'bbfe063b-c18f-4003-afe1-665334d13743' && (!meta.max_participants || meta.max_participants <= 130)) {
-      meta.max_participants = 230;
-      saveEventMeta(supabase, event_id, { max_participants: 230 }).catch(() => {});
-    }
+
+
 
     if (!event) {
       return NextResponse.json({ success: false, error: 'Not Found', message: 'Sự kiện không tồn tại' }, { status: 404 });
@@ -317,27 +315,34 @@ export async function POST(req: Request) {
       });
 
       if (atomicResult.error === 'RPC_NOT_AVAILABLE') {
-        // Fallback to old method
-        if (!isSuperAdmin && maxParticipants > 0) {
-          const { count: currentCheckinCount } = await supabase
-            .from('check_ins')
-            .select('*', { count: 'exact', head: true })
-            .eq('event_id', event_id);
+        // Fallback: run capacity + duplicate check in parallel
+        let hasCheckedInThisSession = false;
+        let capacityFull = false;
+        let currentCheckinCount = 0;
 
-          if ((currentCheckinCount || 0) >= maxParticipants) {
-            return NextResponse.json({
-              success: false,
-              error: 'Capacity Full',
-              message: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Chỉ Admin Tổng mới có quyền bổ sung thêm.`,
-            }, { status: 400 });
-          }
+        const fallbackChecks = await Promise.all([
+          // Capacity check
+          (!isSuperAdmin && maxParticipants > 0)
+            ? supabase.from('check_ins').select('*', { count: 'exact', head: true }).eq('event_id', event_id)
+            : Promise.resolve({ count: 0 }),
+          // Duplicate check
+          supabase.from('session_checkins').select('id').eq('event_id', event_id)
+            .eq('session_id', targetSessionId).eq('mssv', mssv).maybeSingle()
+            .catch(async () => {
+              // Table might not exist, fallback
+              const all = await getSessionCheckIns(supabase, event_id);
+              return { data: all.some(c => c.session_id === targetSessionId && c.mssv.toUpperCase() === mssv.toUpperCase()) ? { id: true } : null };
+            }),
+        ]);
+
+        currentCheckinCount = fallbackChecks[0]?.count || 0;
+        if (!isSuperAdmin && maxParticipants > 0 && currentCheckinCount >= maxParticipants) {
+          return NextResponse.json({
+            success: false, error: 'Capacity Full',
+            message: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Chỉ Admin Tổng mới có quyền bổ sung thêm.`,
+          }, { status: 400 });
         }
-
-        // Session duplicate check
-        const existingSessionCheckins = await getSessionCheckIns(supabase, event_id);
-        const hasCheckedInThisSession = existingSessionCheckins.some(
-          (c) => c.session_id === targetSessionId && c.mssv.toUpperCase() === mssv.toUpperCase()
-        );
+        hasCheckedInThisSession = !!(fallbackChecks[1]?.data);
 
         if (hasCheckedInThisSession) {
           return NextResponse.json({
