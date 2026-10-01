@@ -45,9 +45,9 @@ export async function GET(req: Request) {
 
     console.log(`[CRON] Daily job completed:`, {
       reconcile: {
-        eventsProcessed: reconcileResult.eventsProcessed,
+        eventsProcessed: reconcileResult.totalProcessedEvents,
         totalAbsent: reconcileResult.totalAbsent,
-        newBlacklisted: reconcileResult.newBlacklisted,
+        newBlacklisted: reconcileResult.totalNewlyBlacklisted,
       },
       cleanup: {
         rolesRevoked: cleanupResult.cleanedCount,
