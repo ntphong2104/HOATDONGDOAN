@@ -1241,7 +1241,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
           )}
 
           {/* Giới hạn khóa SV được đăng ký */}
-          {!isLocked && (
+          {!isLockedPast3Days && (
             <div
               style={{
                 marginTop: '1rem',
