@@ -7,6 +7,35 @@ export interface EventScheduleInfo {
   end_time?: string | null;
   start_time?: string | null;
   status?: string | null;
+  sessions?: { id: string; session_date?: string; end_time?: string }[] | null;
+}
+
+/**
+ * Returns the effective end date for an event.
+ * If event has sessions with dates, uses the LAST session_date.
+ * Otherwise falls back to event_date.
+ */
+export function getEffectiveEndDate(event: EventScheduleInfo): { date: string; endTime: string } | null {
+  const fallbackDate = event.event_date || null;
+  const fallbackEndTime = event.end_time || '22:00';
+
+  if (event.sessions && event.sessions.length > 0) {
+    // Find last session by date
+    const sessionsWithDate = event.sessions
+      .filter((s) => s.session_date)
+      .sort((a, b) => (a.session_date! > b.session_date! ? 1 : -1));
+
+    if (sessionsWithDate.length > 0) {
+      const lastSession = sessionsWithDate[sessionsWithDate.length - 1];
+      return {
+        date: lastSession.session_date!,
+        endTime: lastSession.end_time || event.end_time || '23:59',
+      };
+    }
+  }
+
+  if (!fallbackDate) return null;
+  return { date: fallbackDate, endTime: fallbackEndTime };
 }
 
 /**
@@ -82,8 +111,8 @@ export function getEarliestCheckinTime(
 }
 
 /**
- * Checks whether an event has passed its auto-close threshold (1 hour after end_time on event_date).
- * If end_time is not specified, defaults to 22:00.
+ * Checks whether an event has passed its auto-close threshold (1 hour after end_time).
+ * For multi-session events, uses the LAST session_date instead of event_date.
  */
 export function isEventPastDeadline(
   event?: EventScheduleInfo | null,
@@ -91,13 +120,15 @@ export function isEventPastDeadline(
 ): boolean {
   if (!event) return false;
   if (event.status === 'closed') return true;
-  if (!event.event_date) return false;
+
+  const effective = getEffectiveEndDate(event);
+  if (!effective) return false;
 
   try {
-    const datePart = event.event_date.includes('T')
-      ? event.event_date.split('T')[0]
-      : event.event_date;
-    const endTimePart = event.end_time ? event.end_time.slice(0, 5) : '22:00';
+    const datePart = effective.date.includes('T')
+      ? effective.date.split('T')[0]
+      : effective.date;
+    const endTimePart = effective.endTime ? effective.endTime.slice(0, 5) : '22:00';
     const [hoursStr, minutesStr] = endTimePart.split(':');
     const hours = parseInt(hoursStr || '22', 10);
     const minutes = parseInt(minutesStr || '0', 10);
@@ -117,9 +148,8 @@ export function isEventPastDeadline(
       endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
     }
 
-    // 1 hour buffer after end time (60 mins * 60 secs * 1000 ms)
+    // 1 hour buffer after end time
     const autoCloseThreshold = endDateTime.getTime() + 60 * 60 * 1000;
-
     return currentTimeMs > autoCloseThreshold;
   } catch {
     return false;
@@ -167,13 +197,16 @@ export function isEventScheduleExpired(
   event?: EventScheduleInfo | null,
   currentTimeMs: number = Date.now()
 ): boolean {
-  if (!event || !event.event_date) return false;
+  if (!event) return false;
+
+  const effective = getEffectiveEndDate(event);
+  if (!effective) return false;
 
   try {
-    const datePart = event.event_date.includes('T')
-      ? event.event_date.split('T')[0]
-      : event.event_date;
-    const endTimePart = event.end_time ? event.end_time.slice(0, 5) : '22:00';
+    const datePart = effective.date.includes('T')
+      ? effective.date.split('T')[0]
+      : effective.date;
+    const endTimePart = effective.endTime ? effective.endTime.slice(0, 5) : '22:00';
     const [hoursStr, minutesStr] = endTimePart.split(':');
     const hours = parseInt(hoursStr || '22', 10);
     const minutes = parseInt(minutesStr || '0', 10);
@@ -188,10 +221,7 @@ export function isEventScheduleExpired(
     }
 
     const endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
-
-    // 1 hour buffer after end time (60 mins * 60 secs * 1000 ms)
     const autoCloseThreshold = endDateTime.getTime() + 60 * 60 * 1000;
-
     return currentTimeMs > autoCloseThreshold;
   } catch {
     return false;
@@ -200,6 +230,7 @@ export function isEventScheduleExpired(
 
 /**
  * Checks whether an event has been closed or ended for more than 3 days (72 hours).
+ * For multi-session events, uses the LAST session_date.
  * After 3 days, no event admin or regular officer can modify, delete, supplement or edit anything in this event.
  * Only Super Admin retains full edit permissions.
  */
@@ -208,15 +239,17 @@ export function isEventLockedPast3Days(
   currentTimeMs: number = Date.now()
 ): boolean {
   if (!event) return false;
-  if (!event.event_date) return false;
+
+  const effective = getEffectiveEndDate(event);
+  if (!effective) return false;
 
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
   try {
-    const datePart = event.event_date.includes('T')
-      ? event.event_date.split('T')[0]
-      : event.event_date;
-    const endTimePart = event.end_time ? event.end_time.slice(0, 5) : '22:00';
+    const datePart = effective.date.includes('T')
+      ? effective.date.split('T')[0]
+      : effective.date;
+    const endTimePart = effective.endTime ? effective.endTime.slice(0, 5) : '22:00';
     const [hoursStr, minutesStr] = endTimePart.split(':');
     const hours = parseInt(hoursStr || '22', 10);
     const minutes = parseInt(minutesStr || '0', 10);
@@ -237,8 +270,6 @@ export function isEventLockedPast3Days(
     }
 
     if (isNaN(endDateTime.getTime())) return false;
-
-    // Check if current time is past event end date/time by more than 3 days
     return currentTimeMs - endDateTime.getTime() > THREE_DAYS_MS;
   } catch {
     return false;
