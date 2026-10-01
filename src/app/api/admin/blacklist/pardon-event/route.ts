@@ -157,12 +157,8 @@ export async function POST(req: Request) {
       }
     }
 
-    // 5. Đánh dấu attended = true cho tất cả registrations của sự kiện này
-    await supabase
-      .from('event_registrations')
-      .update({ attended: true })
-      .eq('event_id', event_id)
-      .eq('attended', false);
+    // Note: Không set attended = true ở đây!
+    // attended chỉ phản ánh việc quét mã QR thật sự, không liên quan đến gỡ vi phạm.
 
     return NextResponse.json({
       success: true,
