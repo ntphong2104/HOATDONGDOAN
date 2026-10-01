@@ -283,6 +283,24 @@ export default function EventRegisterPage({
             </div>
           )}
 
+          {/* 1.5. COHORT RESTRICTION BANNER */}
+          {event.allowed_cohorts && event.allowed_cohorts.length > 0 && (
+            <div
+              style={{
+                background: '#f0f9ff',
+                border: '1.5px solid #7dd3fc',
+                borderRadius: '16px',
+                padding: '1rem 1.5rem',
+                marginBottom: '1rem',
+                color: '#0369a1',
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                🎓 Sự kiện chỉ dành cho sinh viên khóa: {event.allowed_cohorts.join(', ')}
+              </div>
+            </div>
+          )}
+
           {/* 2. REGISTRATION WINDOW CLOSED (12-Hour Cutoff or Closed or 0 capacity) */}
           {!registrationWindow?.isOpen && !isBlacklisted && (
             <div

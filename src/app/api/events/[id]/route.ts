@@ -98,6 +98,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     require_registration,
     max_participants,
     max_volunteers,
+    allowed_cohorts,
   } = body;
 
   // Kiểm tra quyền MỞ LẠI sự kiện khi đã quá 1 tiếng sau giờ kết thúc
@@ -180,6 +181,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (start_time !== undefined) dbPayload.start_time = start_time;
   if (end_time !== undefined) dbPayload.end_time = end_time;
   if (semester !== undefined) dbPayload.semester = semester;
+  if (allowed_cohorts !== undefined) dbPayload.allowed_cohorts = Array.isArray(allowed_cohorts) && allowed_cohorts.length > 0 ? allowed_cohorts : null;
 
   let updatedEvent = currentEvent;
   if (Object.keys(dbPayload).length > 0) {

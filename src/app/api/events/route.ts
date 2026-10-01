@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
   }
 
-  const { event_name, event_date, start_time, end_time, semester } = await req.json();
+  const { event_name, event_date, start_time, end_time, semester, allowed_cohorts } = await req.json();
 
   if (!event_name || !event_name.trim()) {
     return NextResponse.json({ success: false, error: 'Tên sự kiện không được để trống' }, { status: 400 });
@@ -116,6 +116,7 @@ export async function POST(req: Request) {
       is_active: initialIsActive,
       status: initialStatus,
       created_by: auth.email,
+      allowed_cohorts: Array.isArray(allowed_cohorts) && allowed_cohorts.length > 0 ? allowed_cohorts : null,
     })
     .select()
     .single();

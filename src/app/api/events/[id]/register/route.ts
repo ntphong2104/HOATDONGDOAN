@@ -229,12 +229,33 @@ export async function POST(
     .eq('mssv', mssv)
     .maybeSingle();
 
-  if (penalty?.is_blacklisted) {
+   if (penalty?.is_blacklisted) {
     return NextResponse.json({
       success: false,
       error: `Tài khoản của bạn (${mssv}) đang bị KHÓA ĐĂNG KÝ (Blacklist) do vắng mặt ${penalty.missed_count} lần trong các sự kiện trước đó. Vui lòng liên hệ Văn phòng Đoàn để được xem xét mở khóa.`,
       is_blacklisted: true,
     }, { status: 403 });
+  }
+
+  // 2.5. CHECK COHORT RESTRICTION (Giới hạn khóa SV)
+  const { data: eventForCohort } = await supabase
+    .from('events')
+    .select('allowed_cohorts')
+    .eq('event_id', resolvedParams.id)
+    .maybeSingle();
+
+  if (eventForCohort?.allowed_cohorts && eventForCohort.allowed_cohorts.length > 0) {
+    // Extract cohort from MSSV: N22DCCN158 → D22, N26DCDK116 → D26
+    const cohortMatch = mssv.match(/^N(\d{2})/i);
+    const studentCohort = cohortMatch ? `D${cohortMatch[1]}` : null;
+    
+    if (!studentCohort || !eventForCohort.allowed_cohorts.includes(studentCohort)) {
+      const allowedStr = eventForCohort.allowed_cohorts.join(', ');
+      return NextResponse.json({
+        success: false,
+        error: `Sự kiện này chỉ dành cho sinh viên khóa ${allowedStr}. Tài khoản của bạn (${mssv}) thuộc khóa ${studentCohort || 'không xác định'} nên không thể đăng ký.`,
+      }, { status: 403 });
+    }
   }
 
   // 3. Get User Profile info
