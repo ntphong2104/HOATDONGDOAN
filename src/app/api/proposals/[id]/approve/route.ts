@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getNextStage, getStageLabel } from '@/lib/utils/proposal-logic';
 import { getStoredProposalById, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
-import { saveEventMeta, getProposalMeta } from '@/lib/constants/event-meta-store';
+import { saveEventMeta, getProposalMeta, saveProposalMeta } from '@/lib/constants/event-meta-store';
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
 import type { ProposalStage, EventProposal } from '@/lib/types';
 
@@ -157,6 +157,14 @@ export async function POST(
             }
           }
         }
+
+        // When proposal is approved, mark all non-rejected sessions as approved
+        for (const s of availableSessions) {
+          if (s.status !== 'rejected') {
+            s.status = 'approved';
+          }
+        }
+        await saveProposalMeta(supabase, proposal.id, { sessions: availableSessions }).catch(() => {});
 
         // Auto-generate or filter sessions for event
         let finalSessions: any[] = [];

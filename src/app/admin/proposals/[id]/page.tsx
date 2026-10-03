@@ -867,7 +867,7 @@ export default function ProposalDetailPage({
                       padding: '0.85rem 1rem',
                       borderRadius: '12px',
                       background: '#ffffff',
-                      border: sess.status === 'rejected' ? '1.5px solid #fca5a5' : sess.status === 'approved' ? '1.5px solid #86efac' : '1.5px solid #e2e8f0',
+                      border: (sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? '1.5px solid #86efac' : sess.status === 'rejected' ? '1.5px solid #fca5a5' : '1.5px solid #e2e8f0',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                     }}
                   >
@@ -888,11 +888,11 @@ export default function ProposalDetailPage({
                           fontWeight: 700,
                           padding: '0.2rem 0.6rem',
                           borderRadius: '12px',
-                          background: sess.status === 'approved' ? '#dcfce7' : sess.status === 'rejected' ? '#fee2e2' : '#f1f5f9',
-                          color: sess.status === 'approved' ? '#166534' : sess.status === 'rejected' ? '#991b1b' : '#475569',
+                          background: (sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? '#dcfce7' : sess.status === 'rejected' ? '#fee2e2' : '#f1f5f9',
+                          color: (sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? '#166534' : sess.status === 'rejected' ? '#991b1b' : '#475569',
                           textTransform: 'uppercase',
                         }}>
-                          {sess.status === 'approved' ? '✅ Đã duyệt' : sess.status === 'rejected' ? '❌ Từ chối' : '⏳ Chờ duyệt'}
+                          {(sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? '✅ Đã duyệt' : sess.status === 'rejected' ? '❌ Từ chối' : '⏳ Chờ duyệt'}
                         </span>
                       )}
                     </div>
