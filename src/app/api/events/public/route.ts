@@ -17,7 +17,30 @@ export async function GET() {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    const activeEvents = (events || []).filter((ev) => !isEventPastDeadline(ev) && ev.status !== 'closed');
+    // Fetch sessions for active events to correctly determine deadline
+    const activeIds = (events || [])
+      .filter((ev) => ev.status === 'active' || ev.status !== 'closed')
+      .map((ev) => `event_meta_${ev.event_id}`);
+
+    let metaMap: Record<string, any> = {};
+    if (activeIds.length > 0) {
+      try {
+        const { data: metaRows } = await supabase
+          .from('system_settings')
+          .select('key, value')
+          .in('key', activeIds);
+        for (const row of metaRows || []) {
+          const eventId = row.key.replace('event_meta_', '');
+          const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+          metaMap[eventId] = parsed;
+        }
+      } catch {}
+    }
+
+    const activeEvents = (events || []).filter((ev) => {
+      const sessions = metaMap[ev.event_id]?.sessions || [];
+      return !isEventPastDeadline({ ...ev, sessions }) && ev.status !== 'closed';
+    });
 
     return NextResponse.json({ success: true, data: activeEvents });
   } catch (err: any) {
