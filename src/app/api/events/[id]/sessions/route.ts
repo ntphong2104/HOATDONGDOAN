@@ -132,12 +132,22 @@ export async function POST(
         session_date: session.session_date || new Date().toISOString().split('T')[0],
         start_time: session.start_time || '07:30',
         end_time: session.end_time || '11:30',
+        room_id: session.room_id || null,
+        room_name: session.room_name || null,
+        session_type: session.session_type || 'participant',
+        is_main: Boolean(session.is_main),
+        allowed_cohorts: Array.isArray(session.allowed_cohorts) ? session.allowed_cohorts : null,
         created_at: session.created_at || new Date().toISOString(),
       };
 
+      // If this session is marked as main, unset is_main on all other sessions
+      if (newSession.is_main) {
+        currentSessions = currentSessions.map((s) => ({ ...s, is_main: s.id === newSession.id }));
+      }
+
       const existingIndex = currentSessions.findIndex((s) => s.id === newSession.id);
       if (existingIndex >= 0) {
-        currentSessions[existingIndex] = newSession;
+        currentSessions[existingIndex] = { ...currentSessions[existingIndex], ...newSession };
       } else {
         currentSessions.push(newSession);
       }

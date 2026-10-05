@@ -50,6 +50,9 @@ export interface EventSession {
   end_time?: string;
   room_id?: string | null;
   room_name?: string | null;
+  session_type?: 'participant' | 'internal';
+  is_main?: boolean;
+  allowed_cohorts?: string[] | null;
   created_at?: string;
 }
 

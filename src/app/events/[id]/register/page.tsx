@@ -40,6 +40,7 @@ export default function EventRegisterPage({
   const [gender, setGender] = useState<'Nam' | 'Nữ'>('Nam');
   const [phone, setPhone] = useState('');
   const [note, setNote] = useState('');
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -69,6 +70,11 @@ export default function EventRegisterPage({
         setRegistrationWindow(data.data.registrationWindow || null);
         if (data.data.event?.departments?.length > 0) {
           setSelectedDeptId(data.data.event.departments[0].id);
+        }
+        const pSessions = data.data.event?.participant_sessions || [];
+        if (pSessions.length > 0) {
+          const mainSess = pSessions.find((s: any) => s.is_main) || pSessions[0];
+          setSelectedSessionId(mainSess.id);
         }
       }
     } catch (err) {
@@ -119,6 +125,7 @@ export default function EventRegisterPage({
           role_type: regType,
           department_id: regType === 'volunteer' ? selectedDeptId : null,
           department_name: regType === 'volunteer' ? selectedDept?.name : null,
+          session_id: regType === 'participant' ? selectedSessionId : null,
           gender,
           phone,
           note,
@@ -187,6 +194,13 @@ export default function EventRegisterPage({
 
   const isBlacklisted = penaltyStatus?.is_blacklisted;
 
+  const participantSessions: any[] = (event as any)?.participant_sessions || [];
+  const selectedSession = participantSessions.find((s: any) => s.id === selectedSessionId) || (event as any)?.main_session || null;
+
+  const displayDate = selectedSession?.session_date || event.event_date;
+  const displayStartTime = selectedSession?.start_time || event.start_time;
+  const displayEndTime = selectedSession?.end_time || event.end_time;
+
   return (
     <div className={styles.container}>
       <Header showBack backHref="/" title="CỔNG ĐĂNG KÝ SỰ KIỆN" />
@@ -208,14 +222,14 @@ export default function EventRegisterPage({
             <div className={styles.infoBox}>
               <span className={styles.infoLabel}>Ngày Diễn Ra</span>
               <span className={styles.infoValue}>
-                {event.event_date ? new Date(event.event_date).toLocaleDateString('vi-VN') : 'Hôm nay'}
+                {displayDate ? new Date(displayDate).toLocaleDateString('vi-VN') : 'Hôm nay'}
               </span>
             </div>
 
             <div className={styles.infoBox}>
               <span className={styles.infoLabel}>Thời Gian</span>
               <span className={styles.infoValue}>
-                {event.start_time?.slice(0, 5) || '07:30'} — {event.end_time?.slice(0, 5) || '22:00'}
+                {displayStartTime?.slice(0, 5) || '07:30'} — {displayEndTime?.slice(0, 5) || '22:00'}
               </span>
             </div>
 
@@ -438,6 +452,77 @@ export default function EventRegisterPage({
                       </div>
                     </div>
                   </div>
+
+                  {/* Session Selector for Participant if multiple participant sessions */}
+                  {regType === 'participant' && participantSessions.length > 1 && (
+                    <div className={styles.formGroup} style={{ marginBottom: '1.25rem' }}>
+                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                        🎯 Chọn Ca / Buổi Tham Gia <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                        {participantSessions.map((s: any) => {
+                          const isSelected = selectedSessionId === s.id;
+                          return (
+                            <div
+                              key={s.id}
+                              onClick={() => setSelectedSessionId(s.id)}
+                              style={{
+                                padding: '0.85rem 1.15rem',
+                                borderRadius: '12px',
+                                border: isSelected ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
+                                background: isSelected ? '#eff6ff' : '#ffffff',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isSelected ? '#1d4ed8' : '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <span>{s.is_main && '⭐ '} {s.name}</span>
+                                  {s.is_main && (
+                                    <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: '6px', background: '#fef3c7', color: '#b45309' }}>
+                                      Ca Chính
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.25rem' }}>
+                                  📅 {s.session_date ? new Date(s.session_date).toLocaleDateString('vi-VN') : '—'} • ⏰ {s.start_time?.slice(0, 5)} - {s.end_time?.slice(0, 5)}
+                                  {s.room_name && s.room_name !== 'Không mượn' && ` • 📍 ${s.room_name}`}
+                                </div>
+                              </div>
+                              <input
+                                type="radio"
+                                name="selectedSession"
+                                checked={isSelected}
+                                onChange={() => setSelectedSessionId(s.id)}
+                                style={{ width: '18px', height: '18px', accentColor: '#2563eb' }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {regType === 'participant' && participantSessions.length === 1 && (
+                    <div style={{
+                      padding: '0.65rem 1rem',
+                      background: '#f0fdf4',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: '10px',
+                      fontSize: '0.85rem',
+                      color: '#166534',
+                      fontWeight: 600,
+                      marginBottom: '1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                    }}>
+                      <span>🎯 <strong>Ca đăng ký:</strong> {participantSessions[0].name} ({participantSessions[0].session_date ? new Date(participantSessions[0].session_date).toLocaleDateString('vi-VN') : 'Hôm nay'})</span>
+                    </div>
+                  )}
 
                   {/* Gender & Phone fields when applying for CTV */}
                   {regType === 'volunteer' && (

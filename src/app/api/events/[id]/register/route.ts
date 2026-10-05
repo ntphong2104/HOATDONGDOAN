@@ -52,8 +52,26 @@ export async function GET(
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
+  const allSessions = meta.sessions || [];
+  const participantSessions = allSessions.filter((s: any) => s.session_type !== 'internal');
+  const mainSession = participantSessions.find((s: any) => s.is_main) || participantSessions[0] || null;
+
+  // Use main participant session date & time for registration page if configured
+  const displayDate = mainSession?.session_date || rawEvent.event_date;
+  const displayStartTime = mainSession?.start_time || rawEvent.start_time;
+  const displayEndTime = mainSession?.end_time || rawEvent.end_time;
+
   const event = {
     ...rawEvent,
+    event_date: displayDate,
+    start_time: displayStartTime,
+    end_time: displayEndTime,
+    raw_event_date: rawEvent.event_date,
+    raw_start_time: rawEvent.start_time,
+    raw_end_time: rawEvent.end_time,
+    sessions: allSessions,
+    participant_sessions: participantSessions,
+    main_session: mainSession,
     departments: meta.departments || [],
     is_recruitment_open: meta.is_recruitment_open !== false,
     target_scope: meta.target_scope || 'all',
@@ -237,23 +255,33 @@ export async function POST(
     }, { status: 403 });
   }
 
-  // 2.5. CHECK COHORT RESTRICTION (Giới hạn khóa SV)
+  const body = await req.json().catch(() => ({}));
+  const requestedSessionId = body.session_id || null;
+
+  // 2.5. CHECK COHORT RESTRICTION (Giới hạn khóa SV - Cấp Sự Kiện hoặc Cấp Ca)
   const { data: eventForCohort } = await supabase
     .from('events')
     .select('allowed_cohorts')
     .eq('event_id', resolvedParams.id)
     .maybeSingle();
 
-  if (eventForCohort?.allowed_cohorts && eventForCohort.allowed_cohorts.length > 0) {
+  const allSessions = meta.sessions || [];
+  const selectedSession = requestedSessionId ? allSessions.find((s: any) => s.id === requestedSessionId) : null;
+  const effectiveCohorts = selectedSession?.allowed_cohorts && selectedSession.allowed_cohorts.length > 0
+    ? selectedSession.allowed_cohorts
+    : eventForCohort?.allowed_cohorts || [];
+
+  if (effectiveCohorts && effectiveCohorts.length > 0) {
     // Extract cohort from MSSV: N22DCCN158 → D22, N26DCDK116 → D26
     const cohortMatch = mssv.match(/^N(\d{2})/i);
     const studentCohort = cohortMatch ? `D${cohortMatch[1]}` : null;
     
-    if (!studentCohort || !eventForCohort.allowed_cohorts.includes(studentCohort)) {
-      const allowedStr = eventForCohort.allowed_cohorts.join(', ');
+    if (!studentCohort || !effectiveCohorts.includes(studentCohort)) {
+      const allowedStr = effectiveCohorts.join(', ');
+      const sessionLabel = selectedSession ? `Ca "${selectedSession.name}"` : 'Sự kiện này';
       return NextResponse.json({
         success: false,
-        error: `Sự kiện này chỉ dành cho sinh viên khóa ${allowedStr}. Tài khoản của bạn (${mssv}) thuộc khóa ${studentCohort || 'không xác định'} nên không thể đăng ký.`,
+        error: `${sessionLabel} chỉ dành cho sinh viên khóa ${allowedStr}. Tài khoản của bạn (${mssv}) thuộc khóa ${studentCohort || 'không xác định'} nên không thể đăng ký.`,
       }, { status: 403 });
     }
   }
@@ -280,7 +308,6 @@ export async function POST(
   const finalFullName = resolvedFullName || mssv;
   const finalClassId = userProfile?.class_id || 'PTIT-HCM';
 
-  const body = await req.json().catch(() => ({}));
   const role_type = body.role_type === 'volunteer' ? 'volunteer' : 'participant';
   const gender = body.gender || userProfile?.gender || 'Nam';
   const phone = body.phone !== undefined ? body.phone : userProfile?.phone || '';
@@ -393,6 +420,7 @@ export async function POST(
         full_name: finalFullName,
         class_id: finalClassId,
         role_type,
+        session_id: requestedSessionId,
         attended: false,
       },
       { onConflict: 'event_id,mssv' }
@@ -405,7 +433,7 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Lỗi đăng ký trong cơ sở dữ liệu' }, { status: 500 });
   }
 
-  // Save extra attributes (departments, review status, notes) in persistent meta store
+  // Save extra attributes (departments, review status, notes, session) in persistent meta store
   await saveRegistrationExtra(supabase, resolvedParams.id, mssv, {
     department_id,
     department_name,
@@ -413,10 +441,14 @@ export async function POST(
     phone,
     note,
     review_status,
+    session_id: requestedSessionId,
+    session_name: selectedSession?.name || null,
   });
 
   const responseData = {
     ...(reg || {}),
+    session_id: requestedSessionId,
+    session_name: selectedSession?.name || null,
     department_id,
     department_name,
     gender,

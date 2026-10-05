@@ -68,6 +68,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
   const [newSessionDate, setNewSessionDate] = useState('');
   const [newSessionStartTime, setNewSessionStartTime] = useState('07:30');
   const [newSessionEndTime, setNewSessionEndTime] = useState('11:30');
+  const [newSessionType, setNewSessionType] = useState<'participant' | 'internal'>('participant');
+  const [newSessionIsMain, setNewSessionIsMain] = useState(false);
   const [savingSession, setSavingSession] = useState(false);
   const [departments, setDepartments] = useState<EventDepartment[]>([]);
   const [newDeptName, setNewDeptName] = useState('');
@@ -506,6 +508,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
             session_date: newSessionDate || (event?.event_date || new Date().toISOString().split('T')[0]),
             start_time: newSessionStartTime || '07:30',
             end_time: newSessionEndTime || '11:30',
+            session_type: newSessionType,
+            is_main: newSessionIsMain,
           },
         }),
       });
@@ -513,6 +517,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
       if (data.success) {
         alert('Thêm ca điểm danh thành công!');
         setNewSessionName('');
+        setNewSessionType('participant');
+        setNewSessionIsMain(false);
         setShowAddSessionModal(false);
         fetchData(false);
       } else {
@@ -522,6 +528,58 @@ export default function EventDetailPage({ params }: { params?: any }) {
       alert('Lỗi kết nối');
     } finally {
       setSavingSession(false);
+    }
+  };
+
+  const handleToggleSessionType = async (sessionId: string) => {
+    const target = sessions.find((s) => s.id === sessionId);
+    if (!target) return;
+    const nextType = target.session_type === 'internal' ? 'participant' : 'internal';
+    const updated = {
+      ...target,
+      session_type: nextType,
+      is_main: nextType === 'internal' ? false : target.is_main,
+    };
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: updated }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchData(false);
+      } else {
+        alert(data.error || 'Lỗi cập nhật');
+      }
+    } catch {
+      alert('Lỗi kết nối');
+    }
+  };
+
+  const handleSetMainSession = async (sessionId: string) => {
+    const target = sessions.find((s) => s.id === sessionId);
+    if (!target) return;
+    const updated = {
+      ...target,
+      is_main: true,
+      session_type: 'participant',
+    };
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.id}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: updated }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Đã đặt "${target.name}" làm Ca Chính dành cho Người tham gia!`);
+        fetchData(false);
+      } else {
+        alert(data.error || 'Lỗi cập nhật');
+      }
+    } catch {
+      alert('Lỗi kết nối');
     }
   };
 
@@ -2643,17 +2701,54 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     }}
                   >
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <span style={{
-                          fontSize: '0.75rem',
-                          fontWeight: 800,
-                          background: '#eff6ff',
-                          color: '#2563eb',
-                          padding: '0.2rem 0.6rem',
-                          borderRadius: '6px',
-                        }}>
-                          Ca #{idx + 1}
-                        </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <span style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            padding: '0.2rem 0.6rem',
+                            borderRadius: '6px',
+                          }}>
+                            Ca #{idx + 1}
+                          </span>
+                          {s.is_main ? (
+                            <span style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              background: '#fef3c7',
+                              color: '#b45309',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '6px',
+                              border: '1px solid #fde68a',
+                            }}>
+                              ⭐ Ca Chính (Khán Giả)
+                            </span>
+                          ) : s.session_type === 'internal' ? (
+                            <span style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              background: '#f1f5f9',
+                              color: '#64748b',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '6px',
+                            }}>
+                              🔒 Nội Bộ BTC/CTV
+                            </span>
+                          ) : (
+                            <span style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              background: '#ecfdf5',
+                              color: '#059669',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '6px',
+                            }}>
+                              👥 Mở Cho Khán Giả
+                            </span>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={() => handleDeleteSession(s.id, s.name)}
@@ -2694,29 +2789,70 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowDynamicQR(true);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.4rem',
-                        padding: '0.6rem 1rem',
-                        background: '#f0fdf4',
-                        color: '#166534',
-                        border: '1.5px solid #bbf7d0',
-                        borderRadius: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.825rem',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <QrCodeIcon size={16} color="#166534" />
-                      <span>Chiếu Mã QR Cho Ca Này</span>
-                    </button>
+                    <div>
+                      {/* Action buttons to customize session */}
+                      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                        {!s.is_main && (
+                          <button
+                            type="button"
+                            onClick={() => handleSetMainSession(s.id)}
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              padding: '0.35rem 0.65rem',
+                              borderRadius: '6px',
+                              background: '#fffbeb',
+                              color: '#b45309',
+                              border: '1px solid #fde68a',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ⭐ Đặt Làm Ca Chính
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSessionType(s.id)}
+                          style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: '6px',
+                            background: s.session_type === 'internal' ? '#ecfdf5' : '#f8fafc',
+                            color: s.session_type === 'internal' ? '#047857' : '#475569',
+                            border: '1px solid #cbd5e1',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {s.session_type === 'internal' ? '🔓 Đổi Sang Mở Cho SV' : '🔒 Đổi Thành Nội Bộ BTC'}
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDynamicQR(true);
+                        }}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.4rem',
+                          padding: '0.6rem 1rem',
+                          background: '#f0fdf4',
+                          color: '#166534',
+                          border: '1.5px solid #bbf7d0',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.825rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <QrCodeIcon size={16} color="#166534" />
+                        <span>Chiếu Mã QR Cho Ca Này</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -4074,6 +4210,64 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   />
                 </div>
               </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                  Loại Ca / Đối Tượng:
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setNewSessionType('participant')}
+                    style={{
+                      padding: '0.55rem',
+                      borderRadius: '8px',
+                      border: newSessionType === 'participant' ? '2px solid #2563eb' : '1.5px solid #cbd5e1',
+                      background: newSessionType === 'participant' ? '#eff6ff' : '#ffffff',
+                      color: newSessionType === 'participant' ? '#1d4ed8' : '#475569',
+                      fontSize: '0.825rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    👥 Mở Cho Khán Giả & SV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewSessionType('internal');
+                      setNewSessionIsMain(false);
+                    }}
+                    style={{
+                      padding: '0.55rem',
+                      borderRadius: '8px',
+                      border: newSessionType === 'internal' ? '2px solid #7c3aed' : '1.5px solid #cbd5e1',
+                      background: newSessionType === 'internal' ? '#f5f3ff' : '#ffffff',
+                      color: newSessionType === 'internal' ? '#6d28d9' : '#475569',
+                      fontSize: '0.825rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🔒 Nội Bộ BTC & CTV
+                  </button>
+                </div>
+              </div>
+
+              {newSessionType === 'participant' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fffbeb', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                  <input
+                    type="checkbox"
+                    id="newSessionIsMain"
+                    checked={newSessionIsMain}
+                    onChange={(e) => setNewSessionIsMain(e.target.checked)}
+                    style={{ width: '16px', height: '16px', accentColor: '#d97706' }}
+                  />
+                  <label htmlFor="newSessionIsMain" style={{ fontSize: '0.825rem', fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>
+                    ⭐ Đặt làm Ca Chính (Hiển thị ngày giờ trên trang Đăng ký)
+                  </label>
+                </div>
+              )}
 
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.775rem', color: '#64748b' }}>
                 <LightbulbIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <em>Điểm danh sẽ tự động mở trước giờ bắt đầu 15 phút và đóng sau giờ kết thúc 1 tiếng.</em>

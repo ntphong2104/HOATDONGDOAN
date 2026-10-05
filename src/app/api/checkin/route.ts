@@ -303,6 +303,18 @@ export async function POST(req: Request) {
       }
     }
 
+    // ── Check if session is internal (BTC & CTV only) ──
+    if (sessions.length > 0 && targetSessionId) {
+      const activeSession = sessions.find((s: any) => s.id === targetSessionId);
+      if (activeSession?.session_type === 'internal' && participate_role === 'participant' && !isSuperOrEventAdmin) {
+        return NextResponse.json({
+          success: false,
+          error: 'Internal Session Only',
+          message: `🚫 Ca "${matchedSessionName}" là ca nội bộ chuẩn bị của Ban Tổ Chức & Cộng Tác Viên. Cổng điểm danh không mở cho Người tham gia ở ca này.`,
+        }, { status: 400 });
+      }
+    }
+
     // ── Try Atomic Check-in if session exists ──
     if (targetSessionId && sessions.length > 0) {
       const atomicResult = await checkinAtomic(supabase, {
