@@ -4,7 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizeInput } from '@/lib/security/sanitizer';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic } from '@/lib/constants/event-meta-store';
+import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, getRegistrationExtras } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { verifyPersonalQRToken } from '@/lib/utils/personal-qr';
 import type { CheckInRequest } from '@/lib/types';
@@ -234,38 +234,6 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // ── Enforce Registration Requirement if enabled for event ──
-    if (meta.require_registration !== false) {
-      if (!regData) {
-        return NextResponse.json({
-          success: false,
-          error: 'Not Registered',
-          message: `🚫 Sinh viên ${finalStudent.full_name || mssv} (${mssv}) CHƯA ĐĂNG KÝ tham gia sự kiện này. Yêu cầu sinh viên đăng ký trước khi điểm danh.`,
-          require_registration: true,
-        }, { status: 400 });
-      }
-
-      // ── Enforce Role Match: registered role must match check-in role ──
-      const roleMap: Record<string, string> = {
-        participant: 'participant',
-        volunteer: 'volunteer',
-        organizer: 'organizer',
-      };
-      const registeredRole = regData.role_type || 'participant';
-      if (!isSuperOrEventAdmin && registeredRole !== participate_role) {
-        const roleLabels: Record<string, string> = {
-          participant: 'Người tham gia',
-          volunteer: 'Cộng tác viên',
-          organizer: 'Ban tổ chức',
-        };
-        return NextResponse.json({
-          success: false,
-          error: 'Role Mismatch',
-          message: `⚠️ Sinh viên ${finalStudent.full_name || mssv} (${mssv}) đăng ký vai trò "${roleLabels[registeredRole] || registeredRole}", không thể điểm danh với vai trò "${roleLabels[participate_role] || participate_role}". Vui lòng chọn đúng vai trò khi quét.`,
-        }, { status: 400 });
-      }
-    }
-
     // ── Enforce Max Participants Capacity (atomic via RPC or fallback) ──
     const maxParticipants = meta.max_participants || 0;
 
@@ -273,11 +241,12 @@ export async function POST(req: Request) {
     const sessions = meta.sessions || [];
     let targetSessionId = session_id || '';
     let matchedSessionName = 'Buổi chính';
+    let activeSession: any = null;
 
     if (sessions.length > 0) {
       if (targetSessionId) {
-        const matched = sessions.find((s) => s.id === targetSessionId);
-        if (matched) matchedSessionName = matched.name;
+        activeSession = sessions.find((s: any) => s.id === targetSessionId) || null;
+        if (activeSession) matchedSessionName = activeSession.name;
       } else {
         const now = new Date();
         const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -295,23 +264,95 @@ export async function POST(req: Request) {
             break;
           }
         }
-        if (!bestSession) bestSession = sessions.find(s => s.session_date === nowDateStr) || null;
+        if (!bestSession) bestSession = sessions.find((s: any) => s.session_date === nowDateStr) || null;
         if (!bestSession) bestSession = sessions[0];
 
+        activeSession = bestSession;
         targetSessionId = bestSession.id;
         matchedSessionName = bestSession.name;
       }
     }
 
-    // ── Check if session is internal (BTC & CTV only) ──
-    if (sessions.length > 0 && targetSessionId) {
-      const activeSession = sessions.find((s: any) => s.id === targetSessionId);
-      if (activeSession?.session_type === 'internal' && participate_role === 'participant' && !isSuperOrEventAdmin) {
+    const isInternalSession = activeSession?.session_type === 'internal';
+
+    // ── Verify student's registered role & CTV / BTC status ──
+    const registeredRole = regData?.role_type || null;
+
+    // Check if student is an accepted volunteer in registration extras (department / Ban CTV)
+    let isAcceptedVolunteer = false;
+    try {
+      const extras = await getRegistrationExtras(supabase, event_id);
+      const studentExtra = extras[mssv.toUpperCase().trim()];
+      if (studentExtra && (studentExtra.department_name || studentExtra.department_id || studentExtra.review_status === 'accepted')) {
+        isAcceptedVolunteer = true;
+      }
+    } catch {}
+
+    // Check if student is an organizer/admin in event_roles
+    let isEventOrganizerStaff = false;
+    try {
+      const studentEmail = finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
+      const { data: studentEventRole } = await supabase
+        .from('event_roles')
+        .select('role_type')
+        .eq('event_id', event_id)
+        .eq('email', studentEmail)
+        .maybeSingle();
+      if (studentEventRole) {
+        isEventOrganizerStaff = true;
+      }
+    } catch {}
+
+    const isVolunteer = registeredRole === 'volunteer' || isAcceptedVolunteer;
+    const isOrganizer = registeredRole === 'organizer' || isEventOrganizerStaff;
+
+    // Auto-resolve checkin role: prioritize actual volunteer/organizer qualification
+    let resolvedCheckinRole = participate_role;
+    if (isOrganizer) {
+      resolvedCheckinRole = 'organizer';
+    } else if (isVolunteer) {
+      resolvedCheckinRole = 'volunteer';
+    }
+
+    // ── Enforce Internal Session: BTC & CTV ONLY! ──
+    if (isInternalSession) {
+      if (!isVolunteer && !isOrganizer) {
         return NextResponse.json({
           success: false,
           error: 'Internal Session Only',
-          message: `🚫 Ca "${matchedSessionName}" là ca nội bộ chuẩn bị của Ban Tổ Chức & Cộng Tác Viên. Cổng điểm danh không mở cho Người tham gia ở ca này.`,
+          message: `🚫 Ca "${matchedSessionName}" là ca nội bộ chuẩn bị của Ban Tổ Chức & Cộng Tác Viên. Sinh viên ${finalStudent.full_name || mssv} (${mssv}) không có tên trong danh sách CTV / BTC của sự kiện.`,
         }, { status: 400 });
+      }
+      // Guaranteed volunteer or organizer role for internal session
+      resolvedCheckinRole = isOrganizer ? 'organizer' : 'volunteer';
+    } else {
+      // Non-internal session (Public / Participant session)
+      if (meta.require_registration !== false) {
+        if (!regData && !isVolunteer && !isOrganizer) {
+          return NextResponse.json({
+            success: false,
+            error: 'Not Registered',
+            message: `🚫 Sinh viên ${finalStudent.full_name || mssv} (${mssv}) CHƯA ĐĂNG KÝ tham gia sự kiện này. Yêu cầu sinh viên đăng ký trước khi điểm danh.`,
+            require_registration: true,
+          }, { status: 400 });
+        }
+
+        // If registered strictly as a regular participant, block scanning as organizer/volunteer unless staff
+        if (registeredRole === 'participant' && !isVolunteer && !isOrganizer) {
+          if (!isSuperOrEventAdmin && participate_role !== 'participant') {
+            const roleLabels: Record<string, string> = {
+              participant: 'Người tham gia',
+              volunteer: 'Cộng tác viên',
+              organizer: 'Ban tổ chức',
+            };
+            return NextResponse.json({
+              success: false,
+              error: 'Role Mismatch',
+              message: `⚠️ Sinh viên ${finalStudent.full_name || mssv} (${mssv}) đăng ký vai trò "Người tham gia", không thể điểm danh với vai trò "${roleLabels[participate_role] || participate_role}".`,
+            }, { status: 400 });
+          }
+          resolvedCheckinRole = 'participant';
+        }
       }
     }
 
@@ -322,7 +363,7 @@ export async function POST(req: Request) {
         session_id: targetSessionId,
         session_name: matchedSessionName,
         mssv,
-        role: participate_role,
+        role: resolvedCheckinRole,
         checked_by: body.checked_by || userEmail || 'Scanner',
         max_participants: isSuperAdmin ? 0 : maxParticipants,
       });
@@ -339,13 +380,14 @@ export async function POST(req: Request) {
             ? supabase.from('check_ins').select('*', { count: 'exact', head: true }).eq('event_id', event_id)
             : Promise.resolve({ count: 0 }),
           // Duplicate check
-          supabase.from('session_checkins').select('id').eq('event_id', event_id)
-            .eq('session_id', targetSessionId).eq('mssv', mssv).maybeSingle()
-            .catch(async () => {
-              // Table might not exist, fallback
-              const all = await getSessionCheckIns(supabase, event_id);
-              return { data: all.some(c => c.session_id === targetSessionId && c.mssv.toUpperCase() === mssv.toUpperCase()) ? { id: true } : null };
-            }),
+          Promise.resolve(
+            supabase.from('session_checkins').select('id').eq('event_id', event_id)
+              .eq('session_id', targetSessionId).eq('mssv', mssv).maybeSingle()
+          ).catch(async () => {
+            // Table might not exist, fallback
+            const all = await getSessionCheckIns(supabase, event_id);
+            return { data: all.some(c => c.session_id === targetSessionId && c.mssv.toUpperCase() === mssv.toUpperCase()) ? { id: true } : null };
+          }),
         ]);
 
         currentCheckinCount = fallbackChecks[0]?.count || 0;
@@ -367,13 +409,13 @@ export async function POST(req: Request) {
 
         await saveSessionCheckIn(supabase, {
           event_id, session_id: targetSessionId, session_name: matchedSessionName,
-          mssv, participate_role, checked_at: new Date().toISOString(),
+          mssv, participate_role: resolvedCheckinRole, checked_at: new Date().toISOString(),
           checked_by: body.checked_by || userEmail || 'Scanner',
         });
 
         try {
           await supabase.from('check_ins').upsert(
-            { event_id, mssv, participate_role, checked_by: body.checked_by || userEmail || `Scanner: ${matchedSessionName}` },
+            { event_id, mssv, participate_role: resolvedCheckinRole, checked_by: body.checked_by || userEmail || `Scanner: ${matchedSessionName}` },
             { onConflict: 'event_id,mssv' }
           );
         } catch {}
@@ -407,7 +449,7 @@ export async function POST(req: Request) {
       const { error: insertError } = await supabase
         .from('check_ins')
         .insert({
-          mssv, event_id, participate_role,
+          mssv, event_id, participate_role: resolvedCheckinRole,
           checked_by: body.checked_by || userEmail || 'Điểm danh thủ công',
         });
 
@@ -434,24 +476,34 @@ export async function POST(req: Request) {
     }
 
     // Synchronize event_registrations attended status asynchronously if needed
-    if (!regData?.attended) {
+    if (regData) {
+      if (!regData.attended) {
+        Promise.resolve(
+          supabase
+            .from('event_registrations')
+            .update({ attended: true, attended_at: new Date().toISOString() })
+            .eq('event_id', event_id)
+            .eq('mssv', mssv)
+        ).catch((syncErr: any) => {
+          console.warn('Could not sync event_registrations in checkin:', syncErr);
+        });
+      }
+    } else if (meta.require_registration === false) {
       Promise.resolve(
         supabase
           .from('event_registrations')
-          .upsert(
-            {
-              event_id,
-              email: finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
-              mssv,
-              full_name: finalStudent.full_name || mssv,
-              class_id: finalStudent.class_id || 'PTIT-HCM',
-              role_type: participate_role === 'volunteer' ? 'volunteer' : 'participant',
-              attended: true,
-            },
-            { onConflict: 'event_id,mssv' }
-          )
+          .insert({
+            event_id,
+            email: finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
+            mssv,
+            full_name: finalStudent.full_name || mssv,
+            class_id: finalStudent.class_id || 'PTIT-HCM',
+            role_type: resolvedCheckinRole,
+            attended: true,
+            attended_at: new Date().toISOString(),
+          })
       ).catch((syncErr: any) => {
-        console.warn('Could not sync event_registrations in checkin:', syncErr);
+        console.warn('Could not insert event_registrations in checkin:', syncErr);
       });
     }
 

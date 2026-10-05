@@ -289,7 +289,7 @@ export async function POST(
   // 3. Get User Profile info
   const { data: userProfile } = await supabase
     .from('users')
-    .select('full_name, class_id')
+    .select('full_name, class_id, phone, gender')
     .or(`email.ilike.${auth.email},mssv.ilike.${mssv}`)
     .maybeSingle();
 

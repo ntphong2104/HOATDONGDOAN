@@ -169,10 +169,14 @@ export interface RegistrationExtra {
   mssv: string;
   department_id?: string | null;
   department_name?: string | null;
+  session_id?: string | null;
+  session_name?: string | null;
   gender?: string;
   phone?: string;
   note?: string;
   review_status?: 'pending' | 'accepted' | 'rejected';
+  imported_by?: string;
+  imported_at?: string;
 }
 
 const REG_FILE = path.join(META_DIR, 'registration-extras.json');

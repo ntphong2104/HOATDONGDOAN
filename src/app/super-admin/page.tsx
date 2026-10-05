@@ -112,13 +112,59 @@ function SuperAdminContent() {
   const [blacklistPage, setBlacklistPage] = useState(1);
   const BLACKLIST_PAGE_SIZE = 25;
 
+  const studentsMap = React.useMemo(() => {
+    const map = new Map<string, User>();
+    for (const s of students) {
+      if (s.mssv) {
+        map.set(s.mssv.toUpperCase().trim(), s);
+        map.set(s.mssv.toLowerCase().trim(), s);
+      }
+      if (s.email) {
+        map.set(s.email.toLowerCase().trim(), s);
+      }
+    }
+    return map;
+  }, [students]);
+
+  const resolvePenaltyStudent = React.useCallback(
+    (pen: UserPenalty) => {
+      const cleanM = (pen.mssv || '').toUpperCase().trim();
+      const cleanE = (pen.email || '').toLowerCase().trim();
+      const s = studentsMap.get(cleanM) || (cleanE ? studentsMap.get(cleanE) : undefined);
+      const isPlaceholder = (val?: string) =>
+        !val || !val.trim() || val.trim().toUpperCase() === cleanM || val.includes('@');
+
+      const full_name = !isPlaceholder(s?.full_name)
+        ? s!.full_name!.trim()
+        : !isPlaceholder(pen.full_name)
+          ? pen.full_name.trim()
+          : (s?.full_name || pen.full_name || pen.mssv);
+
+      const class_id =
+        s?.class_id && s.class_id.trim() !== 'PTIT-HCM'
+          ? s.class_id.trim()
+          : pen.class_id && pen.class_id.trim() !== 'PTIT-HCM'
+            ? pen.class_id.trim()
+            : (s?.class_id || pen.class_id || 'PTIT-HCM');
+
+      const email = s?.email || pen.email;
+
+      return { full_name, class_id, email };
+    },
+    [studentsMap]
+  );
+
   const displayedPenalties = React.useMemo(() => {
     return penalties.filter((pen) => {
+      const { full_name, class_id } = resolvePenaltyStudent(pen);
+
       if (blacklistSearch.trim()) {
         const q = blacklistSearch.toLowerCase().trim();
         const matchMssv = (pen.mssv || '').toLowerCase().includes(q);
-        const matchName = (pen.full_name || '').toLowerCase().includes(q);
-        const matchClass = (pen.class_id || '').toLowerCase().includes(q);
+        const matchName =
+          (full_name || '').toLowerCase().includes(q) || (pen.full_name || '').toLowerCase().includes(q);
+        const matchClass =
+          (class_id || '').toLowerCase().includes(q) || (pen.class_id || '').toLowerCase().includes(q);
         const matchNotes = (pen.notes || '').toLowerCase().includes(q);
         if (!matchMssv && !matchName && !matchClass && !matchNotes) return false;
       }
@@ -128,7 +174,7 @@ function SuperAdminContent() {
       if (blacklistFilter === 'pardoned') return !pen.is_blacklisted && pen.missed_count === 0;
       return true;
     });
-  }, [penalties, blacklistSearch, blacklistFilter]);
+  }, [penalties, blacklistSearch, blacklistFilter, resolvePenaltyStudent]);
 
   const totalBlacklistPages = Math.max(1, Math.ceil(displayedPenalties.length / BLACKLIST_PAGE_SIZE));
   const currentBlacklistPage = Math.min(Math.max(1, blacklistPage), totalBlacklistPages);
@@ -753,8 +799,9 @@ function SuperAdminContent() {
   ];
 
   const openPardonSingleModal = (student: UserPenalty, item: ParsedPenaltyItem) => {
+    const { full_name, class_id, email } = resolvePenaltyStudent(student);
     setPardonTarget({
-      student,
+      student: { ...student, full_name, class_id, email },
       action: 'single_event',
       eventItem: item,
     });
@@ -763,8 +810,9 @@ function SuperAdminContent() {
   };
 
   const openUnbanAllModal = (student: UserPenalty) => {
+    const { full_name, class_id, email } = resolvePenaltyStudent(student);
     setPardonTarget({
-      student,
+      student: { ...student, full_name, class_id, email },
       action: 'unban_all',
     });
     setPardonReason('Đã hoàn thành giải trình và bản kiểm điểm');
@@ -5438,20 +5486,22 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         </td>
                       </tr>
                     ) : (
-                      paginatedPenalties.map((pen) => (
-                        <tr key={pen.mssv}>
-                          <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                              <span style={{ fontWeight: 700, color: '#0f172a' }}>{pen.mssv}</span>
-                              <span style={{ fontSize: '0.85rem', color: '#475569' }}>{pen.full_name}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.85rem' }}>
-                              <span style={{ fontWeight: 600 }}>{pen.class_id}</span>
-                              <span style={{ color: '#64748b' }}>{pen.email}</span>
-                            </div>
-                          </td>
+                      paginatedPenalties.map((pen) => {
+                        const { full_name: displayName, class_id: displayClass, email: displayEmail } = resolvePenaltyStudent(pen);
+                        return (
+                          <tr key={pen.mssv}>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                <span style={{ fontWeight: 700, color: '#0f172a' }}>{pen.mssv}</span>
+                                <span style={{ fontSize: '0.85rem', color: '#475569' }}>{displayName}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.85rem' }}>
+                                <span style={{ fontWeight: 600 }}>{displayClass}</span>
+                                <span style={{ color: '#64748b' }}>{displayEmail}</span>
+                              </div>
+                            </td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                               <span
@@ -5695,7 +5745,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                             )}
                           </td>
                         </tr>
-                      ))
+                      );
+                    })
                     )}
                   </tbody>
                 </table>

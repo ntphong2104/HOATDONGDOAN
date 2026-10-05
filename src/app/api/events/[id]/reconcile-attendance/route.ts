@@ -70,13 +70,19 @@ export async function POST(
 
   // 6. Process absent students (No-show penalties)
   const newlyBlacklisted: string[] = [];
+  const absentMssvs = absent.map((a) => a.mssv);
+  const { data: userProfiles } = absentMssvs.length > 0
+    ? await supabase.from('users').select('mssv, full_name, class_id, email').in('mssv', absentMssvs)
+    : { data: [] };
+  const userMap = new Map((userProfiles || []).map((u: any) => [u.mssv?.toUpperCase().trim(), u]));
 
   for (const abs of absent) {
+    const cleanMssv = abs.mssv.toUpperCase().trim();
     // Fetch existing penalty record
     const { data: existing } = await supabase
       .from('user_penalties')
       .select('*')
-      .eq('mssv', abs.mssv)
+      .eq('mssv', cleanMssv)
       .single();
 
     const eventIdentifier = `[${resolvedParams.id}]`;
@@ -92,18 +98,42 @@ export async function POST(
     const willBeBlacklisted = newMissed >= MAX_MISSED_STRIKES;
 
     if (willBeBlacklisted && !existing?.is_blacklisted) {
-      newlyBlacklisted.push(abs.mssv);
+      newlyBlacklisted.push(cleanMssv);
     }
 
     const penaltyNote = `Vắng: ${eventShortName} (${event.event_date || new Date().toLocaleDateString('vi-VN')}) ${eventIdentifier}`;
     const updatedNotes = existing?.notes ? `${existing.notes}; ${penaltyNote}` : penaltyNote;
 
+    const u: any = userMap.get(cleanMssv);
+    const isPlaceholderName = (name?: string) =>
+      !name || !name.trim() || name.trim().toUpperCase() === cleanMssv || name.includes('@');
+
+    const resolvedFullName =
+      !isPlaceholderName(u?.full_name)
+        ? u.full_name.trim()
+        : !isPlaceholderName(abs.full_name) && abs.full_name
+          ? abs.full_name.trim()
+          : !isPlaceholderName(existing?.full_name) && existing?.full_name
+            ? existing.full_name.trim()
+            : (u?.full_name || abs.full_name || abs.email || cleanMssv);
+
+    const resolvedClassId =
+      u?.class_id && u.class_id.trim() !== 'PTIT-HCM'
+        ? u.class_id.trim()
+        : abs.class_id && abs.class_id.trim() !== 'PTIT-HCM'
+          ? abs.class_id.trim()
+          : existing?.class_id && existing.class_id.trim() !== 'PTIT-HCM'
+            ? existing.class_id.trim()
+            : (u?.class_id || abs.class_id || 'PTIT-HCM');
+
+    const resolvedEmail = u?.email || abs.email;
+
     await supabase.from('user_penalties').upsert(
       {
-        mssv: abs.mssv,
-        email: abs.email,
-        full_name: abs.full_name || abs.email,
-        class_id: abs.class_id || 'PTIT-HCM',
+        mssv: cleanMssv,
+        email: resolvedEmail,
+        full_name: resolvedFullName,
+        class_id: resolvedClassId,
         missed_count: newMissed,
         is_blacklisted: willBeBlacklisted || existing?.is_blacklisted || false,
         blacklisted_at: willBeBlacklisted && !existing?.is_blacklisted ? new Date().toISOString() : existing?.blacklisted_at,

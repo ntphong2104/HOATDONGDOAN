@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { getEventMeta, saveEventMeta, saveRegistrationExtrasBulk } from '@/lib/constants/event-meta-store';
+import { getEventMeta, saveEventMeta, saveRegistrationExtrasBulk, getRegistrationExtras } from '@/lib/constants/event-meta-store';
 import { isValidMSSV, extractMSSV } from '@/lib/utils/extract-mssv';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
@@ -78,6 +78,7 @@ export async function POST(
       mode = 'checkin', // 'checkin' | 'register'
       department_id = null,
       department_name = null,
+      session_id = null,
     } = body;
 
     if (!Array.isArray(mssv_list) || mssv_list.length === 0) {
@@ -130,6 +131,33 @@ export async function POST(
     const meta = await getEventMeta(supabase, resolvedParams.id);
     const maxParticipants = Number((event as any).max_participants || meta.max_participants || 0);
     const targetMode = body.target_mode || (mode === 'validate' ? 'checkin' : mode);
+
+    const sessions = meta.sessions || [];
+    let targetSession: any = null;
+    if (sessions.length > 0) {
+      if (session_id) {
+        targetSession = sessions.find((s: any) => s.id === session_id) || null;
+      }
+      if (!targetSession) {
+        const now = new Date();
+        const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        for (const s of sessions) {
+          const sDate = s.session_date || '';
+          const sStart = s.start_time || '00:00';
+          const sEnd = s.end_time || '23:59';
+          const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
+          const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
+          if (sDate === nowDateStr && nowHHMM >= sStart && nowHHMM <= bufferedEnd) {
+            targetSession = s;
+            break;
+          }
+        }
+        if (!targetSession) targetSession = sessions.find((s: any) => s.session_date === nowDateStr) || null;
+        if (!targetSession) targetSession = sessions[0];
+      }
+    }
+    const isInternalSession = targetSession?.session_type === 'internal';
 
     // ── VALIDATE MODE: Comprehensive Preview + cross-checks before import ──
     if (mode === 'validate') {
@@ -194,11 +222,16 @@ export async function POST(
         regMap.set(String(r.mssv).trim().toUpperCase(), r);
       });
 
+      const regExtras = await getRegistrationExtras(supabase, resolvedParams.id);
+
       const previewStudents = cleanedMssvs.map((mssv) => {
         const dbUser = existingUserMap.get(mssv);
         const excelData = studentDataMap.get(mssv);
         const checkinRecord = checkinMap.get(mssv);
         const regRecord = regMap.get(mssv);
+        const studentExtra = regExtras[mssv] || regExtras[mssv.toUpperCase()];
+        const isCtvVolunteer = regRecord?.role_type === 'volunteer' || Boolean(studentExtra?.department_name || studentExtra?.department_id || studentExtra?.review_status === 'accepted' || excelData?.department_name);
+        const isOrganizerStaff = regRecord?.role_type === 'organizer' || excelData?.role_type === 'organizer';
         const duplicateCount = rawMssvCounts.get(mssv) || 1;
 
         const warnings: string[] = [];
@@ -233,14 +266,23 @@ export async function POST(
           }
         }
 
-        // Check 3: Registered status
+        // Check 3: Registered status & Internal Session eligibility
         const isRegistered = Boolean(regRecord);
         if (targetMode === 'checkin') {
-          if (isRegistered) {
-            badges.push({ type: 'success', text: 'Đã đăng ký trước' });
+          if (isInternalSession) {
+            if (!isCtvVolunteer && !isOrganizerStaff) {
+              warnings.push(`🚫 Ca nội bộ "${targetSession.name}": Sinh viên không có tên trong danh sách CTV/BTC!`);
+              badges.push({ type: 'danger', text: 'Không thuộc CTV/BTC' });
+            } else {
+              badges.push({ type: 'success', text: isOrganizerStaff ? 'BTC hợp lệ' : 'CTV hợp lệ' });
+            }
           } else {
-            warnings.push('Chưa đăng ký sự kiện trước (Khách vãng lai)');
-            badges.push({ type: 'info', text: 'Chưa đăng ký (Vãng lai)' });
+            if (isRegistered) {
+              badges.push({ type: 'success', text: 'Đã đăng ký trước' });
+            } else {
+              warnings.push('Chưa đăng ký sự kiện trước (Khách vãng lai)');
+              badges.push({ type: 'info', text: 'Chưa đăng ký (Vãng lai)' });
+            }
           }
         } else if (targetMode === 'register') {
           if (isRegistered) {
@@ -343,14 +385,14 @@ export async function POST(
 
       const { data: batchUsers, error: userQueryErr } = await supabase
         .from('users')
-        .select('mssv, full_name, class_id, email')
+        .select('mssv, full_name, class_id, email, phone, gender')
         .or(`mssv.in.(${mssvVariants.join(',')}),email.in.(${emailVariants.join(',')})`);
 
       if (userQueryErr) {
         console.error('Batch user query error in import:', userQueryErr);
         const { data: fallbackUsers } = await supabase
           .from('users')
-          .select('mssv, full_name, class_id, email')
+          .select('mssv, full_name, class_id, email, phone, gender')
           .in('mssv', mssvVariants);
         if (fallbackUsers) allUsers.push(...fallbackUsers);
       } else if (batchUsers) {
@@ -358,12 +400,14 @@ export async function POST(
       }
     }
 
-    const userMap = new Map<string, { full_name: string; class_id: string; email?: string }>();
+    const userMap = new Map<string, { full_name: string; class_id: string; email?: string; phone?: string; gender?: string }>();
     allUsers.forEach((u: any) => {
       const entry = {
         full_name: u.full_name || u.mssv,
         class_id: u.class_id || '',
         email: u.email || `${u.mssv?.toLowerCase()}@student.ptithcm.edu.vn`,
+        phone: u.phone || '',
+        gender: u.gender || '',
       };
       if (u.mssv) {
         userMap.set(String(u.mssv).trim().toUpperCase(), entry);
@@ -441,11 +485,48 @@ export async function POST(
     });
 
     if (mode === 'checkin') {
-      // Prepare records for `check_ins`
-      const checkinRecords = cleanedMssvs.map((mssv) => {
+      const regExtras = await getRegistrationExtras(supabase, resolvedParams.id);
+
+      // Verify CTV/BTC status if internal session
+      const eligibleMssvs: string[] = [];
+      const skippedMssvs: string[] = [];
+
+      for (const mssv of cleanedMssvs) {
+        const regRecord = regMap.get(mssv);
+        const sData = studentDataMap.get(mssv);
+        const sExtra = regExtras[mssv] || regExtras[mssv.toUpperCase()];
+        const isCtv = regRecord?.role_type === 'volunteer' || Boolean(sExtra?.department_name || sExtra?.department_id || sExtra?.review_status === 'accepted' || sData?.department_name);
+        const isOrg = regRecord?.role_type === 'organizer' || sData?.role_type === 'organizer';
+
+        if (isInternalSession && !isCtv && !isOrg) {
+          skippedMssvs.push(mssv);
+        } else {
+          eligibleMssvs.push(mssv);
+        }
+      }
+
+      if (eligibleMssvs.length === 0 && skippedMssvs.length > 0) {
+        return NextResponse.json({
+          success: false,
+          error: `Toàn bộ ${skippedMssvs.length} sinh viên đã bị từ chối do ca "${targetSession?.name}" là ca nội bộ chuẩn bị của Ban Tổ Chức & Cộng Tác Viên. Các MSSV này không có tên trong danh sách CTV/BTC đã duyệt.`,
+        }, { status: 400 });
+      }
+
+      // Prepare records for check_ins and session_checkins
+      const checkinRecords = eligibleMssvs.map((mssv) => {
         const sData = studentDataMap.get(mssv);
         const regRecord = regMap.get(mssv);
-        const resolvedRole = sData?.role_type || regRecord?.role_type || (participate_role === 'volunteer' ? 'volunteer' : participate_role === 'organizer' ? 'organizer' : 'participant');
+        const sExtra = regExtras[mssv] || regExtras[mssv.toUpperCase()];
+        const isCtv = regRecord?.role_type === 'volunteer' || Boolean(sExtra?.department_name || sExtra?.department_id || sExtra?.review_status === 'accepted' || sData?.department_name);
+        const isOrg = regRecord?.role_type === 'organizer' || sData?.role_type === 'organizer';
+
+        let resolvedRole = 'participant';
+        if (isOrg) {
+          resolvedRole = 'organizer';
+        } else if (isCtv || isInternalSession || participate_role === 'volunteer') {
+          resolvedRole = 'volunteer';
+        }
+
         return {
           event_id: resolvedParams.id,
           mssv,
@@ -473,21 +554,42 @@ export async function POST(
         }
       }
 
-      // Also mark as attended in `event_registrations` if registration exists
+      // Also upsert into session_checkins if targetSession exists
+      if (targetSession) {
+        const sessionCheckinRecords = checkinRecords.map((c) => ({
+          event_id: resolvedParams.id,
+          session_id: targetSession.id,
+          session_name: targetSession.name,
+          mssv: c.mssv,
+          participate_role: c.participate_role,
+          checked_at: now,
+          checked_by: `Nạp bởi ${actorEmail}`,
+        }));
+
+        for (let i = 0; i < sessionCheckinRecords.length; i += BATCH_SIZE) {
+          const batch = sessionCheckinRecords.slice(i, i + BATCH_SIZE);
+          try {
+            await supabase.from('session_checkins').upsert(batch as any, { onConflict: 'event_id,session_id,mssv' });
+          } catch {}
+        }
+      }
+
+      // Also mark as attended in `event_registrations` if registration exists WITHOUT modifying role_type
       try {
         await supabase
           .from('event_registrations')
           .update({ attended: true, attended_at: now })
           .eq('event_id', resolvedParams.id)
-          .in('mssv', cleanedMssvs);
+          .in('mssv', eligibleMssvs);
       } catch {}
 
       // Also save department info + importer for CTV in checkin mode
-      const checkinVolunteers = cleanedMssvs.filter((mssv) => {
+      const checkinVolunteers = eligibleMssvs.filter((mssv) => {
         const sData = studentDataMap.get(mssv);
         const regRecord = regMap.get(mssv);
-        const r = sData?.role_type || regRecord?.role_type || participate_role;
-        return r === 'volunteer';
+        const sExtra = regExtras[mssv] || regExtras[mssv.toUpperCase()];
+        const isCtv = regRecord?.role_type === 'volunteer' || Boolean(sExtra?.department_name || sExtra?.department_id || sExtra?.review_status === 'accepted' || sData?.department_name);
+        return isCtv || isInternalSession || participate_role === 'volunteer';
       });
 
       if (checkinVolunteers.length > 0) {
@@ -510,11 +612,15 @@ export async function POST(
         await saveRegistrationExtrasBulk(supabase, resolvedParams.id, extrasMap);
       }
 
+      const skippedMsg = skippedMssvs.length > 0 ? ` (Đã bỏ qua ${skippedMssvs.length} sinh viên không thuộc CTV/BTC của ca nội bộ)` : '';
+      const rejectedMsg = rejectedMssvCount > 0 ? ` (${rejectedMssvCount} MSSV sai format đã bị bỏ qua)` : '';
+
       return NextResponse.json({
         success: true,
-        count: cleanedMssvs.length,
+        count: eligibleMssvs.length,
+        skipped_count: skippedMssvs.length,
         rejected: rejectedMssvCount,
-        message: `Đã nạp và điểm danh thành công ${cleanedMssvs.length} sinh viên vào sự kiện "${event.event_name}".${rejectedMssvCount > 0 ? ` (${rejectedMssvCount} MSSV sai format đã bị bỏ qua)` : ''}`,
+        message: `Đã nạp và điểm danh thành công ${eligibleMssvs.length} sinh viên vào ${targetSession ? `ca "${targetSession.name}"` : `sự kiện "${event.event_name}"`}.${skippedMsg}${rejectedMsg}`,
       });
     } else {
       // Mode: Pre-register into `event_registrations`
@@ -529,7 +635,10 @@ export async function POST(
           ? uInfo.class_id
           : (sData?.class_id || uInfo?.class_id || 'PTIT-HCM');
         const existingReg = regMap.get(mssv);
-        const resolvedRole = sData?.role_type || existingReg?.role_type || (participate_role === 'volunteer' ? 'volunteer' : participate_role === 'organizer' ? 'organizer' : 'participant');
+        const isVolunteerImport = participate_role === 'volunteer' || Boolean(department_id) || Boolean(department_name) || Boolean(sData?.department_name);
+        const resolvedRole = isVolunteerImport
+          ? 'volunteer'
+          : (participate_role === 'organizer' || sData?.role_type === 'organizer' ? 'organizer' : (sData?.role_type || existingReg?.role_type || 'participant'));
 
         return {
           event_id: resolvedParams.id,

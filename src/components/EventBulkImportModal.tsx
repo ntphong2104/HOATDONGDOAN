@@ -25,6 +25,8 @@ interface EventBulkImportModalProps {
   initialMode?: 'checkin' | 'register';
   departments?: Array<{ id: string; name: string }>;
   initialDepartmentId?: string;
+  sessions?: any[];
+  initialSessionId?: string;
 }
 
 interface PreviewStudent {
@@ -88,6 +90,8 @@ export default function EventBulkImportModal({
   initialMode = 'checkin',
   departments = [],
   initialDepartmentId = '',
+  sessions = [],
+  initialSessionId = '',
 }: EventBulkImportModalProps) {
   const [step, setStep] = useState<'input' | 'preview'>('input');
   const [inputText, setInputText] = useState('');
@@ -104,6 +108,7 @@ export default function EventBulkImportModal({
   const [role, setRole] = useState<'participant' | 'volunteer' | 'organizer'>(initialRole);
   const [mode, setMode] = useState<'checkin' | 'register'>(initialMode);
   const [selectedDeptId, setSelectedDeptId] = useState<string>(initialDepartmentId);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>(initialSessionId);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -112,9 +117,34 @@ export default function EventBulkImportModal({
 
   React.useEffect(() => {
     if (isOpen) {
-      if (initialRole) setRole(initialRole);
-      if (initialMode) setMode(initialMode);
+      let resolvedRole = initialRole;
+      let chosenSessionId = initialSessionId;
+
+      if (sessions && sessions.length > 0) {
+        const now = new Date();
+        const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const defaultSession = sessions.find((s) => {
+          const sDate = s.session_date || '';
+          const sStart = s.start_time || '00:00';
+          const sEnd = s.end_time || '23:59';
+          const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
+          const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
+          return sDate === nowDateStr && nowHHMM >= sStart && nowHHMM <= bufferedEnd;
+        }) || sessions.find((s) => s.session_date === nowDateStr) || sessions[0];
+
+        if (defaultSession) {
+          chosenSessionId = initialSessionId || defaultSession.id;
+          if (defaultSession.session_type === 'internal' && initialRole !== 'organizer') {
+            resolvedRole = 'volunteer';
+          }
+        }
+      }
+
+      setRole(resolvedRole);
+      setMode(initialMode || 'checkin');
       if (initialDepartmentId) setSelectedDeptId(initialDepartmentId);
+      setSelectedSessionId(chosenSessionId || '');
       setStep('input');
       setFeedback(null);
       setParsedStudents([]);
@@ -123,7 +153,7 @@ export default function EventBulkImportModal({
       setPreviewData(null);
       setPreviewFilter('all');
     }
-  }, [isOpen, initialRole, initialMode, initialDepartmentId]);
+  }, [isOpen, initialRole, initialMode, initialDepartmentId, initialSessionId, sessions]);
 
   if (!isOpen) return null;
 
@@ -304,12 +334,15 @@ export default function EventBulkImportModal({
                 parsedRole = 'volunteer';
               } else if (rStr.includes('btc') || rStr.includes('tổ chức') || rStr.includes('organizer') || rStr.includes('ban tổ chức') || rStr.includes('admin')) {
                 parsedRole = 'organizer';
-              } else if (rStr.includes('tham gia') || rStr.includes('participant') || rStr.includes('người tham gia') || rStr.includes('sinh viên') || rStr.includes('khán giả') || rStr.includes('sv')) {
+              } else if (rStr.includes('tham gia') || rStr.includes('participant') || rStr.includes('người tham gia') || rStr.includes('khán giả')) {
                 parsedRole = 'participant';
               }
             }
 
             if (!parsedRole && deptName && deptName.trim()) {
+              parsedRole = 'volunteer';
+            }
+            if (!parsedRole && role === 'volunteer') {
               parsedRole = 'volunteer';
             }
 
@@ -405,6 +438,7 @@ export default function EventBulkImportModal({
           participate_role: role,
           mode: 'validate',
           target_mode: mode,
+          session_id: selectedSessionId || undefined,
         }),
       });
 
@@ -532,6 +566,7 @@ export default function EventBulkImportModal({
           mode,
           department_id: role === 'volunteer' ? (selectedDeptId || null) : null,
           department_name: role === 'volunteer' ? (selectedDept ? selectedDept.name : 'Ban CTV') : null,
+          session_id: selectedSessionId || undefined,
         }),
       });
 
@@ -628,6 +663,35 @@ export default function EventBulkImportModal({
                   <option value="organizer">Ban tổ chức (BTC)</option>
                 </select>
               </div>
+
+              {mode === 'checkin' && sessions && sessions.length > 0 && (
+                <div className={styles.formGroup} style={{ gridColumn: 'span 2' }}>
+                  <label className={styles.label}>Ca điểm danh áp dụng</label>
+                  <select
+                    value={selectedSessionId}
+                    onChange={(e) => {
+                      const newId = e.target.value;
+                      setSelectedSessionId(newId);
+                      const chosen = sessions.find((s) => s.id === newId);
+                      if (chosen?.session_type === 'internal' && role === 'participant') {
+                        setRole('volunteer');
+                      }
+                    }}
+                    className={styles.select}
+                  >
+                    {sessions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.session_date} {s.start_time} - {s.end_time}) {s.session_type === 'internal' ? '🔒 [Ca nội bộ BTC & CTV]' : '⭐ [Người tham gia]'}
+                      </option>
+                    ))}
+                  </select>
+                  {sessions.find((s) => s.id === selectedSessionId)?.session_type === 'internal' && (
+                    <div style={{ marginTop: '0.45rem', fontSize: '0.8rem', color: '#b45309', background: '#fef3c7', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                      🔒 <strong>Lưu ý:</strong> Ca này là ca nội bộ chuẩn bị của Ban Tổ Chức & Cộng Tác Viên. Hệ thống chỉ cho phép nạp điểm danh cho sinh viên có tên trong danh sách CTV/BTC đã duyệt và chặn Người tham gia ở ca này.
+                    </div>
+                  )}
+                </div>
+              )}
 
               {role === 'volunteer' && departments && departments.length > 0 && (
                 <div className={styles.formGroup} style={{ gridColumn: 'span 2' }}>

@@ -57,6 +57,7 @@ export default function ScannerPage() {
 
   const [selectedEventId, setSelectedEventId] = useState('');
   const [selectedRole, setSelectedRole] = useState<ParticipateRole>('participant');
+  const [activeSession, setActiveSession] = useState<any>(null);
 
   // Scanner modes: 'camera' | 'external'
   const [scanMode, setScanMode] = useState<'camera' | 'external'>('camera');
@@ -93,6 +94,38 @@ export default function ScannerPage() {
         setLoading(false);
       });
   }, [router]);
+
+  // Fetch active session when event changes
+  useEffect(() => {
+    if (!selectedEventId) {
+      setActiveSession(null);
+      return;
+    }
+    fetch(`/api/events/${selectedEventId}/sessions`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          const sessions = data.data;
+          const now = new Date();
+          const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          const current = sessions.find((s: any) => {
+            const sDate = s.session_date || '';
+            const sStart = s.start_time || '00:00';
+            const sEnd = s.end_time || '23:59';
+            const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
+            const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
+            return sDate === nowDateStr && nowHHMM >= sStart && nowHHMM <= bufferedEnd;
+          }) || sessions.find((s: any) => s.session_date === nowDateStr) || sessions[0] || null;
+
+          setActiveSession(current);
+          if (current?.session_type === 'internal') {
+            setSelectedRole('volunteer');
+          }
+        }
+      })
+      .catch(() => {});
+  }, [selectedEventId]);
 
   // Auto-focus external input when switching to external mode
   useEffect(() => {
@@ -166,6 +199,7 @@ export default function ScannerPage() {
           body: JSON.stringify({
             mssv,
             event_id: selectedEventId,
+            session_id: activeSession?.id || undefined,
             participate_role: selectedRole,
           }),
         });
@@ -418,6 +452,37 @@ export default function ScannerPage() {
               }}
             >
               Hiện không có sự kiện nào đang mở điểm danh
+            </div>
+          )}
+
+          {activeSession && (
+            <div style={{
+              padding: '0.65rem 0.95rem',
+              borderRadius: '8px',
+              fontSize: '0.84rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem',
+              background: activeSession.session_type === 'internal' ? '#fef3c7' : '#f0fdf4',
+              border: `1.5px solid ${activeSession.session_type === 'internal' ? '#fde68a' : '#bbf7d0'}`,
+              color: activeSession.session_type === 'internal' ? '#92400e' : '#166534',
+            }}>
+              <span>
+                {activeSession.session_type === 'internal' ? '🔒 Ca nội bộ:' : '⭐ Ca:'}{' '}
+                <strong>{activeSession.name}</strong> ({activeSession.session_date} {activeSession.start_time}-{activeSession.end_time})
+              </span>
+              <span style={{
+                fontSize: '0.72rem',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '6px',
+                background: activeSession.session_type === 'internal' ? '#f59e0b' : '#22c55e',
+                color: '#fff',
+                fontWeight: 700,
+              }}>
+                {activeSession.session_type === 'internal' ? 'BTC & CTV' : 'Người tham gia'}
+              </span>
             </div>
           )}
 

@@ -275,6 +275,32 @@ export async function POST(request: Request) {
       );
     }
 
+    // Sync updated student names and classes to any matching records in user_penalties
+    try {
+      const allUploadedMssvs = finalRecords.map((r) => r.mssv.toUpperCase().trim());
+      const { data: penalizedStudents } = await supabase
+        .from('user_penalties')
+        .select('mssv')
+        .in('mssv', allUploadedMssvs);
+
+      if (penalizedStudents && penalizedStudents.length > 0) {
+        for (const p of penalizedStudents) {
+          const rec = uniqueMap.get(p.mssv.toUpperCase().trim());
+          if (rec) {
+            await supabase
+              .from('user_penalties')
+              .update({
+                full_name: rec.full_name,
+                class_id: rec.class_id,
+                email: rec.email,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('mssv', p.mssv);
+          }
+        }
+      }
+    } catch {}
+
     return NextResponse.json({
       success: true,
       message: `Đã nạp thành công ${inserted} sinh viên vào hệ thống!`,

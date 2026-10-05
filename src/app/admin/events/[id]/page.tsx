@@ -743,13 +743,26 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
     setManualCheckinStatus('Đang xử lý...');
     try {
+      const now = new Date();
+      const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const activeSession = sessions.find((s: any) => {
+        const sDate = s.session_date || '';
+        const sStart = s.start_time || '00:00';
+        const sEnd = s.end_time || '23:59';
+        const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
+        const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
+        return sDate === nowDateStr && nowHHMM >= sStart && nowHHMM <= bufferedEnd;
+      }) || sessions.find((s: any) => s.session_date === nowDateStr) || sessions[0];
+
       const res = await fetch('/api/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mssv: manualMSSV.trim(),
           event_id: event?.event_id || resolvedParams.id,
-          participate_role: 'participant',
+          session_id: activeSession?.id || undefined,
+          participate_role: activeSession?.session_type === 'internal' ? 'volunteer' : 'participant',
           checked_by: `Điểm danh thủ công (${currentUser?.email || 'Super Admin'})`,
         }),
       });
@@ -2123,7 +2136,19 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   <button
                     type="button"
                     onClick={() => {
-                      setImportRole('participant');
+                      const now = new Date();
+                      const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                      const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                      const activeSession = sessions.find((s: any) => {
+                        const sDate = s.session_date || '';
+                        const sStart = s.start_time || '00:00';
+                        const sEnd = s.end_time || '23:59';
+                        const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
+                        const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
+                        return sDate === nowDateStr && nowHHMM >= sStart && nowHHMM <= bufferedEnd;
+                      }) || sessions.find((s: any) => s.session_date === nowDateStr) || sessions[0];
+
+                      setImportRole(activeSession?.session_type === 'internal' ? 'volunteer' : 'participant');
                       setImportMode('checkin');
                       setShowImportModal(true);
                     }}
@@ -4498,6 +4523,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
           initialMode={importMode}
           initialDepartmentId={importDeptId}
           departments={departments}
+          sessions={sessions}
         />
       )}
     </div>

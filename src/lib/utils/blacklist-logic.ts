@@ -517,13 +517,14 @@ export async function reconcileAllPastEvents(supabase: any): Promise<ReconcileSu
           .eq('event_id', event.event_id)
           .in('mssv', absentMssvs);
 
-        // Fetch existing penalties for these absent students
-        const { data: existingPenalties } = await supabase
-          .from('user_penalties')
-          .select('*')
-          .in('mssv', absentMssvs);
+        // Fetch existing penalties and authoritative user profiles for these absent students
+        const [{ data: existingPenalties }, { data: userProfiles }] = await Promise.all([
+          supabase.from('user_penalties').select('*').in('mssv', absentMssvs),
+          supabase.from('users').select('mssv, full_name, class_id, email').in('mssv', absentMssvs),
+        ]);
 
         const penaltyMap = new Map((existingPenalties || []).map((p: any) => [p.mssv.toUpperCase().trim(), p]));
+        const userMap = new Map((userProfiles || []).map((u: any) => [u.mssv.toUpperCase().trim(), u]));
         const eventIdentifier = `[${event.event_id}]`;
         const eventShortName = event.event_name ? event.event_name.slice(0, 40) : 'Sự kiện';
 
@@ -549,11 +550,35 @@ export async function reconcileAllPastEvents(supabase: any): Promise<ReconcileSu
           const penaltyNote = `Vắng: ${eventShortName} (${event.event_date}) ${eventIdentifier}`;
           const updatedNotes = existing?.notes ? `${existing.notes}; ${penaltyNote}` : penaltyNote;
 
+          const u: any = userMap.get(cleanMssv);
+          const isPlaceholderName = (name?: string) =>
+            !name || !name.trim() || name.trim().toUpperCase() === cleanMssv || name.includes('@');
+
+          const resolvedFullName =
+            !isPlaceholderName(u?.full_name)
+              ? u.full_name.trim()
+              : !isPlaceholderName(abs.full_name) && abs.full_name
+                ? abs.full_name.trim()
+                : !isPlaceholderName(existing?.full_name) && existing?.full_name
+                  ? existing.full_name.trim()
+                  : (u?.full_name || abs.full_name || abs.email || cleanMssv);
+
+          const resolvedClassId =
+            u?.class_id && u.class_id.trim() !== 'PTIT-HCM'
+              ? u.class_id.trim()
+              : abs.class_id && abs.class_id.trim() !== 'PTIT-HCM'
+                ? abs.class_id.trim()
+                : existing?.class_id && existing.class_id.trim() !== 'PTIT-HCM'
+                  ? existing.class_id.trim()
+                  : (u?.class_id || abs.class_id || 'PTIT-HCM');
+
+          const resolvedEmail = u?.email || abs.email;
+
           upsertRows.push({
             mssv: cleanMssv,
-            email: abs.email,
-            full_name: abs.full_name || abs.email,
-            class_id: abs.class_id || 'PTIT-HCM',
+            email: resolvedEmail,
+            full_name: resolvedFullName,
+            class_id: resolvedClassId,
             missed_count: newMissed,
             is_blacklisted: willBeBlacklisted,
             blacklisted_at: willBeBlacklisted && !existing?.is_blacklisted ? new Date().toISOString() : existing?.blacklisted_at,
