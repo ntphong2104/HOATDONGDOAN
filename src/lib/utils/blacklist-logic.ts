@@ -168,6 +168,7 @@ export function parsePenaltyNotes(notesStr?: string | null): ParsedPenaltyItem[]
 export function pardonEventInNotes({
   notesStr,
   targetEventId,
+  targetEventName,
   targetIndex,
   reason,
   adminEmail,
@@ -175,6 +176,7 @@ export function pardonEventInNotes({
 }: {
   notesStr?: string | null;
   targetEventId?: string;
+  targetEventName?: string;
   targetIndex?: number;
   reason?: string;
   adminEmail?: string;
@@ -193,7 +195,9 @@ export function pardonEventInNotes({
 
   const updatedSegments = rawSegments.map((segment, idx) => {
     const hasEventId = Boolean(targetEventId && segment.includes(`[${targetEventId}]`));
-    const isTarget = hasEventId || (targetIndex !== undefined && targetIndex === idx);
+    const cleanTargetName = targetEventName?.trim().toLowerCase();
+    const hasEventName = Boolean(cleanTargetName && cleanTargetName.length >= 3 && segment.toLowerCase().includes(cleanTargetName));
+    const isTarget = hasEventId || hasEventName || (targetIndex !== undefined && targetIndex === idx);
 
     if (!isTarget) return segment;
 

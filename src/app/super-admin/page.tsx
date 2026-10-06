@@ -905,9 +905,9 @@ function SuperAdminContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_id: pardonEventId, reason: pardonEventReason.trim() }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {
-        showToast(json.error || 'Lỗi gỡ vi phạm theo sự kiện', 'error');
+        showToast(json.error || `Lỗi (${res.status}): Không thể xử lý yêu cầu`, 'error');
         return;
       }
       showToast(json.message || 'Đã gỡ vi phạm thành công!', 'success');

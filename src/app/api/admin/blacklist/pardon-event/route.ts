@@ -48,52 +48,71 @@ export async function POST(req: Request) {
     // 1. Lấy thông tin sự kiện
     const { data: event, error: eventErr } = await supabase
       .from('events')
-      .select('event_id, event_name')
+      .select('event_id, event_name, event_date')
       .eq('event_id', event_id)
       .single();
 
     if (eventErr || !event) {
       return NextResponse.json(
-        { success: false, error: 'Không tìm thấy sự kiện' },
+        { success: false, error: 'Không tìm thấy thông tin sự kiện này' },
         { status: 404 }
       );
     }
 
-    // 2. Tìm tất cả SV đăng ký mà chưa điểm danh (attended = false) ở sự kiện này
-    const { data: absentRegs, error: regErr } = await supabase
-      .from('event_registrations')
-      .select('mssv, email, full_name, class_id')
-      .eq('event_id', event_id)
-      .eq('attended', false);
+    const eventIdentifier = `[${event_id}]`;
+    const cleanEventName = (event.event_name || '').trim();
+    const shortEventName = cleanEventName.slice(0, 30);
 
-    if (regErr) {
-      return NextResponse.json(
-        { success: false, error: 'Lỗi truy vấn đăng ký sự kiện' },
-        { status: 500 }
-      );
-    }
-
-    if (!absentRegs || absentRegs.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: `Không có sinh viên nào bị đánh vắng mặt ở sự kiện "${event.event_name}"`,
-        data: { processed: 0, unblacklisted: 0 },
-      });
-    }
-
-    const absentMssvs = absentRegs.map((r) => r.mssv).filter(Boolean);
-
-    // 3. Lấy hồ sơ vi phạm của các SV này
-    const { data: penalties, error: penErr } = await supabase
+    // 2. Tìm nhanh các hồ sơ phạt trong `user_penalties` có liên quan đến sự kiện này
+    // Cách 1: Ghi chú vi phạm có chứa [event_id] hoặc tên sự kiện
+    const { data: penaltiesWithNotes } = await supabase
       .from('user_penalties')
       .select('*')
-      .in('mssv', absentMssvs);
+      .or(`notes.ilike.%${eventIdentifier}%,notes.ilike.%${shortEventName}%`)
+      .limit(1000);
 
-    if (penErr) {
-      return NextResponse.json(
-        { success: false, error: 'Lỗi truy vấn hồ sơ vi phạm' },
-        { status: 500 }
-      );
+    // Cách 2: Tìm các SV đăng ký mà chưa điểm danh ở sự kiện này
+    const { data: absentRegs } = await supabase
+      .from('event_registrations')
+      .select('mssv')
+      .eq('event_id', event_id)
+      .or('attended.eq.false,attended.is.null')
+      .limit(1000);
+
+    const absentMssvs = Array.from(
+      new Set((absentRegs || []).map((r: any) => (r.mssv || '').toUpperCase().trim()).filter(Boolean))
+    );
+
+    // Gộp danh sách ứng viên
+    const candidateMap = new Map<string, any>();
+    if (penaltiesWithNotes) {
+      for (const p of penaltiesWithNotes) {
+        if (p.mssv) candidateMap.set(p.mssv.toUpperCase().trim(), p);
+      }
+    }
+
+    // Nếu có SV vắng mặt chưa có trong candidateMap, truy vấn bổ sung theo chunk 100
+    const missingMssvs = absentMssvs.filter((m) => !candidateMap.has(m));
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < missingMssvs.length; i += CHUNK_SIZE) {
+      const chunk = missingMssvs.slice(i, i + CHUNK_SIZE);
+      const { data: pRows } = await supabase
+        .from('user_penalties')
+        .select('*')
+        .in('mssv', chunk);
+      if (pRows) {
+        for (const p of pRows) {
+          if (p.mssv) candidateMap.set(p.mssv.toUpperCase().trim(), p);
+        }
+      }
+    }
+
+    if (candidateMap.size === 0) {
+      return NextResponse.json({
+        success: true,
+        message: `Không tìm thấy sinh viên nào có ghi nhận vắng mặt cần gỡ ở sự kiện "${event.event_name}"`,
+        data: { processed: 0, unblacklisted: 0 },
+      });
     }
 
     const nowFormatted = new Date().toLocaleString('vi-VN', {
@@ -106,26 +125,42 @@ export async function POST(req: Request) {
       minute: '2-digit',
     });
 
-    // 4. Cập nhật từng SV có hồ sơ vi phạm
-    let processed = 0;
+    // 3. Tính toán dữ liệu cập nhật trong RAM (nhanh tức thì, không bị nghẽn I/O)
+    const updatesToApply: any[] = [];
     let unblacklisted = 0;
-    const errors: string[] = [];
 
-    // Process in batches of 20
-    const penaltyMap = new Map((penalties || []).map((p) => [p.mssv, p]));
+    for (const existing of candidateMap.values()) {
+      const notesStr = existing.notes || '';
+      const hasEventId = notesStr.includes(eventIdentifier);
+      const hasEventName = Boolean(
+        shortEventName &&
+        shortEventName.length >= 3 &&
+        notesStr.toLowerCase().includes(shortEventName.toLowerCase())
+      );
+      const isAbsentInRegs = absentMssvs.includes((existing.mssv || '').toUpperCase().trim());
 
-    for (const mssv of absentMssvs) {
-      const existing = penaltyMap.get(mssv);
-      if (!existing) continue; // Không có hồ sơ vi phạm → bỏ qua
+      // Kiểm tra xem đã miễn vắng sự kiện này chưa
+      const isAlreadyPardoned =
+        (hasEventId && notesStr.includes(`[Đã miễn vắng:`) && notesStr.includes(eventIdentifier)) ||
+        (hasEventName && notesStr.includes(`[Đã miễn vắng:`) && notesStr.includes(shortEventName));
 
-      const currentMissed = existing.missed_count || 1;
+      if (isAlreadyPardoned) {
+        continue; // Đã được miễn vắng trước đó → bỏ qua
+      }
+
+      if (!hasEventId && !hasEventName && !isAbsentInRegs) {
+        continue;
+      }
+
+      const currentMissed = typeof existing.missed_count === 'number' ? existing.missed_count : 1;
       const newMissed = Math.max(0, currentMissed - 1);
-      const wasBlacklisted = existing.is_blacklisted;
+      const wasBlacklisted = Boolean(existing.is_blacklisted);
       const isBlacklisted = newMissed >= MAX_MISSED_STRIKES;
 
       const updatedNotes = pardonEventInNotes({
         notesStr: existing.notes,
         targetEventId: event_id,
+        targetEventName: event.event_name,
         targetIndex: undefined,
         reason: `[Gỡ hàng loạt theo sự kiện "${event.event_name}"] ${cleanReason}`,
         adminEmail: auth.email,
@@ -133,6 +168,10 @@ export async function POST(req: Request) {
       });
 
       const updatePayload: Record<string, any> = {
+        mssv: existing.mssv,
+        email: existing.email,
+        full_name: existing.full_name,
+        class_id: existing.class_id,
         missed_count: newMissed,
         is_blacklisted: isBlacklisted,
         notes: updatedNotes,
@@ -145,29 +184,53 @@ export async function POST(req: Request) {
         unblacklisted++;
       }
 
-      const { error: updateErr } = await supabase
-        .from('user_penalties')
-        .update(updatePayload)
-        .eq('mssv', mssv);
+      updatesToApply.push(updatePayload);
+    }
 
-      if (updateErr) {
-        errors.push(`${mssv}: ${updateErr.message}`);
+    if (updatesToApply.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: `Tất cả sinh viên ở sự kiện "${event.event_name}" đều đã được miễn vắng hoặc không có vi phạm cần xử lý.`,
+        data: { processed: 0, unblacklisted: 0 },
+      });
+    }
+
+    // 4. Batch upsert vào DB trong các chunk 50 (siêu nhanh, chỉ mất ~200ms)
+    let processed = 0;
+    const errors: string[] = [];
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < updatesToApply.length; i += BATCH_SIZE) {
+      const chunk = updatesToApply.slice(i, i + BATCH_SIZE);
+      const { error: batchErr } = await supabase
+        .from('user_penalties')
+        .upsert(chunk, { onConflict: 'mssv' });
+
+      if (batchErr) {
+        console.error('Batch upsert error, falling back to parallel chunk updates:', batchErr);
+        // Fallback: chạy song song các update đơn lẻ cho chunk này
+        await Promise.all(
+          chunk.map(async (item) => {
+            const { error: singleErr } = await supabase
+              .from('user_penalties')
+              .update(item)
+              .eq('mssv', item.mssv);
+            if (singleErr) errors.push(`${item.mssv}: ${singleErr.message}`);
+            else processed++;
+          })
+        );
       } else {
-        processed++;
+        processed += chunk.length;
       }
     }
 
-    // Note: Không set attended = true ở đây!
-    // attended chỉ phản ánh việc quét mã QR thật sự, không liên quan đến gỡ vi phạm.
-
     return NextResponse.json({
       success: true,
-      message: `Đã gỡ vi phạm cho ${processed}/${absentMssvs.length} sinh viên ở sự kiện "${event.event_name}".`
-        + (unblacklisted > 0 ? ` ${unblacklisted} sinh viên được mở khóa Blacklist!` : '')
+      message: `Đã gỡ vi phạm thành công cho ${processed} sinh viên ở sự kiện "${event.event_name}".`
+        + (unblacklisted > 0 ? ` Có ${unblacklisted} sinh viên được mở khóa Blacklist!` : '')
         + (errors.length > 0 ? ` (${errors.length} lỗi)` : ''),
       data: {
         event_name: event.event_name,
-        total_absent: absentMssvs.length,
         processed,
         unblacklisted,
         errors: errors.length > 0 ? errors : undefined,
