@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { reconcileAllPastEvents } from '@/lib/utils/blacklist-logic';
+import { reconcileAllPastEvents, hasActiveManualBan } from '@/lib/utils/blacklist-logic';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,7 +122,14 @@ export async function GET() {
       }
 
       // 3. Enrich penalties and collect rows that need auto-healing in `user_penalties`
-      const healUpdates: Array<{ mssv: string; full_name?: string; class_id?: string; email?: string }> = [];
+      const healUpdates: Array<{
+        mssv: string;
+        full_name?: string;
+        class_id?: string;
+        email?: string;
+        is_blacklisted?: boolean;
+        missed_count?: number;
+      }> = [];
 
       for (const pen of penaltyList) {
         const cleanM = (pen.mssv || '').toUpperCase().trim();
@@ -150,10 +157,20 @@ export async function GET() {
 
         const realEmail = u?.email || r?.email || pen.email;
 
+        // Auto-heal: Nếu sinh viên có lệnh "Khóa thủ công" còn hiệu lực nhưng bị mất cờ is_blacklisted hoặc missed_count < 3
+        const isManuallyBanned = hasActiveManualBan(pen.notes);
+        const needsBlacklistRestore = isManuallyBanned && (!pen.is_blacklisted || (pen.missed_count ?? 0) < 3);
+
+        if (needsBlacklistRestore) {
+          pen.is_blacklisted = true;
+          pen.missed_count = Math.max(pen.missed_count || 0, 3);
+        }
+
         // Check if database row needs updating
         const shouldUpdateDb =
           (!isPlaceholderName(realName, cleanM) && isPlaceholderName(pen.full_name, cleanM)) ||
-          (realClass !== 'PTIT-HCM' && pen.class_id === 'PTIT-HCM');
+          (realClass !== 'PTIT-HCM' && pen.class_id === 'PTIT-HCM') ||
+          needsBlacklistRestore;
 
         if (shouldUpdateDb) {
           healUpdates.push({
@@ -161,6 +178,8 @@ export async function GET() {
             full_name: realName,
             class_id: realClass,
             email: realEmail,
+            is_blacklisted: pen.is_blacklisted,
+            missed_count: pen.missed_count,
           });
         }
 
@@ -174,14 +193,21 @@ export async function GET() {
         (async () => {
           try {
             for (const item of healUpdates) {
+              const updatePayload: Record<string, any> = {
+                full_name: item.full_name,
+                class_id: item.class_id,
+                email: item.email,
+                updated_at: new Date().toISOString(),
+              };
+              if (typeof item.is_blacklisted === 'boolean') {
+                updatePayload.is_blacklisted = item.is_blacklisted;
+              }
+              if (typeof item.missed_count === 'number') {
+                updatePayload.missed_count = item.missed_count;
+              }
               await supabase
                 .from('user_penalties')
-                .update({
-                  full_name: item.full_name,
-                  class_id: item.class_id,
-                  email: item.email,
-                  updated_at: new Date().toISOString(),
-                })
+                .update(updatePayload)
                 .eq('mssv', item.mssv);
             }
           } catch (healErr) {

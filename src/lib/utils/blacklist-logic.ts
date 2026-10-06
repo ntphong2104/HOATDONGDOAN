@@ -162,6 +162,59 @@ export function parsePenaltyNotes(notesStr?: string | null): ParsedPenaltyItem[]
 }
 
 /**
+ * Checks whether a penalty notes string contains an active manual ban.
+ * A manual ban is active if 'Khóa thủ công' appears and is not subsequently cleared
+ * by '[Đã mở khóa]' or '[Đã mở khóa toàn bộ]'.
+ */
+export function hasActiveManualBan(notesStr?: string | null): boolean {
+  if (!notesStr || !notesStr.trim()) return false;
+  const lower = notesStr.toLowerCase();
+  const lastManualBanIndex = lower.lastIndexOf('khóa thủ công');
+  if (lastManualBanIndex === -1) return false;
+
+  const lastUnlockIndex = Math.max(
+    lower.lastIndexOf('[đã mở khóa]'),
+    lower.lastIndexOf('[đã mở khóa toàn bộ]'),
+    lower.lastIndexOf('[đã mở khóa')
+  );
+
+  return lastManualBanIndex > lastUnlockIndex;
+}
+
+/**
+ * Checks whether a student's penalty notes string contains an active, unpardoned
+ * strike specifically for the given targetEventId or targetEventName.
+ */
+export function hasActiveStrikeForEvent(
+  notesStr?: string | null,
+  targetEventId?: string,
+  targetEventName?: string
+): boolean {
+  if (!notesStr || !notesStr.trim()) return false;
+  const items = parsePenaltyNotes(notesStr);
+  const cleanTargetName = targetEventName?.trim().toLowerCase();
+
+  return items.some((item) => {
+    if (item.isPardoned) return false;
+    if (targetEventId && item.eventId && item.eventId === targetEventId) {
+      return true;
+    }
+    if (targetEventId && item.raw.includes(`[${targetEventId}]`)) {
+      return true;
+    }
+    if (
+      cleanTargetName &&
+      cleanTargetName.length >= 3 &&
+      item.eventName &&
+      item.eventName.toLowerCase().includes(cleanTargetName)
+    ) {
+      return true;
+    }
+    return false;
+  });
+}
+
+/**
  * Waives a single event absence strike in the notes text while retaining the [eventId] marker
  * so future automatic reconciliations do not re-penalize the student.
  */

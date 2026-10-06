@@ -4,6 +4,8 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import {
   MAX_MISSED_STRIKES,
   pardonEventInNotes,
+  hasActiveManualBan,
+  hasActiveStrikeForEvent,
 } from '@/lib/utils/blacklist-logic';
 
 /**
@@ -130,32 +132,11 @@ export async function POST(req: Request) {
     let unblacklisted = 0;
 
     for (const existing of candidateMap.values()) {
-      const notesStr = existing.notes || '';
-      const hasEventId = notesStr.includes(eventIdentifier);
-      const hasEventName = Boolean(
-        shortEventName &&
-        shortEventName.length >= 3 &&
-        notesStr.toLowerCase().includes(shortEventName.toLowerCase())
-      );
-      const isAbsentInRegs = absentMssvs.includes((existing.mssv || '').toUpperCase().trim());
-
-      // Kiểm tra xem đã miễn vắng sự kiện này chưa
-      const isAlreadyPardoned =
-        (hasEventId && notesStr.includes(`[Đã miễn vắng:`) && notesStr.includes(eventIdentifier)) ||
-        (hasEventName && notesStr.includes(`[Đã miễn vắng:`) && notesStr.includes(shortEventName));
-
-      if (isAlreadyPardoned) {
-        continue; // Đã được miễn vắng trước đó → bỏ qua
-      }
-
-      if (!hasEventId && !hasEventName && !isAbsentInRegs) {
+      // SV chỉ được giảm vi phạm nếu họ THỰC SỰ có ghi nhận vi phạm chưa gỡ cho sự kiện này!
+      // Tuyệt đối không giảm vi phạm cho SV bị khóa thủ công hoặc SV không bị phạt vì sự kiện này!
+      if (!hasActiveStrikeForEvent(existing.notes, event_id, event.event_name)) {
         continue;
       }
-
-      const currentMissed = typeof existing.missed_count === 'number' ? existing.missed_count : 1;
-      const newMissed = Math.max(0, currentMissed - 1);
-      const wasBlacklisted = Boolean(existing.is_blacklisted);
-      const isBlacklisted = newMissed >= MAX_MISSED_STRIKES;
 
       const updatedNotes = pardonEventInNotes({
         notesStr: existing.notes,
@@ -167,12 +148,24 @@ export async function POST(req: Request) {
         nowFormatted,
       });
 
+      // Nếu ghi chú không thay đổi (không tìm thấy lỗi tương ứng)
+      if (updatedNotes === (existing.notes || '').trim()) {
+        continue;
+      }
+
+      const currentMissed = typeof existing.missed_count === 'number' ? existing.missed_count : 1;
+      const newMissed = Math.max(0, currentMissed - 1);
+      const wasBlacklisted = Boolean(existing.is_blacklisted);
+      const isManuallyBanned = hasActiveManualBan(updatedNotes);
+      // Nếu có lệnh khóa thủ công còn hiệu lực, BẮT BUỘC giữ trạng thái is_blacklisted = true!
+      const isBlacklisted = isManuallyBanned || (newMissed >= MAX_MISSED_STRIKES);
+
       const updatePayload: Record<string, any> = {
         mssv: existing.mssv,
         email: existing.email,
         full_name: existing.full_name,
         class_id: existing.class_id,
-        missed_count: newMissed,
+        missed_count: isManuallyBanned ? Math.max(newMissed, 3) : newMissed,
         is_blacklisted: isBlacklisted,
         notes: updatedNotes,
         updated_at: new Date().toISOString(),
@@ -187,10 +180,20 @@ export async function POST(req: Request) {
       updatesToApply.push(updatePayload);
     }
 
+    // Đánh dấu attended = true cho các đăng ký của sự kiện này trong event_registrations để không bị phạt lại khi chốt sổ
+    try {
+      await supabase
+        .from('event_registrations')
+        .update({ attended: true })
+        .eq('event_id', event_id);
+    } catch (regErr) {
+      console.warn('Failed to mark attended in registrations for event:', regErr);
+    }
+
     if (updatesToApply.length === 0) {
       return NextResponse.json({
         success: true,
-        message: `Tất cả sinh viên ở sự kiện "${event.event_name}" đều đã được miễn vắng hoặc không có vi phạm cần xử lý.`,
+        message: `Đã cập nhật danh sách điểm danh cho sự kiện "${event.event_name}". Tất cả sinh viên đã được miễn vắng trước đó hoặc không có vi phạm cần gỡ trong danh sách kỷ luật.`,
         data: { processed: 0, unblacklisted: 0 },
       });
     }

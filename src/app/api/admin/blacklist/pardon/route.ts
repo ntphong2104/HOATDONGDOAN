@@ -5,6 +5,7 @@ import {
   MAX_MISSED_STRIKES,
   pardonEventInNotes,
   pardonAllInNotes,
+  hasActiveManualBan,
 } from '@/lib/utils/blacklist-logic';
 
 export async function POST(req: Request) {
@@ -72,7 +73,6 @@ export async function POST(req: Request) {
     if (action === 'single_event') {
       const currentMissed = existing.missed_count || 1;
       newMissed = Math.max(0, currentMissed - 1);
-      isBlacklisted = newMissed >= MAX_MISSED_STRIKES;
 
       updatedNotes = pardonEventInNotes({
         notesStr: existing.notes,
@@ -82,6 +82,12 @@ export async function POST(req: Request) {
         adminEmail: auth.email,
         nowFormatted,
       });
+
+      const isManuallyBanned = hasActiveManualBan(updatedNotes);
+      isBlacklisted = isManuallyBanned || (newMissed >= MAX_MISSED_STRIKES);
+      if (isManuallyBanned) {
+        newMissed = Math.max(newMissed, 3);
+      }
 
       // Update registration record so it shows attended
       if (event_id) {

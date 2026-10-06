@@ -39,7 +39,7 @@ import { OFFICIAL_UNITS, ACADEMIC_FACULTIES, type OfficialUnit } from '@/lib/con
 import { getStageLabel } from '@/lib/utils/proposal-logic';
 import { isSameUnit } from '@/lib/utils/rating-logic';
 import { getEffectiveEventStatus, isEventPastDeadline, getEventLifecycleState, getEarliestCheckinTime } from '@/lib/utils/event-logic';
-import { parsePenaltyNotes, type ParsedPenaltyItem } from '@/lib/utils/blacklist-logic';
+import { parsePenaltyNotes, type ParsedPenaltyItem, hasActiveManualBan } from '@/lib/utils/blacklist-logic';
 import type { Event, User, EventProposal, Room, UserPenalty, UserTier } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -154,6 +154,10 @@ function SuperAdminContent() {
     [studentsMap]
   );
 
+  const isPenBlacklisted = React.useCallback((p: UserPenalty) => {
+    return Boolean(p.is_blacklisted || hasActiveManualBan(p.notes));
+  }, []);
+
   const displayedPenalties = React.useMemo(() => {
     return penalties.filter((pen) => {
       const { full_name, class_id } = resolvePenaltyStudent(pen);
@@ -169,12 +173,12 @@ function SuperAdminContent() {
         if (!matchMssv && !matchName && !matchClass && !matchNotes) return false;
       }
 
-      if (blacklistFilter === 'blacklisted') return pen.is_blacklisted;
-      if (blacklistFilter === 'warning') return !pen.is_blacklisted && pen.missed_count > 0;
-      if (blacklistFilter === 'pardoned') return !pen.is_blacklisted && pen.missed_count === 0;
+      if (blacklistFilter === 'blacklisted') return isPenBlacklisted(pen);
+      if (blacklistFilter === 'warning') return !isPenBlacklisted(pen) && pen.missed_count > 0;
+      if (blacklistFilter === 'pardoned') return !isPenBlacklisted(pen) && pen.missed_count === 0;
       return true;
     });
-  }, [penalties, blacklistSearch, blacklistFilter, resolvePenaltyStudent]);
+  }, [penalties, blacklistSearch, blacklistFilter, resolvePenaltyStudent, isPenBlacklisted]);
 
   const totalBlacklistPages = Math.max(1, Math.ceil(displayedPenalties.length / BLACKLIST_PAGE_SIZE));
   const currentBlacklistPage = Math.min(Math.max(1, blacklistPage), totalBlacklistPages);
@@ -2029,11 +2033,11 @@ function SuperAdminContent() {
             <span
               className={styles.tabBadge}
               style={{
-                background: penalties.filter((p) => p.is_blacklisted).length > 0 ? '#ef4444' : undefined,
-                color: penalties.filter((p) => p.is_blacklisted).length > 0 ? '#ffffff' : undefined,
+                background: penalties.filter(isPenBlacklisted).length > 0 ? '#ef4444' : undefined,
+                color: penalties.filter(isPenBlacklisted).length > 0 ? '#ffffff' : undefined,
               }}
             >
-              {penalties.filter((p) => p.is_blacklisted).length}
+              {penalties.filter(isPenBlacklisted).length}
             </span>
           </button>
 
@@ -5335,7 +5339,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     cursor: 'pointer',
                   }}
                 >
-                  Đang Khóa Blacklist ({penalties.filter((p) => p.is_blacklisted).length})
+                  Đang Khóa Blacklist ({penalties.filter(isPenBlacklisted).length})
                 </button>
                 <button
                   type="button"
@@ -5352,7 +5356,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     cursor: 'pointer',
                   }}
                 >
-                  Cảnh Báo 1-2 Lần ({penalties.filter((p) => !p.is_blacklisted && p.missed_count > 0).length})
+                  Cảnh Báo 1-2 Lần ({penalties.filter((p) => !isPenBlacklisted(p) && p.missed_count > 0).length})
                 </button>
                 <button
                   type="button"
@@ -5369,7 +5373,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     cursor: 'pointer',
                   }}
                 >
-                  Đã Mở Khóa / Miễn Trừ ({penalties.filter((p) => !p.is_blacklisted && p.missed_count === 0).length})
+                  Đã Mở Khóa / Miễn Trừ ({penalties.filter((p) => !isPenBlacklisted(p) && p.missed_count === 0).length})
                 </button>
               </div>
 
@@ -5507,19 +5511,19 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               <span
                                 style={{
                                   padding: '0.25rem 0.65rem',
-                                  background: pen.missed_count >= 3 ? '#fee2e2' : pen.missed_count === 2 ? '#fef3c7' : pen.missed_count === 1 ? '#eff6ff' : '#dcfce7',
-                                  color: pen.missed_count >= 3 ? '#b91c1c' : pen.missed_count === 2 ? '#b45309' : pen.missed_count === 1 ? '#1e40af' : '#15803d',
+                                  background: isPenBlacklisted(pen) || pen.missed_count >= 3 ? '#fee2e2' : pen.missed_count === 2 ? '#fef3c7' : pen.missed_count === 1 ? '#eff6ff' : '#dcfce7',
+                                  color: isPenBlacklisted(pen) || pen.missed_count >= 3 ? '#b91c1c' : pen.missed_count === 2 ? '#b45309' : pen.missed_count === 1 ? '#1e40af' : '#15803d',
                                   borderRadius: '12px',
                                   fontWeight: 800,
                                   fontSize: '0.85rem',
                                 }}
                               >
-                                {pen.missed_count} / 3 lần
+                                {isPenBlacklisted(pen) ? Math.max(pen.missed_count, 3) : pen.missed_count} / 3 lần
                               </span>
                             </div>
                           </td>
                           <td>
-                            {pen.is_blacklisted ? (
+                            {isPenBlacklisted(pen) ? (
                               <span
                                 style={{
                                   padding: '0.3rem 0.75rem',
