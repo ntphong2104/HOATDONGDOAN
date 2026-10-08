@@ -293,13 +293,16 @@ export default function ProposalDetailPage({
       canActOnThisStage = true;
     } else if (currentStage === 'ctsv' && (tier === 'ctsv' || email.includes('ctsv'))) {
       canActOnThisStage = true;
-    } else if (currentStage === 'facility' && (tier === 'facility' || email.includes('quantri') || email.includes('tchc') || email.includes('tchcqt') || email.includes('csvc'))) {
+    } else if (currentStage === 'facility' && (tier === 'facility' || email.includes('quantri') || email.includes('tchc') || email.includes('tchcqt') || email.includes('csvc') || email.includes('tochuc'))) {
       canActOnThisStage = true;
     }
   }
 
   const isDirectFaculty = isKhoaUnit(proposal.organization_unit);
-  const requiresCtsv = (proposal.participant_count || 0) + (proposal.volunteer_count || 0) + (proposal.organizer_count || 0) > 50;
+  const requiresCtsv =
+    typeof (proposal as any).requires_ctsv_approval === 'boolean'
+      ? Boolean((proposal as any).requires_ctsv_approval)
+      : (proposal.participant_count || 0) + (proposal.volunteer_count || 0) + (proposal.organizer_count || 0) > 50;
 
   const getStepStatus = (step: ProposalStage) => {
     if (proposal.status === 'rejected') return 'waiting';

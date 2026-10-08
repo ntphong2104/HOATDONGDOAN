@@ -67,20 +67,37 @@ export async function POST(
   const body = await req.json().catch(() => ({}));
   const { notes = '', session_decisions = {} } = body;
 
-  // Update session statuses if decisions were provided
-  if (proposal.sessions && Array.isArray(proposal.sessions) && Object.keys(session_decisions).length > 0) {
-    proposal.sessions = proposal.sessions.map((sess: any) => {
+  // Sessions are stored in proposal meta (system_settings), NOT in the event_proposals row.
+  // Load them from there so per-session decisions are actually persisted.
+  const propMetaInitial = await getProposalMeta(supabase, proposal.id);
+  const storedInitial = getStoredProposalById(proposal.id);
+  let workingSessions: any[] =
+    (propMetaInitial.sessions && propMetaInitial.sessions.length > 0)
+      ? propMetaInitial.sessions.map((s: any) => ({ ...s }))
+      : (Array.isArray(proposal.sessions) && proposal.sessions.length > 0)
+      ? proposal.sessions.map((s: any) => ({ ...s }))
+      : (storedInitial?.sessions || []).map((s: any) => ({ ...s }));
+
+  const hasSessionDecisions =
+    session_decisions && typeof session_decisions === 'object' && Object.keys(session_decisions).length > 0;
+
+  if (workingSessions.length > 0 && hasSessionDecisions) {
+    workingSessions = workingSessions.map((sess: any) => {
       const decision = session_decisions[sess.id];
-      if (decision) {
-        return {
-          ...sess,
-          status: decision.status || sess.status,
-          rejection_reason: decision.rejection_reason || sess.rejection_reason || '',
-        };
-      }
-      return sess;
+      if (!decision) return sess;
+      return {
+        ...sess,
+        status: decision.status || sess.status,
+        rejection_reason: decision.status === 'rejected'
+          ? (decision.rejection_reason || sess.rejection_reason || '')
+          : '',
+        reviewed_stage: currentStage,
+        reviewed_by: auth.email,
+        reviewed_at: new Date().toISOString(),
+      };
     });
   }
+  proposal.sessions = workingSessions;
 
   const nextStage = getNextStage(
     currentStage,
@@ -91,30 +108,33 @@ export async function POST(
 
   const actorName = auth.email;
 
-  // Try DB audit log
-  try {
-    await supabase.from('proposal_logs').insert({
-      proposal_id: proposal.id,
+  // Audit log — only written AFTER the stage change is persisted successfully
+  const writeApprovalLog = async () => {
+    const { error: logErr } = await supabase.from('proposal_logs').insert({
+      proposal_id: proposal!.id,
       stage: currentStage,
       action: 'approved',
       actor_email: auth.email,
       actor_name: actorName,
       notes: notes || '',
     });
-  } catch {}
-
-  addStoredProposalLog({
-    proposal_id: proposal.id,
-    stage: currentStage,
-    action: 'approved',
-    actor_email: auth.email,
-    actor_name: actorName,
-    notes: notes || '',
-  });
+    if (logErr) {
+      console.error('[approve] Failed to insert proposal log:', logErr);
+    }
+    addStoredProposalLog({
+      proposal_id: proposal!.id,
+      stage: currentStage,
+      action: 'approved',
+      actor_email: auth.email,
+      actor_name: actorName,
+      notes: notes || '',
+    });
+  };
 
   // If Final Stage reached (Auto-create Event)
   if (nextStage === 'approved') {
     let newEventId: string | null = null;
+    let createFailureReason = '';
     try {
       const participantCount = Number(proposal.participant_count) || 0;
       const volunteerCount = Number((proposal as any).volunteer_count) || 0;
@@ -135,28 +155,16 @@ export async function POST(
         .select()
         .maybeSingle();
 
+      if (createEventErr) {
+        console.error('[approve] Failed to create event:', createEventErr);
+        createFailureReason = createEventErr.message || 'Không thể tạo sự kiện';
+      }
+
       if (newEvent?.event_id) {
         newEventId = newEvent.event_id;
 
-        const propMeta = await getProposalMeta(supabase, proposal.id);
-        const stored = getStoredProposalById(proposal.id);
-        const availableSessions: any[] =
-          (proposal.sessions && proposal.sessions.length > 0)
-            ? proposal.sessions
-            : (propMeta.sessions && propMeta.sessions.length > 0)
-            ? propMeta.sessions
-            : stored?.sessions || [];
-
-        // Apply session_decisions if provided
-        if (body.session_decisions && typeof body.session_decisions === 'object') {
-          for (const s of availableSessions) {
-            const dec = body.session_decisions[s.id];
-            if (dec) {
-              s.status = dec.status;
-              s.rejection_reason = dec.rejection_reason;
-            }
-          }
-        }
+        // Decisions were already merged into workingSessions above
+        const availableSessions: any[] = workingSessions;
 
         // When proposal is approved, mark all non-rejected sessions as approved
         for (const s of availableSessions) {
@@ -251,25 +259,39 @@ export async function POST(
       console.error('Error auto-creating event from proposal:', createErr);
     }
 
-    if (newEventId) {
-      try {
-        await supabase
-          .from('event_proposals')
-          .update({
-            status: 'approved',
-            current_stage: 'approved',
-            created_event_id: newEventId,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', proposal.id);
-      } catch {}
+    if (!newEventId) {
+      return NextResponse.json({
+        success: false,
+        error: `Không thể tạo sự kiện từ kế hoạch nên chưa ghi nhận phê duyệt. ${createFailureReason}`.trim(),
+      }, { status: 500 });
     }
+
+    const { data: finalRows, error: finalUpdateErr } = await supabase
+      .from('event_proposals')
+      .update({
+        status: 'approved',
+        current_stage: 'approved',
+        created_event_id: newEventId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', proposal.id)
+      .select('id');
+
+    if (finalUpdateErr || !finalRows || finalRows.length === 0) {
+      console.error('[approve] Final update not persisted:', finalUpdateErr, 'rows:', finalRows?.length);
+      return NextResponse.json({
+        success: false,
+        error: 'Đã tạo sự kiện nhưng không lưu được trạng thái phê duyệt vào cơ sở dữ liệu. Vui lòng liên hệ Super Admin.',
+      }, { status: 500 });
+    }
+
+    await writeApprovalLog();
 
     const updatedProposal = saveProposalToStore({
       ...proposal,
       status: 'approved',
       current_stage: 'approved',
-      created_event_id: newEventId || proposal.created_event_id || proposal.id,
+      created_event_id: newEventId,
       updated_at: new Date().toISOString(),
     });
 
@@ -280,16 +302,36 @@ export async function POST(
     });
   }
 
-  // Else, advance to next stage
-  try {
-    await supabase
-      .from('event_proposals')
-      .update({
-        current_stage: nextStage,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', proposal.id);
-  } catch {}
+  // Else, advance to next stage — and VERIFY the row was really updated.
+  // Supabase does not throw on RLS-blocked updates; it just affects 0 rows.
+  const { data: stageRows, error: stageUpdateErr } = await supabase
+    .from('event_proposals')
+    .update({
+      current_stage: nextStage,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', proposal.id)
+    .eq('current_stage', currentStage) // guard against double-approval races
+    .select('id, current_stage');
+
+  if (stageUpdateErr || !stageRows || stageRows.length === 0) {
+    console.error('[approve] Stage update not persisted:', stageUpdateErr, 'rows:', stageRows?.length);
+    return NextResponse.json({
+      success: false,
+      error: stageUpdateErr
+        ? `Không lưu được kết quả duyệt: ${stageUpdateErr.message}`
+        : 'Không lưu được kết quả duyệt (kế hoạch có thể đã được người khác xử lý hoặc tài khoản chưa được cấp quyền ghi). Vui lòng tải lại trang.',
+    }, { status: 500 });
+  }
+
+  // Persist per-session decisions made at this stage
+  if (hasSessionDecisions && workingSessions.length > 0) {
+    await saveProposalMeta(supabase, proposal.id, { sessions: workingSessions }).catch((e) => {
+      console.error('[approve] Failed to save session decisions:', e);
+    });
+  }
+
+  await writeApprovalLog();
 
   const updatedProposal = saveProposalToStore({
     ...proposal,
