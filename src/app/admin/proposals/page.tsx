@@ -69,13 +69,8 @@ export default function ProposalsListPage() {
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, []);
 
-  const email = user?.email?.toLowerCase() || '';
-  let tier = user?.tier || 'user';
-  if (tier === 'user') {
-    if (email.includes('bchdoan')) tier = 'youth_union';
-    else if (email.includes('ctsv') || email.includes('phongctsv')) tier = 'ctsv';
-    else if (email.includes('quantri') || email.includes('csvc') || email.includes('tchc') || email.includes('tchcqt')) tier = 'facility';
-  }
+  // Tier is resolved server-side by /api/me (exact allowlist / officer registry).
+  const tier: string = user?.tier || 'user';
 
   const isApprover = tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'super_admin';
   const isPureApprover = tier === 'ctsv' || tier === 'facility';
@@ -246,7 +241,7 @@ export default function ProposalsListPage() {
   return (
     <div className={styles.container}>
       <Header
-        showBack={!isPureApprover || tier === 'super_admin'}
+        showBack={!isPureApprover}
         backHref={tier === 'super_admin' ? '/super-admin?tab=proposals' : '/admin'}
         title={`BÀN PHÊ DUYỆT — ${departmentTitle.toUpperCase()}`}
       />

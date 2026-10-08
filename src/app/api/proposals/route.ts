@@ -29,14 +29,7 @@ export async function GET(req: Request) {
     auth.tier === 'youth_union' ||
     auth.tier === 'ctsv' ||
     auth.tier === 'facility' ||
-    auth.tier === 'security' ||
-    auth.email.includes('ctsv') ||
-    auth.email.includes('quantri') ||
-    auth.email.includes('tchc') ||
-    auth.email.includes('tchcqt') ||
-    auth.email.includes('csvc') ||
-    auth.email.includes('baove') ||
-    auth.email.includes('security');
+    auth.tier === 'security';
 
   try {
     const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || await createClient();
@@ -216,8 +209,7 @@ export async function POST(req: Request) {
     // ── Server-side: enforce organization_unit for non-super-admin ──
     const isPrivileged =
       auth.isSuperAdmin ||
-      auth.tier === 'youth_union' ||
-      auth.email.toLowerCase().includes('bchdoan');
+      auth.tier === 'youth_union';
 
     let finalOrganizationUnit = organization_unit;
     if (!isPrivileged) {

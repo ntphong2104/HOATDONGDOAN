@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isValidSchoolEmail, extractMSSV } from '@/lib/utils/extract-mssv';
+import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
+import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
 
 function getPublicOrigin(request: Request): string {
   const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
@@ -155,7 +157,6 @@ export async function GET(request: Request) {
       email.startsWith('doi') ||
       email.includes('marketing') ||
       email.includes('ketoan') ||
-      email.includes('quantri') ||
       email.includes('vienthong') ||
       email.includes('dientu') ||
       email.includes('itmc') ||
@@ -171,14 +172,20 @@ export async function GET(request: Request) {
     if (isSuperAdmin) {
       return NextResponse.redirect(`${origin}/super-admin`);
     }
-    if (
-      email.includes('ctsv') ||
-      email.includes('quantri') ||
-      email.includes('tchc') ||
-      email.includes('tchcqt') ||
-      email.includes('csvc')
-    ) {
+
+    // Department approvers: exact allowlist or officer registry (no substring matching)
+    let departmentTier: string | null = getOfficialTierForEmail(email);
+    if (!departmentTier) {
+      try {
+        const stored = await getStoredOfficerRoles(await createAdminClient());
+        departmentTier = stored.find((o) => o.email.toLowerCase().trim() === email)?.role_tier || null;
+      } catch {}
+    }
+    if (departmentTier === 'youth_union' || departmentTier === 'ctsv' || departmentTier === 'facility') {
       return NextResponse.redirect(`${origin}/admin/proposals`);
+    }
+    if (departmentTier === 'security') {
+      return NextResponse.redirect(`${origin}/security`);
     }
     if (isSubAdminUnit) {
       return NextResponse.redirect(`${origin}/admin`);

@@ -25,7 +25,7 @@ export default async function SecurityPage() {
             isSuperAdmin: demoUser.tier === 'super_admin',
             isEventAdmin: ['super_admin', 'youth_union', 'ctsv', 'facility', 'event_admin'].includes(demoUser.tier),
             isChecker: true,
-            isSecurity: demoUser.tier === 'security' || demoUser.email.includes('baove'),
+            isSecurity: demoUser.tier === 'security',
             tier: demoUser.tier || 'security',
           };
         }
@@ -41,9 +41,7 @@ export default async function SecurityPage() {
     auth.isSuperAdmin ||
     auth.tier === 'security' ||
     auth.tier === 'facility' ||
-    auth.tier === 'youth_union' ||
-    auth.email.includes('baove') ||
-    auth.email.includes('security');
+    auth.tier === 'youth_union';
 
   if (!isAuthorized) {
     console.log('--- SECURITY PAGE: NOT AUTHORIZED, REDIRECTING TO / ---');

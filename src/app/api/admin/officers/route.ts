@@ -10,7 +10,7 @@ import {
   type OfficerRoleItem,
 } from '@/lib/constants/officers-store';
 import { getCustomUnitsFromDb, saveCustomUnitsToDb } from '@/lib/constants/units';
-import { cleanupExpiredStudentEventRoles, isExemptFromAutoRevoke } from '@/lib/constants/event-roles-cleanup';
+import { cleanupExpiredStudentEventRoles, fetchEventSessionsMap, isEventRoleExpired } from '@/lib/constants/event-roles-cleanup';
 import type { UserTier } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -67,26 +67,25 @@ export async function GET() {
       console.warn('Failed to load stored officer roles:', e);
     }
 
-    // Trigger automatic background cleanup of student event roles expired > 3 days
-    cleanupExpiredStudentEventRoles(supabase, 3).catch((e) => console.warn('Auto cleanup event roles error:', e));
-
-    const thresholdDateStr = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    // Automatic cleanup of per-event roles whose event ended > 3 days ago.
+    // Awaited so the list below already reflects the revocation.
+    try {
+      await cleanupExpiredStudentEventRoles(supabase, 3);
+    } catch (e) {
+      console.warn('Auto cleanup event roles error:', e);
+    }
 
     // 3, 4, 5: Fetch super_admins, event_roles, and users in parallel
     const [superAdminsResult, eventRolesResult, allUsersResult] = await Promise.all([
       (async () => { try { return (await supabase.from('super_admins').select('email, created_at')).data; } catch { return null; } })(),
-      (async () => { try { return (await supabase.from('event_roles').select('id, email, role_type, created_at, event_id, events(event_name, event_date, status)')).data; } catch { return null; } })(),
+      (async () => { try { return (await supabase.from('event_roles').select('id, email, role_type, created_at, event_id, events(event_name, event_date, start_time, end_time, status)')).data; } catch { return null; } })(),
       (async () => { try { return (await supabase.from('users').select('email, full_name, mssv, class_id, tier')).data; } catch { return null; } })(),
     ]);
 
-    const superAdminEmailsSet = new Set<string>(
-      (superAdminsResult || []).map((sa: any) => (sa.email || '').toLowerCase().trim())
+    const eventSessionsMap = await fetchEventSessionsMap(
+      supabase,
+      (eventRolesResult || []).map((er: any) => er.event_id)
     );
-    const storedOfficerEmailsSet = new Set<string>();
-    try {
-      const stored = await getStoredOfficerRoles(supabase);
-      stored.forEach((s) => storedOfficerEmailsSet.add(s.email.toLowerCase().trim()));
-    } catch {}
 
     // Process super_admins
     if (superAdminsResult) {
@@ -110,18 +109,11 @@ export async function GET() {
       for (const er of eventRolesResult) {
         const emailLower = er.email.toLowerCase().trim();
         const ev = er.events as any;
-        const evDate = ev?.event_date;
-        const evStatus = ev?.status;
 
-        // Nếu là tài khoản sinh viên (không phải đơn vị chính thức/cán bộ)
-        // và sự kiện đã kết thúc quá 3 ngày -> TỰ ĐỘNG THU HỒI, KHÔNG HIỂN THỊ
-        const isExempt = isExemptFromAutoRevoke(emailLower, superAdminEmailsSet, storedOfficerEmailsSet);
-        if (!isExempt) {
-          const isPastThreshold = evDate && evDate < thresholdDateStr;
-          const isClosedLongAgo = evStatus === 'closed' && isPastThreshold;
-          if (isPastThreshold || isClosedLongAgo) {
-            continue; // Đã quá hạn 3 ngày -> bỏ qua không hiển thị
-          }
+        // Sự kiện đã kết thúc quá 3 ngày (theo buổi cuối, không còn active)
+        // -> quyền theo sự kiện đã hết hạn, KHÔNG HIỂN THỊ cho bất kỳ tài khoản nào
+        if (isEventRoleExpired(ev, eventSessionsMap.get(String(er.event_id)))) {
+          continue;
         }
 
         const roleTier: UserTier = 'event_admin';

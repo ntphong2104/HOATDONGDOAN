@@ -23,8 +23,8 @@ export async function POST() {
       cleanedCount: result.cleanedCount,
       message:
         result.cleanedCount > 0
-          ? `Đã thu hồi thành công ${result.cleanedCount} quyền Admin/CTV sự kiện của sinh viên đã kết thúc quá 3 ngày.`
-          : 'Không có quyền sự kiện sinh viên nào quá hạn 3 ngày cần thu hồi.',
+          ? `Đã thu hồi thành công ${result.cleanedCount} quyền Admin/CTV của các sự kiện đã kết thúc quá 3 ngày.`
+          : 'Không có quyền sự kiện nào quá hạn 3 ngày cần thu hồi.',
     });
   } catch (err: any) {
     console.error('Lỗi API cleanup-expired:', err);

@@ -5,6 +5,7 @@ import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officer
 import { parseDemoCookie, getVerifiedUserFromCookies, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 import { getUserProfileExtra, saveUserProfileExtra } from '@/lib/constants/user-profile-store';
 import type { SessionUser, UserTier } from '@/lib/types';
+import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -244,13 +245,14 @@ export async function GET() {
     const createdEvents = createdEventsResult;
 
     const lowerEmail = email.toLowerCase();
+    // SECURITY: exact-match allowlist for official approver accounts
+    const officialTier = getOfficialTierForEmail(lowerEmail);
     const isSubAdminUnit =
       lowerEmail.startsWith('lcd') ||
       lowerEmail.startsWith('clb') ||
       lowerEmail.startsWith('doi') ||
       lowerEmail.includes('marketing') ||
       lowerEmail.includes('ketoan') ||
-      lowerEmail.includes('quantri') ||
       lowerEmail.includes('vienthong') ||
       lowerEmail.includes('dientu') ||
       lowerEmail.includes('itmc');
@@ -261,25 +263,19 @@ export async function GET() {
       assignedOfficerRole?.role_tier === 'super_admin';
 
     const isYouthUnion =
-      lowerEmail.includes('bchdoan') ||
+      officialTier === 'youth_union' ||
       assignedOfficerRole?.role_tier === 'youth_union';
 
     const isCtsv =
-      lowerEmail.includes('phongctsv') ||
-      lowerEmail.includes('ctsv') ||
+      officialTier === 'ctsv' ||
       assignedOfficerRole?.role_tier === 'ctsv';
 
     const isFacility =
-      lowerEmail.includes('phongquantri') ||
-      lowerEmail.includes('quantri') ||
-      lowerEmail.includes('tchc') ||
-      lowerEmail.includes('tchcqt') ||
-      lowerEmail.includes('csvc') ||
+      officialTier === 'facility' ||
       assignedOfficerRole?.role_tier === 'facility';
 
     const isSecurity =
-      lowerEmail.includes('baove') ||
-      lowerEmail.includes('security') ||
+      officialTier === 'security' ||
       assignedOfficerRole?.role_tier === 'security';
 
     // Students who only have event_roles but are not officers/sub-admin units

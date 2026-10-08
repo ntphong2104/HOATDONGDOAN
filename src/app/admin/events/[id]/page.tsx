@@ -959,9 +959,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
   const isSuperAdmin = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
   const backTarget = isSuperAdmin ? '/super-admin' : '/admin';
 
-  const isYouthUnion =
-    currentUser?.tier === 'youth_union' ||
-    Boolean(currentUser?.email?.toLowerCase().includes('bchdoan'));
+  const isYouthUnion = currentUser?.tier === 'youth_union';
   const isEventCreator = Boolean(
     event?.created_by &&
     currentUser?.email &&
@@ -1052,16 +1050,11 @@ export default function EventDetailPage({ params }: { params?: any }) {
   const regUrl = typeof window !== 'undefined' ? `${window.location.origin}/events/${event.event_id}/register` : `/events/${event.event_id}/register`;
 
   const userTier = currentUser?.tier || 'user';
-  const userEmail = currentUser?.email || '';
   const isApproverRole =
     userTier === 'youth_union' ||
     userTier === 'ctsv' ||
     userTier === 'facility' ||
-    userTier === 'super_admin' ||
-    userEmail.includes('ctsv') ||
-    userEmail.includes('quantri') ||
-    userEmail.includes('csvc') ||
-    userEmail.includes('superadmin');
+    userTier === 'super_admin';
 
   return (
     <div className={styles.container}>

@@ -305,7 +305,7 @@ export function resolveUnitForUser(user: {
 }): { unitName: string; isLocked: boolean } {
   const isSA = user.tier === 'super_admin' || user.isSuperAdmin;
   const email = (user.email || '').toLowerCase().trim();
-  const isYouthUnion = user.tier === 'youth_union' || email.includes('bchdoan');
+  const isYouthUnion = user.tier === 'youth_union';
 
   // Super Admin & Đoàn Thanh Niên can pick any unit
   if (isSA || isYouthUnion) {

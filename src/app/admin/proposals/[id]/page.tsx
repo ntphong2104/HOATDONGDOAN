@@ -272,16 +272,12 @@ export default function ProposalDetailPage({
   const isSuperAdmin = tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
   const backTarget = isSuperAdmin ? '/super-admin?tab=proposals' : '/admin/proposals';
 
+  // Roles come from the server-resolved tier (exact allowlist / officer registry) only.
   const isApproverRole =
     isSuperAdmin ||
     tier === 'youth_union' ||
     tier === 'ctsv' ||
-    tier === 'facility' ||
-    email.includes('ctsv') ||
-    email.includes('quantri') ||
-    email.includes('tchc') ||
-    email.includes('tchcqt') ||
-    email.includes('csvc');
+    tier === 'facility';
 
   const currentStage = proposal.current_stage;
   let canActOnThisStage = false;
@@ -289,11 +285,11 @@ export default function ProposalDetailPage({
   if (proposal.status === 'pending') {
     if (isSuperAdmin) {
       canActOnThisStage = true;
-    } else if (currentStage === 'youth_union' && (tier === 'youth_union')) {
+    } else if (currentStage === 'youth_union' && tier === 'youth_union') {
       canActOnThisStage = true;
-    } else if (currentStage === 'ctsv' && (tier === 'ctsv' || email.includes('ctsv'))) {
+    } else if (currentStage === 'ctsv' && tier === 'ctsv') {
       canActOnThisStage = true;
-    } else if (currentStage === 'facility' && (tier === 'facility' || email.includes('quantri') || email.includes('tchc') || email.includes('tchcqt') || email.includes('csvc') || email.includes('tochuc'))) {
+    } else if (currentStage === 'facility' && tier === 'facility') {
       canActOnThisStage = true;
     }
   }

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from './server';
 import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officers-store';
 import type { UserTier } from '@/lib/types';
+import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
 import crypto from 'crypto';
 
 const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
@@ -234,9 +235,10 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         const explicitTier = (demoUser.tier || 'user') as UserTier;
         const isSuperAdmin = explicitTier === 'super_admin' || lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
         const isYouthUnion = explicitTier === 'youth_union';
-        const isCtsv = explicitTier === 'ctsv' || lowerEmail.includes('phongctsv');
-        const isFacility = explicitTier === 'facility' || lowerEmail.includes('phongquantri') || lowerEmail.includes('quantri') || lowerEmail.includes('tchc') || lowerEmail.includes('csvc');
-        const isSecurity = explicitTier === 'security' || lowerEmail.includes('baove') || lowerEmail.includes('security');
+        const demoOfficialTier = getOfficialTierForEmail(lowerEmail);
+        const isCtsv = explicitTier === 'ctsv' || demoOfficialTier === 'ctsv';
+        const isFacility = explicitTier === 'facility' || demoOfficialTier === 'facility';
+        const isSecurity = explicitTier === 'security' || demoOfficialTier === 'security';
         const isEventAdmin = isSuperAdmin || isYouthUnion || isCtsv || isFacility || explicitTier === 'event_admin';
         const isChecker = isEventAdmin || isSecurity || explicitTier === 'checker';
 
@@ -302,9 +304,10 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     const lowerEmail = email.toLowerCase();
     const isSuperAdmin = explicitTier === 'super_admin' || lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
     const isYouthUnion = explicitTier === 'youth_union';
-    const isCtsv = explicitTier === 'ctsv' || lowerEmail.includes('phongctsv');
-    const isFacility = explicitTier === 'facility' || lowerEmail.includes('phongquantri');
-    const isSecurity = explicitTier === 'security' || lowerEmail.includes('baove') || lowerEmail.includes('security');
+    const explicitOfficialTier = getOfficialTierForEmail(lowerEmail);
+    const isCtsv = explicitTier === 'ctsv' || explicitOfficialTier === 'ctsv';
+    const isFacility = explicitTier === 'facility' || explicitOfficialTier === 'facility';
+    const isSecurity = explicitTier === 'security' || explicitOfficialTier === 'security';
     const isEventAdmin = isSuperAdmin || isYouthUnion || isCtsv || isFacility || explicitTier === 'event_admin';
     const isChecker = isEventAdmin || isSecurity || explicitTier === 'checker';
 
@@ -369,6 +372,9 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   const isSubAdminUnit = lowerEmail.startsWith('lcd') || lowerEmail.startsWith('clb') || lowerEmail.startsWith('doi');
 
+  // SECURITY: exact-match allowlist only (no substring matching on email)
+  const officialTier = getOfficialTierForEmail(lowerEmail);
+
   const isSuperAdmin =
     lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
     !!superAdmin ||
@@ -376,33 +382,23 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     explicitTier === 'super_admin';
 
   const isYouthUnion =
-    lowerEmail.includes('bchdoan') ||
+    officialTier === 'youth_union' ||
     assignedOfficerRole?.role_tier === 'youth_union' ||
-    assignedOfficerRole?.unit_code === 'BCH_DOAN' ||
     explicitTier === 'youth_union';
 
   const isCtsv =
-    lowerEmail.includes('phongctsv') ||
-    lowerEmail.includes('ctsv') ||
+    officialTier === 'ctsv' ||
     assignedOfficerRole?.role_tier === 'ctsv' ||
-    assignedOfficerRole?.unit_code === 'PHONG_CTSV' ||
     explicitTier === 'ctsv';
 
   const isFacility =
-    lowerEmail.includes('phongquantri') ||
-    lowerEmail.includes('quantri') ||
-    lowerEmail.includes('tchc') ||
-    lowerEmail.includes('tchcqt') ||
-    lowerEmail.includes('csvc') ||
+    officialTier === 'facility' ||
     assignedOfficerRole?.role_tier === 'facility' ||
-    assignedOfficerRole?.unit_code === 'PHONG_TCHCQT' ||
     explicitTier === 'facility';
 
   const isSecurity =
-    lowerEmail.includes('baove') ||
-    lowerEmail.includes('security') ||
+    officialTier === 'security' ||
     assignedOfficerRole?.role_tier === 'security' ||
-    assignedOfficerRole?.unit_code === 'TO_BAO_VE' ||
     explicitTier === 'security';
 
   const isEventAdmin =

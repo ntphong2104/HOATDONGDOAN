@@ -20,7 +20,7 @@ export async function POST(req: Request) {
               isSuperAdmin: demoUser.tier === 'super_admin',
               isEventAdmin: ['super_admin', 'youth_union', 'ctsv', 'facility', 'event_admin'].includes(demoUser.tier),
               isChecker: true,
-              isSecurity: demoUser.tier === 'security' || demoUser.email.includes('baove'),
+              isSecurity: demoUser.tier === 'security',
               tier: demoUser.tier || 'security',
             };
           }
@@ -36,9 +36,7 @@ export async function POST(req: Request) {
       auth.isSuperAdmin ||
       auth.tier === 'security' ||
       auth.tier === 'facility' ||
-      auth.tier === 'youth_union' ||
-      auth.email.includes('baove') ||
-      auth.email.includes('security');
+      auth.tier === 'youth_union';
 
     if (!isAuthorized) {
       return NextResponse.json({ success: false, error: 'Forbidden', message: 'Bạn không có quyền cập nhật sổ bàn giao chìa khóa' }, { status: 403 });

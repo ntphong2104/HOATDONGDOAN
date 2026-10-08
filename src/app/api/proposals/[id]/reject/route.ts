@@ -35,13 +35,13 @@ export async function POST(
 
   const currentStage = proposal.current_stage as ProposalStage;
 
-  // Department-specific permission check
+  // Department-specific permission check (tier only — no email substrings)
   let canReject = auth.isSuperAdmin;
   if (currentStage === 'youth_union' && auth.tier === 'youth_union') {
     canReject = true;
-  } else if (currentStage === 'ctsv' && (auth.tier === 'ctsv' || auth.email.includes('ctsv'))) {
+  } else if (currentStage === 'ctsv' && auth.tier === 'ctsv') {
     canReject = true;
-  } else if (currentStage === 'facility' && (auth.tier === 'facility' || auth.email.includes('quantri') || auth.email.includes('tchc') || auth.email.includes('tchcqt') || auth.email.includes('csvc') || auth.email.includes('tochuc'))) {
+  } else if (currentStage === 'facility' && auth.tier === 'facility') {
     canReject = true;
   }
 
