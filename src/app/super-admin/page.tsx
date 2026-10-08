@@ -3374,7 +3374,7 @@ function SuperAdminContent() {
 
               {/* DESKTOP TABLE VIEW */}
               <div className={styles.officerTableDesktop}>
-                <div className={styles.tableResponsive}>
+                <div className={styles.tableWrapper}>
                   <table className={styles.table}>
                     <thead>
                       <tr>
@@ -4094,82 +4094,148 @@ function SuperAdminContent() {
                 </button>
               </div>
 
-              {/* Bảng Danh Sách Đơn Vị */}
-              <div className={styles.tableResponsive}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '20%' }}>Mã Định Danh</th>
-                      <th style={{ width: '35%' }}>Tên Đơn Vị</th>
-                      <th style={{ width: '20%' }}>Phân Loại</th>
-                      <th style={{ width: '25%' }}>Email Đăng Nhập Chính Thức</th>
-                      <th style={{ width: '80px', textAlign: 'center' }}>Thao Tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {unitsLoading ? (
+              {/* DESKTOP TABLE VIEW */}
+              <div className={styles.officerTableDesktop}>
+                <div className={styles.tableWrapper}>
+                  <table className={styles.table}>
+                    <thead>
                       <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                          Đang tải danh sách đơn vị...
-                        </td>
+                        <th style={{ width: '20%' }}>Mã Định Danh</th>
+                        <th style={{ width: '35%' }}>Tên Đơn Vị</th>
+                        <th style={{ width: '20%' }}>Phân Loại</th>
+                        <th style={{ width: '25%' }}>Email Đăng Nhập Chính Thức</th>
+                        <th style={{ width: '80px', textAlign: 'center' }}>Thao Tác</th>
                       </tr>
-                    ) : filteredUnitsList.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                          Không có đơn vị nào phù hợp bộ lọc.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredUnitsList.map((unit) => {
-                        const isCustom = !OFFICIAL_UNITS.some((u) => u.code === unit.code);
-                        return (
-                          <tr key={unit.code}>
-                            <td>
-                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#1e40af', background: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.825rem' }}>
+                    </thead>
+                    <tbody>
+                      {unitsLoading ? (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                            Đang tải danh sách đơn vị...
+                          </td>
+                        </tr>
+                      ) : filteredUnitsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                            Không có đơn vị nào phù hợp bộ lọc.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredUnitsList.map((unit) => {
+                          const isCustom = !OFFICIAL_UNITS.some((u) => u.code === unit.code);
+                          return (
+                            <tr key={unit.code}>
+                              <td>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#1e40af', background: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.825rem' }}>
+                                  {unit.code}
+                                </span>
+                              </td>
+                              <td>
+                                <strong style={{ color: '#0f172a', fontSize: '0.9rem' }}>{unit.name}</strong>
+                              </td>
+                              <td>
+                                <span style={{ fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
+                                  {unit.type}
+                                </span>
+                              </td>
+                              <td>
+                                <span style={{ fontSize: '0.85rem', color: '#0f172a', fontFamily: 'monospace' }}>
+                                  {unit.email || '—'}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                {isCustom ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteUnit(unit.code, unit.name)}
+                                    style={{
+                                      padding: '0.3rem 0.6rem',
+                                      background: '#fee2e2',
+                                      color: '#dc2626',
+                                      border: '1px solid #fca5a5',
+                                      borderRadius: '6px',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Xóa
+                                  </button>
+                                ) : (
+                                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Mặc định</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* MOBILE CARD VIEW FOR UNITS */}
+              <div className={styles.officerCardsMobile}>
+                {unitsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '0.875rem' }}>
+                    Đang tải danh sách đơn vị...
+                  </div>
+                ) : filteredUnitsList.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '0.875rem', background: '#ffffff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                    Không có đơn vị nào phù hợp bộ lọc.
+                  </div>
+                ) : (
+                  filteredUnitsList.map((unit) => {
+                    const isCustom = !OFFICIAL_UNITS.some((u) => u.code === unit.code);
+                    return (
+                      <div key={unit.code} className={styles.officerCard}>
+                        <div className={styles.officerCardHeader} style={{ alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#1e40af', background: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.775rem' }}>
                                 {unit.code}
                               </span>
-                            </td>
-                            <td>
-                              <strong style={{ color: '#0f172a', fontSize: '0.9rem' }}>{unit.name}</strong>
-                            </td>
-                            <td>
-                              <span style={{ fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
+                              <span style={{ fontSize: '0.75rem', color: '#475569', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
                                 {unit.type}
                               </span>
-                            </td>
-                            <td>
-                              <span style={{ fontSize: '0.85rem', color: '#0f172a', fontFamily: 'monospace' }}>
-                                {unit.email || '—'}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                              {isCustom ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteUnit(unit.code, unit.name)}
-                                  style={{
-                                    padding: '0.3rem 0.6rem',
-                                    background: '#fee2e2',
-                                    color: '#dc2626',
-                                    border: '1px solid #fca5a5',
-                                    borderRadius: '6px',
-                                    fontSize: '0.78rem',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Xóa
-                                </button>
-                              ) : (
-                                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Mặc định</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                            </div>
+                            <strong style={{ color: '#0f172a', fontSize: '0.95rem', lineHeight: 1.35 }}>{unit.name}</strong>
+                          </div>
+                          <div>
+                            {isCustom ? (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUnit(unit.code, unit.name)}
+                                style={{
+                                  padding: '0.35rem 0.65rem',
+                                  background: '#fee2e2',
+                                  color: '#dc2626',
+                                  border: '1px solid #fca5a5',
+                                  borderRadius: '8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Xóa
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '0.725rem', color: '#94a3b8', fontWeight: 600, fontStyle: 'italic' }}>Mặc định</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className={styles.officerCardDetails}>
+                          <div className={styles.officerCardRow}>
+                            <span className={styles.officerCardLabel}>Email:</span>
+                            <span className={styles.officerCardValue} style={{ fontFamily: 'monospace', fontSize: '0.825rem', wordBreak: 'break-all' }}>
+                              {unit.email || '—'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </section>
           </div>

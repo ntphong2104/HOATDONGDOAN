@@ -3,6 +3,10 @@
   display: flex;
   flex-direction: column;
   background-color: #f8fafc;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .main {
@@ -11,6 +15,7 @@
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
 }
 
@@ -481,13 +486,16 @@
 }
 
 /* ──── Clean Tables ──── */
-.tableWrapper {
+.tableWrapper,
+.tableResponsive {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 14px;
   border: 1px solid #e2e8f0;
   background: #ffffff;
+  box-sizing: border-box;
 }
 
 .table {
@@ -937,9 +945,13 @@
   }
 
   /* Make all tables scrollable on mobile */
-  .tableWrapper {
+  .tableWrapper,
+  .tableResponsive {
     border-radius: 10px;
     margin: 0 -0.25rem;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .table {
