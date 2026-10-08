@@ -70,7 +70,9 @@ export async function GET() {
   const processedEvents = (events || []).map((ev: any) => {
     const sessions = metaMap[ev.event_id]?.sessions || [];
     const isPast = isEventPastDeadline({ ...ev, sessions });
-    return { ...ev, is_past_deadline: isPast };
+    // Include sessions so client-side lifecycle labels (EventCard, super-admin list)
+    // use the real last session instead of only event_date.
+    return { ...ev, sessions, is_past_deadline: isPast };
   });
 
   return NextResponse.json({ success: true, data: processedEvents });

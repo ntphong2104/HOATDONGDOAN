@@ -438,7 +438,7 @@ function SuperAdminContent() {
   const handleCleanupExpiredRoles = async () => {
     if (
       !confirm(
-        'Hệ thống sẽ quét và thu hồi các quyền Admin / CTV sự kiện được gán cho sinh viên nếu sự kiện đó đã kết thúc quá 3 ngày.\n\n(Tài khoản các Khoa, LCĐ, CLB, Phòng ban, Super Admin sẽ được BẢO LƯU 100%)\n\nBạn có muốn thực hiện ngay không?'
+        'Hệ thống sẽ quét và thu hồi các quyền Admin / CTV theo từng sự kiện (kể cả tài khoản LCĐ, CLB, Đội) nếu sự kiện đó đã đóng và buổi cuối cùng đã kết thúc quá 3 ngày.\n\n(Sự kiện đang mở không bị ảnh hưởng. Super Admin và cán bộ Phòng ban được giữ lại.)\n\nBạn có muốn thực hiện ngay không?'
       )
     ) {
       return;
@@ -679,6 +679,7 @@ function SuperAdminContent() {
           start_time: matchedEvent.start_time,
           end_time: matchedEvent.end_time,
           status: matchedEvent.status,
+          sessions: (matchedEvent as any).sessions || null,
         }
       : {
           event_date: p.start_date,
