@@ -2,6 +2,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { getEventMeta } from '@/lib/constants/event-meta-store';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -34,13 +35,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
 
-    const { data: eventData } = await supabase
-      .from('events')
-      .select('event_id, event_date, end_time, status, created_by')
-      .eq('event_id', id)
-      .maybeSingle();
+    const [{ data: eventData }, meta] = await Promise.all([
+      supabase
+        .from('events')
+        .select('event_id, event_date, end_time, status, created_by')
+        .eq('event_id', id)
+        .maybeSingle(),
+      getEventMeta(supabase, id),
+    ]);
 
-    if (eventData && isEventLockedPast3Days(eventData) && !isSuperAdmin) {
+    if (eventData && isEventLockedPast3Days({ ...eventData, sessions: meta.sessions || [] }) && !isSuperAdmin) {
       return NextResponse.json(
         {
           success: false,

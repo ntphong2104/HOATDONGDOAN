@@ -7,12 +7,74 @@ export interface EventScheduleInfo {
   end_time?: string | null;
   start_time?: string | null;
   status?: string | null;
-  sessions?: { id: string; session_date?: string; end_time?: string }[] | null;
+  sessions?: { id?: string; session_date?: string; end_time?: string; start_time?: string }[] | null;
+}
+
+/**
+ * Safely parses any date string (YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY, ISO string)
+ * and time string (HH:MM or HH:MM:SS) into a timestamp (milliseconds).
+ * Returns null if invalid.
+ */
+export function parseDateStringToTime(dateStr?: string | null, timeStr?: string | null): number | null {
+  if (!dateStr || !dateStr.trim()) return null;
+  const cleanDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.trim();
+  const cleanTime = (timeStr ? timeStr.slice(0, 5) : '22:00').trim();
+  const [hoursStr, minutesStr] = cleanTime.split(':');
+  const hours = parseInt(hoursStr || '22', 10);
+  const minutes = parseInt(minutesStr || '0', 10);
+
+  let year: number, month: number, day: number;
+
+  if (cleanDate.includes('/')) {
+    const parts = cleanDate.split('/');
+    if (parts.length === 3) {
+      if (parts[2].length === 4) {
+        // DD/MM/YYYY
+        day = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+        year = parseInt(parts[2], 10);
+      } else {
+        // YYYY/MM/DD
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+        day = parseInt(parts[2], 10);
+      }
+    } else {
+      return null;
+    }
+  } else if (cleanDate.includes('-')) {
+    const parts = cleanDate.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+        day = parseInt(parts[2], 10);
+      } else {
+        // DD-MM-YYYY
+        day = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+        year = parseInt(parts[2], 10);
+      }
+    } else {
+      return null;
+    }
+  } else {
+    return null;
+  }
+
+  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
+    return null;
+  }
+
+  const dt = new Date(year, month - 1, day, hours, minutes, 0, 0);
+  const time = dt.getTime();
+  return isNaN(time) ? null : time;
 }
 
 /**
  * Returns the effective end date for an event.
- * If event has sessions with dates, uses the LAST session_date.
+ * If event has sessions with dates, uses the LAST session by true chronological timestamp.
  * Otherwise falls back to event_date.
  */
 export function getEffectiveEndDate(event: EventScheduleInfo): { date: string; endTime: string } | null {
@@ -20,16 +82,23 @@ export function getEffectiveEndDate(event: EventScheduleInfo): { date: string; e
   const fallbackEndTime = event.end_time || '22:00';
 
   if (event.sessions && event.sessions.length > 0) {
-    // Find last session by date
-    const sessionsWithDate = event.sessions
-      .filter((s) => s.session_date)
-      .sort((a, b) => (a.session_date! > b.session_date! ? 1 : -1));
+    // Find session with the latest end time by actual timestamp (not string comparison)
+    let latestSession: { id?: string; session_date?: string; end_time?: string } | null = null;
+    let latestTime = -Infinity;
 
-    if (sessionsWithDate.length > 0) {
-      const lastSession = sessionsWithDate[sessionsWithDate.length - 1];
+    for (const s of event.sessions) {
+      if (!s.session_date) continue;
+      const sTime = parseDateStringToTime(s.session_date, s.end_time || event.end_time || '23:59');
+      if (sTime !== null && sTime > latestTime) {
+        latestTime = sTime;
+        latestSession = s;
+      }
+    }
+
+    if (latestSession && latestSession.session_date) {
       return {
-        date: lastSession.session_date!,
-        endTime: lastSession.end_time || event.end_time || '23:59',
+        date: latestSession.session_date,
+        endTime: latestSession.end_time || event.end_time || '23:59',
       };
     }
   }
@@ -43,38 +112,9 @@ export function getEffectiveEndDate(event: EventScheduleInfo): { date: string; e
  */
 export function getEventStartDateTime(event: EventScheduleInfo): Date | null {
   if (!event.event_date) return null;
-  try {
-    const datePart = event.event_date.includes('T')
-      ? event.event_date.split('T')[0]
-      : event.event_date;
-    const startTimePart = event.start_time ? event.start_time.slice(0, 5) : '07:00';
-    const [hoursStr, minutesStr] = startTimePart.split(':');
-    const hours = parseInt(hoursStr || '7', 10);
-    const minutes = parseInt(minutesStr || '0', 10);
-
-    if (datePart.includes('/')) {
-      const parts = datePart.split('/');
-      if (parts.length === 3) {
-        const day = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10);
-        const year = parseInt(parts[2], 10);
-        return new Date(year, month - 1, day, hours, minutes, 0, 0);
-      }
-    }
-
-    const [yearStr, monthStr, dayStr] = datePart.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10);
-    const day = parseInt(dayStr, 10);
-
-    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
-      return null;
-    }
-
-    return new Date(year, month - 1, day, hours, minutes, 0, 0);
-  } catch {
-    return null;
-  }
+  const timeMs = parseDateStringToTime(event.event_date, event.start_time || '07:00');
+  if (timeMs === null) return null;
+  return new Date(timeMs);
 }
 
 /**
@@ -124,36 +164,12 @@ export function isEventPastDeadline(
   const effective = getEffectiveEndDate(event);
   if (!effective) return false;
 
-  try {
-    const datePart = effective.date.includes('T')
-      ? effective.date.split('T')[0]
-      : effective.date;
-    const endTimePart = effective.endTime ? effective.endTime.slice(0, 5) : '22:00';
-    const [hoursStr, minutesStr] = endTimePart.split(':');
-    const hours = parseInt(hoursStr || '22', 10);
-    const minutes = parseInt(minutesStr || '0', 10);
+  const endDateTimeMs = parseDateStringToTime(effective.date, effective.endTime);
+  if (endDateTimeMs === null) return false;
 
-    let endDateTime: Date;
-    if (datePart.includes('/')) {
-      const parts = datePart.split('/');
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10);
-      const year = parseInt(parts[2], 10);
-      endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    } else {
-      const [yearStr, monthStr, dayStr] = datePart.split('-');
-      const year = parseInt(yearStr, 10);
-      const month = parseInt(monthStr, 10);
-      const day = parseInt(dayStr, 10);
-      endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    }
-
-    // 1 hour buffer after end time
-    const autoCloseThreshold = endDateTime.getTime() + 60 * 60 * 1000;
-    return currentTimeMs > autoCloseThreshold;
-  } catch {
-    return false;
-  }
+  // 1 hour buffer after end time
+  const autoCloseThreshold = endDateTimeMs + 60 * 60 * 1000;
+  return currentTimeMs > autoCloseThreshold;
 }
 
 /**
@@ -202,30 +218,11 @@ export function isEventScheduleExpired(
   const effective = getEffectiveEndDate(event);
   if (!effective) return false;
 
-  try {
-    const datePart = effective.date.includes('T')
-      ? effective.date.split('T')[0]
-      : effective.date;
-    const endTimePart = effective.endTime ? effective.endTime.slice(0, 5) : '22:00';
-    const [hoursStr, minutesStr] = endTimePart.split(':');
-    const hours = parseInt(hoursStr || '22', 10);
-    const minutes = parseInt(minutesStr || '0', 10);
+  const endDateTimeMs = parseDateStringToTime(effective.date, effective.endTime);
+  if (endDateTimeMs === null) return false;
 
-    const [yearStr, monthStr, dayStr] = datePart.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10);
-    const day = parseInt(dayStr, 10);
-
-    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
-      return false;
-    }
-
-    const endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    const autoCloseThreshold = endDateTime.getTime() + 60 * 60 * 1000;
-    return currentTimeMs > autoCloseThreshold;
-  } catch {
-    return false;
-  }
+  const autoCloseThreshold = endDateTimeMs + 60 * 60 * 1000;
+  return currentTimeMs > autoCloseThreshold;
 }
 
 /**
@@ -240,39 +237,18 @@ export function isEventLockedPast3Days(
 ): boolean {
   if (!event) return false;
 
+  // Nếu sự kiện đang ở trạng thái 'active', sự kiện đang diễn ra hoặc đang được ban tổ chức duy trì mở
+  // Tuyệt đối không khóa chốt sổ khi trạng thái vẫn đang là active!
+  if (event.status === 'active') {
+    return false;
+  }
+
   const effective = getEffectiveEndDate(event);
   if (!effective) return false;
 
+  const endDateTimeMs = parseDateStringToTime(effective.date, effective.endTime);
+  if (endDateTimeMs === null) return false;
+
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
-
-  try {
-    const datePart = effective.date.includes('T')
-      ? effective.date.split('T')[0]
-      : effective.date;
-    const endTimePart = effective.endTime ? effective.endTime.slice(0, 5) : '22:00';
-    const [hoursStr, minutesStr] = endTimePart.split(':');
-    const hours = parseInt(hoursStr || '22', 10);
-    const minutes = parseInt(minutesStr || '0', 10);
-
-    let endDateTime: Date;
-    if (datePart.includes('/')) {
-      const parts = datePart.split('/');
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10);
-      const year = parseInt(parts[2], 10);
-      endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    } else {
-      const [yearStr, monthStr, dayStr] = datePart.split('-');
-      const year = parseInt(yearStr, 10);
-      const month = parseInt(monthStr, 10);
-      const day = parseInt(dayStr, 10);
-      endDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    }
-
-    if (isNaN(endDateTime.getTime())) return false;
-    return currentTimeMs - endDateTime.getTime() > THREE_DAYS_MS;
-  } catch {
-    return false;
-  }
+  return currentTimeMs - endDateTimeMs > THREE_DAYS_MS;
 }
-

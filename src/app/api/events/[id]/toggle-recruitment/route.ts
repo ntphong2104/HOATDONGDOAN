@@ -21,13 +21,16 @@ export async function POST(
   const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
   const isYouthUnion = auth.tier === 'youth_union';
 
-  const { data: event } = await supabase
-    .from('events')
-    .select('event_id, event_date, end_time, status, created_by')
-    .eq('event_id', resolvedParams.id)
-    .maybeSingle();
+  const [{ data: event }, meta] = await Promise.all([
+    supabase
+      .from('events')
+      .select('event_id, event_date, end_time, status, created_by')
+      .eq('event_id', resolvedParams.id)
+      .maybeSingle(),
+    getEventMeta(supabase, resolvedParams.id),
+  ]);
 
-  if (event && isEventLockedPast3Days(event) && !isSuperAdmin) {
+  if (event && isEventLockedPast3Days({ ...event, sessions: meta.sessions || [] }) && !isSuperAdmin) {
     return NextResponse.json(
       {
         success: false,
@@ -56,11 +59,10 @@ export async function POST(
     const body = await req.json().catch(() => ({}));
     const { is_recruitment_open } = body;
 
-    const currentMeta = await getEventMeta(supabase, resolvedParams.id);
     const nextState =
       is_recruitment_open !== undefined
         ? Boolean(is_recruitment_open)
-        : currentMeta.is_recruitment_open === false
+        : meta.is_recruitment_open === false
         ? true
         : false;
 

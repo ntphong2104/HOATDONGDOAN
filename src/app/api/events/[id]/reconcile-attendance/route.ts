@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { reconcileAttendance, MAX_MISSED_STRIKES } from '@/lib/utils/blacklist-logic';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { getEventMeta } from '@/lib/constants/event-meta-store';
 
 export async function POST(
   req: Request,
@@ -17,22 +18,24 @@ export async function POST(
   const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
   const supabase = typeof createAdminClient === 'function' ? await createAdminClient() : await createClient();
 
-  // 1. Fetch event, registrations, and checkins in parallel
+  // 1. Fetch event, registrations, checkins, and meta in parallel
   const [
     { data: event, error: eventErr },
     { data: registrations },
-    { data: checkIns }
+    { data: checkIns },
+    meta
   ] = await Promise.all([
     supabase.from('events').select('*').eq('event_id', resolvedParams.id).single(),
     supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id),
-    supabase.from('check_ins').select('mssv').eq('event_id', resolvedParams.id)
+    supabase.from('check_ins').select('mssv').eq('event_id', resolvedParams.id),
+    getEventMeta(supabase, resolvedParams.id),
   ]);
 
   if (eventErr || !event) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
-  if (isEventLockedPast3Days(event) && !isSuperAdmin) {
+  if (isEventLockedPast3Days({ ...event, sessions: meta.sessions || [] }) && !isSuperAdmin) {
     return NextResponse.json(
       {
         success: false,

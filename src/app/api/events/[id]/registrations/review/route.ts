@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { saveRegistrationExtra } from '@/lib/constants/event-meta-store';
+import { saveRegistrationExtra, getEventMeta } from '@/lib/constants/event-meta-store';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export async function POST(
@@ -56,8 +56,8 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Thiếu danh sách ứng viên hoặc trạng thái phê duyệt' }, { status: 400 });
     }
 
-    // 1 & 2. Fetch event/department configurations and target registrations in parallel
-    const [{ data: event }, { data: targetRegs }] = await Promise.all([
+    // 1 & 2. Fetch event/department configurations, target registrations, and meta in parallel
+    const [{ data: event }, { data: targetRegs }, meta] = await Promise.all([
       supabase
         .from('events')
         .select('*')
@@ -67,10 +67,11 @@ export async function POST(
         .from('event_registrations')
         .select('*')
         .eq('event_id', resolvedParams.id)
-        .in('mssv', targetMssvs)
+        .in('mssv', targetMssvs),
+      getEventMeta(supabase, resolvedParams.id),
     ]);
 
-    if (event && isEventLockedPast3Days(event) && !isSuperAdmin) {
+    if (event && isEventLockedPast3Days({ ...event, sessions: meta.sessions || [] }) && !isSuperAdmin) {
       return NextResponse.json(
         {
           success: false,

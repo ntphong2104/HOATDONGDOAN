@@ -63,6 +63,13 @@ export default function EventDetailPage({ params }: { params?: any }) {
   const [togglingReg, setTogglingReg] = useState(false);
   const [activeTab, setActiveTab] = useState<'checkins' | 'sessions' | 'registrations' | 'recruitment' | 'ratings' | 'noshow'>('checkins');
   const [sessions, setSessions] = useState<any[]>([]);
+  const eventWithSessions = useMemo(() => {
+    if (!event) return null;
+    return {
+      ...event,
+      sessions: (sessions && sessions.length > 0) ? sessions : (event.sessions || []),
+    };
+  }, [event, sessions]);
   const [showAddSessionModal, setShowAddSessionModal] = useState(false);
   const [newSessionName, setNewSessionName] = useState('');
   const [newSessionDate, setNewSessionDate] = useState('');
@@ -199,7 +206,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
   };
 
   const handleAddDepartment = async () => {
-    const isLocked = isEventLockedPast3Days(event);
+    const isLocked = isEventLockedPast3Days(eventWithSessions || event);
     const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
     if (isLocked && !isSuper) {
       alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền thêm ban chuyên trách.');
@@ -256,7 +263,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
   };
 
   const handleDeleteDepartment = async (deptId: string) => {
-    const isLocked = isEventLockedPast3Days(event);
+    const isLocked = isEventLockedPast3Days(eventWithSessions || event);
     const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
     if (isLocked && !isSuper) {
       alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền xóa ban chuyên trách.');
@@ -297,7 +304,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
   };
 
   const handleReviewApplicant = async (mssv: string, review_status: 'accepted' | 'rejected') => {
-    const isLocked = isEventLockedPast3Days(event);
+    const isLocked = isEventLockedPast3Days(eventWithSessions || event);
     const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
     if (isLocked && !isSuper) {
       alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền duyệt hồ sơ.');
@@ -326,7 +333,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
   };
 
   const handleBulkReview = async (review_status: 'accepted' | 'rejected') => {
-    const isLocked = isEventLockedPast3Days(event);
+    const isLocked = isEventLockedPast3Days(eventWithSessions || event);
     const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
     if (isLocked && !isSuper) {
       alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền duyệt hồ sơ.');
@@ -363,7 +370,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
   };
 
   const handleDeleteSelectedRegs = async () => {
-    const isLocked = isEventLockedPast3Days(event);
+    const isLocked = isEventLockedPast3Days(eventWithSessions || event);
     const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
     if (isLocked && !isSuper) {
       alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền xóa đăng ký.');
@@ -734,7 +741,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
     e.preventDefault();
     if (!manualMSSV.trim()) return;
 
-    const isLocked = isEventLockedPast3Days(event);
+    const isLocked = isEventLockedPast3Days(eventWithSessions || event);
     const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
     if (isLocked && !isSuper) {
       setManualCheckinStatus('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền điểm danh thủ công.');
@@ -780,7 +787,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
   };
 
   const handleReconcileAttendance = async () => {
-    const isLocked = isEventLockedPast3Days(event);
+    const isLocked = isEventLockedPast3Days(eventWithSessions || event);
     const isSuper = currentUser?.tier === 'super_admin' || Boolean((currentUser as any)?.isSuperAdmin);
     if (isLocked && !isSuper) {
       alert('Sự kiện đã kết thúc quá 3 ngày và đã được chốt sổ. Chỉ Super Admin mới có quyền chốt lại điểm danh.');
@@ -966,7 +973,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
     (r: any) => r.email?.toLowerCase() === currentUser?.email?.toLowerCase()
   );
   const isPrivileged = isSuperAdmin || isYouthUnion;
-  const isLockedPast3Days = isEventLockedPast3Days(event);
+  const isLockedPast3Days = isEventLockedPast3Days(eventWithSessions || event);
   const canBulkImport = isSuperAdmin || (!isLockedPast3Days && (isYouthUnion || isEventCreator || hasEventRole || Boolean(currentUser?.isEventAdmin)));
 
   // Authorization: super admin, youth union, event creator, assigned role or officer can view

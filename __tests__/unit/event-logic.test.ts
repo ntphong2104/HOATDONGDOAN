@@ -1,4 +1,4 @@
-import { isEventPastDeadline, getEffectiveEventStatus } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, getEffectiveEventStatus, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 describe('event-logic unit tests', () => {
   test('returns true if event is already marked as closed', () => {
@@ -50,4 +50,54 @@ describe('event-logic unit tests', () => {
     expect(isEventPastDeadline(event, at2305)).toBe(true);
     expect(getEffectiveEventStatus(event, at2305)).toBe('closed');
   });
+
+  describe('isEventLockedPast3Days', () => {
+    test('never locks when event status is active', () => {
+      const event = {
+        event_date: '2026-09-01',
+        end_time: '22:00',
+        status: 'active',
+      };
+      // Current time is 1 month later
+      const currentTime = new Date(2026, 9, 8, 12, 0, 0).getTime();
+      expect(isEventLockedPast3Days(event, currentTime)).toBe(false);
+    });
+
+    test('multi-session event calculates lock based on latest session end date', () => {
+      const event = {
+        event_date: '2026-09-27',
+        end_time: '22:00',
+        status: 'closed',
+        sessions: [
+          { id: 's1', session_date: '2026-09-27', start_time: '07:00', end_time: '11:00' },
+          { id: 's2', session_date: '2026-10-07', start_time: '05:00', end_time: '23:00' },
+        ],
+      };
+
+      // Exactly 17 hours after session 2 ended (2026-10-08 16:00) -> NOT locked past 3 days (72h)
+      const now17HoursLater = new Date(2026, 9, 8, 16, 0, 0).getTime();
+      expect(isEventLockedPast3Days(event, now17HoursLater)).toBe(false);
+
+      // 4 days after session 2 ended (2026-10-12) -> LOCKED past 3 days
+      const now4DaysLater = new Date(2026, 9, 12, 10, 0, 0).getTime();
+      expect(isEventLockedPast3Days(event, now4DaysLater)).toBe(true);
+    });
+
+    test('handles non-ISO dates like DD-MM-YYYY in sessions correctly', () => {
+      const event = {
+        event_date: '2026-09-27',
+        end_time: '22:00',
+        status: 'completed',
+        sessions: [
+          { id: 's1', session_date: '27-09-2026', start_time: '07:00', end_time: '11:00' },
+          { id: 's2', session_date: '07-10-2026', start_time: '05:00', end_time: '23:00' },
+        ],
+      };
+
+      // On 2026-10-08, session on 07-10 is only 1 day old, NOT locked
+      const now = new Date(2026, 9, 8, 16, 0, 0).getTime();
+      expect(isEventLockedPast3Days(event, now)).toBe(false);
+    });
+  });
 });
+

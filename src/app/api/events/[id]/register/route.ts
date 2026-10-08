@@ -486,17 +486,22 @@ export async function DELETE(
 
   let isCreator = false;
   let eventRecord: any = null;
+  let eventMeta: any = null;
   try {
-    const { data: event } = await supabase
-      .from('events')
-      .select('event_id, event_date, end_time, status, created_by')
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
+    const [{ data: event }, meta] = await Promise.all([
+      supabase
+        .from('events')
+        .select('event_id, event_date, end_time, status, created_by')
+        .eq('event_id', resolvedParams.id)
+        .maybeSingle(),
+      getEventMeta(supabase, resolvedParams.id),
+    ]);
     eventRecord = event;
+    eventMeta = meta;
     isCreator = !!(event?.created_by && auth.email && event.created_by.toLowerCase() === auth.email.toLowerCase());
   } catch {}
 
-  if (eventRecord && isEventLockedPast3Days(eventRecord) && !isSuperAdmin) {
+  if (eventRecord && isEventLockedPast3Days({ ...eventRecord, sessions: eventMeta?.sessions || [] }) && !isSuperAdmin) {
     return NextResponse.json(
       {
         success: false,

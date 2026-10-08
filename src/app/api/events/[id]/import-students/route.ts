@@ -23,19 +23,24 @@ export async function POST(
   const isYouthUnion = auth.tier === 'youth_union';
   const isEventAdmin = auth.isEventAdmin;
 
-  // 1. Fetch Event
-  const { data: event, error: eventErr } = await supabase
-    .from('events')
-    .select('*')
-    .eq('event_id', resolvedParams.id)
-    .single();
+  // 1. Fetch Event & Meta (sessions)
+  const [eventResult, meta] = await Promise.all([
+    supabase.from('events').select('*').eq('event_id', resolvedParams.id).single(),
+    getEventMeta(supabase, resolvedParams.id),
+  ]);
+  const event = eventResult.data;
 
-  if (eventErr || !event) {
+  if (eventResult.error || !event) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
+  const eventWithSessions = {
+    ...event,
+    sessions: meta.sessions || [],
+  };
+
   // Khóa nạp danh sách khi sự kiện đã kết thúc quá 3 ngày (trừ Super Admin)
-  if (isEventLockedPast3Days(event) && !isSuperAdmin) {
+  if (isEventLockedPast3Days(eventWithSessions) && !isSuperAdmin) {
     return NextResponse.json(
       {
         success: false,
@@ -128,7 +133,6 @@ export async function POST(
       }, { status: 400 });
     }
 
-    const meta = await getEventMeta(supabase, resolvedParams.id);
     const maxParticipants = Number((event as any).max_participants || meta.max_participants || 0);
     const targetMode = body.target_mode || (mode === 'validate' ? 'checkin' : mode);
 

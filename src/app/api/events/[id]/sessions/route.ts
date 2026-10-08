@@ -101,13 +101,17 @@ export async function POST(
     const supabase = (await getSupabase()) || (await createClient());
 
     const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
-    const { data: currentEvent } = await supabase
-      .from('events')
-      .select('event_id, event_date, end_time, status')
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
+    const [eventResult, meta] = await Promise.all([
+      supabase
+        .from('events')
+        .select('event_id, event_date, end_time, status')
+        .eq('event_id', resolvedParams.id)
+        .maybeSingle(),
+      getEventMeta(supabase, resolvedParams.id),
+    ]);
+    const currentEvent = eventResult.data;
 
-    if (currentEvent && isEventLockedPast3Days(currentEvent) && !isSuperAdmin) {
+    if (currentEvent && isEventLockedPast3Days({ ...currentEvent, sessions: meta.sessions || [] }) && !isSuperAdmin) {
       return NextResponse.json(
         {
           success: false,
@@ -120,7 +124,6 @@ export async function POST(
     const body = await req.json();
     const { session, sessions: bulkSessions } = body;
 
-    const meta = await getEventMeta(supabase, resolvedParams.id);
     let currentSessions = meta.sessions || [];
 
     if (bulkSessions && Array.isArray(bulkSessions)) {
@@ -189,13 +192,17 @@ export async function DELETE(
     const supabase = (await getSupabase()) || (await createClient());
 
     const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
-    const { data: currentEvent } = await supabase
-      .from('events')
-      .select('event_id, event_date, end_time, status')
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
+    const [eventResult, meta] = await Promise.all([
+      supabase
+        .from('events')
+        .select('event_id, event_date, end_time, status')
+        .eq('event_id', resolvedParams.id)
+        .maybeSingle(),
+      getEventMeta(supabase, resolvedParams.id),
+    ]);
+    const currentEvent = eventResult.data;
 
-    if (currentEvent && isEventLockedPast3Days(currentEvent) && !isSuperAdmin) {
+    if (currentEvent && isEventLockedPast3Days({ ...currentEvent, sessions: meta.sessions || [] }) && !isSuperAdmin) {
       return NextResponse.json(
         {
           success: false,
@@ -205,7 +212,6 @@ export async function DELETE(
       );
     }
 
-    const meta = await getEventMeta(supabase, resolvedParams.id);
     const updatedSessions = (meta.sessions || []).filter((s) => s.id !== sessionId);
 
     await saveEventMeta(supabase, resolvedParams.id, {

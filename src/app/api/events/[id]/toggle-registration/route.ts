@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isEventScheduleExpired, isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { getEventMeta } from '@/lib/constants/event-meta-store';
 
 export async function POST(
   req: Request,
@@ -19,19 +20,21 @@ export async function POST(
 
   const supabase = await createClient();
 
-  // 1. Fetch current event
-  const { data: event, error: eventErr } = await supabase
-    .from('events')
-    .select('*')
-    .eq('event_id', resolvedParams.id)
-    .single();
+  // 1. Fetch current event & meta
+  const [eventResult, meta] = await Promise.all([
+    supabase.from('events').select('*').eq('event_id', resolvedParams.id).single(),
+    getEventMeta(supabase, resolvedParams.id),
+  ]);
+  const event = eventResult.data;
 
-  if (eventErr || !event) {
+  if (eventResult.error || !event) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
+  const eventWithSessions = { ...event, sessions: meta.sessions || [] };
+
   // Khóa thay đổi cổng đăng ký khi sự kiện đã kết thúc quá 3 ngày (trừ Super Admin)
-  if (isEventLockedPast3Days(event) && !isSuperAdmin) {
+  if (isEventLockedPast3Days(eventWithSessions) && !isSuperAdmin) {
     return NextResponse.json(
       {
         success: false,
@@ -53,7 +56,7 @@ export async function POST(
 
   // If reopening registration on an expired event, only Super Admin & Đoàn TN can do it
   if (newOpen) {
-    const isExpired = isEventScheduleExpired(event);
+    const isExpired = isEventScheduleExpired(eventWithSessions);
     if (isExpired && !isPrivileged) {
       return NextResponse.json(
         {

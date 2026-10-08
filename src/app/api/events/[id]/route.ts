@@ -50,7 +50,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     target_scope: meta.target_scope || 'all',
     max_participants: meta.max_participants || 0,
     max_volunteers: meta.max_volunteers || 0,
-    is_locked_past_3_days: isEventLockedPast3Days(data),
+    is_locked_past_3_days: isEventLockedPast3Days({ ...data, sessions: meta.sessions || [] }),
   };
 
   // Save to cache
@@ -96,8 +96,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
 
+  const meta = await getEventMeta(supabase, resolvedParams.id);
+
   // Khóa toàn bộ quyền chỉnh sửa khi sự kiện đã kết thúc quá 3 ngày (trừ Super Admin)
-  if (isEventLockedPast3Days(currentEvent) && !isSuperAdmin) {
+  if (isEventLockedPast3Days({ ...currentEvent, sessions: meta.sessions || [] }) && !isSuperAdmin) {
     return NextResponse.json(
       {
         success: false,
@@ -266,8 +268,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
+  const meta = await getEventMeta(supabase, resolvedParams.id);
+
   // Khóa quyền xóa khi sự kiện đã kết thúc quá 3 ngày (trừ Super Admin)
-  if (isEventLockedPast3Days(currentEvent) && !isSuperAdmin) {
+  if (isEventLockedPast3Days({ ...currentEvent, sessions: meta.sessions || [] }) && !isSuperAdmin) {
     return NextResponse.json(
       {
         success: false,
