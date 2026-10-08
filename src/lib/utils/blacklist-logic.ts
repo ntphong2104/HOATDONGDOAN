@@ -3,6 +3,8 @@
 // ════════════════════════════════════════════════════════════════
 
 
+import { isEventLockedPast3Days } from './event-logic';
+
 export const MAX_MISSED_STRIKES = 3;
 
 export interface PenaltyEvaluation {
@@ -497,7 +499,11 @@ export async function reconcileAllPastEvents(supabase: any): Promise<ReconcileSu
   // 3. Process each past event
   for (const event of pastEvents) {
     try {
-      // Skip if event has sessions that haven't ended yet (multi-session events)
+      if (event.status === 'active') {
+        continue;
+      }
+      // Skip if event has sessions that haven't ended yet or is within 3 days
+      let meta: any = null;
       try {
         const { data: metaRow } = await supabase
           .from('system_settings')
@@ -505,20 +511,13 @@ export async function reconcileAllPastEvents(supabase: any): Promise<ReconcileSu
           .eq('key', `event_meta_${event.event_id}`)
           .maybeSingle();
         if (metaRow?.value) {
-          const meta = typeof metaRow.value === 'string' ? JSON.parse(metaRow.value) : metaRow.value;
-          if (meta?.sessions && Array.isArray(meta.sessions) && meta.sessions.length > 0) {
-            const sessionDates = meta.sessions
-              .map((s: any) => s.session_date)
-              .filter(Boolean)
-              .sort();
-            const lastSessionDate = sessionDates[sessionDates.length - 1];
-            if (lastSessionDate && lastSessionDate > thresholdDate) {
-              // Last session hasn't passed threshold yet — skip this event
-              continue;
-            }
-          }
+          meta = typeof metaRow.value === 'string' ? JSON.parse(metaRow.value) : metaRow.value;
         }
       } catch {}
+
+      if (!isEventLockedPast3Days({ ...event, sessions: meta?.sessions || [] })) {
+        continue;
+      }
 
       // Check registrations and checkins
       const [{ data: registrations }, { data: checkIns }] = await Promise.all([

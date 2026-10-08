@@ -49,13 +49,8 @@ export async function GET() {
 
   if (error) return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
 
-  // Auto-close expired events in background — but check sessions first
-  const expiredEventIds: string[] = [];
-  
   // Batch-fetch all event meta (sessions) to correctly determine deadline
-  const metaKeys = (events || [])
-    .filter((ev: any) => ev.status === 'active')
-    .map((ev: any) => `event_meta_${ev.event_id}`);
+  const metaKeys = (events || []).map((ev: any) => `event_meta_${ev.event_id}`);
   
   let metaMap: Record<string, any> = {};
   if (metaKeys.length > 0) {
@@ -75,20 +70,8 @@ export async function GET() {
   const processedEvents = (events || []).map((ev: any) => {
     const sessions = metaMap[ev.event_id]?.sessions || [];
     const isPast = isEventPastDeadline({ ...ev, sessions });
-    if (isPast && ev.status === 'active') {
-      expiredEventIds.push(ev.event_id);
-      return { ...ev, status: 'closed', is_active: false };
-    }
-    return ev;
+    return { ...ev, is_past_deadline: isPast };
   });
-
-  if (expiredEventIds.length > 0) {
-    supabase
-      .from('events')
-      .update({ status: 'closed', is_active: false })
-      .in('event_id', expiredEventIds)
-      .then(() => {});
-  }
 
   return NextResponse.json({ success: true, data: processedEvents });
 }

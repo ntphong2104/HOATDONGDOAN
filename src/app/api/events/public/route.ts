@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,8 +38,12 @@ export async function GET() {
     }
 
     const activeEvents = (events || []).filter((ev) => {
+      if (ev.status === 'closed') return false;
       const sessions = metaMap[ev.event_id]?.sessions || [];
-      return !isEventPastDeadline({ ...ev, sessions }) && ev.status !== 'closed';
+      if (ev.status === 'active') {
+        return !isEventLockedPast3Days({ ...ev, sessions });
+      }
+      return !isEventPastDeadline({ ...ev, sessions });
     });
 
     return NextResponse.json({ success: true, data: activeEvents });

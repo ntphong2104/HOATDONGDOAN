@@ -181,9 +181,6 @@ export async function POST(req: Request) {
 
     const eventWithSessions = { ...event, sessions: meta?.sessions || [] };
     if (!isSuperOrEventAdmin && (event.status !== 'active' || isEventPastDeadline(eventWithSessions))) {
-      if (event.status === 'active' && isEventPastDeadline(eventWithSessions)) {
-        supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', event_id).then(() => {});
-      }
       return NextResponse.json({ success: false, error: 'Bad Request', message: 'Sự kiện đã đóng hoặc đã kết thúc điểm danh (quá 1 giờ sau khi kết thúc)' }, { status: 400 });
     }
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { isEventPastDeadline, isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta, saveEventMeta, type EventMeta } from '@/lib/constants/event-meta-store';
 
 export const dynamic = 'force-dynamic';
@@ -36,11 +36,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   
   if (error || !data) return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện'}, { status: 404 });
   
-  if (data && data.status === 'active' && isEventPastDeadline({ ...data, sessions: meta.sessions || [] })) {
-    data.status = 'closed';
-    data.is_active = false;
-    supabase.from('events').update({ status: 'closed', is_active: false }).eq('event_id', eventId).then(() => {});
-  }
   const enriched = {
     ...data,
     departments: meta.departments || [],
@@ -130,20 +125,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     allowed_cohorts,
   } = body;
 
-  // Kiểm tra quyền MỞ LẠI sự kiện khi đã quá 1 tiếng sau giờ kết thúc
-  if (status === 'active') {
-    const isExpired = isEventPastDeadline(currentEvent);
-    if (isExpired && !isPrivileged) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Chương trình đã kết thúc quá 1 giờ và tự động đóng. Cán bộ đơn vị trực thuộc không được phép tự mở lại. Chỉ Super Admin hoặc Đoàn Thanh Niên mới có quyền mở lại sự kiện này.',
-        },
-        { status: 403 }
-      );
-    }
-  }
 
   // Cán bộ đơn vị trực thuộc chỉ được sửa sự kiện mình phụ trách
   if (!isPrivileged) {
@@ -192,17 +173,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (status !== undefined) {
     dbPayload.status = status;
     dbPayload.is_active = status === 'active';
-
-    if (status === 'active' && isEventPastDeadline(currentEvent) && isPrivileged) {
-      const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
-      const todayStr = nowVN.toISOString().split('T')[0];
-      if (currentEvent.event_date < todayStr && !event_date) {
-        dbPayload.event_date = todayStr;
-      }
-      if (!end_time) {
-        dbPayload.end_time = '23:59';
-      }
-    }
   }
 
   if (event_name !== undefined) dbPayload.event_name = event_name;

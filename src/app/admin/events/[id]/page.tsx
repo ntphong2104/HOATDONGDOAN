@@ -986,12 +986,6 @@ export default function EventDetailPage({ params }: { params?: any }) {
       return;
     }
     const newStatus = event.status === 'active' ? 'closed' : 'active';
-    const isPast = isEventPastDeadline(event);
-
-    if (newStatus === 'active' && isPast && !isPrivileged) {
-      alert('Chương trình đã kết thúc quá 1 giờ và tự động đóng. Cán bộ đơn vị trực thuộc không được phép tự mở lại. Vui lòng liên hệ Super Admin hoặc Đoàn Thanh Niên Học Viện để được hỗ trợ.');
-      return;
-    }
 
     const actionText = newStatus === 'active' ? 'MỞ LẠI' : 'ĐÓNG';
     if (!confirm(`Xác nhận ${actionText} sự kiện "${event.event_name}"?`)) return;
