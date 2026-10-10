@@ -110,53 +110,58 @@ export default function ProfileCompletionGate() {
 
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="profile-gate-title">
-      <form className={styles.card} onSubmit={handleSubmit}>
-        <h2 id="profile-gate-title" className={styles.title}>Cập nhật thông tin cá nhân</h2>
+      <div className={styles.card}>
+        <h3 id="profile-gate-title" className={styles.title}>Cập Nhật Thông Tin Cá Nhân</h3>
         <p className={styles.desc}>
           Hệ thống chưa có {needName && needClass ? 'họ tên và lớp' : needName ? 'họ tên' : 'lớp'} của bạn
           {mssv ? <> (MSSV <b>{mssv}</b>)</> : null}. Vui lòng nhập để Ban tổ chức ghi nhận điểm danh và minh chứng
-          chính xác.
+          chính xác. Sau khi lưu, chỉ Đoàn trường mới chỉnh sửa được thông tin này.
         </p>
 
-        {needName && (
-          <label className={styles.field}>
-            <span className={styles.label}>Họ và tên</span>
-            <input
-              className={styles.input}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="VD: Nguyễn Văn An"
-              autoComplete="name"
-              maxLength={60}
-              required
-              autoFocus
-            />
-          </label>
-        )}
+        <form className={styles.form} onSubmit={handleSubmit}>
+          {needName && (
+            <div>
+              <label className={styles.label} htmlFor="profile-gate-name">Họ và tên</label>
+              <input
+                id="profile-gate-name"
+                className={styles.input}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Ví dụ: Nguyễn Văn An"
+                autoComplete="name"
+                maxLength={60}
+                required
+                autoFocus
+              />
+            </div>
+          )}
 
-        {needClass && (
-          <label className={styles.field}>
-            <span className={styles.label}>Lớp</span>
-            <input
-              className={styles.input}
-              value={classId}
-              onChange={(e) => setClassId(e.target.value.toUpperCase())}
-              placeholder="VD: D25CQMR02-N"
-              autoCapitalize="characters"
-              maxLength={20}
-              required
-              autoFocus={!needName}
-            />
-          </label>
-        )}
+          {needClass && (
+            <div>
+              <label className={styles.label} htmlFor="profile-gate-class">Lớp</label>
+              <input
+                id="profile-gate-class"
+                className={styles.input}
+                value={classId}
+                onChange={(e) => setClassId(e.target.value.toUpperCase())}
+                placeholder="Ví dụ: D25CQMR02-N"
+                autoCapitalize="characters"
+                maxLength={20}
+                required
+                autoFocus={!needName}
+              />
+            </div>
+          )}
 
-        {error && <div className={styles.error}>{error}</div>}
+          {error && <div className={styles.error}>{error}</div>}
 
-        <button type="submit" className={styles.submit} disabled={saving}>
-          {saving ? 'Đang lưu...' : 'Lưu thông tin'}
-        </button>
-        <p className={styles.note}>Sau khi lưu, chỉ Đoàn trường mới chỉnh sửa được thông tin này.</p>
-      </form>
+          <div className={styles.actions}>
+            <button type="submit" className={styles.submit} disabled={saving}>
+              {saving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

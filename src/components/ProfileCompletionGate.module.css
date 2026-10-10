@@ -1,102 +1,100 @@
+/* Mirrors the existing "Cập Nhật Thông Tin Cá Nhân" modal in StudentDashboardClient
+   (same overlay, card, label, input and primary button styles). No icons. */
+
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(3px);
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1000;
   padding: 1rem;
+  animation: fadeIn var(--duration-normal) var(--ease-smooth);
 }
 
 .card {
-  width: 100%;
-  max-width: 420px;
   background: #ffffff;
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
+  border-radius: 20px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
+  animation: modalScale var(--duration-modal) var(--ease-spring);
 }
 
 .title {
-  margin: 0;
-  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
   font-weight: 800;
-  color: #1e3a8a;
+  color: #0f172a;
 }
 
 .desc {
-  margin: 0;
-  font-size: 0.9rem;
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
   line-height: 1.5;
-  color: #475569;
+  color: #64748b;
 }
 
-.field {
+.form {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 1rem;
 }
 
 .label {
-  font-size: 0.85rem;
+  display: block;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: #0f172a;
+  color: #334155;
+  margin-bottom: 0.35rem;
 }
 
 .input {
   width: 100%;
-  box-sizing: border-box;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  font-size: 1rem; /* >=16px avoids iOS zoom on focus */
-  color: #0f172a;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
   background: #f8fafc;
-}
-
-.input:focus {
-  outline: none;
-  border-color: #2563eb;
-  background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #0f172a;
+  box-sizing: border-box;
 }
 
 .error {
   font-size: 0.85rem;
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  padding: 0.55rem 0.75rem;
+  font-weight: 600;
+  color: var(--error-700);
+  background: var(--error-50);
+  border: 1.5px solid var(--error-100);
+  border-radius: 12px;
+  padding: 0.6rem 1rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
 }
 
 .submit {
-  width: 100%;
-  padding: 0.8rem;
-  border: none;
-  border-radius: 10px;
-  background: #2563eb;
+  padding: 0.65rem 1.5rem;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: #ffffff;
-  font-size: 0.95rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
 }
 
 .submit:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
-}
-
-.note {
-  margin: 0;
-  font-size: 0.75rem;
-  color: #94a3b8;
-  text-align: center;
 }
