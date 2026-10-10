@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, Inter } from 'next/font/google';
 import { ToastProvider } from '@/components/ToastProvider';
+import ProfileCompletionGate from '@/components/ProfileCompletionGate';
 import './globals.css';
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -103,7 +104,10 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          {children}
+          <ProfileCompletionGate />
+        </ToastProvider>
       </body>
     </html>
   );

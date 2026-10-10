@@ -195,6 +195,10 @@ export interface SessionUser {
   unit_name?: string;
   unit_code?: string;
   managed_events: ManagedEvent[];
+  /** Student account whose real name/class is still unknown (placeholder MSSV / PTIT-HCM). */
+  profile_incomplete?: boolean;
+  /** Which fields the student still has to fill in. */
+  profile_missing_fields?: ('full_name' | 'class_id')[];
 }
 
 export interface ManagedEvent {

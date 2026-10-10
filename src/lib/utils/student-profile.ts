@@ -82,3 +82,99 @@ export async function resolveStudentProfiles(
 
   return result;
 }
+
+// ─── Parsing / validation / persistence of a student's own profile ───
+
+/**
+ * PTIT Google account display names look like "D22CQCN02-N NGUYEN THANH PHONG".
+ * Returns the class prefix and the real name when present.
+ */
+export function parseGoogleStudentName(raw?: string | null): { full_name: string | null; class_id: string | null } {
+  const s = String(raw || '').trim().replace(/\s+/g, ' ');
+  if (!s || s.includes('@')) return { full_name: null, class_id: null };
+  const match = s.match(/^([A-Z]\d{2}[A-Z0-9-]+)\s+(.+)$/i);
+  if (match) {
+    return { full_name: match[2].trim(), class_id: match[1].toUpperCase() };
+  }
+  return { full_name: s, class_id: null };
+}
+
+/** Normalises and validates a student-entered full name. Returns null when invalid. */
+export function normalizeStudentFullName(input: unknown): string | null {
+  const s = String(input ?? '').normalize('NFC').trim().replace(/\s+/g, ' ');
+  if (s.length < 4 || s.length > 60) return null;
+  if (!/^[\p{L}][\p{L}\s.'-]*$/u.test(s)) return null; // letters, spaces, . ' - only
+  if (s.split(' ').length < 2) return null; // at least family + given name
+  return s;
+}
+
+/** Normalises and validates a class code like "D25CQMR02-N". Returns null when invalid. */
+export function normalizeStudentClassId(input: unknown): string | null {
+  const s = String(input ?? '').trim().toUpperCase().replace(/\s+/g, '');
+  if (!/^[A-Z]\d{2}[A-Z0-9-]{2,15}$/.test(s)) return null;
+  if (s === PLACEHOLDER_CLASS) return null;
+  return s;
+}
+
+/**
+ * Persists a student's real name/class to `users` and back-fills this student's
+ * event_registrations rows that still hold placeholder values.
+ */
+export async function saveStudentProfile(
+  supabase: any,
+  params: { mssv: string; email: string; full_name?: string | null; class_id?: string | null }
+): Promise<{ ok: boolean; error?: string }> {
+  const mssv = String(params.mssv || '').trim().toUpperCase();
+  const email = String(params.email || '').trim().toLowerCase();
+  if (!supabase || !mssv || !email) return { ok: false, error: 'missing_identity' };
+
+  const patch: Record<string, string> = {};
+  if (params.full_name) patch.full_name = params.full_name;
+  if (params.class_id) patch.class_id = params.class_id;
+  if (Object.keys(patch).length === 0) return { ok: true };
+
+  try {
+    // Update existing row (imported rows are keyed by MSSV)
+    const { data: updated, error: updErr } = await supabase
+      .from('users')
+      .update(patch)
+      .ilike('mssv', mssv)
+      .select('mssv');
+    if (updErr) return { ok: false, error: updErr.message };
+
+    if (!updated || updated.length === 0) {
+      const { error: insErr } = await supabase.from('users').upsert(
+        {
+          mssv,
+          email,
+          full_name: patch.full_name || mssv,
+          class_id: patch.class_id || PLACEHOLDER_CLASS,
+        },
+        { onConflict: 'email' }
+      );
+      if (insErr) return { ok: false, error: insErr.message };
+    }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'save_failed' };
+  }
+
+  // Best-effort back-fill of placeholder registration rows for this student
+  try {
+    if (patch.full_name) {
+      await supabase
+        .from('event_registrations')
+        .update({ full_name: patch.full_name })
+        .ilike('mssv', mssv)
+        .or(`full_name.is.null,full_name.eq.,full_name.ilike.${mssv}`);
+    }
+    if (patch.class_id) {
+      await supabase
+        .from('event_registrations')
+        .update({ class_id: patch.class_id })
+        .ilike('mssv', mssv)
+        .or(`class_id.is.null,class_id.eq.,class_id.eq.${PLACEHOLDER_CLASS}`);
+    }
+  } catch {}
+
+  return { ok: true };
+}

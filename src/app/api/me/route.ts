@@ -6,6 +6,15 @@ import { parseDemoCookie, getVerifiedUserFromCookies, invalidateAuthContextCache
 import { getUserProfileExtra, saveUserProfileExtra } from '@/lib/constants/user-profile-store';
 import type { SessionUser, UserTier } from '@/lib/types';
 import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
+import { extractMSSV } from '@/lib/utils/extract-mssv';
+import {
+  isPlaceholderName,
+  isPlaceholderClass,
+  parseGoogleStudentName,
+  normalizeStudentFullName,
+  normalizeStudentClassId,
+  saveStudentProfile,
+} from '@/lib/utils/student-profile';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -356,6 +365,42 @@ export async function GET() {
       };
     }
 
+    // ── Student profile completeness ──
+    // MSSV-only imports create placeholder profiles (name = MSSV, class = PTIT-HCM).
+    // 1) Try to heal silently from the Google display name ("D25CQMR02-N LE NGOC BAO LINH").
+    // 2) If still incomplete, flag it so the UI forces the student to enter it.
+    const studentMssv = extractMSSV(email);
+    let profileIncomplete = false;
+    const profileMissingFields: ('full_name' | 'class_id')[] = [];
+    if (studentMssv && !isSuperAdmin) {
+      const needName = isPlaceholderName(userRecord?.full_name, studentMssv);
+      const needClass = isPlaceholderClass(userRecord?.class_id);
+      if (needName || needClass) {
+        const parsed = parseGoogleStudentName(googleName);
+        const healName = needName ? normalizeStudentFullName(parsed.full_name) : null;
+        const healClass = needClass ? normalizeStudentClassId(parsed.class_id) : null;
+        if (healName || healClass) {
+          const saved = await saveStudentProfile(adminClient, {
+            mssv: studentMssv,
+            email,
+            full_name: healName,
+            class_id: healClass,
+          });
+          if (saved.ok) {
+            userRecord = {
+              ...userRecord,
+              mssv: userRecord?.mssv || studentMssv,
+              full_name: healName || userRecord?.full_name,
+              class_id: healClass || userRecord?.class_id,
+            };
+          }
+        }
+      }
+      if (isPlaceholderName(userRecord?.full_name, studentMssv)) profileMissingFields.push('full_name');
+      if (isPlaceholderClass(userRecord?.class_id)) profileMissingFields.push('class_id');
+      profileIncomplete = profileMissingFields.length > 0;
+    }
+
     const defaultNames: Record<string, { mssv: string; name: string; classId: string }> = {
       youth_union: { mssv: 'DOAN-HV', name: 'Đ/c Bí Thư Đoàn Học Viện', classId: 'BCH-DOAN' },
       ctsv: { mssv: 'PHONG-CTSV', name: 'Phòng Công Tác Sinh Viên (CTSV)', classId: 'PHONG-BAN' },
@@ -443,6 +488,8 @@ export async function GET() {
       unit_name: assignedOfficerRole?.unit_name,
       unit_code: assignedOfficerRole?.unit_code,
       managed_events,
+      profile_incomplete: profileIncomplete,
+      profile_missing_fields: profileMissingFields,
     };
 
     meResponseCache.set(email.toLowerCase(), { data: sessionUser, expiresAt: Date.now() + 15000 });
@@ -516,25 +563,94 @@ export async function PATCH(req: Request) {
     const email = user.email.toLowerCase();
     const username = email.split('@')[0].toUpperCase();
 
-    saveUserProfileExtra(email, { gender, phone });
-    saveUserProfileExtra(username, { gender, phone });
+    // ── Real name / class (students only) ──
+    const wantsIdentityUpdate = body.full_name !== undefined || body.class_id !== undefined;
+    let savedIdentity: { full_name?: string; class_id?: string } = {};
+    if (wantsIdentityUpdate) {
+      const studentMssv = extractMSSV(email);
+      if (!studentMssv) {
+        return NextResponse.json(
+          { success: false, error: 'Chỉ tài khoản sinh viên mới cập nhật họ tên / lớp tại đây' },
+          { status: 403, headers: noCacheHeaders }
+        );
+      }
+      const fullName = body.full_name !== undefined ? normalizeStudentFullName(body.full_name) : null;
+      const classId = body.class_id !== undefined ? normalizeStudentClassId(body.class_id) : null;
+      if (body.full_name !== undefined && !fullName) {
+        return NextResponse.json(
+          { success: false, error: 'Họ và tên không hợp lệ (ghi đầy đủ họ và tên, chỉ gồm chữ cái).' },
+          { status: 400, headers: noCacheHeaders }
+        );
+      }
+      if (body.class_id !== undefined && !classId) {
+        return NextResponse.json(
+          { success: false, error: 'Mã lớp không hợp lệ (ví dụ: D25CQMR02-N).' },
+          { status: 400, headers: noCacheHeaders }
+        );
+      }
+      const adminSupabase = await createAdminClient();
+
+      // Only allow filling in values that are still placeholders — a recorded real
+      // name/class can't be overwritten by the student (contact Đoàn to correct it).
+      const { data: currentRow } = await adminSupabase
+        .from('users')
+        .select('full_name, class_id')
+        .ilike('mssv', studentMssv)
+        .maybeSingle();
+      const nameLocked = currentRow && !isPlaceholderName(currentRow.full_name, studentMssv);
+      const classLocked = currentRow && !isPlaceholderClass(currentRow.class_id);
+      if ((fullName && nameLocked && fullName !== currentRow.full_name) ||
+          (classId && classLocked && classId !== currentRow.class_id)) {
+        return NextResponse.json(
+          { success: false, error: 'Thông tin họ tên / lớp đã được ghi nhận. Liên hệ Đoàn trường nếu cần chỉnh sửa.' },
+          { status: 403, headers: noCacheHeaders }
+        );
+      }
+
+      const saved = await saveStudentProfile(adminSupabase, {
+        mssv: studentMssv,
+        email,
+        full_name: fullName,
+        class_id: classId,
+      });
+      if (!saved.ok) {
+        console.error('[me PATCH] saveStudentProfile failed:', saved.error);
+        return NextResponse.json(
+          { success: false, error: 'Không lưu được thông tin, vui lòng thử lại.' },
+          { status: 500, headers: noCacheHeaders }
+        );
+      }
+      if (fullName) savedIdentity.full_name = fullName;
+      if (classId) savedIdentity.class_id = classId;
+    }
+
     meResponseCache.delete(email);
     invalidateAuthContextCache(email);
 
-    // Persist to Supabase for durability across restarts
-    try {
-      const supabase = await createAdminClient();
-      const profileKey = `user_profile_${email}`;
-      await supabase.from('system_settings').upsert({
-        key: profileKey,
-        value: { gender, phone, updated_at: new Date().toISOString() },
-      }, { onConflict: 'key' });
-    } catch {}
+    const wantsExtraUpdate = gender !== undefined || phone !== undefined;
+    if (wantsExtraUpdate) {
+      const extraPatch: Record<string, any> = {};
+      if (gender !== undefined) extraPatch.gender = gender;
+      if (phone !== undefined) extraPatch.phone = phone;
+      saveUserProfileExtra(email, extraPatch);
+      saveUserProfileExtra(username, extraPatch);
+
+      // Persist to Supabase for durability across restarts
+      try {
+        const supabase = await createAdminClient();
+        const profileKey = `user_profile_${email}`;
+        const merged = getUserProfileExtra(email) || extraPatch;
+        await supabase.from('system_settings').upsert({
+          key: profileKey,
+          value: { gender: merged.gender, phone: merged.phone, updated_at: new Date().toISOString() },
+        }, { onConflict: 'key' });
+      } catch {}
+    }
 
     return NextResponse.json({
       success: true,
       message: 'Đã cập nhật thông tin cá nhân thành công!',
-      data: { gender, phone },
+      data: { gender, phone, ...savedIdentity },
     }, { headers: noCacheHeaders });
   } catch (err: any) {
     console.error('Update profile error:', err);

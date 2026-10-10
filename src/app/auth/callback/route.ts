@@ -3,6 +3,13 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isValidSchoolEmail, extractMSSV } from '@/lib/utils/extract-mssv';
 import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
 import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
+import {
+  isPlaceholderName,
+  isPlaceholderClass,
+  parseGoogleStudentName,
+  normalizeStudentFullName,
+  normalizeStudentClassId,
+} from '@/lib/utils/student-profile';
 
 function getPublicOrigin(request: Request): string {
   const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
@@ -121,21 +128,18 @@ export async function GET(request: Request) {
           session.user.user_metadata?.name ||
           '';
 
-        let className = (existingUser?.class_id && existingUser.class_id !== 'PTIT-HCM') ? existingUser.class_id : 'PTIT-HCM';
-        let actualName = (existingUser?.full_name && !existingUser.full_name.includes('@'))
-          ? existingUser.full_name
-          : (rawName || studentMssv);
+        // Keep existing REAL values; replace placeholders (name = MSSV, class = PTIT-HCM)
+        // with what the Google account provides ("D22CQCN02-N NGUYEN THANH PHONG").
+        const parsedGoogle = parseGoogleStudentName(rawName);
+        const googleName = normalizeStudentFullName(parsedGoogle.full_name);
+        const googleClass = normalizeStudentClassId(parsedGoogle.class_id);
 
-        // PTIT Google account name format: "D22CQCN02-N NGUYEN THANH PHONG"
-        const match = rawName.match(/^([A-Z]\d{2}[A-Z0-9-]+)\s+(.+)$/i);
-        if (match) {
-          if (!existingUser?.class_id || existingUser.class_id === 'PTIT-HCM') {
-            className = match[1].toUpperCase();
-          }
-          if (!existingUser?.full_name || existingUser.full_name.includes('@')) {
-            actualName = match[2].trim();
-          }
-        }
+        const className = !isPlaceholderClass(existingUser?.class_id)
+          ? existingUser!.class_id
+          : (googleClass || 'PTIT-HCM');
+        const actualName = !isPlaceholderName(existingUser?.full_name, studentMssv)
+          ? existingUser!.full_name
+          : (googleName || existingUser?.full_name || studentMssv);
 
         await supabase.from('users').upsert(
           {
