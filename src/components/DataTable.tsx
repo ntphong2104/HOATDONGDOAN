@@ -7,7 +7,8 @@ import styles from './DataTable.module.css';
 export interface Column {
   key: string;
   label: React.ReactNode;
-  render?: (val: any, row: Record<string, any>) => React.ReactNode;
+  /** `index` is the 0-based position of the row in the full (filtered) list, across pages. */
+  render?: (val: any, row: Record<string, any>, index?: number) => React.ReactNode;
 }
 
 interface DataTableProps {
@@ -123,7 +124,9 @@ export default function DataTable({
                 <tr key={rowIndex}>
                   {activeColumns.map((col) => (
                     <td key={col.key} data-label={col.label}>
-                      {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '-')}
+                      {col.render
+                        ? col.render(row[col.key], row, (currentPage - 1) * pageSize + rowIndex)
+                        : (row[col.key] ?? '-')}
                     </td>
                   ))}
                 </tr>

@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getSessionCheckIns, getEventMeta } from '@/lib/constants/event-meta-store';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
+import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -110,23 +111,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
   });
 
-  // Fetch master user profiles for all checkin MSSVs to guarantee real student full name and class
+  // Resolve real student name & class (ignores placeholder MSSV / 'PTIT-HCM' profiles
+  // created by MSSV-only imports and falls back to names entered in any registration)
   const allMssvs = [...checkinsMap.keys()];
   if (allMssvs.length > 0) {
-    const { data: userProfiles } = await supabase
-      .from('users')
-      .select('mssv, full_name, class_id')
-      .in('mssv', allMssvs);
-
-    const uMap = new Map((userProfiles || []).map((u) => [u.mssv.toUpperCase(), u]));
+    const profiles = await resolveStudentProfiles(supabase, allMssvs);
 
     checkinsMap.forEach((val, key) => {
-      const u = uMap.get(key.toUpperCase());
-      if (u?.full_name && !u.full_name.includes('@')) {
-        val.full_name = u.full_name;
+      const p = profiles.get(key.toUpperCase());
+      if (p?.full_name) {
+        val.full_name = p.full_name;
+      } else if (isPlaceholderName(val.full_name, key)) {
+        val.full_name = ''; // unknown real name -> UI shows '—' instead of repeating MSSV
       }
-      if (u?.class_id) {
-        val.class_id = u.class_id;
+      if (p?.class_id) {
+        val.class_id = p.class_id;
+      } else if (isPlaceholderClass(val.class_id)) {
+        val.class_id = '';
       }
     });
   }

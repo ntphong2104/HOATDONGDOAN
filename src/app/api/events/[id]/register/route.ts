@@ -7,6 +7,7 @@ import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
+import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
 
 export async function GET(
   req: Request,
@@ -118,26 +119,22 @@ export async function GET(
   let allRegistrations = undefined;
   if (isAdmin && list) {
     const mssvList = list.map((r: any) => r.mssv).filter(Boolean);
-    const { data: userProfiles } = await supabase
-      .from('users')
-      .select('mssv, full_name, class_id')
-      .in('mssv', mssvList);
-
-    const userProfileMap = new Map((userProfiles || []).map((u) => [u.mssv.toUpperCase(), u]));
+    // Best-known real name/class across users + all registrations (skips MSSV / 'PTIT-HCM' placeholders)
+    const resolvedProfiles = await resolveStudentProfiles(supabase, mssvList);
 
     const checkInMssvSet = new Set((checkinList || []).map((c: any) => (c.mssv || '').toUpperCase().trim()));
     const needsAttendedUpdate: string[] = [];
 
     allRegistrations = (list || []).map((r) => {
       const extra = regExtras[(r.mssv || '').toUpperCase()] || {};
-      const uProfile = userProfileMap.get((r.mssv || '').toUpperCase());
-      const realName = (uProfile?.full_name && !uProfile.full_name.includes('@'))
-        ? uProfile.full_name
-        : (r.full_name && !r.full_name.includes('@'))
-        ? r.full_name
-        : uProfile?.full_name || r.full_name || r.mssv;
+      const resolved = resolvedProfiles.get((r.mssv || '').toUpperCase().trim());
+      const realName = resolved?.full_name
+        || (!isPlaceholderName(r.full_name, r.mssv) ? r.full_name : '')
+        || r.mssv;
 
-      const realClass = uProfile?.class_id || r.class_id || 'PTIT-HCM';
+      const realClass = resolved?.class_id
+        || (!isPlaceholderClass(r.class_id) ? r.class_id : '')
+        || 'PTIT-HCM';
       const cleanMssv = (r.mssv || '').toUpperCase().trim();
       const isAttended = Boolean(r.attended || checkInMssvSet.has(cleanMssv));
 
