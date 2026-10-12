@@ -23,6 +23,7 @@ import {
 import { OFFICIAL_UNITS, OFFICIAL_UNIT_GROUPS, resolveUnitForUser } from '@/lib/constants/units';
 import { isKhoaUnit } from '@/lib/utils/proposal-logic';
 import type { Room, ProposalSessionItem } from '@/lib/types';
+import { describeConflict, type RoomConflict } from '@/lib/utils/room-booking';
 import styles from './page.module.css';
 
 export default function NewProposalPage() {
@@ -151,13 +152,10 @@ export default function NewProposalPage() {
   const [description, setDescription] = useState('');
   const [planUrl, setPlanUrl] = useState('');
 
-  // Conflict state
+  // Conflict state (per session / ca)
   const [checkingConflict, setCheckingConflict] = useState(false);
-  const [conflictResult, setConflictResult] = useState<{
-    hasChecked: boolean;
-    conflict: boolean;
-    message?: string;
-  }>({ hasChecked: false, conflict: false });
+  const [conflictChecked, setConflictChecked] = useState(false);
+  const [roomConflicts, setRoomConflicts] = useState<RoomConflict[]>([]);
 
   // Whether the user is Super Admin (can pick any unit) or locked to their own
   const [lockedUnit, setLockedUnit] = useState<string | null>(null);
@@ -195,49 +193,74 @@ export default function NewProposalPage() {
       .catch((err) => console.error('Failed to fetch rooms', err));
   }, []);
 
-  // Real-time conflict checker
+  // Room + sessions exactly as they will be submitted
+  const buildBookingPayload = () => ({
+    room_id: isMultiSession ? (sessionsList[0]?.room_id || null) : (selectedRoomId || null),
+    room_name: isMultiSession ? (sessionsList[0]?.room_name || 'Không mượn') : selectedRoomName,
+    sessions: isMultiSession ? sessionsList : [
+      {
+        id: 'session_1',
+        name: 'Buổi 1 (Buổi chính)',
+        session_date: startDate,
+        start_time: startTime,
+        end_time: endTime,
+        room_id: selectedRoomId || null,
+        room_name: selectedRoomName,
+        participant_count: Number(participantCount) || 0,
+        purpose: description || 'Tổ chức sự kiện',
+        status: 'pending' as const,
+      },
+    ],
+  });
+
+  const isBorrowingAnyRoom = isMultiSession
+    ? sessionsList.some((s) => !!s.room_id)
+    : !!selectedRoomId && selectedRoomName !== 'Không mượn';
+
+  // Real-time per-session conflict checker
   useEffect(() => {
-    if (!selectedRoomId || selectedRoomName === 'Không mượn') {
-      setConflictResult({ hasChecked: false, conflict: false });
+    if (!isBorrowingAnyRoom || !startDate || !endDate || !startTime || !endTime) {
+      setRoomConflicts([]);
+      setConflictChecked(false);
+      setCheckingConflict(false);
       return;
     }
 
-    const startIso = `${startDate}T${startTime}:00`;
-    const endIso = `${endDate}T${endTime}:00`;
-
-    const startDt = new Date(startIso);
-    const endDt = new Date(endIso);
-
-    if (isNaN(startDt.getTime()) || isNaN(endDt.getTime()) || startDt >= endDt) {
-      setConflictResult({ hasChecked: false, conflict: false });
-      return;
-    }
-
+    let cancelled = false;
     setCheckingConflict(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `/api/proposals/check-conflict?room_id=${selectedRoomId}&start=${encodeURIComponent(
-            startDt.toISOString()
-          )}&end=${encodeURIComponent(endDt.toISOString())}`
-        );
+        const res = await fetch('/api/proposals/check-conflict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            start_date: startDate,
+            start_time: startTime,
+            end_date: endDate,
+            end_time: endTime,
+            ...buildBookingPayload(),
+          }),
+        });
         const data = await res.json();
-        if (data.success) {
-          setConflictResult({
-            hasChecked: true,
-            conflict: data.conflict,
-            message: data.message,
-          });
+        if (!cancelled && data.success) {
+          setRoomConflicts(Array.isArray(data.conflicts) ? data.conflicts : []);
+          setConflictChecked(true);
         }
       } catch (err) {
         console.error('Error checking room conflict', err);
       } finally {
-        setCheckingConflict(false);
+        if (!cancelled) setCheckingConflict(false);
       }
-    }, 400);
+    }, 450);
 
-    return () => clearTimeout(timer);
-  }, [selectedRoomId, selectedRoomName, startDate, startTime, endDate, endTime]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBorrowingAnyRoom, isMultiSession, sessionsList, selectedRoomId, selectedRoomName, startDate, startTime, endDate, endTime]);
+
+  const conflictsForSession = (sessionId: string) => roomConflicts.filter((c) => c.slot_key === sessionId);
 
   const handleRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const rId = e.target.value;
@@ -269,14 +292,10 @@ export default function NewProposalPage() {
     e.preventDefault();
     setErrorMessage('');
 
-    // Xác nhận trước khi nộp
-    const confirmed = window.confirm(
-      'Bạn có chắc chắn muốn GỬI TRÌNH KẾ HOẠCH này?\n\nSau khi gửi, kế hoạch sẽ được chuyển đến các cấp phê duyệt tương ứng.'
-    );
-    if (!confirmed) return;
-
-    if (conflictResult.conflict) {
-      setErrorMessage('Phòng đang chọn bị trùng lịch. Vui lòng chọn phòng hoặc thời gian khác.');
+    if (roomConflicts.length > 0) {
+      setErrorMessage(
+        `Có ${roomConflicts.length} ca bị trùng lịch phòng. Vui lòng đổi giờ/ngày hoặc chọn phòng khác cho các ca được đánh dấu đỏ.`
+      );
       return;
     }
 
@@ -286,7 +305,6 @@ export default function NewProposalPage() {
     }
 
     const startDatetime = new Date(`${startDate}T${startTime}`);
-    const endDatetime = new Date(`${endDate}T${endTime}`);
 
     // Reject past date events (allow 5 min buffer for clock precision)
     const now = new Date();
@@ -296,6 +314,12 @@ export default function NewProposalPage() {
       setErrorMessage('Thời gian bắt đầu sự kiện không thể ở trong quá khứ! Vui lòng chọn ngày và giờ hiện tại hoặc tương lai.');
       return;
     }
+
+    // Xác nhận trước khi nộp
+    const confirmed = window.confirm(
+      'Bạn có chắc chắn muốn GỬI TRÌNH KẾ HOẠCH này?\n\nSau khi gửi, kế hoạch sẽ được chuyển đến các cấp phê duyệt tương ứng.'
+    );
+    if (!confirmed) return;
 
     setSubmitting(true);
     try {
@@ -314,22 +338,7 @@ export default function NewProposalPage() {
           participant_count: Number(participantCount) || 0,
           volunteer_count: Number(volunteerCount) || 0,
           organizer_count: Number(organizerCount) || 0,
-          room_id: isMultiSession ? (sessionsList[0]?.room_id || null) : (selectedRoomId || null),
-          room_name: isMultiSession ? (sessionsList[0]?.room_name || 'Không mượn') : selectedRoomName,
-          sessions: isMultiSession ? sessionsList : [
-            {
-              id: 'session_1',
-              name: 'Buổi 1 (Buổi chính)',
-              session_date: startDate,
-              start_time: startTime,
-              end_time: endTime,
-              room_id: selectedRoomId || null,
-              room_name: selectedRoomName,
-              participant_count: Number(participantCount) || 0,
-              purpose: description || 'Tổ chức sự kiện',
-              status: 'pending',
-            },
-          ],
+          ...buildBookingPayload(),
         }),
       });
 
@@ -338,6 +347,10 @@ export default function NewProposalPage() {
         alert('Đã gửi kế hoạch thành công!');
         router.push(`/admin/proposals/${data.data.id}`);
       } else {
+        if (Array.isArray(data.conflicts)) {
+          setRoomConflicts(data.conflicts);
+          setConflictChecked(true);
+        }
         setErrorMessage(data.error || 'Lỗi gửi kế hoạch');
       }
     } catch (err: any) {
@@ -385,7 +398,7 @@ export default function NewProposalPage() {
         {errorMessage && (
           <div className={styles.errorAlert}>
             <AlertTriangleIcon size={20} color="#b91c1c" />
-            <span>{errorMessage}</span>
+            <span style={{ whiteSpace: 'pre-line' }}>{errorMessage}</span>
           </div>
         )}
 
@@ -806,15 +819,15 @@ export default function NewProposalPage() {
                   ))}
                 </select>
 
-                {selectedRoomId && selectedRoomName !== 'Không mượn' && (
+                {selectedRoomId && selectedRoomName !== 'Không mượn' && (checkingConflict || conflictChecked || roomConflicts.length > 0) && (
                   <div
                     style={{
                       marginTop: '0.75rem',
                       padding: '1.1rem 1.35rem',
                       borderRadius: '14px',
-                      border: conflictResult.conflict ? '1.5px solid #fca5a5' : '1.5px solid #86efac',
-                      background: conflictResult.conflict ? '#fef2f2' : '#f0fdf4',
-                      color: conflictResult.conflict ? '#991b1b' : '#166534',
+                      border: roomConflicts.length > 0 ? '1.5px solid #fca5a5' : '1.5px solid #86efac',
+                      background: roomConflicts.length > 0 ? '#fef2f2' : '#f0fdf4',
+                      color: roomConflicts.length > 0 ? '#991b1b' : '#166534',
                       fontSize: '0.925rem',
                       lineHeight: 1.5,
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
@@ -824,18 +837,35 @@ export default function NewProposalPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563eb' }}>
                         <span>Đang kiểm tra lịch trống của phòng với hệ thống...</span>
                       </div>
-                    ) : conflictResult.conflict ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <AlertTriangleIcon size={18} color="#b91c1c" />
-                        <span><strong style={{ color: '#b91c1c' }}>CẢNH BÁO TRÙNG LỊCH:</strong> {conflictResult.message}</span>
+                    ) : roomConflicts.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <AlertTriangleIcon size={18} color="#b91c1c" />
+                          <strong style={{ color: '#b91c1c' }}>CẢNH BÁO TRÙNG LỊCH ({roomConflicts.length}):</strong>
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          {roomConflicts.slice(0, 8).map((c, i) => (
+                            <li key={`${c.other_id}-${c.slot_date}-${i}`}>{describeConflict(c)}</li>
+                          ))}
+                        </ul>
+                        {roomConflicts.length > 8 && (
+                          <span style={{ fontSize: '0.85rem' }}>… và {roomConflicts.length - 8} ngày trùng khác.</span>
+                        )}
+                        <span style={{ fontSize: '0.85rem', color: '#7f1d1d' }}>
+                          Hãy đổi khung giờ/ngày tránh các khung trên, hoặc chọn phòng khác.
+                        </span>
                       </div>
-                    ) : (
+                    ) : conflictChecked ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <CheckCircleIcon size={18} color="#15803d" />
-                        <span><strong style={{ color: '#15803d' }}>PHÒNG TRỐNG SẴN SÀNG:</strong> Phòng <strong>{selectedRoomName}</strong> hoàn toàn
-                        trống trong khung giờ từ {startTime} ngày {startDate} đến {endTime} ngày {endDate}.</span>
+                        <span>
+                          <strong style={{ color: '#15803d' }}>PHÒNG TRỐNG SẴN SÀNG:</strong> Phòng <strong>{selectedRoomName}</strong> trống{' '}
+                          {startDate !== endDate && endTime > startTime
+                            ? <>khung <strong>{startTime}–{endTime} mỗi ngày</strong> từ {startDate} đến {endDate}.</>
+                            : <>từ {startTime} ngày {startDate} đến {endTime} ngày {endDate}.</>}
+                        </span>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -891,7 +921,7 @@ export default function NewProposalPage() {
                       key={sess.id}
                       style={{
                         background: '#f8fafc',
-                        border: '1.5px solid #e2e8f0',
+                        border: sess.room_id && conflictsForSession(sess.id).length > 0 ? '1.5px solid #fca5a5' : '1.5px solid #e2e8f0',
                         borderRadius: '16px',
                         padding: '1.25rem',
                         display: 'flex',
@@ -1009,6 +1039,37 @@ export default function NewProposalPage() {
                           }}
                         />
                       </div>
+
+                      {sess.room_id && conflictsForSession(sess.id).length > 0 && (
+                        <div
+                          style={{
+                            padding: '0.75rem 1rem',
+                            borderRadius: '10px',
+                            border: '1.5px solid #fca5a5',
+                            background: '#fef2f2',
+                            color: '#991b1b',
+                            fontSize: '0.85rem',
+                            lineHeight: 1.5,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.25rem',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <AlertTriangleIcon size={16} color="#b91c1c" />
+                            <strong style={{ color: '#b91c1c' }}>Ca này bị trùng lịch phòng:</strong>
+                          </div>
+                          {conflictsForSession(sess.id).map((c, i) => (
+                            <span key={`${c.other_id}-${i}`}>{describeConflict(c)}</span>
+                          ))}
+                        </div>
+                      )}
+                      {sess.room_id && conflictChecked && !checkingConflict && conflictsForSession(sess.id).length === 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#15803d', fontWeight: 600 }}>
+                          <CheckCircleIcon size={14} color="#15803d" />
+                          <span>Phòng trống trong ca này</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1382,6 +1443,15 @@ export default function NewProposalPage() {
           </div>
 
           {/* ═══════════════ FOOTER ACTION BAR ═══════════════ */}
+          {(errorMessage || roomConflicts.length > 0) && (
+            <div className={styles.errorAlert} style={{ marginBottom: 0 }}>
+              <AlertTriangleIcon size={20} color="#b91c1c" />
+              <span style={{ whiteSpace: 'pre-line' }}>
+                {errorMessage ||
+                  `Có ${roomConflicts.length} ca bị trùng lịch phòng (xem các ô đỏ ở Mục 3). Đổi giờ/ngày hoặc chọn phòng khác để có thể gửi.`}
+              </span>
+            </div>
+          )}
           <div className={styles.submitBar}>
             <Link
               href="/admin/proposals"
@@ -1392,7 +1462,7 @@ export default function NewProposalPage() {
 
             <button
               type="submit"
-              disabled={submitting || (selectedRoomId !== '' && conflictResult.conflict)}
+              disabled={submitting || roomConflicts.length > 0}
               className={styles.submitButton}
             >
               {submitting

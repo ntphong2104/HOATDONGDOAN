@@ -4,6 +4,8 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { summarizeUnitRatings } from '@/lib/utils/rating-logic';
 import { getStoredProposalById, getStoredProposalLogs, deleteProposalFromStore } from '@/lib/constants/proposals-store';
 import { getProposalMeta } from '@/lib/constants/event-meta-store';
+import { deriveBookingSchedule } from '@/lib/utils/room-booking';
+import { checkRoomConflicts } from '@/lib/utils/room-booking-server';
 
 export async function GET(
   req: Request,
@@ -62,6 +64,15 @@ export async function GET(
           ? propMeta.sessions
           : proposal.sessions || stored?.sessions || [];
 
+      // Per-session room conflicts with other active proposals (shown to approvers)
+      let roomConflicts: any[] = [];
+      if (proposal.status !== 'rejected' && proposal.status !== 'deleted') {
+        try {
+          const schedule = deriveBookingSchedule(proposal, proposalSessions);
+          roomConflicts = await checkRoomConflicts(supabase, schedule.slots, proposal.id);
+        } catch {}
+      }
+
       return NextResponse.json({
         success: true,
         data: {
@@ -69,6 +80,7 @@ export async function GET(
           description: proposal.description || propMeta.description || stored?.description || '',
           plan_url: proposal.plan_url || propMeta.plan_url || stored?.plan_url || '',
           sessions: proposalSessions,
+          room_conflicts: roomConflicts,
           logs: logs || [],
           ratingSummary,
           eventRatings,

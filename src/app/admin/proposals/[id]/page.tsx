@@ -26,10 +26,18 @@ import {
 import { getStageLabel, isKhoaUnit } from '@/lib/utils/proposal-logic';
 import { getRatingDepartmentLabel } from '@/lib/utils/rating-logic';
 import type { EventProposal, ProposalLog, ProposalStage, SessionUser, UnitRating } from '@/lib/types';
+import {
+  deriveBookingSchedule,
+  describeConflict,
+  describeSchedule,
+  formatDateVN,
+  type RoomConflict,
+} from '@/lib/utils/room-booking';
 
 interface ProposalDetail extends EventProposal {
   logs: ProposalLog[];
   eventRatings?: UnitRating[];
+  room_conflicts?: RoomConflict[];
 }
 
 export default function ProposalDetailPage({
@@ -357,6 +365,15 @@ export default function ProposalDetailPage({
       !l.notes.includes('Đã nộp kế hoạch') &&
       !l.notes.startsWith('Đã phê duyệt giai đoạn')
   );
+
+  // How this proposal actually occupies rooms (per session / daily window / continuous)
+  const bookingSchedule = deriveBookingSchedule(proposal, proposal.sessions || []);
+  const bookingSummary = describeSchedule(proposal, bookingSchedule);
+  const roomConflicts = proposal.room_conflicts || [];
+  const isMultiDay = !!proposal.end_date && proposal.end_date !== proposal.start_date;
+  const isLongBooking =
+    (bookingSchedule.mode === 'daily' && bookingSchedule.slots.length > 1) ||
+    (bookingSchedule.mode === 'range' && bookingSchedule.slots[0] && bookingSchedule.slots[0].end_date !== bookingSchedule.slots[0].date);
 
   return (
     <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column' }}>
@@ -738,6 +755,64 @@ export default function ProposalDetailPage({
             </div>
           )}
 
+          {/* ═══════════════ LỊCH MƯỢN PHÒNG & TRÙNG LỊCH (CHO NGƯỜI DUYỆT) ═══════════════ */}
+          {bookingSchedule.mode !== 'none' && (
+            <div
+              style={{
+                padding: '1.25rem 1.5rem',
+                background: roomConflicts.length > 0 ? '#fef2f2' : isLongBooking ? '#fffbeb' : '#f8fafc',
+                border: roomConflicts.length > 0 ? '2px solid #fca5a5' : isLongBooking ? '2px solid #f59e0b' : '1.5px solid #e2e8f0',
+                borderRadius: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.6rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: roomConflicts.length > 0 ? '#b91c1c' : isLongBooking ? '#b45309' : '#0f172a', fontWeight: 800, fontSize: '1rem' }}>
+                {roomConflicts.length > 0 || isLongBooking ? (
+                  <AlertTriangleIcon size={18} color={roomConflicts.length > 0 ? '#b91c1c' : '#b45309'} />
+                ) : (
+                  <MapPinIcon size={18} color="#2563eb" />
+                )}
+                <span>LỊCH MƯỢN PHÒNG THỰC TẾ</span>
+              </div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.5 }}>
+                {bookingSummary}
+              </div>
+              {isLongBooking && (
+                <div style={{ fontSize: '0.875rem', color: '#92400e', lineHeight: 1.5 }}>
+                  {bookingSchedule.mode === 'daily'
+                    ? `Kế hoạch này giữ phòng ${bookingSchedule.slots.length} ngày liên tiếp theo khung giờ trên. Nếu thực tế chỉ dùng một số buổi, đơn vị nên nộp theo chế độ "Nhiều Ca" để không chặn lịch của đơn vị khác.`
+                    : 'Kế hoạch này giữ phòng liên tục qua nhiều ngày (kể cả ban đêm). Vui lòng kiểm tra kỹ trước khi duyệt.'}
+                </div>
+              )}
+              {roomConflicts.length > 0 ? (
+                <div style={{ background: '#ffffff', borderRadius: '12px', padding: '0.85rem 1.15rem', border: '1px solid #fecaca', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase' }}>
+                    Trùng lịch phòng với chương trình khác ({roomConflicts.length}):
+                  </span>
+                  {roomConflicts.slice(0, 10).map((c, i) => (
+                    <Link
+                      key={`${c.other_id}-${c.slot_key}-${i}`}
+                      href={`/admin/proposals/${c.other_id}`}
+                      style={{ fontSize: '0.875rem', color: '#7f1d1d', lineHeight: 1.5, textDecoration: 'none' }}
+                    >
+                      • {describeConflict(c)}
+                    </Link>
+                  ))}
+                  {roomConflicts.length > 10 && (
+                    <span style={{ fontSize: '0.8rem', color: '#991b1b' }}>… và {roomConflicts.length - 10} ca trùng khác.</span>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: '#15803d', fontWeight: 700 }}>
+                  <CheckCircleIcon size={15} color="#15803d" />
+                  <span>Không trùng lịch phòng với chương trình nào khác đang chờ duyệt / đã duyệt.</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ═══════════════ TÓM TẮT THÔNG TIN KẾ HOẠCH ═══════════════ */}
           <div style={{
             display: 'grid',
@@ -751,13 +826,18 @@ export default function ProposalDetailPage({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Ngày tổ chức</span>
               <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
-                {new Date(proposal.start_date).toLocaleDateString('vi-VN')}
+                {isMultiDay
+                  ? `${formatDateVN(proposal.start_date)} → ${formatDateVN(proposal.end_date)}`
+                  : formatDateVN(proposal.start_date)}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Thời gian</span>
               <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
                 {proposal.start_time?.slice(0, 5)} – {proposal.end_time?.slice(0, 5)}
+                {isMultiDay && bookingSchedule.mode === 'daily' && (
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}> (mỗi ngày)</span>
+                )}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -781,6 +861,8 @@ export default function ProposalDetailPage({
                         <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Ngày</th>
                         <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Giờ</th>
                         <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Địa điểm / Phòng</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Số lượng</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -802,13 +884,20 @@ export default function ProposalDetailPage({
                             color: sess.room_name && sess.room_name !== 'Không mượn' ? '#0f172a' : '#94a3b8',
                           }}>
                             {sess.room_name && sess.room_name !== 'Không mượn' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: roomConflicts.some((c) => c.slot_key === sess.id) ? '#b91c1c' : undefined }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: roomConflicts.some((c) => c.slot_key === sess.id) ? '#dc2626' : '#16a34a', flexShrink: 0 }} />
                                 {sess.room_name}
+                                {roomConflicts.some((c) => c.slot_key === sess.id) && ' (trùng lịch)'}
                               </span>
                             ) : (
                               'Không mượn phòng'
                             )}
+                          </td>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                            {sess.participant_count ? `${sess.participant_count} người` : '—'}
+                          </td>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, whiteSpace: 'nowrap', color: sess.status === 'rejected' ? '#991b1b' : (sess.status === 'approved' || proposal.status === 'approved') ? '#166534' : '#475569' }}>
+                            {sess.status === 'rejected' ? 'Từ chối' : (sess.status === 'approved' || proposal.status === 'approved') ? 'Đã duyệt' : 'Chờ duyệt'}
                           </td>
                         </tr>
                       ))}

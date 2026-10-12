@@ -9,6 +9,8 @@ import { summarizeUnitRatings } from '@/lib/utils/rating-logic';
 import { getStoredProposals, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
 import { getHandoverRegistryFromDb } from '@/lib/constants/handover-store';
 import { saveEventMeta, saveProposalMeta } from '@/lib/constants/event-meta-store';
+import { deriveBookingSchedule, describeConflict } from '@/lib/utils/room-booking';
+import { checkRoomConflicts } from '@/lib/utils/room-booking-server';
 import type { EventProposal } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -272,56 +274,16 @@ export async function POST(req: Request) {
 
     const supabase = await createAdminClient();
 
-    // Server-side Conflict Check for main room and all individual sessions
-    if (room_id && room_name !== 'Không mượn') {
-      const { data: conflicts } = await supabase
-        .from('event_proposals')
-        .select('id, title, start_datetime, end_datetime')
-        .eq('room_id', room_id)
-        .neq('status', 'rejected')
-        .neq('status', 'deleted')
-        .lt('start_datetime', endDatetime.toISOString())
-        .gt('end_datetime', startDatetime.toISOString());
-
-      if (conflicts && conflicts.length > 0) {
-        return NextResponse.json({
-          success: false,
-          error: `Phòng "${room_name}" đã bị trùng lịch với chương trình "${conflicts[0].title}". Vui lòng chọn phòng hoặc thời gian khác!`,
-        }, { status: 409 });
-      }
-    }
-
-    // Validate sessions conflicts
+    // Normalize sessions (ca) — they define which room is booked at which time
     const normalizedSessions: any[] = [];
     if (Array.isArray(sessions) && sessions.length > 0) {
       for (const sess of sessions) {
         if (!sess.name || !sess.session_date) continue;
         const sessStart = sess.start_time || '08:00';
         const sessEnd = sess.end_time || '11:30';
-        const sessStartDt = new Date(`${sess.session_date}T${sessStart}`);
-        const sessEndDt = new Date(`${sess.session_date}T${sessEnd}`);
-
-        if (sess.room_id && sess.room_name && sess.room_name !== 'Không mượn' && !isNaN(sessStartDt.getTime()) && !isNaN(sessEndDt.getTime())) {
-          const { data: conflicts } = await supabase
-            .from('event_proposals')
-            .select('id, title')
-            .eq('room_id', sess.room_id)
-            .neq('status', 'rejected')
-            .neq('status', 'deleted')
-            .lt('start_datetime', sessEndDt.toISOString())
-            .gt('end_datetime', sessStartDt.toISOString());
-
-          if (conflicts && conflicts.length > 0) {
-            return NextResponse.json({
-              success: false,
-              error: `Phòng "${sess.room_name}" trong ca "${sess.name}" (${sess.session_date}) đã bị trùng lịch với chương trình "${conflicts[0].title}". Vui lòng chọn phòng hoặc thời gian khác!`,
-            }, { status: 409 });
-          }
-        }
-
         normalizedSessions.push({
           id: sess.id || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          name: sess.name.trim(),
+          name: String(sess.name).trim(),
           session_date: sess.session_date,
           start_time: sessStart,
           end_time: sessEnd,
@@ -331,6 +293,25 @@ export async function POST(req: Request) {
           purpose: sess.purpose || '',
           status: 'pending',
         });
+      }
+    }
+
+    // Server-side conflict check — per session (ca), against the real sessions of other proposals
+    const requestedSchedule = deriveBookingSchedule(
+      { start_date, start_time, end_date, end_time, room_id, room_name },
+      normalizedSessions
+    );
+    if (requestedSchedule.slots.length > 0) {
+      const roomConflicts = await checkRoomConflicts(supabase, requestedSchedule.slots);
+      if (roomConflicts.length > 0) {
+        const lines = roomConflicts.map(describeConflict);
+        const shown = lines.slice(0, 5).join('\n');
+        const more = lines.length > 5 ? `\n… và ${lines.length - 5} ca trùng khác.` : '';
+        return NextResponse.json({
+          success: false,
+          error: `Có ${roomConflicts.length} ca bị trùng lịch phòng. Vui lòng đổi giờ/ngày hoặc chọn phòng khác cho các ca sau:\n${shown}${more}`,
+          conflicts: roomConflicts,
+        }, { status: 409 });
       }
     }
 

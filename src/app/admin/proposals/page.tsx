@@ -422,7 +422,9 @@ export default function ProposalsListPage() {
                     <span className={styles.metaChip}>
                       <ClockIcon size={14} color="#64748b" />
                       <span>
-                        {new Date(item.start_date).toLocaleDateString('vi-VN')} ({item.start_time.slice(0, 5)} - {item.end_time.slice(0, 5)})
+                        {new Date(item.start_date).toLocaleDateString('vi-VN')}
+                        {item.end_date && item.end_date !== item.start_date && ` → ${new Date(item.end_date).toLocaleDateString('vi-VN')}`}
+                        {' '}({item.start_time.slice(0, 5)} - {item.end_time.slice(0, 5)})
                       </span>
                     </span>
 
