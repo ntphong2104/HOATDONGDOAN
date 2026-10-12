@@ -29,6 +29,7 @@ import {
   DownloadIcon,
   LightbulbIcon,
   PlusIcon,
+  MapPinIcon,
 } from '@/components/icons';
 import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepartment } from '@/lib/types';
 import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin, isEventLockedPast3Days } from '@/lib/utils/event-logic';
@@ -2798,11 +2799,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         <div><CalendarIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Ngày:</strong> {s.session_date ? new Date(s.session_date).toLocaleDateString('vi-VN') : 'Mặc định'}</div>
                         <div><ClockIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Giờ:</strong> {s.start_time || '07:30'} - {s.end_time || '11:30'}</div>
                         {s.room_name && s.room_name !== 'Không mượn' && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '14px', height: '14px', verticalAlign: 'middle' }}>📍</span>
-                            <strong>Địa điểm:</strong>
-                            <span style={{ color: '#0f172a', fontWeight: 700 }}>{s.room_name}</span>
-                          </div>
+                          <div><MapPinIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Địa điểm:</strong> <span style={{ color: '#0f172a', fontWeight: 700 }}>{s.room_name}</span></div>
                         )}
                         <div><UsersIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Đã điểm danh ca này:</strong> <span style={{ color: '#16a34a', fontWeight: 800, fontSize: '0.95rem' }}>{s.checkedInCount || 0}</span> sinh viên</div>
                       </div>
