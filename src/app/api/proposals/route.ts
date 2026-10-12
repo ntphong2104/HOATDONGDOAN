@@ -310,7 +310,7 @@ export async function POST(req: Request) {
           internal_overlaps: internal,
         }, { status: 409 });
       }
-      const roomConflicts = await checkRoomConflicts(supabase, requestedSchedule.slots);
+      const roomConflicts = await checkRoomConflicts(supabase, requestedSchedule.slots, null, auth.email);
       if (roomConflicts.length > 0) {
         const lines = roomConflicts.map(describeConflict);
         const shown = lines.slice(0, 5).join('\n');

@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
   try {
     const supabase = await createAdminClient();
-    const conflicts = await checkRoomConflicts(supabase, schedule.slots, exclude_id);
+    const conflicts = await checkRoomConflicts(supabase, schedule.slots, exclude_id, auth.email);
     return NextResponse.json({
       success: true,
       conflict: conflicts.length > 0,
@@ -94,7 +94,8 @@ export async function GET(req: Request) {
         kind: 'range',
       },
     ],
-    excludeId
+    excludeId,
+    auth.email
   );
 
   if (conflicts.length > 0) {

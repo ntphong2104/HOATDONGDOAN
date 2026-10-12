@@ -955,7 +955,7 @@ export default function NewProposalPage() {
                 </div>
 
                 <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5 }}>
-                  Mỗi ca chọn <strong>một</strong> phòng/sân. Cần nhiều phòng/sân cùng lúc thì tạo nhiều ca cùng giờ (bấm &quot;+ Thêm phòng/sân cùng giờ&quot;), mỗi ca chọn một phòng/sân khác nhau. Hệ thống chỉ báo trùng đúng những ca bị trùng.
+                  Mỗi ca chọn <strong>một</strong> phòng/sân. Cần nhiều phòng/sân cùng lúc thì tạo nhiều ca cùng giờ (bấm &quot;+ Thêm phòng/sân cùng giờ&quot;), mỗi ca chọn một phòng/sân khác nhau. Hệ thống chỉ báo trùng đúng những ca bị trùng với đơn vị khác (đơn cũ của chính tài khoản bạn không tính là trùng).
                 </p>
 
                 {/* Session Cards List */}

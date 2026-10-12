@@ -69,7 +69,7 @@ export async function GET(
       if (proposal.status !== 'rejected' && proposal.status !== 'deleted') {
         try {
           const schedule = deriveBookingSchedule(proposal, proposalSessions);
-          roomConflicts = await checkRoomConflicts(supabase, schedule.slots, proposal.id);
+          roomConflicts = await checkRoomConflicts(supabase, schedule.slots, proposal.id, proposal.created_by);
         } catch {}
       }
 

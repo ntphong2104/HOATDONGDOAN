@@ -69,16 +69,17 @@ export async function loadExistingBookings(
   });
 }
 
-/** Check requested slots against everything already booked. */
+/** Check requested slots against everything already booked (own-account bookings are ignored). */
 export async function checkRoomConflicts(
   supabase: any,
   requested: BookingSlot[],
-  excludeId?: string | null
+  excludeId?: string | null,
+  ownerEmail?: string | null
 ): Promise<RoomConflict[]> {
   const withRoom = requested.filter((s) => s.room_id || s.room_name);
   if (withRoom.length === 0) return [];
   const fromMs = Math.min(...withRoom.map((s) => s.startMs));
   const toMs = Math.max(...withRoom.map((s) => s.endMs));
   const existing = await loadExistingBookings(supabase, fromMs, toMs, excludeId);
-  return findRoomConflicts(withRoom, existing, excludeId);
+  return findRoomConflicts(withRoom, existing, excludeId, ownerEmail);
 }

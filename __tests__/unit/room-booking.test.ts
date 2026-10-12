@@ -143,3 +143,20 @@ describe('findInternalOverlaps', () => {
     expect([o[0].a_key, o[0].b_key].sort()).toEqual(['a', 'b']);
   });
 });
+
+describe('same-account bookings', () => {
+  const bookings = [existing({ ...sinhHoatLegacy, created_by: 'clbbongda@student.ptithcm.edu.vn' })];
+  const evening = deriveBookingSchedule(
+    { start_date: '2026-10-19', start_time: '18:00', end_date: '2026-10-19', end_time: '20:00', room_id: FIELD, room_name: 'Sân bóng đá' },
+    []
+  );
+
+  it('the same account may overlap its own booking', () => {
+    expect(findRoomConflicts(evening.slots, bookings, null, 'CLBBongDa@student.ptithcm.edu.vn')).toHaveLength(0);
+  });
+
+  it('other accounts still get the conflict', () => {
+    expect(findRoomConflicts(evening.slots, bookings, null, 'lcd.cntt@ptithcm.edu.vn')).toHaveLength(1);
+    expect(findRoomConflicts(evening.slots, bookings)).toHaveLength(1);
+  });
+});

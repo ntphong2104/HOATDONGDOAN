@@ -297,16 +297,22 @@ export interface ExistingBooking {
  * Compare the slots being requested against slots already held by other proposals.
  * Reports at most one overlapping slot per (requested slot, other proposal) pair
  * so long recurring bookings don't flood the message.
+ *
+ * Proposals created by the same account (`ownerEmail`) are ignored: a unit may
+ * overlap its own bookings (e.g. its weekly sinh hoạt and its own tournament).
  */
 export function findRoomConflicts(
   requested: BookingSlot[],
   existing: ExistingBooking[],
-  excludeId?: string | null
+  excludeId?: string | null,
+  ownerEmail?: string | null
 ): RoomConflict[] {
+  const owner = String(ownerEmail || '').trim().toLowerCase();
   const conflicts: RoomConflict[] = [];
   for (const slot of requested) {
     for (const booking of existing) {
       if (excludeId && booking.proposal.id === excludeId) continue;
+      if (owner && String(booking.proposal.created_by || '').trim().toLowerCase() === owner) continue;
       const hit = booking.slots.find(
         (other) => sameRoom(slot, other) && slot.startMs < other.endMs && other.startMs < slot.endMs
       );
