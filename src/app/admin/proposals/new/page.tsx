@@ -33,6 +33,9 @@ import {
 } from '@/lib/utils/room-booking';
 import styles from './page.module.css';
 
+// Giá trị của lựa chọn "Không mượn phòng" trong ô chọn (khác '' = chưa chọn)
+const NO_ROOM_VALUE = '__no_room__';
+
 export default function NewProposalPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -63,8 +66,9 @@ export default function NewProposalPage() {
     setter(val === '' ? '' : Number(val));
   };
 
+  // room_name '' = chưa chọn địa điểm; 'Không mượn' = người dùng chủ động chọn không mượn phòng
   const [selectedRoomId, setSelectedRoomId] = useState('');
-  const [selectedRoomName, setSelectedRoomName] = useState('Không mượn');
+  const [selectedRoomName, setSelectedRoomName] = useState('');
 
   // Multi-session mode
   const [isMultiSession, setIsMultiSession] = useState(false);
@@ -76,7 +80,7 @@ export default function NewProposalPage() {
       start_time: '08:00',
       end_time: '11:30',
       room_id: '',
-      room_name: 'Không mượn',
+      room_name: '',
       participant_count: 60,
       purpose: 'Tổ chức sự kiện chính',
       status: 'pending',
@@ -94,7 +98,7 @@ export default function NewProposalPage() {
         start_time: '08:00',
         end_time: '11:30',
         room_id: '',
-        room_name: 'Không mượn',
+        room_name: '',
         participant_count: Number(participantCount) || 60,
         purpose: '',
         status: 'pending',
@@ -117,22 +121,31 @@ export default function NewProposalPage() {
       id: `session_${Date.now()}`,
       name: `${src.name} (phòng/sân khác)`,
       room_id: '',
-      room_name: 'Không mượn',
+      room_name: '',
       status: 'pending',
     };
     setSessionsList([...sessionsList.slice(0, idx + 1), copy, ...sessionsList.slice(idx + 1)]);
+  };
+
+  // Giá trị hiển thị trong ô chọn phòng: '' = chưa chọn, NO_ROOM_VALUE = không mượn, còn lại = id phòng
+  const roomSelectValue = (roomId?: string | null, roomName?: string | null) =>
+    roomId ? roomId : roomName === 'Không mượn' ? NO_ROOM_VALUE : '';
+
+  const resolveRoomChoice = (value: string) => {
+    if (value === NO_ROOM_VALUE) return { room_id: '', room_name: 'Không mượn' };
+    if (!value) return { room_id: '', room_name: '' };
+    const found = rooms.find((r) => r.id === value);
+    return found ? { room_id: found.id, room_name: found.room_name } : { room_id: '', room_name: '' };
   };
 
   const handleUpdateSession = (id: string, field: keyof ProposalSessionItem, value: any) => {
     setSessionsList(
       sessionsList.map((s) => {
         if (s.id === id) {
-          const updated = { ...s, [field]: value };
           if (field === 'room_id') {
-            const foundRoom = rooms.find((r) => r.id === value);
-            updated.room_name = foundRoom ? foundRoom.room_name : 'Không mượn';
+            return { ...s, ...resolveRoomChoice(String(value || '')) };
           }
-          return updated;
+          return { ...s, [field]: value };
         }
         return s;
       })
@@ -160,7 +173,7 @@ export default function NewProposalPage() {
         start_time: startTime || '08:00',
         end_time: endTime || '11:30',
         room_id: selectedRoomId || '',
-        room_name: selectedRoomName || 'Không mượn',
+        room_name: selectedRoomName,
         participant_count: Number(participantCount) || 60,
         purpose: `Các hoạt động trong ngày ${day}`,
         status: 'pending',
@@ -219,22 +232,32 @@ export default function NewProposalPage() {
   // Room + sessions exactly as they will be submitted
   const buildBookingPayload = () => ({
     room_id: isMultiSession ? (sessionsList[0]?.room_id || null) : (selectedRoomId || null),
-    room_name: isMultiSession ? (sessionsList[0]?.room_name || 'Không mượn') : selectedRoomName,
-    sessions: isMultiSession ? sessionsList : [
-      {
-        id: 'session_1',
-        name: 'Buổi 1 (Buổi chính)',
-        session_date: startDate,
-        start_time: startTime,
-        end_time: endTime,
-        room_id: selectedRoomId || null,
-        room_name: selectedRoomName,
-        participant_count: Number(participantCount) || 0,
-        purpose: description || 'Tổ chức sự kiện',
-        status: 'pending' as const,
-      },
-    ],
+    room_name: isMultiSession ? (sessionsList[0]?.room_name || 'Không mượn') : (selectedRoomName || 'Không mượn'),
+    sessions: isMultiSession
+      ? sessionsList.map((s) => ({ ...s, room_name: s.room_name || 'Không mượn' }))
+      : [
+          {
+            id: 'session_1',
+            name: 'Buổi 1 (Buổi chính)',
+            session_date: startDate,
+            start_time: startTime,
+            end_time: endTime,
+            room_id: selectedRoomId || null,
+            room_name: selectedRoomName || 'Không mượn',
+            participant_count: Number(participantCount) || 0,
+            purpose: description || 'Tổ chức sự kiện',
+            status: 'pending' as const,
+          },
+        ],
   });
+
+  // Ca chưa chọn địa điểm (chưa chọn phòng và cũng chưa chọn "Không mượn phòng")
+  const sessionsMissingRoom = isMultiSession
+    ? sessionsList.filter((s) => !s.room_id && !s.room_name)
+    : !selectedRoomId && !selectedRoomName
+    ? [{ id: 'session_1', name: 'Buổi chính' }]
+    : [];
+  const isRoomMissing = (roomId?: string | null, roomName?: string | null) => !roomId && !roomName;
 
   const isBorrowingAnyRoom = isMultiSession
     ? sessionsList.some((s) => !!s.room_id)
@@ -286,14 +309,9 @@ export default function NewProposalPage() {
   const conflictsForSession = (sessionId: string) => roomConflicts.filter((c) => c.slot_key === sessionId);
 
   const handleRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const rId = e.target.value;
-    setSelectedRoomId(rId);
-    if (!rId) {
-      setSelectedRoomName('Không mượn');
-    } else {
-      const found = rooms.find((r) => r.id === rId);
-      setSelectedRoomName(found ? found.room_name : 'Không mượn');
-    }
+    const choice = resolveRoomChoice(e.target.value);
+    setSelectedRoomId(choice.room_id);
+    setSelectedRoomName(choice.room_name);
   };
 
   const totalPersonnel =
@@ -326,6 +344,15 @@ export default function NewProposalPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (sessionsMissingRoom.length > 0) {
+      setErrorMessage(
+        isMultiSession
+          ? `Chưa chọn địa điểm cho ${sessionsMissingRoom.length} ca: ${sessionsMissingRoom.map((s) => `"${s.name}"`).join(', ')}. Hãy chọn phòng/sân, hoặc chọn "Không mượn phòng" nếu tổ chức ngoài trường/trực tuyến.`
+          : 'Chưa chọn địa điểm. Hãy chọn phòng/sân, hoặc chọn "Không mượn phòng" nếu tổ chức ngoài trường/trực tuyến.'
+      );
+      return;
+    }
 
     if (internalOverlaps.length > 0) {
       setErrorMessage(internalOverlaps.slice(0, 5).map(describeInternalOverlap).join('\n'));
@@ -847,17 +874,24 @@ export default function NewProposalPage() {
                   Chọn Phòng / Hội Trường / Sân Bãi Học Viện:
                 </label>
                 <select
-                  value={selectedRoomId}
+                  value={roomSelectValue(selectedRoomId, selectedRoomName)}
                   onChange={handleRoomChange}
                   className={styles.selectField}
+                  style={isRoomMissing(selectedRoomId, selectedRoomName) ? { borderColor: '#f87171' } : undefined}
                 >
-                  <option value="">Không mượn phòng (Tổ chức trực tuyến / Ngoài trường)</option>
+                  <option value="" disabled>-- Chọn địa điểm --</option>
+                  <option value={NO_ROOM_VALUE}>Không mượn phòng (Tổ chức trực tuyến / Ngoài trường)</option>
                   {rooms.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.room_name} (Sức chứa: {r.capacity} người - {r.location})
                     </option>
                   ))}
                 </select>
+                {isRoomMissing(selectedRoomId, selectedRoomName) && (
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#dc2626' }}>
+                    Chưa chọn địa điểm – chọn phòng/sân, hoặc &quot;Không mượn phòng&quot;.
+                  </span>
+                )}
 
                 {selectedRoomId && selectedRoomName !== 'Không mượn' && (checkingConflict || conflictChecked || roomConflicts.length > 0) && (
                   <div
@@ -1044,7 +1078,7 @@ export default function NewProposalPage() {
                             type="date"
                             value={sess.session_date}
                             onChange={(e) => handleUpdateSession(sess.id, 'session_date', e.target.value)}
-                            style={{ padding: '0.45rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                            className={styles.sessionField}
                           />
                         </div>
 
@@ -1054,7 +1088,7 @@ export default function NewProposalPage() {
                             type="time"
                             value={sess.start_time}
                             onChange={(e) => handleUpdateSession(sess.id, 'start_time', e.target.value)}
-                            style={{ padding: '0.45rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                            className={styles.sessionField}
                           />
                         </div>
 
@@ -1064,24 +1098,30 @@ export default function NewProposalPage() {
                             type="time"
                             value={sess.end_time}
                             onChange={(e) => handleUpdateSession(sess.id, 'end_time', e.target.value)}
-                            style={{ padding: '0.45rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                            className={styles.sessionField}
                           />
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                           <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Phòng/Hội trường:</label>
                           <select
-                            value={sess.room_id || ''}
+                            value={roomSelectValue(sess.room_id, sess.room_name)}
                             onChange={(e) => handleUpdateSession(sess.id, 'room_id', e.target.value)}
-                            style={{ padding: '0.45rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                            className={`${styles.sessionField} ${isRoomMissing(sess.room_id, sess.room_name) ? styles.sessionFieldMissing : ''}`}
                           >
-                            <option value="">Không mượn phòng</option>
+                            <option value="" disabled>-- Chọn địa điểm --</option>
+                            <option value={NO_ROOM_VALUE}>Không mượn phòng</option>
                             {rooms.map((r) => (
                               <option key={r.id} value={r.id}>
                                 {r.room_name} ({r.capacity} chỗ)
                               </option>
                             ))}
                           </select>
+                          {isRoomMissing(sess.room_id, sess.room_name) && (
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#dc2626' }}>
+                              Chưa chọn địa điểm
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -1540,6 +1580,7 @@ export default function NewProposalPage() {
                   date: fmtDay(s.session_date),
                   time: `${s.start_time || '??'}–${s.end_time || '??'}`,
                   room: s.room_id ? (s.room_name || '') : '',
+                  missing: isRoomMissing(s.room_id, s.room_name),
                 }))
               : [{
                   key: 'session_1',
@@ -1547,12 +1588,13 @@ export default function NewProposalPage() {
                   date: startDate !== endDate ? `${formatDateVN(startDate)} → ${formatDateVN(endDate)}` : fmtDay(startDate),
                   time: `${startTime}–${endTime}${bookingPreview.mode === 'daily' ? ' (mỗi ngày)' : ''}`,
                   room: selectedRoomId ? selectedRoomName : '',
+                  missing: isRoomMissing(selectedRoomId, selectedRoomName),
                 }];
             const roomTotals = borrowedRoomNames.map((name) => ({
               name,
               count: bookingPreview.slots.filter((s) => s.room_name === name).length,
             }));
-            const issueCount = roomConflicts.length + internalOverlaps.length + (planUrl.trim() ? 0 : 1);
+            const issueCount = roomConflicts.length + internalOverlaps.length + sessionsMissingRoom.length + (planUrl.trim() ? 0 : 1);
             const cellStyle: React.CSSProperties = { padding: '0.55rem 0.75rem', fontWeight: 700, color: '#0f172a', verticalAlign: 'top' };
             const headStyle: React.CSSProperties = { padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' };
             const infoLabel: React.CSSProperties = { fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' };
@@ -1663,7 +1705,7 @@ export default function NewProposalPage() {
                             </td>
                             <td style={{ ...cellStyle, whiteSpace: 'nowrap' }}>{r.date}</td>
                             <td style={{ ...cellStyle, whiteSpace: 'nowrap' }}>{r.time}</td>
-                            <td style={{ ...cellStyle, color: r.room ? '#0f172a' : '#94a3b8' }}>{r.room || 'Không mượn'}</td>
+                            <td style={{ ...cellStyle, color: r.missing ? '#dc2626' : r.room ? '#0f172a' : '#94a3b8' }}>{r.missing ? 'Chưa chọn địa điểm' : r.room || 'Không mượn'}</td>
                             <td style={{ ...cellStyle, fontWeight: 600 }}>
                               {!r.room ? (
                                 <span style={{ color: '#94a3b8' }}>—</span>
