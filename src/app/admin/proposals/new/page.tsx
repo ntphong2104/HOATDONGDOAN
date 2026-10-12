@@ -152,6 +152,20 @@ export default function NewProposalPage() {
     );
   };
 
+  // Sự kiện kéo dài > 1 ngày → bắt buộc khai báo từng ca (chế độ Nhiều Ca)
+  const isMultiDay = !!startDate && !!endDate && endDate > startDate;
+  const multiDayCount = isMultiDay
+    ? Math.round((new Date(`${endDate}T00:00:00`).getTime() - new Date(`${startDate}T00:00:00`).getTime()) / 86400000) + 1
+    : 1;
+
+  const handleDateRangeChange = (newStart: string, newEnd: string) => {
+    setStartDate(newStart);
+    setEndDate(newEnd);
+    if (newStart && newEnd && newEnd > newStart) {
+      setIsMultiSession(true);
+    }
+  };
+
   const handleAutoSplitDays = () => {
     if (!startDate || !endDate) return;
     const startObj = new Date(startDate);
@@ -344,6 +358,23 @@ export default function NewProposalPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (isMultiDay) {
+      if (!isMultiSession || sessionsList.length < 2) {
+        setIsMultiSession(true);
+        setErrorMessage(
+          `Sự kiện kéo dài ${multiDayCount} ngày nên phải khai báo từng ca (tối thiểu 2 ca) ở mục 3. Bấm "Tự Động Chia Theo Ngày" để tạo nhanh mỗi ngày 1 ca.`
+        );
+        return;
+      }
+      const outOfRange = sessionsList.filter((s) => !s.session_date || s.session_date < startDate || s.session_date > endDate);
+      if (outOfRange.length > 0) {
+        setErrorMessage(
+          `Ngày của ${outOfRange.length} ca nằm ngoài thời gian sự kiện (${formatDateVN(startDate)} → ${formatDateVN(endDate)}): ${outOfRange.map((s) => `"${s.name}"`).join(', ')}. Vui lòng sửa lại ngày của các ca này.`
+        );
+        return;
+      }
+    }
 
     if (sessionsMissingRoom.length > 0) {
       setErrorMessage(
@@ -585,7 +616,7 @@ export default function NewProposalPage() {
                     type="date"
                     required
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => handleDateRangeChange(e.target.value, endDate)}
                     className={styles.inputField}
                   />
                 </div>
@@ -611,7 +642,7 @@ export default function NewProposalPage() {
                     type="date"
                     required
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => handleDateRangeChange(startDate, e.target.value)}
                     className={styles.inputField}
                   />
                 </div>
@@ -629,6 +660,11 @@ export default function NewProposalPage() {
                   />
                 </div>
               </div>
+              {isMultiDay && (
+                <p style={{ margin: 0, fontSize: '0.825rem', fontWeight: 600, color: '#6d28d9', lineHeight: 1.5 }}>
+                  Sự kiện kéo dài {multiDayCount} ngày nên bắt buộc khai báo từng ca ở mục 3 (Nhiều Ca / Nhiều Phòng).
+                </p>
+              )}
             </div>
           </div>
 
@@ -832,14 +868,17 @@ export default function NewProposalPage() {
               <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.3rem', borderRadius: '10px' }}>
                 <button
                   type="button"
-                  onClick={() => setIsMultiSession(false)}
+                  onClick={() => { if (!isMultiDay) setIsMultiSession(false); }}
+                  disabled={isMultiDay}
+                  title={isMultiDay ? 'Sự kiện nhiều ngày phải khai báo từng ca' : undefined}
                   style={{
                     padding: '0.45rem 0.85rem',
                     borderRadius: '8px',
                     border: 'none',
                     fontSize: '0.8rem',
                     fontWeight: 700,
-                    cursor: 'pointer',
+                    cursor: isMultiDay ? 'not-allowed' : 'pointer',
+                    opacity: isMultiDay ? 0.45 : 1,
                     background: !isMultiSession ? '#ffffff' : 'transparent',
                     color: !isMultiSession ? '#2563eb' : '#64748b',
                     boxShadow: !isMultiSession ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
@@ -987,6 +1026,25 @@ export default function NewProposalPage() {
                     </button>
                   </div>
                 </div>
+
+                {isMultiDay && (
+                  <div
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '10px',
+                      background: '#f5f3ff',
+                      border: '1px solid #ddd6fe',
+                      color: '#5b21b6',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Sự kiện kéo dài <strong>{multiDayCount} ngày</strong> ({formatDateVN(startDate)} → {formatDateVN(endDate)}) nên phải khai báo
+                    {' '}<strong>từng ca</strong> (tối thiểu 2 ca, ngày của mỗi ca nằm trong khoảng trên). Bấm &quot;Tự Động Chia Theo Ngày&quot; để tạo nhanh
+                    mỗi ngày 1 ca, rồi chỉnh lại giờ/phòng của từng ca.
+                  </div>
+                )}
 
                 <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5 }}>
                   Mỗi ca chọn <strong>một</strong> phòng/sân. Cần nhiều phòng/sân cùng lúc thì tạo nhiều ca cùng giờ (bấm &quot;+ Thêm phòng/sân cùng giờ&quot;), mỗi ca chọn một phòng/sân khác nhau. Hệ thống chỉ báo trùng đúng những ca bị trùng với đơn vị khác (đơn cũ của chính tài khoản bạn không tính là trùng).
@@ -1590,7 +1648,8 @@ export default function NewProposalPage() {
               name,
               count: bookingPreview.slots.filter((s) => s.room_name === name).length,
             }));
-            const issueCount = roomConflicts.length + internalOverlaps.length + sessionsMissingRoom.length + (planUrl.trim() ? 0 : 1);
+            const issueCount = roomConflicts.length + internalOverlaps.length + sessionsMissingRoom.length + (planUrl.trim() ? 0 : 1)
+              + (isMultiDay && (!isMultiSession || sessionsList.length < 2) ? 1 : 0);
             const cellStyle: React.CSSProperties = { padding: '0.55rem 0.75rem', fontWeight: 700, color: '#0f172a', verticalAlign: 'top' };
             const headStyle: React.CSSProperties = { padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' };
             const infoLabel: React.CSSProperties = { fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' };

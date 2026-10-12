@@ -296,6 +296,23 @@ export async function POST(req: Request) {
       }
     }
 
+    // Sự kiện kéo dài nhiều ngày → bắt buộc khai báo từng ca (tối thiểu 2 ca, nằm trong khoảng ngày)
+    if (String(end_date) > String(start_date)) {
+      if (normalizedSessions.length < 2) {
+        return NextResponse.json({
+          success: false,
+          error: 'Sự kiện kéo dài nhiều ngày nên phải khai báo từng ca (tối thiểu 2 ca) ở mục "Lịch Trình Chi Tiết Các Ca".',
+        }, { status: 400 });
+      }
+      const outOfRange = normalizedSessions.filter((s) => s.session_date < start_date || s.session_date > end_date);
+      if (outOfRange.length > 0) {
+        return NextResponse.json({
+          success: false,
+          error: `Ngày của ${outOfRange.length} ca nằm ngoài thời gian sự kiện: ${outOfRange.map((s) => `"${s.name}"`).join(', ')}.`,
+        }, { status: 400 });
+      }
+    }
+
     // Server-side conflict check — per session (ca), against the real sessions of other proposals
     const requestedSchedule = deriveBookingSchedule(
       { start_date, start_time, end_date, end_time, room_id, room_name },
