@@ -82,7 +82,7 @@ export default function NewProposalPage() {
       room_id: '',
       room_name: '',
       participant_count: 60,
-      purpose: 'Tổ chức sự kiện chính',
+      purpose: '',
       status: 'pending',
     },
   ]);
@@ -175,7 +175,7 @@ export default function NewProposalPage() {
         room_id: selectedRoomId || '',
         room_name: selectedRoomName,
         participant_count: Number(participantCount) || 60,
-        purpose: `Các hoạt động trong ngày ${day}`,
+        purpose: '',
         status: 'pending',
       });
       cur.setDate(cur.getDate() + 1);
@@ -1125,20 +1125,16 @@ export default function NewProposalPage() {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>
+                          Nội dung ca này <span style={{ fontWeight: 500, color: '#94a3b8' }}>(làm gì trong ca – không bắt buộc)</span>:
+                        </label>
                         <input
                           type="text"
                           value={sess.purpose || ''}
                           onChange={(e) => handleUpdateSession(sess.id, 'purpose', e.target.value)}
-                          placeholder="Mục đích sử dụng phòng / Nội dung chính ca này..."
-                          style={{
-                            flex: 1,
-                            padding: '0.45rem 0.75rem',
-                            borderRadius: '8px',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '0.825rem',
-                            background: '#ffffff',
-                          }}
+                          placeholder="VD: Khai mạc, Thi đấu vòng bảng, Tập luyện, Bế mạc & trao giải..."
+                          className={styles.sessionField}
                         />
                       </div>
 
