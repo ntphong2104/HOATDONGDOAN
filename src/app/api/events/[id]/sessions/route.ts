@@ -55,6 +55,25 @@ export async function GET(
       ];
     }
 
+    // Ca cũ / ca tự sinh khi duyệt có thể thiếu phòng → lấy phòng từ kế hoạch gốc
+    if (sessions.some((s: any) => !s?.room_name)) {
+      try {
+        const { data: prop } = await supabase
+          .from('event_proposals')
+          .select('room_id, room_name')
+          .eq('created_event_id', resolvedParams.id)
+          .limit(1)
+          .maybeSingle();
+        if (prop?.room_name && prop.room_name !== 'Không mượn') {
+          sessions = sessions.map((s: any) =>
+            s?.room_name ? s : { ...s, room_id: s?.room_id || prop.room_id || null, room_name: prop.room_name }
+          );
+        }
+      } catch {
+        // bỏ qua – chỉ là thông tin hiển thị
+      }
+    }
+
     // Calculate count per session
     const sessionsWithStats = sessions.map((s) => {
       const count = sessionCheckins.filter((c) => c.session_id === s.id).length;

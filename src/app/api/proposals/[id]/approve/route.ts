@@ -194,6 +194,9 @@ export async function POST(
         }
 
         if (finalSessions.length === 0) {
+          const propRoomName = (proposal as any).room_name && (proposal as any).room_name !== 'Không mượn'
+            ? (proposal as any).room_name : null;
+          const propRoomId = propRoomName ? ((proposal as any).room_id || null) : null;
           if (proposal.start_date && proposal.end_date && proposal.start_date !== proposal.end_date) {
             const startDateObj = new Date(proposal.start_date);
             const endDateObj = new Date(proposal.end_date);
@@ -209,6 +212,8 @@ export async function POST(
                 session_date: dateStr,
                 start_time: proposal.start_time || '08:00',
                 end_time: proposal.end_time || '11:30',
+                room_id: propRoomId,
+                room_name: propRoomName,
                 created_at: new Date().toISOString(),
               });
               currentDay.setDate(currentDay.getDate() + 1);
@@ -221,6 +226,8 @@ export async function POST(
               session_date: proposal.start_date || new Date().toISOString().split('T')[0],
               start_time: proposal.start_time || '08:00',
               end_time: proposal.end_time || '11:30',
+              room_id: propRoomId,
+              room_name: propRoomName,
               created_at: new Date().toISOString(),
             });
           }
