@@ -1,6 +1,7 @@
 import {
   deriveBookingSchedule,
   findRoomConflicts,
+  findInternalOverlaps,
   describeConflict,
   describeSchedule,
   type ExistingBooking,
@@ -118,5 +119,27 @@ describe('findRoomConflicts', () => {
       []
     );
     expect(findRoomConflicts(req.slots, bookings)).toHaveLength(0);
+  });
+});
+
+describe('findInternalOverlaps', () => {
+  const base = { start_date: '2026-10-18', start_time: '07:00', end_date: '2026-10-18', end_time: '17:00', room_id: FIELD, room_name: 'Sân bóng đá' };
+
+  it('allows several rooms at the same time (one ca per sân)', () => {
+    const s = deriveBookingSchedule(base, [
+      { id: 'a', name: 'Sân 1', session_date: '2026-10-18', start_time: '07:00', end_time: '11:00', room_id: FIELD, room_name: 'Sân bóng đá' },
+      { id: 'b', name: 'Sân 2', session_date: '2026-10-18', start_time: '07:00', end_time: '11:00', room_id: 'volley', room_name: 'Sân Bóng chuyền' },
+    ]);
+    expect(findInternalOverlaps(s.slots)).toHaveLength(0);
+  });
+
+  it('flags the same room booked twice at overlapping times', () => {
+    const s = deriveBookingSchedule(base, [
+      { id: 'a', name: 'Vòng bảng', session_date: '2026-10-18', start_time: '07:00', end_time: '11:00', room_id: FIELD, room_name: 'Sân bóng đá' },
+      { id: 'b', name: 'Tứ kết', session_date: '2026-10-18', start_time: '10:00', end_time: '12:00', room_id: FIELD, room_name: 'Sân bóng đá' },
+    ]);
+    const o = findInternalOverlaps(s.slots);
+    expect(o).toHaveLength(1);
+    expect([o[0].a_key, o[0].b_key].sort()).toEqual(['a', 'b']);
   });
 });

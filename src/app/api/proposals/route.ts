@@ -9,7 +9,7 @@ import { summarizeUnitRatings } from '@/lib/utils/rating-logic';
 import { getStoredProposals, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
 import { getHandoverRegistryFromDb } from '@/lib/constants/handover-store';
 import { saveEventMeta, saveProposalMeta } from '@/lib/constants/event-meta-store';
-import { deriveBookingSchedule, describeConflict } from '@/lib/utils/room-booking';
+import { deriveBookingSchedule, describeConflict, findInternalOverlaps, describeInternalOverlap } from '@/lib/utils/room-booking';
 import { checkRoomConflicts } from '@/lib/utils/room-booking-server';
 import type { EventProposal } from '@/lib/types';
 
@@ -302,6 +302,14 @@ export async function POST(req: Request) {
       normalizedSessions
     );
     if (requestedSchedule.slots.length > 0) {
+      const internal = findInternalOverlaps(requestedSchedule.slots);
+      if (internal.length > 0) {
+        return NextResponse.json({
+          success: false,
+          error: internal.slice(0, 5).map(describeInternalOverlap).join('\n'),
+          internal_overlaps: internal,
+        }, { status: 409 });
+      }
       const roomConflicts = await checkRoomConflicts(supabase, requestedSchedule.slots);
       if (roomConflicts.length > 0) {
         const lines = roomConflicts.map(describeConflict);

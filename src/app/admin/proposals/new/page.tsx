@@ -23,7 +23,14 @@ import {
 import { OFFICIAL_UNITS, OFFICIAL_UNIT_GROUPS, resolveUnitForUser } from '@/lib/constants/units';
 import { isKhoaUnit } from '@/lib/utils/proposal-logic';
 import type { Room, ProposalSessionItem } from '@/lib/types';
-import { describeConflict, type RoomConflict } from '@/lib/utils/room-booking';
+import {
+  deriveBookingSchedule,
+  describeConflict,
+  describeInternalOverlap,
+  findInternalOverlaps,
+  formatDateVN,
+  type RoomConflict,
+} from '@/lib/utils/room-booking';
 import styles from './page.module.css';
 
 export default function NewProposalPage() {
@@ -98,6 +105,22 @@ export default function NewProposalPage() {
   const handleRemoveSession = (id: string) => {
     if (sessionsList.length <= 1) return;
     setSessionsList(sessionsList.filter((s) => s.id !== id));
+  };
+
+  // Same date & time, another room (e.g. borrow 2 sân at once = 2 ca cùng giờ)
+  const handleDuplicateSession = (id: string) => {
+    const idx = sessionsList.findIndex((s) => s.id === id);
+    if (idx < 0) return;
+    const src = sessionsList[idx];
+    const copy: ProposalSessionItem = {
+      ...src,
+      id: `session_${Date.now()}`,
+      name: `${src.name} (phòng/sân khác)`,
+      room_id: '',
+      room_name: 'Không mượn',
+      status: 'pending',
+    };
+    setSessionsList([...sessionsList.slice(0, idx + 1), copy, ...sessionsList.slice(idx + 1)]);
   };
 
   const handleUpdateSession = (id: string, field: keyof ProposalSessionItem, value: any) => {
@@ -279,8 +302,20 @@ export default function NewProposalPage() {
     (Number(organizerCount) || 0);
 
   const requiresCtsv = totalPersonnel > 50 || Number(participantCount) > 50;
-  const isBorrowing = !!selectedRoomId && selectedRoomName !== 'Không mượn';
+  const isBorrowing = isBorrowingAnyRoom;
   const isDirectFaculty = isKhoaUnit(organizationUnit);
+
+  // Preview of exactly what will be booked (same logic as the server)
+  const bookingPayloadPreview = buildBookingPayload();
+  const bookingPreview = deriveBookingSchedule(
+    { start_date: startDate, start_time: startTime, end_date: endDate, end_time: endTime, room_id: bookingPayloadPreview.room_id, room_name: bookingPayloadPreview.room_name },
+    bookingPayloadPreview.sessions
+  );
+  const internalOverlaps = findInternalOverlaps(bookingPreview.slots);
+  const internalOverlapsForSession = (sessionId: string) =>
+    internalOverlaps.filter((o) => o.a_key === sessionId || o.b_key === sessionId);
+  const borrowedRoomNames = Array.from(new Set(bookingPreview.slots.map((s) => s.room_name)));
+  const borrowedRoomsLabel = borrowedRoomNames.length > 0 ? borrowedRoomNames.join(', ') : 'Không mượn';
   // ── Chặn Enter trong ô input tự động submit form ──
   const preventEnterSubmit = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
@@ -291,6 +326,11 @@ export default function NewProposalPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (internalOverlaps.length > 0) {
+      setErrorMessage(internalOverlaps.slice(0, 5).map(describeInternalOverlap).join('\n'));
+      return;
+    }
 
     if (roomConflicts.length > 0) {
       setErrorMessage(
@@ -914,6 +954,10 @@ export default function NewProposalPage() {
                   </div>
                 </div>
 
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5 }}>
+                  Mỗi ca chọn <strong>một</strong> phòng/sân. Cần nhiều phòng/sân cùng lúc thì tạo nhiều ca cùng giờ (bấm &quot;+ Thêm phòng/sân cùng giờ&quot;), mỗi ca chọn một phòng/sân khác nhau. Hệ thống chỉ báo trùng đúng những ca bị trùng.
+                </p>
+
                 {/* Session Cards List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {sessionsList.map((sess, idx) => (
@@ -921,7 +965,7 @@ export default function NewProposalPage() {
                       key={sess.id}
                       style={{
                         background: '#f8fafc',
-                        border: sess.room_id && conflictsForSession(sess.id).length > 0 ? '1.5px solid #fca5a5' : '1.5px solid #e2e8f0',
+                        border: (sess.room_id && conflictsForSession(sess.id).length > 0) || internalOverlapsForSession(sess.id).length > 0 ? '1.5px solid #fca5a5' : '1.5px solid #e2e8f0',
                         borderRadius: '16px',
                         padding: '1.25rem',
                         display: 'flex',
@@ -951,28 +995,46 @@ export default function NewProposalPage() {
                             }}
                           />
                         </div>
-                        {sessionsList.length > 1 && (
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button
                             type="button"
-                            onClick={() => handleRemoveSession(sess.id)}
+                            onClick={() => handleDuplicateSession(sess.id)}
                             style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.3rem',
-                              background: '#fef2f2',
-                              border: '1px solid #fecaca',
-                              color: '#dc2626',
                               padding: '0.3rem 0.65rem',
+                              background: '#f5f3ff',
+                              color: '#6d28d9',
+                              border: '1px solid #ddd6fe',
                               borderRadius: '8px',
                               fontSize: '0.785rem',
                               fontWeight: 700,
                               cursor: 'pointer',
-                              transition: 'all 0.2s ease',
                             }}
                           >
-                            <span><TrashIcon size={14} /> Xóa Ca Này</span>
+                            + Thêm phòng/sân cùng giờ
                           </button>
-                        )}
+                          {sessionsList.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSession(sess.id)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                background: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                color: '#dc2626',
+                                padding: '0.3rem 0.65rem',
+                                borderRadius: '8px',
+                                fontSize: '0.785rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                              }}
+                            >
+                              <span><TrashIcon size={14} /> Xóa Ca Này</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
@@ -1039,6 +1101,31 @@ export default function NewProposalPage() {
                           }}
                         />
                       </div>
+
+                      {internalOverlapsForSession(sess.id).length > 0 && (
+                        <div
+                          style={{
+                            padding: '0.75rem 1rem',
+                            borderRadius: '10px',
+                            border: '1.5px solid #fca5a5',
+                            background: '#fef2f2',
+                            color: '#991b1b',
+                            fontSize: '0.85rem',
+                            lineHeight: 1.5,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.25rem',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <AlertTriangleIcon size={16} color="#b91c1c" />
+                            <strong style={{ color: '#b91c1c' }}>Trùng phòng với ca khác trong chính kế hoạch này:</strong>
+                          </div>
+                          {internalOverlapsForSession(sess.id).map((o, i) => (
+                            <span key={`${o.a_key}-${o.b_key}-${i}`}>{describeInternalOverlap(o)}</span>
+                          ))}
+                        </div>
+                      )}
 
                       {sess.room_id && conflictsForSession(sess.id).length > 0 && (
                         <div
@@ -1417,9 +1504,9 @@ export default function NewProposalPage() {
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
                       {isDirectFaculty
-                        ? `Đẩy thẳng đến Phòng. TC-HC-QT duyệt & bàn giao phòng: ${selectedRoomName}`
+                        ? `Đẩy thẳng đến Phòng. TC-HC-QT duyệt & bàn giao phòng: ${borrowedRoomsLabel}`
                         : isBorrowing
-                        ? `Kích hoạt phê duyệt cấp phòng & bàn giao địa điểm: ${selectedRoomName}`
+                        ? `Kích hoạt phê duyệt cấp phòng & bàn giao địa điểm: ${borrowedRoomsLabel}`
                         : 'Tự động miễn duyệt (Không mượn phòng học viện)'}
                     </div>
                   </div>
@@ -1442,13 +1529,211 @@ export default function NewProposalPage() {
             </div>
           </div>
 
+          {/* ═══════════════ MỤC 6: BẢNG TỔNG KẾT – KIỂM TRA LẠI TRƯỚC KHI GỬI ═══════════════ */}
+          {(() => {
+            const fmtDay = (d: string) =>
+              d ? new Date(`${d}T00:00:00`).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+            const rows = isMultiSession
+              ? sessionsList.map((s) => ({
+                  key: s.id,
+                  name: s.name || 'Ca chưa đặt tên',
+                  date: fmtDay(s.session_date),
+                  time: `${s.start_time || '??'}–${s.end_time || '??'}`,
+                  room: s.room_id ? (s.room_name || '') : '',
+                }))
+              : [{
+                  key: 'session_1',
+                  name: 'Buổi chính',
+                  date: startDate !== endDate ? `${formatDateVN(startDate)} → ${formatDateVN(endDate)}` : fmtDay(startDate),
+                  time: `${startTime}–${endTime}${bookingPreview.mode === 'daily' ? ' (mỗi ngày)' : ''}`,
+                  room: selectedRoomId ? selectedRoomName : '',
+                }];
+            const roomTotals = borrowedRoomNames.map((name) => ({
+              name,
+              count: bookingPreview.slots.filter((s) => s.room_name === name).length,
+            }));
+            const issueCount = roomConflicts.length + internalOverlaps.length + (planUrl.trim() ? 0 : 1);
+            const cellStyle: React.CSSProperties = { padding: '0.55rem 0.75rem', fontWeight: 700, color: '#0f172a', verticalAlign: 'top' };
+            const headStyle: React.CSSProperties = { padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' };
+            const infoLabel: React.CSSProperties = { fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' };
+            const infoValue: React.CSSProperties = { fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' };
+
+            return (
+              <div className={styles.sectionCard}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.85rem',
+                    marginBottom: '1.25rem',
+                    paddingBottom: '1rem',
+                    borderBottom: '1.5px solid #f1f5f9',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <CheckCircleIcon size={20} color="#15803d" />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                      6. Bảng Tổng Kết – Kiểm Tra Lại Trước Khi Gửi
+                    </h2>
+                    <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.15rem 0 0' }}>
+                      Đây chính là nội dung các cấp phê duyệt sẽ nhìn thấy
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', padding: '1.1rem', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', gridColumn: '1 / -1' }}>
+                    <span style={infoLabel}>Tên chương trình</span>
+                    <span style={{ ...infoValue, color: title.trim() ? '#0f172a' : '#dc2626' }}>{title.trim() || 'Chưa nhập tên chương trình'}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={infoLabel}>Đơn vị</span>
+                    <span style={infoValue}>{organizationUnit}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={infoLabel}>Thời gian</span>
+                    <span style={infoValue}>
+                      {startDate !== endDate ? `${formatDateVN(startDate)} → ${formatDateVN(endDate)}` : formatDateVN(startDate)}
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}> ({startTime}–{endTime})</span>
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={infoLabel}>Quy mô</span>
+                    <span style={infoValue}>
+                      {totalPersonnel} người
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>
+                        {' '}({Number(participantCount) || 0} SV, {Number(volunteerCount) || 0} CTV, {Number(organizerCount) || 0} BTC)
+                      </span>
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={infoLabel}>File kế hoạch</span>
+                    <span style={{ ...infoValue, color: planUrl.trim() ? '#15803d' : '#dc2626' }}>
+                      {planUrl.trim() ? 'Đã đính kèm' : 'Chưa đính kèm (bắt buộc)'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={infoLabel}>Các cấp duyệt</span>
+                    <span style={infoValue}>
+                      {[
+                        !isDirectFaculty && 'Đoàn TN',
+                        !isDirectFaculty && requiresCtsv && 'CTSV',
+                        (isDirectFaculty || isBorrowing) && 'Phòng TC-HC-QT',
+                      ].filter(Boolean).join(' → ')}
+                    </span>
+                  </div>
+                </div>
+
+                <span style={{ ...infoLabel, display: 'block', marginBottom: '0.5rem' }}>
+                  Lịch các ca &amp; phòng/sân ({rows.length} ca)
+                </span>
+                <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f1f5f9' }}>
+                        <th style={headStyle}>Ca</th>
+                        <th style={headStyle}>Ngày</th>
+                        <th style={headStyle}>Giờ</th>
+                        <th style={headStyle}>Phòng / Sân</th>
+                        <th style={headStyle}>Tình trạng phòng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, idx) => {
+                        const ext = roomConflicts.filter((c) => c.slot_key === r.key);
+                        const internal = internalOverlapsForSession(r.key);
+                        const bad = ext.length > 0 || internal.length > 0;
+                        return (
+                          <tr key={r.key} style={{ background: bad ? '#fef2f2' : idx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ ...cellStyle, color: '#1e1b4b', whiteSpace: 'nowrap' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#7e22ce', color: '#fff', fontSize: '0.7rem', fontWeight: 800, marginRight: '0.4rem' }}>{idx + 1}</span>
+                              {r.name}
+                            </td>
+                            <td style={{ ...cellStyle, whiteSpace: 'nowrap' }}>{r.date}</td>
+                            <td style={{ ...cellStyle, whiteSpace: 'nowrap' }}>{r.time}</td>
+                            <td style={{ ...cellStyle, color: r.room ? '#0f172a' : '#94a3b8' }}>{r.room || 'Không mượn'}</td>
+                            <td style={{ ...cellStyle, fontWeight: 600 }}>
+                              {!r.room ? (
+                                <span style={{ color: '#94a3b8' }}>—</span>
+                              ) : checkingConflict ? (
+                                <span style={{ color: '#2563eb' }}>Đang kiểm tra...</span>
+                              ) : bad ? (
+                                <span style={{ color: '#b91c1c', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                  {internal.map((o, i) => (
+                                    <span key={`i-${i}`}>Trùng với ca &quot;{o.a_key === r.key ? o.b_label : o.a_label}&quot; trong kế hoạch này</span>
+                                  ))}
+                                  {ext.slice(0, 3).map((c, i) => (
+                                    <span key={`e-${i}`}>Trùng &quot;{c.other_title}&quot; ({c.other_slot_start_time}–{c.other_slot_end_time} ngày {formatDateVN(c.other_slot_date)})</span>
+                                  ))}
+                                  {ext.length > 3 && <span>… và {ext.length - 3} khung trùng khác</span>}
+                                </span>
+                              ) : conflictChecked ? (
+                                <span style={{ color: '#15803d', fontWeight: 700 }}>Trống</span>
+                              ) : (
+                                <span style={{ color: '#94a3b8' }}>Chưa kiểm tra</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {roomTotals.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.85rem' }}>
+                    {roomTotals.map((t) => (
+                      <span
+                        key={t.name}
+                        style={{ fontSize: '0.8rem', fontWeight: 700, padding: '0.3rem 0.7rem', borderRadius: '8px', background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' }}
+                      >
+                        {t.name}: {t.count} {bookingPreview.mode === 'daily' ? 'ngày' : 'ca'}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    marginTop: '1rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    background: issueCount > 0 ? '#fef2f2' : '#f0fdf4',
+                    border: issueCount > 0 ? '1px solid #fecaca' : '1px solid #bbf7d0',
+                    color: issueCount > 0 ? '#991b1b' : '#166534',
+                  }}
+                >
+                  {issueCount > 0
+                    ? `Còn ${issueCount} vấn đề cần sửa trước khi gửi (xem các dòng màu đỏ ở trên).`
+                    : checkingConflict
+                    ? 'Đang kiểm tra lịch phòng...'
+                    : 'Mọi thông tin đã hợp lệ. Kiểm tra lại lần cuối rồi bấm Gửi.'}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ═══════════════ FOOTER ACTION BAR ═══════════════ */}
-          {(errorMessage || roomConflicts.length > 0) && (
+          {(errorMessage || roomConflicts.length > 0 || internalOverlaps.length > 0) && (
             <div className={styles.errorAlert} style={{ marginBottom: 0 }}>
               <AlertTriangleIcon size={20} color="#b91c1c" />
               <span style={{ whiteSpace: 'pre-line' }}>
                 {errorMessage ||
-                  `Có ${roomConflicts.length} ca bị trùng lịch phòng (xem các ô đỏ ở Mục 3). Đổi giờ/ngày hoặc chọn phòng khác để có thể gửi.`}
+                  `Có ${roomConflicts.length + internalOverlaps.length} ca bị trùng lịch phòng (xem các ô đỏ ở Mục 3 và Bảng tổng kết). Đổi giờ/ngày hoặc chọn phòng khác để có thể gửi.`}
               </span>
             </div>
           )}
@@ -1462,7 +1747,7 @@ export default function NewProposalPage() {
 
             <button
               type="submit"
-              disabled={submitting || roomConflicts.length > 0}
+              disabled={submitting || roomConflicts.length > 0 || internalOverlaps.length > 0}
               className={styles.submitButton}
             >
               {submitting

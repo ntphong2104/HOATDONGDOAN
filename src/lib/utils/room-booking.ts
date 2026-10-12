@@ -256,6 +256,38 @@ function sameRoom(a: BookingSlot, b: BookingSlot): boolean {
   );
 }
 
+export interface InternalOverlap {
+  a_key: string;
+  a_label: string;
+  b_key: string;
+  b_label: string;
+  room_name: string;
+  date: string;
+}
+
+/**
+ * Sessions of the SAME proposal that book the same room at overlapping times.
+ * Different rooms at the same time are fine (e.g. 2 sân cùng lúc = 2 ca cùng giờ).
+ */
+export function findInternalOverlaps(slots: BookingSlot[]): InternalOverlap[] {
+  const out: InternalOverlap[] = [];
+  for (let i = 0; i < slots.length; i++) {
+    for (let j = i + 1; j < slots.length; j++) {
+      const a = slots[i];
+      const b = slots[j];
+      if (a.key === b.key) continue;
+      if (sameRoom(a, b) && a.startMs < b.endMs && b.startMs < a.endMs) {
+        out.push({ a_key: a.key, a_label: a.label, b_key: b.key, b_label: b.label, room_name: a.room_name, date: a.date });
+      }
+    }
+  }
+  return out;
+}
+
+export function describeInternalOverlap(o: InternalOverlap): string {
+  return `Ca "${o.a_label}" và ca "${o.b_label}" cùng mượn ${o.room_name} trùng giờ ngày ${formatDateVN(o.date)}. Nếu cần nhiều sân cùng lúc, mỗi ca hãy chọn một sân khác nhau.`;
+}
+
 export interface ExistingBooking {
   proposal: BookingProposalInput & { id: string };
   slots: BookingSlot[];
