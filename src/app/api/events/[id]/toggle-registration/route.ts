@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isEventScheduleExpired, isEventLockedPast3Days } from '@/lib/utils/event-logic';
-import { getEventMeta } from '@/lib/constants/event-meta-store';
+import { getEventMeta, invalidateEventCache } from '@/lib/constants/event-meta-store';
 
 export async function POST(
   req: Request,
@@ -79,6 +79,8 @@ export async function POST(
   if (updateErr) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
+
+  invalidateEventCache(resolvedParams.id);
 
   return NextResponse.json({
     success: true,

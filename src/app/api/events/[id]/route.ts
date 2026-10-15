@@ -2,25 +2,30 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
-import { getEventMeta, saveEventMeta, type EventMeta } from '@/lib/constants/event-meta-store';
+import {
+  getEventMeta,
+  saveEventMeta,
+  getCachedEventResponse,
+  setCachedEventResponse,
+  invalidateEventCache,
+  type EventMeta,
+} from '@/lib/constants/event-meta-store';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// ═══ In-memory cache — giảm 90% DB load khi 800 SV GET cùng event ═══
-const eventCache = new Map<string, { data: any; ts: number }>();
-const CACHE_TTL_MS = 5000; // 5 giây
+const CACHE_TTL_MS = 5000; // 5 giây (trên server, tự xoá ngay khi có thay đổi)
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   const eventId = resolvedParams.id;
 
-  // Check cache first
-  const cached = eventCache.get(eventId);
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-    return NextResponse.json({ success: true, data: cached.data }, {
+  // Check shared server cache first
+  const cachedData = getCachedEventResponse(eventId, CACHE_TTL_MS);
+  if (cachedData) {
+    return NextResponse.json({ success: true, data: cachedData }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
         'X-Cache': 'HIT',
       },
     });
@@ -68,19 +73,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     is_locked_past_3_days: isEventLockedPast3Days({ ...data, sessions: meta.sessions || [] }),
   };
 
-  // Save to cache
-  eventCache.set(eventId, { data: enriched, ts: Date.now() });
-  // Auto-cleanup: remove stale entries every 60s
-  if (eventCache.size > 100) {
-    const now = Date.now();
-    for (const [k, v] of eventCache) {
-      if (now - v.ts > 60000) eventCache.delete(k);
-    }
-  }
+  setCachedEventResponse(eventId, enriched);
 
   return NextResponse.json({ success: true, data: enriched }, {
     headers: {
-      'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=10',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
       'X-Cache': 'MISS',
     },
   });
@@ -88,7 +85,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
-  eventCache.delete(resolvedParams.id); // Invalidate cache khi admin cập nhật
+  invalidateEventCache(resolvedParams.id); // Invalidate cache khi admin cập nhật
   const auth = await getAuthContext();
 
   if (!auth) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -229,12 +226,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     max_volunteers: latestMeta.max_volunteers || 0,
   };
 
+  invalidateEventCache(resolvedParams.id);
   return NextResponse.json({ success: true, data: result });
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
-  eventCache.delete(resolvedParams.id);
+  invalidateEventCache(resolvedParams.id);
   const auth = await getAuthContext();
 
   if (!auth) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });

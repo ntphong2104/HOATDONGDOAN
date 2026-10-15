@@ -254,6 +254,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
         alert(data.error || 'Lỗi lưu cấu hình Ban');
         setDepartments(previousDepts);
       } else {
+        notifyEventSync(resolvedParams.id);
         alert('Đã thêm Ban thành công!');
       }
     } catch (e) {
@@ -295,6 +296,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
         alert(data.error || 'Lỗi xóa Ban');
         setDepartments(previousDepts);
       } else {
+        notifyEventSync(resolvedParams.id);
         alert('Đã xóa Ban thành công!');
       }
     } catch (e) {
@@ -403,6 +405,19 @@ export default function EventDetailPage({ params }: { params?: any }) {
     }
   };
 
+  const notifyEventSync = (eventId: string) => {
+    try {
+      if (typeof window !== 'undefined') {
+        if ('BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('hdd_event_sync');
+          bc.postMessage({ eventId, ts: Date.now() });
+          bc.close();
+        }
+        localStorage.setItem('hdd_event_sync', JSON.stringify({ eventId, ts: Date.now() }));
+      }
+    } catch {}
+  };
+
   const handleToggleRecruitment = async () => {
     setTogglingRecruitment(true);
     try {
@@ -412,6 +427,12 @@ export default function EventDetailPage({ params }: { params?: any }) {
       });
       const data = await res.json();
       if (data.success) {
+        const nextOpen =
+          typeof data.is_recruitment_open === 'boolean'
+            ? data.is_recruitment_open
+            : event?.is_recruitment_open === false;
+        setEvent((prev) => (prev ? { ...prev, is_recruitment_open: nextOpen } : prev));
+        notifyEventSync(resolvedParams.id);
         alert(data.message);
         fetchData(false);
       } else {
@@ -704,12 +725,21 @@ export default function EventDetailPage({ params }: { params?: any }) {
       });
       const data = await res.json();
       if (data.success) {
+        const nextOpen =
+          typeof data.is_registration_open === 'boolean'
+            ? data.is_registration_open
+            : !isCurrentlyOpen;
+        setEvent((prev) =>
+          prev
+            ? {
+                ...prev,
+                ...(data.data || {}),
+                is_registration_open: nextOpen,
+              }
+            : prev
+        );
+        notifyEventSync(resolvedParams.id);
         alert(data.message);
-        if (data.data) {
-          setEvent(data.data);
-        } else {
-          setEvent((prev) => (prev ? { ...prev, is_registration_open: !isCurrentlyOpen } : null));
-        }
         fetchData(false);
       } else {
         alert(data.error || 'Lỗi thay đổi trạng thái');
@@ -1336,6 +1366,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     const data = await res.json();
                     if (data.success !== false) {
                       setEvent((prev: any) => prev ? { ...prev, allowed_cohorts: next.length > 0 ? next : null } : prev);
+                      notifyEventSync(event.event_id);
                     } else {
                       alert(data.error || 'Lỗi cập nhật');
                     }

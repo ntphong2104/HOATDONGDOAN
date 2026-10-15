@@ -182,6 +182,10 @@ export async function GET(
         ? allRegistrations.filter((r: any) => isValidMSSV(r.mssv || ''))
         : undefined,
     },
+  }, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    },
   });
 }
 
@@ -195,14 +199,6 @@ function getRecruitmentWindow(rawEvent: any, meta: any): { isOpen: boolean; reas
   }
   if (meta?.is_recruitment_open === false) {
     return { isOpen: false, reason: 'Cổng tuyển dụng Ban chuyên trách & CTV đã đóng theo quyết định của Ban tổ chức.' };
-  }
-  if (rawEvent.event_date) {
-    const date = String(rawEvent.event_date).split('T')[0];
-    const hhmm = String(rawEvent.start_time || '07:30').slice(0, 5);
-    const startMs = new Date(`${date}T${hhmm}:00+07:00`).getTime();
-    if (!isNaN(startMs) && (startMs - Date.now()) / 3600000 < 24) {
-      return { isOpen: false, reason: 'Cổng tuyển dụng CTV đã đóng (quy định đóng trước 24 giờ để Ban tổ chức hoàn tất công tác tổ chức).' };
-    }
   }
   return { isOpen: true };
 }

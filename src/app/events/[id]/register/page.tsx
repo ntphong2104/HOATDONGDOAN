@@ -62,7 +62,7 @@ export default function EventRegisterPage({
 
   const fetchRegistrationData = async () => {
     try {
-      const res = await fetch(`/api/events/${resolvedParams.id}/register`);
+      const res = await fetch(`/api/events/${resolvedParams.id}/register`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success && data.data) {
         setEvent(data.data.event);
@@ -72,12 +72,12 @@ export default function EventRegisterPage({
         setRegistrationWindow(data.data.registrationWindow || null);
         setCohortEligibility(data.data.cohortEligibility || null);
         if (data.data.event?.departments?.length > 0) {
-          setSelectedDeptId(data.data.event.departments[0].id);
+          setSelectedDeptId((prev) => prev || data.data.event.departments[0].id);
         }
         const pSessions = data.data.event?.participant_sessions || [];
         if (pSessions.length > 0) {
           const mainSess = pSessions.find((s: any) => s.is_main) || pSessions[0];
-          setSelectedSessionId(mainSess.id);
+          setSelectedSessionId((prev) => prev || mainSess.id);
         }
       }
     } catch (err) {
@@ -90,6 +90,35 @@ export default function EventRegisterPage({
   useEffect(() => {
     fetchUser();
     fetchRegistrationData();
+
+    const onRefresh = () => {
+      if (document.visibilityState === 'visible') {
+        fetchRegistrationData();
+      }
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'hdd_event_sync') fetchRegistrationData();
+    };
+    window.addEventListener('focus', onRefresh);
+    document.addEventListener('visibilitychange', onRefresh);
+    window.addEventListener('storage', onStorage);
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('hdd_event_sync');
+      bc.onmessage = (ev) => {
+        if (!ev?.data?.eventId || ev.data.eventId === resolvedParams.id) {
+          fetchRegistrationData();
+        }
+      };
+    }
+
+    return () => {
+      window.removeEventListener('focus', onRefresh);
+      document.removeEventListener('visibilitychange', onRefresh);
+      window.removeEventListener('storage', onStorage);
+      if (bc) bc.close();
+    };
   }, [resolvedParams.id]);
 
   // Giới hạn khóa: ca (nếu có giới hạn riêng) ưu tiên hơn sự kiện — giống kiểm tra phía server

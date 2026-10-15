@@ -59,7 +59,7 @@ export default function EventRecruitmentPage({
 
   const fetchRegistrationData = async () => {
     try {
-      const res = await fetch(`/api/events/${resolvedParams.id}/register`);
+      const res = await fetch(`/api/events/${resolvedParams.id}/register`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success && data.data) {
         setEvent(data.data.event);
@@ -69,7 +69,7 @@ export default function EventRecruitmentPage({
         setRegistrationWindow(data.data.recruitmentWindow || data.data.registrationWindow || null);
         setCohortEligibility(data.data.cohortEligibility || null);
         if (data.data.event?.departments?.length > 0) {
-          setSelectedDeptId(data.data.event.departments[0].id);
+          setSelectedDeptId((prev) => prev || data.data.event.departments[0].id);
         }
       }
     } catch (err) {
@@ -82,6 +82,35 @@ export default function EventRecruitmentPage({
   useEffect(() => {
     fetchUser();
     fetchRegistrationData();
+
+    const onRefresh = () => {
+      if (document.visibilityState === 'visible') {
+        fetchRegistrationData();
+      }
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'hdd_event_sync') fetchRegistrationData();
+    };
+    window.addEventListener('focus', onRefresh);
+    document.addEventListener('visibilitychange', onRefresh);
+    window.addEventListener('storage', onStorage);
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('hdd_event_sync');
+      bc.onmessage = (ev) => {
+        if (!ev?.data?.eventId || ev.data.eventId === resolvedParams.id) {
+          fetchRegistrationData();
+        }
+      };
+    }
+
+    return () => {
+      window.removeEventListener('focus', onRefresh);
+      document.removeEventListener('visibilitychange', onRefresh);
+      window.removeEventListener('storage', onStorage);
+      if (bc) bc.close();
+    };
   }, [resolvedParams.id]);
 
   const handleApply = async (e: React.FormEvent) => {

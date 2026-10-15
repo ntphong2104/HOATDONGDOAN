@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { getEventMeta, saveEventMeta } from '@/lib/constants/event-meta-store';
+import { getEventMeta, saveEventMeta, invalidateEventCache } from '@/lib/constants/event-meta-store';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
 export async function POST(
@@ -69,6 +69,7 @@ export async function POST(
     const updatedMeta = await saveEventMeta(supabase, resolvedParams.id, {
       is_recruitment_open: nextState,
     });
+    invalidateEventCache(resolvedParams.id);
 
     return NextResponse.json({
       success: true,

@@ -82,9 +82,41 @@ function evictOldest<T>(cache: Record<string, T>, maxEntries: number): void {
   }
 }
 
-let inMemoryMeta: Record<string, EventMeta> = loadFromFile();
-const inMemoryMetaExpiry: Record<string, number> = {};
-const META_CACHE_TTL_MS = 30000; // 30 seconds TTL for high-throughput scanning
+const g = globalThis as unknown as {
+  __hddInMemoryMeta?: Record<string, EventMeta>;
+  __hddInMemoryMetaExpiry?: Record<string, number>;
+  __hddEventResponseCache?: Map<string, { data: any; ts: number }>;
+};
+
+const inMemoryMeta: Record<string, EventMeta> = g.__hddInMemoryMeta || (g.__hddInMemoryMeta = loadFromFile());
+const inMemoryMetaExpiry: Record<string, number> = g.__hddInMemoryMetaExpiry || (g.__hddInMemoryMetaExpiry = {});
+const eventResponseCache: Map<string, { data: any; ts: number }> =
+  g.__hddEventResponseCache || (g.__hddEventResponseCache = new Map());
+
+const META_CACHE_TTL_MS = 5000; // 5s TTL, invalidated immediately on any write
+
+export function getCachedEventResponse(eventId: string, ttlMs = 5000): any | null {
+  const cached = eventResponseCache.get(eventId);
+  if (cached && Date.now() - cached.ts < ttlMs) {
+    return cached.data;
+  }
+  return null;
+}
+
+export function setCachedEventResponse(eventId: string, data: any): void {
+  eventResponseCache.set(eventId, { data, ts: Date.now() });
+  if (eventResponseCache.size > 100) {
+    const now = Date.now();
+    for (const [k, v] of eventResponseCache) {
+      if (now - v.ts > 60000) eventResponseCache.delete(k);
+    }
+  }
+}
+
+export function invalidateEventCache(eventId: string): void {
+  eventResponseCache.delete(eventId);
+  delete inMemoryMetaExpiry[eventId];
+}
 
 export async function getEventMeta(supabase: any, eventId: string): Promise<EventMeta> {
   const now = Date.now();
@@ -93,10 +125,9 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
   }
 
   const metaKey = `event_meta_${eventId}`;
-  // Use in-memory cache (loaded from file on startup, updated on save)
   const fileMeta = inMemoryMeta[eventId] || null;
 
-  // 1. Try Supabase system_settings
+  // 1. Try Supabase system_settings (authoritative source of truth)
   let dbMeta: EventMeta | null = null;
   if (supabase) {
     try {
@@ -116,21 +147,25 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
   }
 
   const merged: EventMeta = {
-    departments: (fileMeta?.departments && fileMeta.departments.length > 0)
-      ? fileMeta.departments
-      : dbMeta?.departments || [],
-    sessions: (fileMeta?.sessions && fileMeta.sessions.length >= (dbMeta?.sessions?.length || 0))
-      ? fileMeta.sessions
-      : dbMeta?.sessions || fileMeta?.sessions || [],
-    is_recruitment_open: fileMeta?.is_recruitment_open !== undefined
+    departments: (dbMeta?.departments && dbMeta.departments.length > 0)
+      ? dbMeta.departments
+      : fileMeta?.departments || [],
+    sessions: (dbMeta?.sessions && dbMeta.sessions.length > 0)
+      ? dbMeta.sessions
+      : fileMeta?.sessions || [],
+    is_recruitment_open: dbMeta?.is_recruitment_open !== undefined
+      ? dbMeta.is_recruitment_open
+      : fileMeta?.is_recruitment_open !== undefined
       ? fileMeta.is_recruitment_open
-      : dbMeta?.is_recruitment_open !== false,
-    require_registration: fileMeta?.require_registration !== undefined
+      : true,
+    require_registration: dbMeta?.require_registration !== undefined
+      ? dbMeta.require_registration
+      : fileMeta?.require_registration !== undefined
       ? fileMeta.require_registration
-      : dbMeta?.require_registration !== false,
-    target_scope: fileMeta?.target_scope || dbMeta?.target_scope || 'all',
-    max_participants: fileMeta?.max_participants ?? dbMeta?.max_participants ?? 0,
-    max_volunteers: fileMeta?.max_volunteers ?? dbMeta?.max_volunteers ?? 0,
+      : true,
+    target_scope: dbMeta?.target_scope || fileMeta?.target_scope || 'all',
+    max_participants: dbMeta?.max_participants ?? fileMeta?.max_participants ?? 0,
+    max_volunteers: dbMeta?.max_volunteers ?? fileMeta?.max_volunteers ?? 0,
   };
 
   // Ensure event bbfe063b-c18f-4003-afe1-665334d13743 has 230 capacity if not yet set or <= 130
@@ -150,16 +185,6 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
   inMemoryMeta[eventId] = merged;
   inMemoryMetaExpiry[eventId] = Date.now() + META_CACHE_TTL_MS;
   evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
-
-  if (supabase && fileMeta?.max_participants && dbMeta && dbMeta.max_participants !== fileMeta.max_participants) {
-    try {
-      supabase.from('system_settings').upsert({
-        key: metaKey,
-        value: JSON.stringify(merged),
-        updated_at: new Date().toISOString(),
-      }).then(() => {}).catch(() => {});
-    } catch {}
-  }
 
   return merged;
 }
@@ -314,6 +339,7 @@ export async function saveEventMeta(
   eventId: string,
   metaUpdate: Partial<EventMeta>
 ): Promise<EventMeta> {
+  delete inMemoryMetaExpiry[eventId];
   const current = await getEventMeta(supabase, eventId);
   const updated: EventMeta = {
     ...current,
@@ -322,6 +348,7 @@ export async function saveEventMeta(
 
   inMemoryMeta[eventId] = updated;
   inMemoryMetaExpiry[eventId] = Date.now() + META_CACHE_TTL_MS;
+  eventResponseCache.delete(eventId);
   evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
   saveToFile({ ...loadFromFile(), [eventId]: updated });
 
@@ -336,6 +363,7 @@ export async function saveEventMeta(
     } catch {}
   }
 
+  eventResponseCache.delete(eventId);
   return updated;
 }
 
