@@ -8,6 +8,7 @@ import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
+import { checkCohortEligibility, describeCohortBlock } from '@/lib/utils/cohort';
 
 export async function GET(
   req: Request,
@@ -172,6 +173,8 @@ export async function GET(
     data: {
       event,
       registrationWindow,
+      recruitmentWindow: getRecruitmentWindow(rawEvent, meta),
+      cohortEligibility: checkCohortEligibility(rawEvent.allowed_cohorts, mssv),
       totalRegistered: totalRegistered || 0,
       myRegistration,
       penaltyStatus,
@@ -180,6 +183,28 @@ export async function GET(
         : undefined,
     },
   });
+}
+
+/**
+ * Cổng tuyển CTV — độc lập với cổng đăng ký khán giả
+ * (sự kiện chỉ tuyển CTV có is_registration_open = false nhưng vẫn phải nhận đơn CTV).
+ */
+function getRecruitmentWindow(rawEvent: any, meta: any): { isOpen: boolean; reason?: string } {
+  if (rawEvent.status !== 'active') {
+    return { isOpen: false, reason: 'Sự kiện đã kết thúc hoặc đã đóng.' };
+  }
+  if (meta?.is_recruitment_open === false) {
+    return { isOpen: false, reason: 'Cổng tuyển dụng Ban chuyên trách & CTV đã đóng theo quyết định của Ban tổ chức.' };
+  }
+  if (rawEvent.event_date) {
+    const date = String(rawEvent.event_date).split('T')[0];
+    const hhmm = String(rawEvent.start_time || '07:30').slice(0, 5);
+    const startMs = new Date(`${date}T${hhmm}:00+07:00`).getTime();
+    if (!isNaN(startMs) && (startMs - Date.now()) / 3600000 < 24) {
+      return { isOpen: false, reason: 'Cổng tuyển dụng CTV đã đóng (quy định đóng trước 24 giờ để Ban tổ chức hoàn tất công tác tổ chức).' };
+    }
+  }
+  return { isOpen: true };
 }
 
 export async function POST(
@@ -222,17 +247,32 @@ export async function POST(
     max_participants: meta.max_participants || rawEvent.max_participants || 0,
   };
 
-  const registrationWindow = isRegistrationWindowOpen(
-    event.event_date,
-    event.start_time,
-    event.status,
-    event.is_registration_open
-  );
-  if (!registrationWindow.isOpen) {
-    return NextResponse.json({
-      success: false,
-      error: registrationWindow.reason || 'Cổng đăng ký đã đóng.',
-    }, { status: 400 });
+  const body = await req.json().catch(() => ({}));
+  const requestedSessionId = body.session_id || null;
+  const isVolunteerRequest = body.role_type === 'volunteer';
+
+  // Khán giả: theo cổng đăng ký tham gia. CTV: theo cổng tuyển CTV (độc lập — sự kiện chỉ tuyển CTV vẫn nhận đơn).
+  if (isVolunteerRequest) {
+    const recruitmentWindow = getRecruitmentWindow(rawEvent, meta);
+    if (!recruitmentWindow.isOpen) {
+      return NextResponse.json({
+        success: false,
+        error: recruitmentWindow.reason || 'Cổng tuyển dụng CTV đã đóng.',
+      }, { status: 400 });
+    }
+  } else {
+    const registrationWindow = isRegistrationWindowOpen(
+      event.event_date,
+      event.start_time,
+      event.status,
+      event.is_registration_open
+    );
+    if (!registrationWindow.isOpen) {
+      return NextResponse.json({
+        success: false,
+        error: registrationWindow.reason || 'Cổng đăng ký đã đóng.',
+      }, { status: 400 });
+    }
   }
 
   const mssv = extractMSSV(auth.email) || auth.email;
@@ -252,35 +292,23 @@ export async function POST(
     }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => ({}));
-  const requestedSessionId = body.session_id || null;
-
-  // 2.5. CHECK COHORT RESTRICTION (Giới hạn khóa SV - Cấp Sự Kiện hoặc Cấp Ca)
-  const { data: eventForCohort } = await supabase
-    .from('events')
-    .select('allowed_cohorts')
-    .eq('event_id', resolvedParams.id)
-    .maybeSingle();
-
+  // 2.5. CHECK COHORT RESTRICTION (Giới hạn khóa SV - Cấp Sự Kiện hoặc Cấp Ca) — áp dụng cho cả khán giả và CTV
   const allSessions = meta.sessions || [];
   const selectedSession = requestedSessionId ? allSessions.find((s: any) => s.id === requestedSessionId) : null;
   const effectiveCohorts = selectedSession?.allowed_cohorts && selectedSession.allowed_cohorts.length > 0
     ? selectedSession.allowed_cohorts
-    : eventForCohort?.allowed_cohorts || [];
+    : rawEvent.allowed_cohorts || [];
 
-  if (effectiveCohorts && effectiveCohorts.length > 0) {
-    // Extract cohort from MSSV: N22DCCN158 → D22, N26DCDK116 → D26
-    const cohortMatch = mssv.match(/^N(\d{2})/i);
-    const studentCohort = cohortMatch ? `D${cohortMatch[1]}` : null;
-    
-    if (!studentCohort || !effectiveCohorts.includes(studentCohort)) {
-      const allowedStr = effectiveCohorts.join(', ');
-      const sessionLabel = selectedSession ? `Ca "${selectedSession.name}"` : 'Sự kiện này';
-      return NextResponse.json({
-        success: false,
-        error: `${sessionLabel} chỉ dành cho sinh viên khóa ${allowedStr}. Tài khoản của bạn (${mssv}) thuộc khóa ${studentCohort || 'không xác định'} nên không thể đăng ký.`,
-      }, { status: 403 });
-    }
+  const cohortCheck = checkCohortEligibility(effectiveCohorts, mssv);
+  if (!cohortCheck.eligible) {
+    const target = selectedSession
+      ? `Ca "${selectedSession.name}"`
+      : isVolunteerRequest ? 'Cổng tuyển CTV của sự kiện này' : 'Sự kiện này';
+    return NextResponse.json({
+      success: false,
+      error: describeCohortBlock(cohortCheck, mssv, target),
+      not_in_cohort: true,
+    }, { status: 403 });
   }
 
   // 3. Get User Profile info
@@ -359,18 +387,7 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // CTV recruitment closes 24h prior to event start
-    if (event.event_date && event.start_time) {
-      const eventStart = new Date(`${event.event_date}T${event.start_time}:00`);
-      const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
-      const hoursRemaining = (eventStart.getTime() - nowVN.getTime()) / (1000 * 60 * 60);
-      if (hoursRemaining < 24 && event.status === 'active') {
-        return NextResponse.json({
-          success: false,
-          error: 'Cổng tuyển dụng CTV đã đóng (quy định đóng trước 24 giờ để Ban tổ chức hoàn tất công tác tổ chức).',
-        }, { status: 400 });
-      }
-    }
+    // Hạn đóng trước 24 giờ đã kiểm tra ở getRecruitmentWindow() phía trên
 
     if (department_id && Array.isArray(event.departments)) {
       const dept = event.departments.find((d: any) => d.id === department_id);

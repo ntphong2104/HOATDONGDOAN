@@ -849,6 +849,14 @@ export default function ProposalDetailPage({
                 </span>
               </span>
             </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Khóa SV được đăng ký</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.allowed_cohorts && proposal.allowed_cohorts.length > 0 ? '#b91c1c' : '#15803d' }}>
+                {proposal.allowed_cohorts && proposal.allowed_cohorts.length > 0
+                  ? `Chỉ khóa ${proposal.allowed_cohorts.join(', ')}`
+                  : 'Tất cả khóa (Full khóa)'}
+              </span>
+            </div>
             {/* ── BẢNG TÓM TẮT LỊCH TRÌNH & ĐỊA ĐIỂM CÁC CA ── */}
             <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Lịch Trình & Địa Điểm Các Ca</span>

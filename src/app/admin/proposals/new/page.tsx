@@ -31,6 +31,7 @@ import {
   formatDateVN,
   type RoomConflict,
 } from '@/lib/utils/room-booking';
+import { getSelectableCohorts } from '@/lib/utils/cohort';
 import styles from './page.module.css';
 
 // Giá trị của lựa chọn "Không mượn phòng" trong ô chọn (khác '' = chưa chọn)
@@ -60,6 +61,9 @@ export default function NewProposalPage() {
   const [participantCount, setParticipantCount] = useState<number | string>(60);
   const [volunteerCount, setVolunteerCount] = useState<number | string>(10);
   const [organizerCount, setOrganizerCount] = useState<number | string>(5);
+  // Giới hạn khóa SV được đăng ký: [] = tất cả khóa (mặc định nếu không chọn gì)
+  const [allowedCohorts, setAllowedCohorts] = useState<string[]>([]);
+  const cohortOptions = getSelectableCohorts(allowedCohorts);
 
   const handleNumberChange = (setter: React.Dispatch<React.SetStateAction<number | string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -436,6 +440,7 @@ export default function NewProposalPage() {
           participant_count: Number(participantCount) || 0,
           volunteer_count: Number(volunteerCount) || 0,
           organizer_count: Number(organizerCount) || 0,
+          allowed_cohorts: allowedCohorts,
           ...buildBookingPayload(),
         }),
       });
@@ -824,6 +829,69 @@ export default function NewProposalPage() {
                 {totalPersonnel} người
               </span>
             </div>
+
+            {/* Giới hạn khóa SV được đăng ký — tự động áp vào sự kiện khi được duyệt */}
+            {(() => {
+              const isAll = allowedCohorts.length === 0;
+              const toggle = (c: string) => {
+                const base = isAll ? cohortOptions : allowedCohorts;
+                const next = base.includes(c) ? base.filter((x) => x !== c) : [...base, c];
+                if (next.length === 0) {
+                  alert('Phải chọn ít nhất 1 khóa. Muốn mở cho tất cả, bấm "Tất cả khóa".');
+                  return;
+                }
+                setAllowedCohorts(cohortOptions.every((o) => next.includes(o)) ? [] : [...next].sort());
+              };
+              const chip = (checked: boolean): React.CSSProperties => ({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.4rem 0.75rem',
+                borderRadius: '8px',
+                border: checked ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                background: checked ? '#dbeafe' : 'white',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: checked ? 700 : 500,
+              });
+              return (
+                <div style={{ marginTop: '1.25rem', padding: '1rem 1.25rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '12px' }}>
+                  <label style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0369a1', display: 'block', marginBottom: '0.5rem' }}>
+                    Giới hạn khóa SV được đăng ký (khán giả &amp; CTV)
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <label style={chip(isAll)}>
+                      <input
+                        type="checkbox"
+                        checked={isAll}
+                        onChange={() => setAllowedCohorts([])}
+                        style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+                      />
+                      Tất cả khóa
+                    </label>
+                    {cohortOptions.map((c) => {
+                      const checked = isAll || allowedCohorts.includes(c);
+                      return (
+                        <label key={c} style={chip(checked)}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggle(c)}
+                            style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+                          />
+                          {c}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    {isAll
+                      ? 'Mặc định: tất cả khóa. Bỏ chọn khóa nào thì SV khóa đó sẽ không đăng ký được. Khi kế hoạch được duyệt, giới hạn này tự động áp vào sự kiện.'
+                      : `Chỉ SV khóa ${allowedCohorts.join(', ')} được đăng ký. Khi kế hoạch được duyệt, giới hạn này tự động áp vào sự kiện.`}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
 
           {/* ═══════════════ MỤC 3: ĐỊA ĐIỂM & CHI TIẾT CA / BUỔI & KIỂM TRA TRÙNG LỊCH ═══════════════ */}
@@ -1715,6 +1783,14 @@ export default function NewProposalPage() {
                       </span>
                     </span>
                   </div>
+                  {!isDirectFaculty && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <span style={infoLabel}>Đối tượng khóa SV</span>
+                      <span style={{ ...infoValue, color: allowedCohorts.length > 0 ? '#b91c1c' : '#15803d' }}>
+                        {allowedCohorts.length > 0 ? `Chỉ khóa ${allowedCohorts.join(', ')}` : 'Tất cả khóa (Full khóa)'}
+                      </span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                     <span style={infoLabel}>File kế hoạch</span>
                     <span style={{ ...infoValue, color: planUrl.trim() ? '#15803d' : '#dc2626' }}>

@@ -152,6 +152,10 @@ export async function POST(
           created_by: proposal.created_by,
           semester: proposal.semester || 'Chưa xếp kỳ',
           is_registration_open: participantCount > 0,
+          // Giới hạn khóa chọn lúc nộp kế hoạch → tự động áp vào sự kiện (rỗng = tất cả khóa)
+          allowed_cohorts: Array.isArray(propMetaInitial.allowed_cohorts) && propMetaInitial.allowed_cohorts.length > 0
+            ? propMetaInitial.allowed_cohorts
+            : null,
         })
         .select()
         .maybeSingle();

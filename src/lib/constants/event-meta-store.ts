@@ -353,6 +353,8 @@ export interface ProposalMeta {
   plan_url?: string;
   description?: string;
   target_scope?: string;
+  /** Giới hạn khóa SV được đăng ký; [] / không có = tất cả khóa */
+  allowed_cohorts?: string[];
 }
 
 export async function getProposalMeta(supabase: any, proposalId: string): Promise<ProposalMeta> {

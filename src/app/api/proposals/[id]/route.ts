@@ -80,6 +80,7 @@ export async function GET(
           description: proposal.description || propMeta.description || stored?.description || '',
           plan_url: proposal.plan_url || propMeta.plan_url || stored?.plan_url || '',
           sessions: proposalSessions,
+          allowed_cohorts: Array.isArray(propMeta.allowed_cohorts) ? propMeta.allowed_cohorts : [],
           room_conflicts: roomConflicts,
           logs: logs || [],
           ratingSummary,

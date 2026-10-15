@@ -31,6 +31,7 @@ import {
   PlusIcon,
   MapPinIcon,
 } from '@/components/icons';
+import { getSelectableCohorts, normalizeAllowedCohorts } from '@/lib/utils/cohort';
 import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepartment } from '@/lib/types';
 import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
@@ -1320,65 +1321,89 @@ export default function EventDetailPage({ params }: { params?: any }) {
               <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0369a1', display: 'block', marginBottom: '0.5rem' }}>
                 🎓 Giới hạn khóa SV được đăng ký
               </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                {['D22', 'D23', 'D24', 'D25', 'D26'].map((cohort) => {
-                  const currentCohorts: string[] = event.allowed_cohorts || [];
-                  const isChecked = currentCohorts.includes(cohort);
-                  return (
-                    <label
-                      key={cohort}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        padding: '0.4rem 0.75rem',
-                        borderRadius: '8px',
-                        border: isChecked ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                        background: isChecked ? '#dbeafe' : 'white',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        fontWeight: isChecked ? 700 : 500,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={async () => {
-                          let newCohorts: string[];
-                          if (isChecked) {
-                            newCohorts = currentCohorts.filter((c) => c !== cohort);
-                          } else {
-                            newCohorts = [...currentCohorts, cohort];
-                          }
-                          try {
-                            const res = await fetch(`/api/events/${event.event_id}`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ allowed_cohorts: newCohorts.length > 0 ? newCohorts : [] }),
-                            });
-                            const data = await res.json();
-                            if (data.success !== false) {
-                              setEvent((prev: any) => prev ? { ...prev, allowed_cohorts: newCohorts.length > 0 ? newCohorts : null } : prev);
-                            } else {
-                              alert(data.error || 'Lỗi cập nhật');
-                            }
-                          } catch {
-                            alert('Lỗi kết nối');
-                          }
-                        }}
-                        style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
-                      />
-                      {cohort}
-                    </label>
-                  );
-                })}
-              </div>
-              <span style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
-                {event.allowed_cohorts && event.allowed_cohorts.length > 0
-                  ? `Chỉ SV khóa ${event.allowed_cohorts.join(', ')} được đăng ký`
-                  : 'Không giới hạn — tất cả khóa đều đăng ký được'}
-              </span>
+              {(() => {
+                const currentCohorts = normalizeAllowedCohorts(event.allowed_cohorts);
+                const options = getSelectableCohorts(currentCohorts);
+                const isAll = currentCohorts.length === 0;
+
+                const saveCohorts = async (next: string[]) => {
+                  try {
+                    const res = await fetch(`/api/events/${event.event_id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ allowed_cohorts: next }),
+                    });
+                    const data = await res.json();
+                    if (data.success !== false) {
+                      setEvent((prev: any) => prev ? { ...prev, allowed_cohorts: next.length > 0 ? next : null } : prev);
+                    } else {
+                      alert(data.error || 'Lỗi cập nhật');
+                    }
+                  } catch {
+                    alert('Lỗi kết nối');
+                  }
+                };
+
+                const toggleCohort = (cohort: string) => {
+                  const base = isAll ? options : currentCohorts;
+                  const next = base.includes(cohort) ? base.filter((c) => c !== cohort) : [...base, cohort];
+                  if (next.length === 0) {
+                    alert('Phải chọn ít nhất 1 khóa. Muốn mở cho tất cả, bấm "Tất cả khóa".');
+                    return;
+                  }
+                  // Chọn lại đủ tất cả khóa = không giới hạn
+                  saveCohorts(isAll && options.every((o) => next.includes(o)) ? [] : next.sort());
+                };
+
+                const chipStyle = (checked: boolean): React.CSSProperties => ({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '8px',
+                  border: checked ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                  background: checked ? '#dbeafe' : 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: checked ? 700 : 500,
+                  transition: 'all 0.15s',
+                });
+
+                return (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <label style={chipStyle(isAll)}>
+                        <input
+                          type="checkbox"
+                          checked={isAll}
+                          onChange={() => { if (!isAll) saveCohorts([]); }}
+                          style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+                        />
+                        Tất cả khóa
+                      </label>
+                      {options.map((cohort) => {
+                        const isChecked = isAll || currentCohorts.includes(cohort);
+                        return (
+                          <label key={cohort} style={chipStyle(isChecked)}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleCohort(cohort)}
+                              style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+                            />
+                            {cohort}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
+                      {isAll
+                        ? 'Mặc định: tất cả khóa đều đăng ký được (khán giả & CTV). Bỏ chọn khóa nào thì khóa đó không đăng ký được.'
+                        : `Chỉ SV khóa ${currentCohorts.join(', ')} được đăng ký (khán giả & CTV). SV khóa khác sẽ được báo "không nằm trong khóa".`}
+                    </span>
+                  </>
+                );
+              })()}
             </div>
           )}
 

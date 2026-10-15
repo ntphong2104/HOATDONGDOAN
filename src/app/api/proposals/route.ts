@@ -11,6 +11,7 @@ import { getHandoverRegistryFromDb } from '@/lib/constants/handover-store';
 import { saveEventMeta, saveProposalMeta } from '@/lib/constants/event-meta-store';
 import { deriveBookingSchedule, describeConflict, findInternalOverlaps, describeInternalOverlap } from '@/lib/utils/room-booking';
 import { checkRoomConflicts } from '@/lib/utils/room-booking-server';
+import { normalizeAllowedCohorts } from '@/lib/utils/cohort';
 import type { EventProposal } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -190,7 +191,10 @@ export async function POST(req: Request) {
       room_id = null,
       room_name = 'Không mượn',
       sessions = [],
+      allowed_cohorts = [],
     } = body;
+    // Giới hạn khóa SV được đăng ký — rỗng = tất cả khóa (mặc định)
+    const normalizedCohorts = normalizeAllowedCohorts(allowed_cohorts);
 
     // Sanitize description and plan_url
     const sanitizedDescription = description ? sanitizeInput(String(description).slice(0, 5000)) : null;
@@ -408,6 +412,7 @@ export async function POST(req: Request) {
           sessions: normalizedSessions,
           description: sanitizedDescription ?? undefined,
           plan_url: sanitizedPlanUrl ?? undefined,
+          allowed_cohorts: normalizedCohorts,
         });
         saveProposalToStore(newProposal);
 
@@ -442,6 +447,7 @@ export async function POST(req: Request) {
         sessions: normalizedSessions,
         description: sanitizedDescription ?? undefined,
         plan_url: sanitizedPlanUrl ?? undefined,
+        allowed_cohorts: normalizedCohorts,
       });
       saveProposalToStore(newProposal);
       addStoredProposalLog({

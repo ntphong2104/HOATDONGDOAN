@@ -319,6 +319,7 @@ export interface EventProposal {
   status: ProposalStatus;
   description?: string | null;
   plan_url?: string | null;
+  allowed_cohorts?: string[] | null;
   sessions?: ProposalSessionItem[];
   key_status?: 'pending' | 'handed_over' | 'returned';
   key_handed_at?: string | null;

@@ -16,6 +16,7 @@ import {
   AlertTriangleIcon,
 } from '@/components/icons';
 import type { Event, EventRegistration, UserPenalty, SessionUser } from '@/lib/types';
+import { checkCohortEligibility, describeCohortBlock, type CohortEligibility } from '@/lib/utils/cohort';
 import styles from './page.module.css';
 
 export default function EventRegisterPage({
@@ -35,6 +36,7 @@ export default function EventRegisterPage({
   const [myRegistration, setMyRegistration] = useState<EventRegistration | null>(null);
   const [penaltyStatus, setPenaltyStatus] = useState<UserPenalty | null>(null);
   const [registrationWindow, setRegistrationWindow] = useState<{ isOpen: boolean; cutoffTime?: string; reason?: string } | null>(null);
+  const [cohortEligibility, setCohortEligibility] = useState<CohortEligibility | null>(null);
   const [regType, setRegType] = useState<'participant' | 'volunteer'>('participant');
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [gender, setGender] = useState<'Nam' | 'Nữ'>('Nam');
@@ -68,6 +70,7 @@ export default function EventRegisterPage({
         setMyRegistration(data.data.myRegistration || null);
         setPenaltyStatus(data.data.penaltyStatus || null);
         setRegistrationWindow(data.data.registrationWindow || null);
+        setCohortEligibility(data.data.cohortEligibility || null);
         if (data.data.event?.departments?.length > 0) {
           setSelectedDeptId(data.data.event.departments[0].id);
         }
@@ -89,6 +92,27 @@ export default function EventRegisterPage({
     fetchRegistrationData();
   }, [resolvedParams.id]);
 
+  // Giới hạn khóa: ca (nếu có giới hạn riêng) ưu tiên hơn sự kiện — giống kiểm tra phía server
+  const getCohortCheck = (): CohortEligibility | null => {
+    if (!cohortEligibility) return null;
+    const pSessions: any[] = (event as any)?.participant_sessions || [];
+    const sess = regType === 'participant' ? pSessions.find((s: any) => s.id === selectedSessionId) : null;
+    const sessCohorts: string[] | null = sess?.allowed_cohorts?.length ? sess.allowed_cohorts : null;
+    if (!sessCohorts) return cohortEligibility;
+    const res = checkCohortEligibility(sessCohorts, null);
+    const my = cohortEligibility.myCohort;
+    return { ...res, myCohort: my, eligible: !!my && res.allowed.includes(my) };
+  };
+
+  const cohortBlockMessage = (check: CohortEligibility) => {
+    const pSessions: any[] = (event as any)?.participant_sessions || [];
+    const sess = regType === 'participant' ? pSessions.find((s: any) => s.id === selectedSessionId) : null;
+    const target = sess?.allowed_cohorts?.length
+      ? `Ca "${sess.name}"`
+      : regType === 'volunteer' ? 'Cổng tuyển CTV của sự kiện này' : 'Sự kiện này';
+    return describeCohortBlock(check, currentUser?.mssv || null, target);
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) {
@@ -98,6 +122,12 @@ export default function EventRegisterPage({
 
     if (penaltyStatus?.is_blacklisted) {
       alert('Tài khoản của bạn đang bị khóa Blacklist do vắng mặt 3 lần.');
+      return;
+    }
+
+    const cohortCheck = getCohortCheck();
+    if (cohortCheck && !cohortCheck.eligible) {
+      alert(cohortBlockMessage(cohortCheck));
       return;
     }
 
@@ -298,22 +328,38 @@ export default function EventRegisterPage({
           )}
 
           {/* 1.5. COHORT RESTRICTION BANNER */}
-          {event.allowed_cohorts && event.allowed_cohorts.length > 0 && (
-            <div
-              style={{
-                background: '#f0f9ff',
-                border: '1.5px solid #7dd3fc',
-                borderRadius: '16px',
-                padding: '1rem 1.5rem',
-                marginBottom: '1rem',
-                color: '#0369a1',
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                🎓 Sự kiện chỉ dành cho sinh viên khóa: {event.allowed_cohorts.join(', ')}
+          {(() => {
+            const check = getCohortCheck();
+            if (currentUser && check && !check.eligible && !myRegistration) {
+              return (
+                <div className={styles.blacklistAlert}>
+                  <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <AlertTriangleIcon size={20} color="#b91c1c" />
+                    <span>BẠN KHÔNG NẰM TRONG KHÓA ĐƯỢC ĐĂNG KÝ</span>
+                  </h3>
+                  <p className={styles.blacklistDesc}>{cohortBlockMessage(check)}</p>
+                </div>
+              );
+            }
+            const allowed = check?.allowed?.length ? check.allowed : (event.allowed_cohorts || []);
+            if (allowed.length === 0) return null;
+            return (
+              <div
+                style={{
+                  background: '#f0f9ff',
+                  border: '1.5px solid #7dd3fc',
+                  borderRadius: '16px',
+                  padding: '1rem 1.5rem',
+                  marginBottom: '1rem',
+                  color: '#0369a1',
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  🎓 Sự kiện chỉ dành cho sinh viên khóa: {allowed.join(', ')}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* 2. REGISTRATION WINDOW CLOSED (12-Hour Cutoff or Closed or 0 capacity) */}
           {!registrationWindow?.isOpen && !isBlacklisted && (
@@ -625,9 +671,25 @@ export default function EventRegisterPage({
                     </div>
                   )}
 
-                  <button type="submit" disabled={submitting} className={styles.submitBtn}>
+                  {(() => {
+                    const check = getCohortCheck();
+                    return check && !check.eligible ? (
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#b91c1c', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+                        {cohortBlockMessage(check)}
+                      </div>
+                    ) : null;
+                  })()}
+
+                  <button
+                    type="submit"
+                    disabled={submitting || getCohortCheck()?.eligible === false}
+                    className={styles.submitBtn}
+                    style={getCohortCheck()?.eligible === false ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                  >
                     {submitting
                       ? 'Đang xử lý đăng ký...'
+                      : getCohortCheck()?.eligible === false
+                      ? 'Không nằm trong khóa được đăng ký'
                       : regType === 'volunteer'
                       ? 'Gửi Đơn Ứng Tuyển Ban Chuyên Trách'
                       : 'Xác Nhận Đăng Ký Tham Gia'}

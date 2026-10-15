@@ -16,6 +16,7 @@ import {
   AlertTriangleIcon,
 } from '@/components/icons';
 import type { Event, EventRegistration, UserPenalty, SessionUser } from '@/lib/types';
+import { describeCohortBlock, type CohortEligibility } from '@/lib/utils/cohort';
 import styles from '../register/page.module.css';
 
 export default function EventRecruitmentPage({
@@ -34,6 +35,7 @@ export default function EventRecruitmentPage({
   const [myRegistration, setMyRegistration] = useState<EventRegistration | null>(null);
   const [penaltyStatus, setPenaltyStatus] = useState<UserPenalty | null>(null);
   const [registrationWindow, setRegistrationWindow] = useState<{ isOpen: boolean; cutoffTime?: string; reason?: string } | null>(null);
+  const [cohortEligibility, setCohortEligibility] = useState<CohortEligibility | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [gender, setGender] = useState<'Nam' | 'Nữ'>('Nam');
   const [phone, setPhone] = useState('');
@@ -63,7 +65,9 @@ export default function EventRecruitmentPage({
         setEvent(data.data.event);
         setMyRegistration(data.data.myRegistration || null);
         setPenaltyStatus(data.data.penaltyStatus || null);
-        setRegistrationWindow(data.data.registrationWindow || null);
+        // Cổng CTV độc lập với cổng khán giả (sự kiện chỉ tuyển CTV vẫn nhận đơn)
+        setRegistrationWindow(data.data.recruitmentWindow || data.data.registrationWindow || null);
+        setCohortEligibility(data.data.cohortEligibility || null);
         if (data.data.event?.departments?.length > 0) {
           setSelectedDeptId(data.data.event.departments[0].id);
         }
@@ -89,6 +93,11 @@ export default function EventRecruitmentPage({
 
     if (penaltyStatus?.is_blacklisted) {
       alert('Tài khoản của bạn đang bị khóa Blacklist.');
+      return;
+    }
+
+    if (cohortEligibility && !cohortEligibility.eligible) {
+      alert(describeCohortBlock(cohortEligibility, currentUser.mssv || null, 'Cổng tuyển CTV của sự kiện này'));
       return;
     }
 
@@ -416,8 +425,39 @@ export default function EventRecruitmentPage({
             </div>
           )}
 
+          {/* COHORT RESTRICTION */}
+          {!isVolunteerApplied && !isBlacklisted && cohortEligibility?.restricted && (
+            currentUser && !cohortEligibility.eligible ? (
+              <div className={styles.blacklistAlert}>
+                <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <AlertTriangleIcon size={20} color="#b91c1c" />
+                  <span>BẠN KHÔNG NẰM TRONG KHÓA ĐƯỢC ĐĂNG KÝ</span>
+                </h3>
+                <p className={styles.blacklistDesc}>
+                  {describeCohortBlock(cohortEligibility, currentUser.mssv || null, 'Cổng tuyển CTV của sự kiện này')}
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  background: '#f0f9ff',
+                  border: '1.5px solid #7dd3fc',
+                  borderRadius: '16px',
+                  padding: '1rem 1.5rem',
+                  marginBottom: '1rem',
+                  color: '#0369a1',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                }}
+              >
+                🎓 Chỉ nhận đơn sinh viên khóa: {cohortEligibility.allowed.join(', ')}
+              </div>
+            )
+          )}
+
           {/* APPLICATION FORM */}
-          {!isVolunteerApplied && !isBlacklisted && registrationWindow?.isOpen && event.is_recruitment_open !== false && (
+          {!isVolunteerApplied && !isBlacklisted && registrationWindow?.isOpen && event.is_recruitment_open !== false
+            && !(currentUser && cohortEligibility && !cohortEligibility.eligible) && (
             <form onSubmit={handleApply} className={styles.formSection}>
               {!currentUser ? (
                 <div style={{ textAlign: 'center', padding: '1rem 0' }}>
