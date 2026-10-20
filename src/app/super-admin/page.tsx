@@ -6007,39 +6007,65 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           <thead>
                             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
                               <th style={{ padding: '0.75rem 1rem' }}>Tên Sự Kiện</th>
+                              <th style={{ padding: '0.75rem 1rem' }}>Số Buổi</th>
                               <th style={{ padding: '0.75rem 1rem' }}>Đơn Vị Tổ Chức</th>
                               <th style={{ padding: '0.75rem 1rem' }}>Thời Gian Check-in</th>
                               <th style={{ padding: '0.75rem 1rem' }}>Vai Trò</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {studentHistoryData.history.map((h: any) => (
-                              <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f172a' }}>
-                                  {h.event_name}
-                                </td>
-                                <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>
-                                  {h.organizer}
-                                </td>
-                                <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>
-                                  {new Date(h.checkin_time).toLocaleString('vi-VN')}
-                                </td>
-                                <td style={{ padding: '0.75rem 1rem' }}>
-                                  <span
-                                    style={{
-                                      padding: '0.25rem 0.6rem',
-                                      borderRadius: '12px',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 700,
-                                      background: h.participate_role === 'volunteer' ? '#fef3c7' : h.participate_role === 'organizer' ? '#f3e8ff' : '#dcfce7',
-                                      color: h.participate_role === 'volunteer' ? '#b45309' : h.participate_role === 'organizer' ? '#7e22ce' : '#15803d',
-                                    }}
-                                  >
-                                    {h.participate_role === 'volunteer' ? 'Tình Nguyện Viên' : h.participate_role === 'organizer' ? 'Ban Tổ Chức' : 'Người Tham Gia'}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
+                            {studentHistoryData.history.map((h: any) => {
+                              const sCount = h.session_count || 1;
+                              const sTotal = h.total_sessions || 1;
+                              const isFull = sCount >= sTotal;
+                              return (
+                                <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                  <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f172a' }}>
+                                    <div>{h.event_name}</div>
+                                    {(sTotal > 1 || (h.session_names && h.session_names !== 'Buổi chính')) && (
+                                      <div style={{ fontSize: '0.73rem', color: '#475569', fontWeight: 600, marginTop: '0.15rem' }}>
+                                        Buổi: {h.session_names}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
+                                    <span
+                                      style={{
+                                        padding: '0.2rem 0.55rem',
+                                        borderRadius: '999px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 800,
+                                        background: isFull ? '#dcfce7' : '#fef3c7',
+                                        color: isFull ? '#15803d' : '#b45309',
+                                        border: `1px solid ${isFull ? '#bbf7d0' : '#fde68a'}`,
+                                      }}
+                                    >
+                                      {sCount}/{sTotal} buổi
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>
+                                    {h.organizer}
+                                  </td>
+                                  <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>
+                                    {new Date(h.checkin_time).toLocaleString('vi-VN')}
+                                  </td>
+                                  <td style={{ padding: '0.75rem 1rem' }}>
+                                    <span
+                                      style={{
+                                        padding: '0.25rem 0.6rem',
+                                        borderRadius: '12px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 700,
+                                        background: h.participate_role === 'volunteer' ? '#fef3c7' : h.participate_role === 'organizer' ? '#f3e8ff' : '#dcfce7',
+                                        color: h.participate_role === 'volunteer' ? '#b45309' : h.participate_role === 'organizer' ? '#7e22ce' : '#15803d',
+                                      }}
+                                    >
+                                      {h.participate_role === 'volunteer' ? 'Tình Nguyện Viên' : h.participate_role === 'organizer' ? 'Ban Tổ Chức' : 'Người Tham Gia'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>

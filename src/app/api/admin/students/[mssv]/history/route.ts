@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
 
 export async function GET(
   request: Request,
@@ -84,7 +85,11 @@ export async function GET(
       }
     });
 
-    const formattedHistory = Array.from(historyMap.values());
+    const formattedHistory = await enrichHistoryWithSessionCounts(
+      supabase,
+      cleanMssv,
+      Array.from(historyMap.values())
+    );
 
     return NextResponse.json({
       success: true,

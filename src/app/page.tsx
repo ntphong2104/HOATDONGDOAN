@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
+import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
 import {
   isPlaceholderName,
   isPlaceholderClass,
@@ -142,21 +143,35 @@ export default async function HomePage({
     const { data: historyData } = await supabase
       .from('check_ins')
       .select(`
+        id,
+        event_id,
         participate_role,
         created_at,
-        events (event_name, event_date, semester)
+        events (event_id, event_name, event_date, semester)
       `)
-      .eq('mssv', user.mssv)
+      .ilike('mssv', user.mssv)
       .order('created_at', { ascending: false });
 
     if (historyData) {
-      history = historyData.map((item: any) => ({
-        event_name: item.events?.event_name || 'Không rõ',
-        event_date: item.events?.event_date,
-        semester: item.events?.semester,
-        participate_role: item.participate_role as ParticipateRole,
-        checkin_time: item.created_at,
-      }));
+      const historyMap = new Map<string, HistoryItem>();
+      historyData.forEach((item: any) => {
+        const key = item.event_id || String(item.id);
+        if (!historyMap.has(key)) {
+          historyMap.set(key, {
+            event_id: item.event_id || item.events?.event_id,
+            event_name: item.events?.event_name || 'Không rõ',
+            event_date: item.events?.event_date,
+            semester: item.events?.semester,
+            participate_role: item.participate_role as ParticipateRole,
+            checkin_time: item.created_at,
+          });
+        }
+      });
+      history = await enrichHistoryWithSessionCounts(
+        supabase,
+        user.mssv,
+        Array.from(historyMap.values())
+      );
     }
 
     const { data: regData } = await supabase

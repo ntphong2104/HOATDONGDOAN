@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
 
 export async function GET(request: Request) {
   try {
@@ -92,18 +93,30 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Lỗi khi tải lịch sử điểm danh' }, { status: 500 });
     }
 
-    const formattedHistory = (checkIns || []).map((ci: any) => ({
-      id: ci.id,
-      event_id: ci.event_id,
-      event_name: ci.events?.event_name || 'Sự kiện Đoàn Thanh Niên',
-      event_date: ci.events?.event_date,
-      start_time: ci.events?.start_time,
-      end_time: ci.events?.end_time,
-      semester: ci.events?.semester || 'Chưa phân kỳ',
-      organizer: ci.events?.created_by || 'Đoàn trường',
-      participate_role: ci.participate_role || 'participant',
-      checkin_time: ci.created_at,
-    }));
+    const historyMap = new Map<string, any>();
+    (checkIns || []).forEach((ci: any) => {
+      const key = ci.event_id || String(ci.id);
+      if (!historyMap.has(key)) {
+        historyMap.set(key, {
+          id: ci.id,
+          event_id: ci.event_id,
+          event_name: ci.events?.event_name || 'Sự kiện Đoàn Thanh Niên',
+          event_date: ci.events?.event_date,
+          start_time: ci.events?.start_time,
+          end_time: ci.events?.end_time,
+          semester: ci.events?.semester || 'Chưa phân kỳ',
+          organizer: ci.events?.created_by || 'Đoàn trường',
+          participate_role: ci.participate_role || 'participant',
+          checkin_time: ci.created_at,
+        });
+      }
+    });
+
+    const formattedHistory = await enrichHistoryWithSessionCounts(
+      supabase,
+      cleanMssv,
+      Array.from(historyMap.values())
+    );
 
     return NextResponse.json({
       success: true,

@@ -621,3 +621,190 @@ export async function checkinAtomic(
     return { success: false, error: err?.message || 'Unknown RPC error' };
   }
 }
+
+export async function getEventMetaBatch(
+  supabase: any,
+  eventIds: string[]
+): Promise<Record<string, EventMeta>> {
+  const uniqueIds = Array.from(new Set(eventIds.filter(Boolean)));
+  const result: Record<string, EventMeta> = {};
+  if (uniqueIds.length === 0) return result;
+
+  const now = Date.now();
+  const uncachedIds: string[] = [];
+
+  for (const id of uniqueIds) {
+    if (inMemoryMeta[id] && (inMemoryMetaExpiry[id] || 0) > now) {
+      result[id] = inMemoryMeta[id];
+    } else {
+      uncachedIds.push(id);
+    }
+  }
+
+  if (uncachedIds.length > 0) {
+    const dbMetaByEventId: Record<string, EventMeta> = {};
+    if (supabase) {
+      try {
+        const metaKeys = uncachedIds.map((id) => `event_meta_${id}`);
+        const { data } = await supabase
+          .from('system_settings')
+          .select('key, value')
+          .in('key', metaKeys);
+
+        if (Array.isArray(data)) {
+          for (const row of data) {
+            if (!row?.key || !row?.value) continue;
+            const eventId = String(row.key).replace(/^event_meta_/, '');
+            try {
+              const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+              if (parsed && typeof parsed === 'object') {
+                dbMetaByEventId[eventId] = parsed;
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+
+    for (const eventId of uncachedIds) {
+      const dbMeta = dbMetaByEventId[eventId] || null;
+      const fileMeta = inMemoryMeta[eventId] || null;
+      const merged: EventMeta = {
+        departments:
+          dbMeta?.departments && dbMeta.departments.length > 0
+            ? dbMeta.departments
+            : fileMeta?.departments || [],
+        sessions:
+          dbMeta?.sessions && dbMeta.sessions.length > 0
+            ? dbMeta.sessions
+            : fileMeta?.sessions || [],
+        is_recruitment_open:
+          dbMeta?.is_recruitment_open !== undefined
+            ? dbMeta.is_recruitment_open
+            : fileMeta?.is_recruitment_open !== undefined
+            ? fileMeta.is_recruitment_open
+            : true,
+        require_registration:
+          dbMeta?.require_registration !== undefined
+            ? dbMeta.require_registration
+            : fileMeta?.require_registration !== undefined
+            ? fileMeta.require_registration
+            : true,
+        target_scope: dbMeta?.target_scope || fileMeta?.target_scope || 'all',
+        max_participants: dbMeta?.max_participants ?? fileMeta?.max_participants ?? 0,
+        max_volunteers: dbMeta?.max_volunteers ?? fileMeta?.max_volunteers ?? 0,
+      };
+      inMemoryMeta[eventId] = merged;
+      inMemoryMetaExpiry[eventId] = Date.now() + META_CACHE_TTL_MS;
+      result[eventId] = merged;
+    }
+    evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
+  }
+
+  return result;
+}
+
+export async function enrichHistoryWithSessionCounts<
+  T extends {
+    event_id?: string;
+    participate_role?: string;
+  }
+>(
+  supabase: any,
+  mssv: string,
+  historyItems: T[]
+): Promise<
+  Array<
+    T & {
+      session_count: number;
+      total_sessions: number;
+      session_ratio: string;
+      session_names: string;
+      sessions: Array<{ session_id: string; session_name: string; checked_at?: string }>;
+    }
+  >
+> {
+  if (!Array.isArray(historyItems) || historyItems.length === 0) return [];
+
+  const cleanMssv = (mssv || '').trim().toUpperCase();
+  const eventIds = Array.from(
+    new Set(historyItems.map((item) => item.event_id).filter((id): id is string => Boolean(id)))
+  );
+
+  const sessionRowsByEvent = new Map<
+    string,
+    Array<{ session_id: string; session_name: string; checked_at?: string }>
+  >();
+
+  let metaMap: Record<string, EventMeta> = {};
+
+  if (eventIds.length > 0) {
+    const [fetchedMetaMap, sessionQueryRes] = await Promise.all([
+      getEventMetaBatch(supabase, eventIds),
+      supabase && cleanMssv
+        ? supabase
+            .from('session_checkins')
+            .select('event_id, session_id, session_name, participate_role, checked_at')
+            .ilike('mssv', cleanMssv)
+            .in('event_id', eventIds)
+            .order('checked_at', { ascending: true })
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    metaMap = fetchedMetaMap;
+
+    const rows = sessionQueryRes?.data;
+    if (Array.isArray(rows)) {
+      for (const r of rows) {
+        if (!r?.event_id) continue;
+        const list = sessionRowsByEvent.get(r.event_id) || [];
+        const sid = String(r.session_id || r.session_name || 'main');
+        if (!list.some((x) => x.session_id === sid)) {
+          list.push({
+            session_id: sid,
+            session_name: r.session_name || r.session_id || 'Buổi chính',
+            checked_at: r.checked_at,
+          });
+        }
+        sessionRowsByEvent.set(r.event_id, list);
+      }
+    }
+  }
+
+  return historyItems.map((item) => {
+    const eventId = item.event_id || '';
+    const meta = eventId ? metaMap[eventId] : undefined;
+    const allSessions = Array.isArray(meta?.sessions) ? meta!.sessions! : [];
+    const role = item.participate_role || 'participant';
+
+    // For regular participants, only count non-internal sessions (unless all sessions are internal)
+    let applicableSessions = allSessions;
+    if (role === 'participant' && allSessions.length > 0) {
+      const publicSessions = allSessions.filter((s) => s.session_type !== 'internal');
+      if (publicSessions.length > 0) {
+        applicableSessions = publicSessions;
+      }
+    }
+
+    const mySessions = (eventId && sessionRowsByEvent.get(eventId)) || [];
+    const sessionCount = mySessions.length > 0 ? mySessions.length : 1;
+    const configuredTotal = applicableSessions.length > 0 ? applicableSessions.length : 1;
+    const totalSessions = Math.max(configuredTotal, sessionCount);
+
+    const sessionNamesList =
+      mySessions.length > 0
+        ? mySessions.map((s) => s.session_name || s.session_id)
+        : applicableSessions.length === 1 && applicableSessions[0]?.name
+        ? [applicableSessions[0].name]
+        : ['Buổi chính'];
+
+    return {
+      ...item,
+      session_count: sessionCount,
+      total_sessions: totalSessions,
+      session_ratio: `${sessionCount}/${totalSessions} buổi`,
+      session_names: sessionNamesList.join(', '),
+      sessions: mySessions,
+    };
+  });
+}

@@ -248,11 +248,17 @@ export interface CheckInSuccessData {
 
 // ──── History Item ────
 export interface HistoryItem {
+  event_id?: string;
   event_name: string;
   event_date?: string;
   semester?: string;
   participate_role: ParticipateRole;
   checkin_time: string;
+  session_count?: number;
+  total_sessions?: number;
+  session_ratio?: string;
+  session_names?: string;
+  sessions?: Array<{ session_id: string; session_name: string; checked_at?: string }>;
 }
 
 // ──── Event with count ────

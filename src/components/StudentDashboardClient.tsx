@@ -670,21 +670,65 @@ export default function StudentDashboardClient({
           <p className={styles.emptyHistory}>Bạn chưa có lượt điểm danh nào.</p>
         ) : (
           <ul className={styles.historyList}>
-            {history.map((item, idx) => (
-              <li key={idx} className={styles.historyItem}>
-                <div className={styles.historyMeta}>
-                  <span className={styles.eventName}>{item.event_name}</span>
-                  <span className={styles.semester}>
-                    <ClockIcon size={14} />
-                    Ngày tổ chức: {item.event_date ? new Date(item.event_date).toLocaleDateString('vi-VN') : new Date(item.checkin_time).toLocaleDateString('vi-VN')}
-                  </span>
-                </div>
-                <div className={styles.historyDetails}>
-                  <RoleBadge role={item.participate_role} />
-                  <span className={styles.time}>{new Date(item.checkin_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-              </li>
-            ))}
+            {history.map((item, idx) => {
+              const sessionCount = item.session_count || 1;
+              const totalSessions = item.total_sessions || 1;
+              const isFullAttendance = sessionCount >= totalSessions;
+              const showSessionNames =
+                totalSessions > 1 ||
+                Boolean(item.session_names && item.session_names !== 'Buổi chính');
+
+              return (
+                <li key={idx} className={styles.historyItem}>
+                  <div className={styles.historyMeta}>
+                    <span className={styles.eventName}>{item.event_name}</span>
+                    <span className={styles.semester}>
+                      <ClockIcon size={14} />
+                      Ngày tổ chức: {item.event_date ? new Date(item.event_date).toLocaleDateString('vi-VN') : new Date(item.checkin_time).toLocaleDateString('vi-VN')}
+                    </span>
+                    {showSessionNames && (
+                      <span
+                        style={{
+                          fontSize: '0.78rem',
+                          color: '#475569',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <CalendarIcon size={13} color="#2563eb" />
+                        Buổi đã tham gia: <strong style={{ color: '#1e40af' }}>{item.session_names}</strong>
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.historyDetails}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <RoleBadge role={item.participate_role} />
+                      <span
+                        title={`Đã điểm danh ${sessionCount} trên tổng số ${totalSessions} buổi của chương trình`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          padding: '0.22rem 0.65rem',
+                          borderRadius: '999px',
+                          fontSize: '0.76rem',
+                          fontWeight: 800,
+                          background: isFullAttendance ? '#dcfce7' : '#fef3c7',
+                          color: isFullAttendance ? '#15803d' : '#b45309',
+                          border: `1px solid ${isFullAttendance ? '#bbf7d0' : '#fde68a'}`,
+                        }}
+                      >
+                        <CalendarIcon size={12} color={isFullAttendance ? '#15803d' : '#b45309'} />
+                        Số buổi: {sessionCount}/{totalSessions} buổi
+                      </span>
+                    </div>
+                    <span className={styles.time}>{new Date(item.checkin_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -905,35 +949,61 @@ export default function StudentDashboardClient({
                         <thead>
                           <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
                             <th style={{ padding: '0.7rem 0.9rem' }}>Tên Sự Kiện</th>
+                            <th style={{ padding: '0.7rem 0.9rem' }}>Số Buổi</th>
                             <th style={{ padding: '0.7rem 0.9rem' }}>Thời Gian Điểm Danh</th>
                             <th style={{ padding: '0.7rem 0.9rem' }}>Vai Trò</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {classmateHistory.history.map((h: any) => (
-                            <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '0.7rem 0.9rem', fontWeight: 700, color: '#0f172a' }}>
-                                {h.event_name}
-                              </td>
-                              <td style={{ padding: '0.7rem 0.9rem', color: '#64748b' }}>
-                                {new Date(h.checkin_time).toLocaleString('vi-VN')}
-                              </td>
-                              <td style={{ padding: '0.7rem 0.9rem' }}>
-                                <span
-                                  style={{
-                                    padding: '0.2rem 0.55rem',
-                                    borderRadius: '10px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 700,
-                                    background: h.participate_role === 'volunteer' ? '#fef3c7' : h.participate_role === 'organizer' ? '#f3e8ff' : '#dcfce7',
-                                    color: h.participate_role === 'volunteer' ? '#b45309' : h.participate_role === 'organizer' ? '#7e22ce' : '#15803d',
-                                  }}
-                                >
-                                  {h.participate_role === 'volunteer' ? 'Tình Nguyện Viên' : h.participate_role === 'organizer' ? 'Ban Tổ Chức' : 'Người Tham Gia'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
+                          {classmateHistory.history.map((h: any) => {
+                            const sCount = h.session_count || 1;
+                            const sTotal = h.total_sessions || 1;
+                            const isFull = sCount >= sTotal;
+                            return (
+                              <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '0.7rem 0.9rem', fontWeight: 700, color: '#0f172a' }}>
+                                  <div>{h.event_name}</div>
+                                  {(sTotal > 1 || (h.session_names && h.session_names !== 'Buổi chính')) && (
+                                    <div style={{ fontSize: '0.73rem', color: '#475569', fontWeight: 600, marginTop: '0.15rem' }}>
+                                      Buổi: {h.session_names}
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={{ padding: '0.7rem 0.9rem', whiteSpace: 'nowrap' }}>
+                                  <span
+                                    style={{
+                                      padding: '0.2rem 0.55rem',
+                                      borderRadius: '999px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 800,
+                                      background: isFull ? '#dcfce7' : '#fef3c7',
+                                      color: isFull ? '#15803d' : '#b45309',
+                                      border: `1px solid ${isFull ? '#bbf7d0' : '#fde68a'}`,
+                                    }}
+                                  >
+                                    {sCount}/{sTotal} buổi
+                                  </span>
+                                </td>
+                                <td style={{ padding: '0.7rem 0.9rem', color: '#64748b' }}>
+                                  {new Date(h.checkin_time).toLocaleString('vi-VN')}
+                                </td>
+                                <td style={{ padding: '0.7rem 0.9rem' }}>
+                                  <span
+                                    style={{
+                                      padding: '0.2rem 0.55rem',
+                                      borderRadius: '10px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 700,
+                                      background: h.participate_role === 'volunteer' ? '#fef3c7' : h.participate_role === 'organizer' ? '#f3e8ff' : '#dcfce7',
+                                      color: h.participate_role === 'volunteer' ? '#b45309' : h.participate_role === 'organizer' ? '#7e22ce' : '#15803d',
+                                    }}
+                                  >
+                                    {h.participate_role === 'volunteer' ? 'Tình Nguyện Viên' : h.participate_role === 'organizer' ? 'Ban Tổ Chức' : 'Người Tham Gia'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
