@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, getSessionCheckIns, saveSessionCheckIn, saveRegistrationExtrasBulk } from '@/lib/constants/event-meta-store';
+import { getMasterStudentByMssv } from '@/lib/utils/student-profile';
 
 // POST: Super Admin manually adds attendance for CTV/BTC by session
 // Bypasses: event closed status, phone requirement, registration requirement
@@ -107,16 +108,17 @@ export async function POST(
       }
 
       const userInfo = userMap.get(mssv);
+      const masterStudent = getMasterStudentByMssv(mssv);
 
-      // Auto-create user if not exists
+      // Auto-create user if not exists (never overwrite existing real user with placeholder)
       if (!userInfo) {
         try {
           await supabase.from('users').upsert({
             mssv,
             email: `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
-            full_name: mssv,
-            class_id: 'PTIT-HCM',
-          }, { onConflict: 'mssv' });
+            full_name: masterStudent?.full_name || mssv,
+            class_id: masterStudent?.class_id || 'PTIT-HCM',
+          }, { onConflict: 'mssv', ignoreDuplicates: !masterStudent });
         } catch {}
       }
 
@@ -126,8 +128,8 @@ export async function POST(
           event_id: resolvedParams.id,
           mssv,
           email: userInfo?.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
-          full_name: userInfo?.full_name || mssv,
-          class_id: userInfo?.class_id || 'PTIT-HCM',
+          full_name: userInfo?.full_name || masterStudent?.full_name || mssv,
+          class_id: userInfo?.class_id || masterStudent?.class_id || 'PTIT-HCM',
           role_type,
           attended: true,
           created_at: now,

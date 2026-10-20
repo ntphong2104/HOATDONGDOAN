@@ -7,6 +7,7 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, getRegistrationExtras } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { verifyPersonalQRToken } from '@/lib/utils/personal-qr';
+import { getMasterStudentByMssv, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
 import type { CheckInRequest } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -133,7 +134,7 @@ export async function POST(req: Request) {
     ] = await Promise.all([
       supabase
         .from('users')
-        .select('mssv, full_name, class_id, email, phone')
+        .select('mssv, full_name, class_id, email')
         .eq('mssv', mssv)
         .maybeSingle(),
       supabase
@@ -193,18 +194,26 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    let finalStudent = student;
+    let finalStudent: any = student;
+    const masterStudent = getMasterStudentByMssv(mssv);
+    if (finalStudent && masterStudent) {
+      if (isPlaceholderName(finalStudent.full_name, mssv) && masterStudent.full_name) {
+        finalStudent.full_name = masterStudent.full_name;
+      }
+      if (isPlaceholderClass(finalStudent.class_id) && masterStudent.class_id) {
+        finalStudent.class_id = masterStudent.class_id;
+      }
+    }
     if (!finalStudent) {
-      if (isSuperOrEventAdmin) {
+      if (isSuperOrEventAdmin || masterStudent) {
         finalStudent = {
           mssv,
-          full_name: mssv,
-          class_id: 'PTIT-HCM',
+          full_name: masterStudent?.full_name || mssv,
+          class_id: masterStudent?.class_id || 'PTIT-HCM',
           email: `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
-          phone: '',
         };
         try {
-          supabase.from('users').upsert(finalStudent, { onConflict: 'mssv' }).then(() => {});
+          supabase.from('users').upsert(finalStudent, { onConflict: 'mssv', ignoreDuplicates: !masterStudent }).then(() => {});
         } catch {}
       } else {
         return NextResponse.json({

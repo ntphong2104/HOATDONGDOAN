@@ -208,7 +208,7 @@ export async function POST(req: Request) {
     }
     const finalRecords = Array.from(uniqueMap.values());
 
-    const supabase = await createClient();
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
     const { data, error } = await supabase
       .from('users')
       .upsert(finalRecords, { onConflict: 'mssv' })
@@ -265,7 +265,7 @@ export async function DELETE(req: Request) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
     const { error } = await supabase
       .from('users')
       .delete()
