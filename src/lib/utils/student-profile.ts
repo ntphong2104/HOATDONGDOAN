@@ -8,7 +8,63 @@
 // across `users` AND all `event_registrations` and pick the first real value.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import fs from 'fs';
+import path from 'path';
+import * as XLSX from 'xlsx';
+
 export const PLACEHOLDER_CLASS = 'PTIT-HCM';
+
+export interface ResolvedStudentProfile {
+  full_name: string | null;
+  class_id: string | null;
+}
+
+const g = globalThis as unknown as {
+  __hddExcelStudentsMap?: Map<string, { full_name: string; class_id: string }>;
+};
+
+/**
+ * Đọc danh bạ chuẩn từ data/Data.xlsx (cache trên globalThis) để tự động bổ sung
+ * họ tên & lớp cho sinh viên bị thiếu hoặc mang giá trị tạm (MSSV / PTIT-HCM).
+ */
+export function getMasterStudentDirectory(): Map<string, { full_name: string; class_id: string }> {
+  if (g.__hddExcelStudentsMap) return g.__hddExcelStudentsMap;
+  const map = new Map<string, { full_name: string; class_id: string }>();
+  try {
+    const excelPath = path.join(process.cwd(), 'data', 'Data.xlsx');
+    if (fs.existsSync(excelPath)) {
+      const wb = XLSX.readFile(excelPath);
+      const sheetName = wb.SheetNames[0];
+      if (sheetName && wb.Sheets[sheetName]) {
+        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(wb.Sheets[sheetName], { defval: '' });
+        for (const r of rows) {
+          const mssv = String(r['MSSV'] || r['mssv'] || '').trim().toUpperCase();
+          if (!/^[A-Z]\d{2}[A-Z]{2,4}\d{3,4}$/.test(mssv)) continue;
+          if (map.has(mssv)) continue; // Giữ dòng đầu tiên chuẩn theo danh sách lớp
+          const full_name = String(r['HỌ VÀ TÊN'] || r['Ho va ten'] || r['full_name'] || '')
+            .normalize('NFC')
+            .trim()
+            .replace(/\s+/g, ' ');
+          const class_id = String(r['Lớp'] || r['Lop'] || r['class_id'] || '')
+            .trim()
+            .toUpperCase()
+            .replace(/\s+/g, '');
+          if (full_name && class_id && class_id !== PLACEHOLDER_CLASS) {
+            map.set(mssv, { full_name, class_id });
+          }
+        }
+      }
+    }
+  } catch {}
+  g.__hddExcelStudentsMap = map;
+  return map;
+}
+
+export function getMasterStudentByMssv(mssv?: string | null): { full_name: string; class_id: string } | null {
+  if (!mssv) return null;
+  const key = String(mssv).trim().toUpperCase();
+  return getMasterStudentDirectory().get(key) || null;
+}
 
 /** True if `name` is empty, an email, or just the MSSV itself. */
 export function isPlaceholderName(name: string | null | undefined, mssv?: string | null): boolean {
@@ -25,14 +81,9 @@ export function isPlaceholderClass(classId: string | null | undefined): boolean 
   return !c || c.toUpperCase() === PLACEHOLDER_CLASS;
 }
 
-export interface ResolvedStudentProfile {
-  full_name: string | null;
-  class_id: string | null;
-}
-
 /**
  * Returns a map MSSV(UPPERCASE) -> best real { full_name, class_id } (null when unknown).
- * Preference: users table first, then the most recent event_registrations entry.
+ * Preference: users table first, then data/Data.xlsx master directory, then event_registrations.
  */
 export async function resolveStudentProfiles(
   supabase: any,
@@ -40,7 +91,7 @@ export async function resolveStudentProfiles(
 ): Promise<Map<string, ResolvedStudentProfile>> {
   const result = new Map<string, ResolvedStudentProfile>();
   const ids = [...new Set((mssvs || []).map((m) => String(m || '').trim().toUpperCase()).filter(Boolean))];
-  if (!supabase || ids.length === 0) return result;
+  if (ids.length === 0) return result;
 
   for (const id of ids) result.set(id, { full_name: null, class_id: null });
 
@@ -54,30 +105,50 @@ export async function resolveStudentProfiles(
     }
   };
 
-  const CHUNK_SIZE = 200;
-  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-    const chunk = ids.slice(i, i + CHUNK_SIZE);
-    try {
-      const { data } = await supabase.from('users').select('mssv, full_name, class_id').in('mssv', chunk);
-      apply(data);
-    } catch {}
+  if (supabase) {
+    const CHUNK_SIZE = 200;
+    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + CHUNK_SIZE);
+      try {
+        const { data } = await supabase.from('users').select('mssv, full_name, class_id').in('mssv', chunk);
+        apply(data);
+      } catch {}
+    }
   }
 
-  // Only look up registrations for students still missing a real name or class
-  const missing = ids.filter((id) => {
-    const p = result.get(id)!;
-    return !p.full_name || !p.class_id;
-  });
-  for (let i = 0; i < missing.length; i += CHUNK_SIZE) {
-    const chunk = missing.slice(i, i + CHUNK_SIZE);
-    try {
-      const { data } = await supabase
-        .from('event_registrations')
-        .select('mssv, full_name, class_id, created_at')
-        .in('mssv', chunk)
-        .order('created_at', { ascending: false });
-      apply(data);
-    } catch {}
+  // Fallback 2: Master directory from data/Data.xlsx
+  const masterDir = getMasterStudentDirectory();
+  if (masterDir.size > 0) {
+    for (const id of ids) {
+      const cur = result.get(id)!;
+      if (!cur.full_name || !cur.class_id) {
+        const fromExcel = masterDir.get(id);
+        if (fromExcel) {
+          if (!cur.full_name && !isPlaceholderName(fromExcel.full_name, id)) cur.full_name = fromExcel.full_name;
+          if (!cur.class_id && !isPlaceholderClass(fromExcel.class_id)) cur.class_id = fromExcel.class_id;
+        }
+      }
+    }
+  }
+
+  // Fallback 3: Only look up registrations for students still missing a real name or class
+  if (supabase) {
+    const CHUNK_SIZE = 200;
+    const missing = ids.filter((id) => {
+      const p = result.get(id)!;
+      return !p.full_name || !p.class_id;
+    });
+    for (let i = 0; i < missing.length; i += CHUNK_SIZE) {
+      const chunk = missing.slice(i, i + CHUNK_SIZE);
+      try {
+        const { data } = await supabase
+          .from('event_registrations')
+          .select('mssv, full_name, class_id, created_at')
+          .in('mssv', chunk)
+          .order('created_at', { ascending: false });
+        apply(data);
+      } catch {}
+    }
   }
 
   return result;
@@ -150,7 +221,7 @@ export async function saveStudentProfile(
           full_name: patch.full_name || mssv,
           class_id: patch.class_id || PLACEHOLDER_CLASS,
         },
-        { onConflict: 'email' }
+        { onConflict: 'mssv' }
       );
       if (insErr) return { ok: false, error: insErr.message };
     }

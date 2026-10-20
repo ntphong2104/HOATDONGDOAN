@@ -86,6 +86,7 @@ const g = globalThis as unknown as {
   __hddInMemoryMeta?: Record<string, EventMeta>;
   __hddInMemoryMetaExpiry?: Record<string, number>;
   __hddEventResponseCache?: Map<string, { data: any; ts: number }>;
+  __hddInMemoryRegExtras?: Record<string, Record<string, RegistrationExtra>>;
 };
 
 const inMemoryMeta: Record<string, EventMeta> = g.__hddInMemoryMeta || (g.__hddInMemoryMeta = loadFromFile());
@@ -225,13 +226,32 @@ function saveRegToFile(data: Record<string, Record<string, RegistrationExtra>>) 
   } catch {}
 }
 
-let inMemoryRegExtras: Record<string, Record<string, RegistrationExtra>> = loadRegFromFile();
+const inMemoryRegExtras: Record<string, Record<string, RegistrationExtra>> =
+  g.__hddInMemoryRegExtras || (g.__hddInMemoryRegExtras = loadRegFromFile());
+
+/**
+ * Tìm SĐT / giới tính của sinh viên từ lịch sử đăng ký sự kiện (registration-extras.json)
+ * để khôi phục nếu hồ sơ cá nhân bị thiếu.
+ */
+export function findUserProfileFromRegExtras(mssv: string): { phone?: string; gender?: string } | null {
+  if (!mssv) return null;
+  const key = mssv.trim().toUpperCase();
+  for (const eventRegs of Object.values(inMemoryRegExtras)) {
+    if (!eventRegs || typeof eventRegs !== 'object') continue;
+    const entry = eventRegs[key];
+    if (entry?.phone && String(entry.phone).trim().length >= 8) {
+      return { phone: String(entry.phone).trim(), gender: entry.gender || 'Nam' };
+    }
+  }
+  return null;
+}
 
 export async function getRegistrationExtras(
   supabase: any,
   eventId: string
 ): Promise<Record<string, RegistrationExtra>> {
   const regKey = `event_regs_${eventId}`;
+  const localRegs = inMemoryRegExtras[eventId] || {};
 
   if (supabase) {
     try {
@@ -244,16 +264,32 @@ export async function getRegistrationExtras(
       if (data?.value) {
         const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         if (parsed && typeof parsed === 'object') {
-          inMemoryRegExtras[eventId] = parsed;
+          // Merge local entries (e.g. student registrations written locally) with DB entries so neither is lost
+          const merged: Record<string, RegistrationExtra> = { ...localRegs, ...parsed };
+          for (const [m, localEntry] of Object.entries(localRegs)) {
+            const dbEntry = parsed[m];
+            if (localEntry && dbEntry) {
+              merged[m] = {
+                ...dbEntry,
+                ...localEntry,
+                phone: localEntry.phone || dbEntry.phone,
+                gender: localEntry.gender || dbEntry.gender,
+                department_id: localEntry.department_id ?? dbEntry.department_id,
+                department_name: localEntry.department_name ?? dbEntry.department_name,
+                review_status: dbEntry.review_status || localEntry.review_status,
+              };
+            }
+          }
+          inMemoryRegExtras[eventId] = merged;
           evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
-          return parsed;
+          return merged;
         }
       }
     } catch {}
   }
 
   // Return from in-memory cache (loaded from file on startup)
-  return inMemoryRegExtras[eventId] || {};
+  return localRegs;
 }
 
 export async function saveRegistrationExtra(

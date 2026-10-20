@@ -9,6 +9,7 @@ import {
   parseGoogleStudentName,
   normalizeStudentFullName,
   normalizeStudentClassId,
+  getMasterStudentByMssv,
 } from '@/lib/utils/student-profile';
 
 function getPublicOrigin(request: Request): string {
@@ -116,8 +117,10 @@ export async function GET(request: Request) {
 
     if (studentMssv) {
       try {
+        const adminSupabase = (typeof createAdminClient === 'function' ? await createAdminClient() : supabase) || supabase;
+
         // Check existing user in users table first
-        const { data: existingUser } = await supabase
+        const { data: existingUser } = await adminSupabase
           .from('users')
           .select('mssv, full_name, class_id')
           .or(`email.ilike.${email},mssv.ilike.${studentMssv}`)
@@ -128,27 +131,26 @@ export async function GET(request: Request) {
           session.user.user_metadata?.name ||
           '';
 
-        // Keep existing REAL values; replace placeholders (name = MSSV, class = PTIT-HCM)
-        // with what the Google account provides ("D22CQCN02-N NGUYEN THANH PHONG").
+        const masterRecord = getMasterStudentByMssv(studentMssv);
         const parsedGoogle = parseGoogleStudentName(rawName);
         const googleName = normalizeStudentFullName(parsedGoogle.full_name);
         const googleClass = normalizeStudentClassId(parsedGoogle.class_id);
 
         const className = !isPlaceholderClass(existingUser?.class_id)
           ? existingUser!.class_id
-          : (googleClass || 'PTIT-HCM');
+          : (masterRecord?.class_id || googleClass || 'PTIT-HCM');
         const actualName = !isPlaceholderName(existingUser?.full_name, studentMssv)
           ? existingUser!.full_name
-          : (googleName || existingUser?.full_name || studentMssv);
+          : (masterRecord?.full_name || googleName || existingUser?.full_name || studentMssv);
 
-        await supabase.from('users').upsert(
+        await adminSupabase.from('users').upsert(
           {
             mssv: studentMssv,
             email,
             full_name: actualName,
             class_id: className,
           },
-          { onConflict: 'email' }
+          { onConflict: 'mssv' }
         );
       } catch (upsertErr) {
         console.error('Student upsert error:', upsertErr);

@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, saveRegistrationExtrasBulk, getRegistrationExtras } from '@/lib/constants/event-meta-store';
+import { getUserProfileExtra } from '@/lib/constants/user-profile-store';
 import { isValidMSSV, extractMSSV } from '@/lib/utils/extract-mssv';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { getMasterStudentByMssv, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
 
 export async function POST(
   req: Request,
@@ -218,7 +220,7 @@ export async function POST(
       // 2. Fetch event_registrations for this event
       const { data: eventRegs } = await supabase
         .from('event_registrations')
-        .select('mssv, full_name, class_id, role_type, attended, attended_at')
+        .select('mssv, full_name, class_id, role_type, attended')
         .eq('event_id', resolvedParams.id);
 
       const regMap = new Map<string, any>();
@@ -230,6 +232,7 @@ export async function POST(
 
       const previewStudents = cleanedMssvs.map((mssv) => {
         const dbUser = existingUserMap.get(mssv);
+        const masterData = getMasterStudentByMssv(mssv);
         const excelData = studentDataMap.get(mssv);
         const checkinRecord = checkinMap.get(mssv);
         const regRecord = regMap.get(mssv);
@@ -241,13 +244,13 @@ export async function POST(
         const warnings: string[] = [];
         const badges: Array<{ type: 'danger' | 'warning' | 'info' | 'success'; text: string }> = [];
 
-        // MSSV là khóa chính: Ưu tiên dữ liệu chính thức từ bảng users nếu sinh viên đã có trong hệ thống
-        const finalName = (dbUser?.full_name && !dbUser.full_name.includes('@'))
+        // MSSV là khóa chính: Ưu tiên dữ liệu chính thức từ bảng users / Data.xlsx nếu sinh viên đã có trong hệ thống
+        const finalName = (dbUser?.full_name && !isPlaceholderName(dbUser.full_name, mssv))
           ? dbUser.full_name
-          : (excelData?.full_name || regRecord?.full_name || '');
-        const finalClass = (dbUser?.class_id && dbUser.class_id !== 'PTIT-HCM')
+          : (masterData?.full_name || excelData?.full_name || (!isPlaceholderName(regRecord?.full_name, mssv) ? regRecord?.full_name : '') || '');
+        const finalClass = (dbUser?.class_id && !isPlaceholderClass(dbUser.class_id))
           ? dbUser.class_id
-          : (excelData?.class_id || regRecord?.class_id || dbUser?.class_id || '');
+          : (masterData?.class_id || excelData?.class_id || (!isPlaceholderClass(regRecord?.class_id) ? regRecord?.class_id : '') || dbUser?.class_id || '');
 
         // Check 1: In-file duplicates
         const isDuplicateInFile = duplicateCount > 1;
@@ -389,14 +392,14 @@ export async function POST(
 
       const { data: batchUsers, error: userQueryErr } = await supabase
         .from('users')
-        .select('mssv, full_name, class_id, email, phone, gender')
+        .select('mssv, full_name, class_id, email')
         .or(`mssv.in.(${mssvVariants.join(',')}),email.in.(${emailVariants.join(',')})`);
 
       if (userQueryErr) {
         console.error('Batch user query error in import:', userQueryErr);
         const { data: fallbackUsers } = await supabase
           .from('users')
-          .select('mssv, full_name, class_id, email, phone, gender')
+          .select('mssv, full_name, class_id, email')
           .in('mssv', mssvVariants);
         if (fallbackUsers) allUsers.push(...fallbackUsers);
       } else if (batchUsers) {
@@ -406,15 +409,18 @@ export async function POST(
 
     const userMap = new Map<string, { full_name: string; class_id: string; email?: string; phone?: string; gender?: string }>();
     allUsers.forEach((u: any) => {
+      const mKey = String(u.mssv || '').trim().toUpperCase();
+      const masterData = getMasterStudentByMssv(mKey);
+      const pExtra = getUserProfileExtra(u.email || mKey) || getUserProfileExtra(mKey);
       const entry = {
-        full_name: u.full_name || u.mssv,
-        class_id: u.class_id || '',
+        full_name: (!isPlaceholderName(u.full_name, mKey) ? u.full_name : masterData?.full_name) || u.full_name || u.mssv,
+        class_id: (!isPlaceholderClass(u.class_id) ? u.class_id : masterData?.class_id) || u.class_id || '',
         email: u.email || `${u.mssv?.toLowerCase()}@student.ptithcm.edu.vn`,
-        phone: u.phone || '',
-        gender: u.gender || '',
+        phone: pExtra?.phone || '',
+        gender: pExtra?.gender || '',
       };
       if (u.mssv) {
-        userMap.set(String(u.mssv).trim().toUpperCase(), entry);
+        userMap.set(mKey, entry);
       }
       if (u.email) {
         const emailMssv = extractMSSV(u.email);
@@ -424,16 +430,46 @@ export async function POST(
       }
     });
 
-    // Chỉ tạo mới sinh viên vào bảng `users` nếu chưa từng tồn tại (MSSV là khóa chính duy nhất)
+    // Bổ sung thông tin từ Data.xlsx hoặc file nạp cho sinh viên chưa có trong bảng `users`
+    // Tuyệt đối không ghi đè tên/lớp thật bằng giá trị tạm (ignoreDuplicates khi không có tên thật)
     const userUpserts = cleanedMssvs
-      .filter((mssv) => !userMap.has(mssv))
-      .map((mssv) => {
+      .filter((mssv) => {
+        const existing = userMap.get(mssv);
+        if (!existing) return true;
+        // Nếu bản ghi hiện tại đang bị placeholder mà Data.xlsx / file nạp có tên thật thì cập nhật
+        const masterData = getMasterStudentByMssv(mssv);
         const sData = studentDataMap.get(mssv);
+        const canHealName = isPlaceholderName(existing.full_name, mssv) && Boolean(masterData?.full_name || sData?.full_name);
+        const canHealClass = isPlaceholderClass(existing.class_id) && Boolean(masterData?.class_id || sData?.class_id);
+        return canHealName || canHealClass;
+      })
+      .map((mssv) => {
+        const existing = userMap.get(mssv);
+        const masterData = getMasterStudentByMssv(mssv);
+        const sData = studentDataMap.get(mssv);
+        const resolvedName =
+          (!isPlaceholderName(existing?.full_name, mssv) ? existing?.full_name : null) ||
+          masterData?.full_name ||
+          sData?.full_name ||
+          mssv;
+        const resolvedClass =
+          (!isPlaceholderClass(existing?.class_id) ? existing?.class_id : null) ||
+          masterData?.class_id ||
+          sData?.class_id ||
+          'PTIT-HCM';
+        const pExtra = getUserProfileExtra(mssv);
+        userMap.set(mssv, {
+          full_name: resolvedName,
+          class_id: resolvedClass,
+          email: existing?.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
+          phone: existing?.phone || pExtra?.phone || '',
+          gender: existing?.gender || pExtra?.gender || '',
+        });
         return {
           mssv,
-          email: `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
-          full_name: sData?.full_name || mssv,
-          class_id: sData?.class_id || 'PTIT-HCM',
+          email: existing?.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
+          full_name: resolvedName,
+          class_id: resolvedClass,
         };
       });
 
@@ -582,7 +618,7 @@ export async function POST(
       try {
         await supabase
           .from('event_registrations')
-          .update({ attended: true, attended_at: now })
+          .update({ attended: true })
           .eq('event_id', resolvedParams.id)
           .in('mssv', eligibleMssvs);
       } catch {}

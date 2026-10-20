@@ -478,7 +478,7 @@ export async function POST(req: Request) {
         Promise.resolve(
           supabase
             .from('event_registrations')
-            .update({ attended: true, attended_at: new Date().toISOString() })
+            .update({ attended: true })
             .eq('event_id', event_id)
             .eq('mssv', mssv)
         ).catch((syncErr: any) => {
@@ -497,7 +497,6 @@ export async function POST(req: Request) {
             class_id: finalStudent.class_id || 'PTIT-HCM',
             role_type: resolvedCheckinRole,
             attended: true,
-            attended_at: new Date().toISOString(),
           })
       ).catch((syncErr: any) => {
         console.warn('Could not insert event_registrations in checkin:', syncErr);

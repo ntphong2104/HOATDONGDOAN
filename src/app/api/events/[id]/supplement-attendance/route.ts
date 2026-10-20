@@ -130,7 +130,6 @@ export async function POST(
           class_id: userInfo?.class_id || 'PTIT-HCM',
           role_type,
           attended: true,
-          attended_at: now,
           created_at: now,
         }, { onConflict: 'event_id,mssv' });
       } catch {}
@@ -139,7 +138,7 @@ export async function POST(
       try {
         await supabase
           .from('event_registrations')
-          .update({ attended: true, attended_at: now, role_type })
+          .update({ attended: true, role_type })
           .eq('event_id', resolvedParams.id)
           .eq('mssv', mssv);
       } catch {}

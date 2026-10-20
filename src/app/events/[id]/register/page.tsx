@@ -192,6 +192,7 @@ export default function EventRegisterPage({
       });
       const data = await res.json();
       if (data.success) {
+        setCurrentUser((prev) => (prev ? { ...prev, gender, phone } : prev));
         alert(data.message || 'Chúc mừng bạn đã đăng ký tham gia sự kiện thành công!');
         fetchRegistrationData();
       } else {
@@ -599,84 +600,82 @@ export default function EventRegisterPage({
                     </div>
                   )}
 
-                  {/* Gender & Phone fields when applying for CTV */}
-                  {regType === 'volunteer' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem', marginBottom: '1rem' }}>
-                      <div className={styles.formGroup} style={{ margin: 0 }}>
-                        <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
-                          Giới Tính Của Bạn <span style={{ color: '#ef4444' }}>*</span>
-                        </label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', height: '44px' }}>
-                          <button
-                            type="button"
-                            onClick={() => setGender('Nam')}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '0.35rem',
-                              border: gender === 'Nam' ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
-                              borderRadius: '10px',
-                              background: gender === 'Nam' ? '#eff6ff' : '#ffffff',
-                              color: gender === 'Nam' ? '#1d4ed8' : '#64748b',
-                              fontWeight: gender === 'Nam' ? 700 : 600,
-                              fontSize: '0.9rem',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            Nam
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setGender('Nữ')}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '0.35rem',
-                              border: gender === 'Nữ' ? '2px solid #ec4899' : '1.5px solid #e2e8f0',
-                              borderRadius: '10px',
-                              background: gender === 'Nữ' ? '#fdf2f8' : '#ffffff',
-                              color: gender === 'Nữ' ? '#be185d' : '#64748b',
-                              fontWeight: gender === 'Nữ' ? 700 : 600,
-                              fontSize: '0.9rem',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            Nữ
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className={styles.formGroup} style={{ margin: 0 }}>
-                        <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
-                          Số Điện Thoại / Zalo <span style={{ color: '#ef4444' }}>*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="Ví dụ: 0912345678"
-                          required
+                  {/* Gender & Phone fields (pre-filled from profile, saved permanently on submit) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem', marginBottom: '1rem' }}>
+                    <div className={styles.formGroup} style={{ margin: 0 }}>
+                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                        Giới Tính Của Bạn <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', height: '44px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setGender('Nam')}
                           style={{
-                            width: '100%',
-                            height: '44px',
-                            padding: '0 0.9rem',
-                            border: '1.5px solid #e2e8f0',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem',
+                            border: gender === 'Nam' ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
                             borderRadius: '10px',
-                            boxSizing: 'border-box',
-                            fontWeight: 600,
+                            background: gender === 'Nam' ? '#eff6ff' : '#ffffff',
+                            color: gender === 'Nam' ? '#1d4ed8' : '#64748b',
+                            fontWeight: gender === 'Nam' ? 700 : 600,
                             fontSize: '0.9rem',
-                            color: '#0f172a',
-                            background: '#ffffff',
-                            outline: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
                           }}
-                        />
+                        >
+                          Nam
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGender('Nữ')}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem',
+                            border: gender === 'Nữ' ? '2px solid #ec4899' : '1.5px solid #e2e8f0',
+                            borderRadius: '10px',
+                            background: gender === 'Nữ' ? '#fdf2f8' : '#ffffff',
+                            color: gender === 'Nữ' ? '#be185d' : '#64748b',
+                            fontWeight: gender === 'Nữ' ? 700 : 600,
+                            fontSize: '0.9rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          Nữ
+                        </button>
                       </div>
                     </div>
-                  )}
+
+                    <div className={styles.formGroup} style={{ margin: 0 }}>
+                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                        Số Điện Thoại / Zalo <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="Ví dụ: 0912345678"
+                        required
+                        style={{
+                          width: '100%',
+                          height: '44px',
+                          padding: '0 0.9rem',
+                          border: '1.5px solid #e2e8f0',
+                          borderRadius: '10px',
+                          boxSizing: 'border-box',
+                          fontWeight: 600,
+                          fontSize: '0.9rem',
+                          color: '#0f172a',
+                          background: '#ffffff',
+                          outline: 'none',
+                        }}
+                      />
+                    </div>
+                  </div>
 
                   {/* Note / Experience field when applying for CTV */}
                   {regType === 'volunteer' && (

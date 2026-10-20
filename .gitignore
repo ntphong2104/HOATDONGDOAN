@@ -25,6 +25,7 @@
 /data/*
 !data/officer-roles.json
 !data/event-metadata.json
+!data/Data.xlsx
 
 # debug
 npm-debug.log*

@@ -6,8 +6,8 @@ import { extractMSSV, isValidMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
-import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
-import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
+import { getUserProfileExtraWithFallback, saveUserProfileExtraWithSync } from '@/lib/constants/user-profile-store';
+import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass, getMasterStudentByMssv } from '@/lib/utils/student-profile';
 import { checkCohortEligibility, describeCohortBlock } from '@/lib/utils/cohort';
 
 export async function GET(
@@ -16,7 +16,8 @@ export async function GET(
 ) {
   const resolvedParams = await params;
   const auth = await getAuthContext();
-  const supabase = await createClient();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
   const mssv = auth?.email ? extractMSSV(auth.email) || auth.email : null;
   const isAdmin = auth?.isSuperAdmin || auth?.isEventAdmin;
@@ -221,7 +222,8 @@ export async function POST(
     );
   }
 
-  const supabase = await createClient();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
   // 1. Verify Event Exists and is Active
   const { data: rawEvent, error: eventErr } = await supabase
@@ -307,16 +309,18 @@ export async function POST(
     }, { status: 403 });
   }
 
-  // 3. Get User Profile info
+  // 3. Get User Profile info (only select real columns of public.users: mssv, full_name, class_id)
   const { data: userProfile } = await supabase
     .from('users')
-    .select('full_name, class_id, phone, gender')
+    .select('mssv, full_name, class_id')
     .or(`email.ilike.${auth.email},mssv.ilike.${mssv}`)
     .maybeSingle();
 
-  let resolvedFullName = (userProfile?.full_name && !userProfile.full_name.includes('@'))
+  const masterStudent = getMasterStudentByMssv(mssv);
+
+  let resolvedFullName = (userProfile?.full_name && !isPlaceholderName(userProfile.full_name, mssv))
     ? userProfile.full_name
-    : null;
+    : (masterStudent?.full_name || null);
 
   if (!resolvedFullName) {
     const rawName = (auth as any).user_metadata?.full_name || (auth as any).user_metadata?.name;
@@ -326,19 +330,24 @@ export async function POST(
     }
   }
 
-  const finalFullName = resolvedFullName || mssv;
-  const finalClassId = userProfile?.class_id || 'PTIT-HCM';
+  const finalFullName = resolvedFullName || userProfile?.full_name || mssv;
+  const finalClassId = (userProfile?.class_id && !isPlaceholderClass(userProfile.class_id))
+    ? userProfile.class_id
+    : (masterStudent?.class_id || userProfile?.class_id || 'PTIT-HCM');
+
+  // Check phone number & gender from profile store with Supabase + registration fallback
+  const profileExtra = await getUserProfileExtraWithFallback(supabase, auth.email, mssv);
 
   const role_type = body.role_type === 'volunteer' ? 'volunteer' : 'participant';
-  const gender = body.gender || userProfile?.gender || 'Nam';
-  const phone = body.phone !== undefined ? body.phone : userProfile?.phone || '';
+  const gender = body.gender || profileExtra?.gender || 'Nam';
+  const phone = body.phone !== undefined && String(body.phone).trim() !== ''
+    ? String(body.phone).trim()
+    : (profileExtra?.phone || '');
   const note = body.note || '';
   const department_id = body.department_id || null;
   let department_name = body.department_name || null;
 
-  // Check phone number from profile store with Supabase fallback
-  const profileExtra = await getUserProfileExtraWithFallback(supabase, auth.email, mssv);
-  const resolvedPhone = phone || profileExtra?.phone || '';
+  const resolvedPhone = phone;
 
   // Require phone number for registration
   if (!resolvedPhone || resolvedPhone.trim().length < 8) {
@@ -407,14 +416,12 @@ export async function POST(
     }
   }
 
-  // Update user phone / gender in background
-  if (body.gender || body.phone) {
-    try {
-      await supabase.from('users').update({
-        gender,
-        phone,
-      }).eq('email', auth.email);
-    } catch {}
+  // Persist user phone / gender permanently across RAM, user-profiles.json, and system_settings
+  if (gender || resolvedPhone) {
+    await saveUserProfileExtraWithSync(supabase, auth.email, mssv, {
+      gender,
+      phone: resolvedPhone,
+    });
   }
 
   // 4. Register for the event (Insert standard Postgres columns safely)
@@ -448,7 +455,7 @@ export async function POST(
     department_id,
     department_name,
     gender,
-    phone,
+    phone: resolvedPhone,
     note,
     review_status,
     session_id: requestedSessionId,
@@ -462,7 +469,7 @@ export async function POST(
     department_id,
     department_name,
     gender,
-    phone,
+    phone: resolvedPhone,
     note,
     review_status,
   };

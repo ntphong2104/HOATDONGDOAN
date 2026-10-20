@@ -3,7 +3,14 @@ import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officers-store';
 import { parseDemoCookie, getVerifiedUserFromCookies, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
-import { getUserProfileExtra, saveUserProfileExtra } from '@/lib/constants/user-profile-store';
+import {
+  getUserProfileExtra,
+  getUserProfileExtraWithFallback,
+  saveUserProfileExtra,
+  saveUserProfileExtraWithSync,
+  getMeResponseCache,
+  invalidateMeResponseCache,
+} from '@/lib/constants/user-profile-store';
 import type { SessionUser, UserTier } from '@/lib/types';
 import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
@@ -14,6 +21,7 @@ import {
   normalizeStudentFullName,
   normalizeStudentClassId,
   saveStudentProfile,
+  getMasterStudentByMssv,
 } from '@/lib/utils/student-profile';
 
 export const dynamic = 'force-dynamic';
@@ -25,8 +33,8 @@ const noCacheHeaders = {
   Expires: '0',
 };
 
-// In-memory cache for /api/me responses (TTL: 15 seconds) to prevent redundant DB hammering
-const meResponseCache = new Map<string, { data: SessionUser; expiresAt: number }>();
+// Shared in-memory cache across route bundles for /api/me responses (TTL: 15 seconds)
+const meResponseCache = getMeResponseCache();
 
 export async function GET() {
   try {
@@ -105,7 +113,10 @@ export async function GET() {
           const isEventAdmin = isSuperAdmin || tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'event_admin' || managed_events.length > 0;
           const isChecker = isEventAdmin || tier === 'checker' || demoUser.isChecker;
 
-          const pExtra = getUserProfileExtra(demoUser.email) || (demoUser.mssv ? getUserProfileExtra(demoUser.mssv) : null);
+          const pExtra =
+            (await getUserProfileExtraWithFallback(supabase, demoUser.email, demoUser.mssv)) ||
+            getUserProfileExtra(demoUser.email) ||
+            (demoUser.mssv ? getUserProfileExtra(demoUser.mssv) : null);
 
           return NextResponse.json({
             success: true,
@@ -327,13 +338,14 @@ export async function GET() {
 
     // Auto-register student accounts with @student domain seamlessly
     if (!userRecord && email.includes('@student.')) {
-      let className = 'PTIT-HCM';
-      let actualName = googleName || username;
+      const masterRecord = getMasterStudentByMssv(username);
+      let className = masterRecord?.class_id || 'PTIT-HCM';
+      let actualName = masterRecord?.full_name || googleName || username;
 
       const match = (googleName || '').match(/^([A-Z]\d{2}[A-Z0-9-]+)\s+(.+)$/i);
       if (match) {
-        className = match[1].toUpperCase();
-        actualName = match[2].trim();
+        if (isPlaceholderClass(className)) className = match[1].toUpperCase();
+        if (isPlaceholderName(actualName, username)) actualName = match[2].trim();
       }
 
       try {
@@ -345,7 +357,7 @@ export async function GET() {
               full_name: actualName,
               class_id: className,
             },
-            { onConflict: 'email' }
+            { onConflict: 'mssv' }
           );
         }
       } catch (e) {}
@@ -358,16 +370,17 @@ export async function GET() {
     }
 
     if (!userRecord) {
+      const masterRecord = getMasterStudentByMssv(username);
       userRecord = {
         mssv: username,
-        full_name: googleName || username,
-        class_id: 'PTIT-HCM',
+        full_name: masterRecord?.full_name || googleName || username,
+        class_id: masterRecord?.class_id || 'PTIT-HCM',
       };
     }
 
     // ── Student profile completeness ──
     // MSSV-only imports create placeholder profiles (name = MSSV, class = PTIT-HCM).
-    // 1) Try to heal silently from the Google display name ("D25CQMR02-N LE NGOC BAO LINH").
+    // 1) Try to heal silently from data/Data.xlsx master directory or Google display name ("D25CQMR02-N LE NGOC BAO LINH").
     // 2) If still incomplete, flag it so the UI forces the student to enter it.
     const studentMssv = extractMSSV(email);
     let profileIncomplete = false;
@@ -376,9 +389,14 @@ export async function GET() {
       const needName = isPlaceholderName(userRecord?.full_name, studentMssv);
       const needClass = isPlaceholderClass(userRecord?.class_id);
       if (needName || needClass) {
+        const masterRecord = getMasterStudentByMssv(studentMssv);
         const parsed = parseGoogleStudentName(googleName);
-        const healName = needName ? normalizeStudentFullName(parsed.full_name) : null;
-        const healClass = needClass ? normalizeStudentClassId(parsed.class_id) : null;
+        const healName = needName
+          ? (masterRecord?.full_name || normalizeStudentFullName(parsed.full_name))
+          : null;
+        const healClass = needClass
+          ? (masterRecord?.class_id || normalizeStudentClassId(parsed.class_id))
+          : null;
         if (healName || healClass) {
           const saved = await saveStudentProfile(adminClient, {
             mssv: studentMssv,
@@ -412,7 +430,11 @@ export async function GET() {
 
     const roleDefaults = defaultNames[tier] || { mssv: username, name: 'Sinh Viên PTIT', classId: 'PTIT-HCM' };
 
-    const profileExtra = getUserProfileExtra(email) || (userRecord?.mssv ? getUserProfileExtra(userRecord.mssv) : null) || getUserProfileExtra(username);
+    const profileExtra =
+      (await getUserProfileExtraWithFallback(adminClient, email, userRecord?.mssv || username)) ||
+      getUserProfileExtra(email) ||
+      (userRecord?.mssv ? getUserProfileExtra(userRecord.mssv) : null) ||
+      getUserProfileExtra(username);
 
     const resolvedUser = {
       mssv: userRecord?.mssv || roleDefaults.mssv,
@@ -531,18 +553,11 @@ export async function PATCH(req: Request) {
           maxAge: 60 * 60 * 24 * 7,
         });
 
-        saveUserProfileExtra(demoUser.email, { gender: updated.gender, phone: updated.phone });
-        if (demoUser.mssv) saveUserProfileExtra(demoUser.mssv, { gender: updated.gender, phone: updated.phone });
-
-        // Persist to Supabase for durability across restarts
-        try {
-          const supabase = await createAdminClient();
-          const profileKey = `user_profile_${demoUser.email.toLowerCase()}`;
-          await supabase.from('system_settings').upsert({
-            key: profileKey,
-            value: { gender: updated.gender, phone: updated.phone, updated_at: new Date().toISOString() },
-          }, { onConflict: 'key' });
-        } catch {}
+        const supabase = await createAdminClient();
+        await saveUserProfileExtraWithSync(supabase, demoUser.email, demoUser.mssv, {
+          gender: updated.gender,
+          phone: updated.phone,
+        });
 
         return NextResponse.json({
           success: true,
@@ -624,27 +639,16 @@ export async function PATCH(req: Request) {
       if (classId) savedIdentity.class_id = classId;
     }
 
-    meResponseCache.delete(email);
+    invalidateMeResponseCache(email, username);
     invalidateAuthContextCache(email);
 
     const wantsExtraUpdate = gender !== undefined || phone !== undefined;
     if (wantsExtraUpdate) {
       const extraPatch: Record<string, any> = {};
       if (gender !== undefined) extraPatch.gender = gender;
-      if (phone !== undefined) extraPatch.phone = phone;
-      saveUserProfileExtra(email, extraPatch);
-      saveUserProfileExtra(username, extraPatch);
-
-      // Persist to Supabase for durability across restarts
-      try {
-        const supabase = await createAdminClient();
-        const profileKey = `user_profile_${email}`;
-        const merged = getUserProfileExtra(email) || extraPatch;
-        await supabase.from('system_settings').upsert({
-          key: profileKey,
-          value: { gender: merged.gender, phone: merged.phone, updated_at: new Date().toISOString() },
-        }, { onConflict: 'key' });
-      } catch {}
+      if (phone !== undefined) extraPatch.phone = String(phone).trim();
+      const supabase = await createAdminClient();
+      await saveUserProfileExtraWithSync(supabase, email, extractMSSV(email) || username, extraPatch);
     }
 
     return NextResponse.json({

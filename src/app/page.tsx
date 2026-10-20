@@ -3,6 +3,12 @@ import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
+import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
+import {
+  isPlaceholderName,
+  isPlaceholderClass,
+  getMasterStudentByMssv,
+} from '@/lib/utils/student-profile';
 import Header from '@/components/Header';
 import StudentDashboardClient from '@/components/StudentDashboardClient';
 import type { HistoryItem, ParticipateRole, SessionUser } from '@/lib/types';
@@ -115,6 +121,24 @@ export default async function HomePage({
       };
     }
 
+    if (isPlaceholderName(user.full_name, user.mssv) || isPlaceholderClass(user.class_id)) {
+      const masterRecord = getMasterStudentByMssv(user.mssv);
+      if (masterRecord) {
+        if (isPlaceholderName(user.full_name, user.mssv) && masterRecord.full_name) {
+          user.full_name = masterRecord.full_name;
+        }
+        if (isPlaceholderClass(user.class_id) && masterRecord.class_id) {
+          user.class_id = masterRecord.class_id;
+        }
+      }
+    }
+
+    const profileExtra = await getUserProfileExtraWithFallback(supabase, auth.email, user.mssv);
+    if (profileExtra) {
+      if (profileExtra.gender) user.gender = profileExtra.gender;
+      if (profileExtra.phone) user.phone = profileExtra.phone;
+    }
+
     const { data: historyData } = await supabase
       .from('check_ins')
       .select(`
@@ -198,6 +222,8 @@ export default async function HomePage({
     mssv: user.mssv,
     full_name: user.full_name,
     class_id: user.class_id,
+    gender: user.gender,
+    phone: user.phone,
     email: auth.email,
     tier: auth.tier,
     isSuperAdmin: auth.isSuperAdmin,
