@@ -46,11 +46,9 @@ export function calculateProposalStages(
   const isBorrowingRoom =
     Boolean(roomId && roomId !== 'none' && roomName !== 'Không mượn') ||
     (Array.isArray(sessions) && sessions.some((s) => s.room_id && s.room_name && s.room_name !== 'Không mượn'));
-  const maxParticipants =
-    Array.isArray(sessions) && sessions.length > 0
-      ? Math.max(participantCount, ...sessions.map((s) => Number(s.participant_count || 0)))
-      : participantCount;
-  const requiresCtsv = maxParticipants > 50;
+  // CTSV chỉ thẩm định khi số SINH VIÊN tham gia (khai ở mục Quy mô) > 50.
+  // Không dùng participant_count của từng ca (mặc định 60, người dùng không sửa được) và không cộng CTV/BTC.
+  const requiresCtsv = (Number(participantCount) || 0) > 50;
   const requiresFacility = isBorrowingRoom;
 
   if (isDirectFaculty) {

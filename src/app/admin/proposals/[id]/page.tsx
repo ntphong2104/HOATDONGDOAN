@@ -306,7 +306,7 @@ export default function ProposalDetailPage({
   const requiresCtsv =
     typeof (proposal as any).requires_ctsv_approval === 'boolean'
       ? Boolean((proposal as any).requires_ctsv_approval)
-      : (proposal.participant_count || 0) + (proposal.volunteer_count || 0) + (proposal.organizer_count || 0) > 50;
+      : (proposal.participant_count || 0) > 50;
 
   const getStepStatus = (step: ProposalStage) => {
     if (proposal.status === 'rejected') return 'waiting';

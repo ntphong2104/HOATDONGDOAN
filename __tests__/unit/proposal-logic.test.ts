@@ -6,11 +6,24 @@ import {
 
 describe('Event Proposal Approval Logic (CTSV & Phòng Tổ Chức)', () => {
   describe('calculateProposalStages', () => {
-    test('no room borrowed: youth_union and CTSV stage required', () => {
+    test('no room borrowed, <= 50 students: only youth_union, no CTSV', () => {
       const result = calculateProposalStages(40, null, 'Không mượn');
-      expect(result.requiresCtsv).toBe(true);
+      expect(result.requiresCtsv).toBe(false);
       expect(result.requiresFacility).toBe(false);
+      expect(result.stagesList).toEqual(['youth_union']);
+    });
+
+    test('> 50 students: CTSV stage required', () => {
+      const result = calculateProposalStages(51, null, 'Không mượn');
+      expect(result.requiresCtsv).toBe(true);
       expect(result.stagesList).toEqual(['youth_union', 'ctsv']);
+    });
+
+    test('session participant_count (default 60) must NOT trigger CTSV when students <= 50', () => {
+      const result = calculateProposalStages(40, null, 'Không mượn', undefined, [
+        { participant_count: 60 },
+      ]);
+      expect(result.requiresCtsv).toBe(false);
     });
 
     test('with room borrowed: triggers Youth Union, CTSV and Facility stages', () => {

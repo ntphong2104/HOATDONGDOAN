@@ -337,7 +337,7 @@ export default function NewProposalPage() {
     (Number(volunteerCount) || 0) +
     (Number(organizerCount) || 0);
 
-  const requiresCtsv = totalPersonnel > 50 || Number(participantCount) > 50;
+  const requiresCtsv = Number(participantCount) > 50;
   const isBorrowing = isBorrowingAnyRoom;
   const isDirectFaculty = isKhoaUnit(organizationUnit);
 

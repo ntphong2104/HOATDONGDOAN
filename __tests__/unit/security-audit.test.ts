@@ -84,7 +84,7 @@ describe('Comprehensive Security & Business Logic Audit Suite', () => {
       expect(withRoom.requiresFacility).toBe(true);
 
       const noRoom = calculateProposalStages(50, null, 'Không mượn');
-      expect(noRoom.requiresCtsv).toBe(true);
+      expect(noRoom.requiresCtsv).toBe(false);
       expect(noRoom.requiresFacility).toBe(false);
     });
 
