@@ -35,7 +35,8 @@ export async function GET(
   ] = await Promise.all([
     supabase.from('events').select('*').eq('event_id', resolvedParams.id).maybeSingle(),
     getEventMeta(supabase, resolvedParams.id),
-    supabase.from('event_registrations').select('*', { count: 'exact', head: true }).eq('event_id', resolvedParams.id),
+    // Sức chứa chỉ tính NGƯỜI THAM GIA (khán giả) — không tính CTV / BTC
+    supabase.from('event_registrations').select('*', { count: 'exact', head: true }).eq('event_id', resolvedParams.id).or('role_type.eq.participant,role_type.is.null'),
     getRegistrationExtras(supabase, resolvedParams.id),
     auth?.email
       ? supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id).eq('email', auth.email).maybeSingle()

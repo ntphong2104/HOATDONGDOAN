@@ -340,10 +340,14 @@ export async function POST(
       });
 
       const studentsWithWarnings = previewStudents.filter((s) => s.warnings.length > 0);
-      const currentCount = targetMode === 'checkin' ? (eventCheckins?.length || 0) : (eventRegs?.length || 0);
+      // Sức chứa chỉ tính cho NGƯỜI THAM GIA (không tính CTV / BTC)
+      const isParticipantRole = (role?: string | null) => !role || role === 'participant';
+      const currentCount = targetMode === 'checkin'
+        ? (eventCheckins || []).filter((c: any) => isParticipantRole(c.participate_role)).length
+        : (eventRegs || []).filter((r: any) => isParticipantRole(r.role_type)).length;
       const newAddCount = targetMode === 'checkin'
-        ? previewStudents.filter((s) => !s.is_already_checked_in).length
-        : previewStudents.filter((s) => !s.is_registered).length;
+        ? previewStudents.filter((s) => !s.is_already_checked_in && isParticipantRole(s.role_type)).length
+        : previewStudents.filter((s) => !s.is_registered && isParticipantRole(s.role_type)).length;
       const projectedTotal = currentCount + newAddCount;
       const isOverflow = maxParticipants > 0 && projectedTotal > maxParticipants;
       const overflowCount = isOverflow ? projectedTotal - maxParticipants : 0;
