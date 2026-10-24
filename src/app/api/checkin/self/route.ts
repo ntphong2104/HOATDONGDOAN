@@ -228,7 +228,25 @@ export async function POST(req: Request) {
         ? 'volunteer'
         : 'participant';
 
-    // ── Try Atomic Check-in via RPC (capacity + duplicate + insert in 1 transaction) ──
+    // ── Sức chứa chỉ áp dụng cho NGƯỜI THAM GIA vãng lai (không có đăng ký) ──
+    // Người đã đăng ký đã được giữ chỗ lúc đăng ký; CTV/BTC không tính vào sức chứa khán giả.
+    const maxParticipants = meta.max_participants || 0;
+    if (maxParticipants > 0 && effectiveRole === 'participant' && !registration) {
+      const { count: participantCheckins } = await supabase
+        .from('check_ins')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', eventId)
+        .eq('participate_role', 'participant');
+
+      if ((participantCheckins || 0) >= maxParticipants) {
+        return NextResponse.json({
+          success: false,
+          error: `🚫 Sự kiện đã ĐẦY (${participantCheckins}/${maxParticipants} người tham gia). Không thể điểm danh thêm.`,
+        }, { status: 400 });
+      }
+    }
+
+    // ── Try Atomic Check-in via RPC (duplicate + insert in 1 transaction) ──
     const atomicResult = await checkinAtomic(supabase, {
       event_id: eventId,
       session_id: targetSessionId,
@@ -236,26 +254,11 @@ export async function POST(req: Request) {
       mssv,
       role: effectiveRole,
       checked_by: 'Mã QR Động (Tự quét)',
-      max_participants: meta.max_participants || 0,
+      max_participants: 0, // sức chứa đã kiểm tra ở trên theo đúng vai trò
     });
 
     if (atomicResult.error === 'RPC_NOT_AVAILABLE') {
       // Fallback: RPC not deployed yet, use old method
-      // ── Enforce Max Participants Capacity ──
-      const maxParticipants = meta.max_participants || 0;
-      if (maxParticipants > 0) {
-        const { count: currentCheckinCount } = await supabase
-          .from('check_ins')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', eventId);
-
-        if ((currentCheckinCount || 0) >= maxParticipants) {
-          return NextResponse.json({
-            success: false,
-            error: `🚫 Sự kiện đã ĐẦY (${currentCheckinCount}/${maxParticipants} người). Không thể điểm danh thêm.`,
-          }, { status: 400 });
-        }
-      }
 
       // Duplicate check + save
       const existingSessionCheckins = await getSessionCheckIns(supabase, eventId);
