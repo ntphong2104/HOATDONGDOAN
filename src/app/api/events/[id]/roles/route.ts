@@ -1,8 +1,9 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta } from '@/lib/constants/event-meta-store';
+import { invalidateMeResponseCache } from '@/lib/constants/user-profile-store';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -67,13 +68,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const body = await request.json();
     const { email, role_type } = body;
-    if (!email || !['event_admin', 'checker'].includes(role_type)) {
+    let normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (normalizedEmail && /^[a-z]\d{2}[a-z]{2,5}\d{2,4}$/i.test(normalizedEmail)) {
+      normalizedEmail = `${normalizedEmail}@student.ptithcm.edu.vn`;
+    }
+    if (!normalizedEmail || !['event_admin', 'checker'].includes(role_type)) {
       return NextResponse.json({ success: false, error: 'validation_error' }, { status: 400 });
     }
 
     const { data, error } = await supabase
       .from('event_roles')
-      .insert({ event_id: id, email, role_type })
+      .insert({ event_id: id, email: normalizedEmail, role_type })
       .select()
       .single();
 
@@ -83,6 +88,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }
       return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại', message: error.message }, { status: 500 });
     }
+
+    invalidateAuthContextCache(normalizedEmail);
+    invalidateMeResponseCache(normalizedEmail);
     return NextResponse.json({ success: true, data });
   } catch {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });

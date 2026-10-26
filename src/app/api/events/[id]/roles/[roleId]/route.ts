@@ -1,8 +1,9 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta } from '@/lib/constants/event-meta-store';
+import { invalidateMeResponseCache } from '@/lib/constants/user-profile-store';
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string; roleId: string }> }) {
   try {
@@ -63,6 +64,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, error: 'Không tìm thấy vai trò này (có thể đã bị xóa trước đó)' }, { status: 404 });
     }
 
+    invalidateAuthContextCache();
+    invalidateMeResponseCache();
     return NextResponse.json({ success: true, data: { deleted: true } });
   } catch (err: any) {
     console.error('Delete role catch:', err);

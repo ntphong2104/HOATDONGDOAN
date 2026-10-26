@@ -104,8 +104,12 @@ export default function ScannerPage() {
     fetch(`/api/events/${selectedEventId}/sessions`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && Array.isArray(data.data)) {
-          const sessions = data.data;
+        const sessions = Array.isArray(data.data)
+          ? data.data
+          : Array.isArray(data.data?.sessions)
+          ? data.data.sessions
+          : null;
+        if (data.success && sessions) {
           const now = new Date();
           const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
           const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -119,13 +123,19 @@ export default function ScannerPage() {
           }) || sessions.find((s: any) => s.session_date === nowDateStr) || sessions[0] || null;
 
           setActiveSession(current);
-          if (current?.session_type === 'internal') {
+          const canSelectRole =
+            user?.tier === 'super_admin' ||
+            user?.tier === 'event_admin' ||
+            Boolean(user?.isEventAdmin);
+          if (canSelectRole && current?.session_type === 'internal') {
             setSelectedRole('volunteer');
+          } else {
+            setSelectedRole('participant');
           }
         }
       })
       .catch(() => {});
-  }, [selectedEventId]);
+  }, [selectedEventId, user]);
 
   // Auto-focus external input when switching to external mode
   useEffect(() => {
@@ -329,7 +339,7 @@ export default function ScannerPage() {
         }
       }
     },
-    [selectedEventId, selectedRole]
+    [selectedEventId, selectedRole, activeSession]
   );
 
   // Camera scan handler with 2.5s duplicate protection per same QR token
@@ -385,7 +395,11 @@ export default function ScannerPage() {
   if (!user) return null;
 
   const isSuperAdmin = user.tier === 'super_admin';
-  const isEventAdminOrSuper = isSuperAdmin || user.tier === 'event_admin';
+  const isEventAdminOrSuper =
+    isSuperAdmin ||
+    user.tier === 'event_admin' ||
+    Boolean(user.isEventAdmin) ||
+    Boolean(user.managed_events?.some((e) => e.event_id === selectedEventId && e.role_type === 'event_admin'));
   const activeEvents = (user.managed_events || []).filter(
     (e) => e.status === 'active' && e.is_active !== false
   );
@@ -396,7 +410,7 @@ export default function ScannerPage() {
         userName={user.full_name || user.email}
         avatarUrl={user.avatar_url}
         showBack
-        backHref="/"
+        backHref={user.tier === 'checker' ? '/?view=student' : '/'}
         title="MÁY QUÉT ĐIỂM DANH"
       />
       <main className={styles.main}>

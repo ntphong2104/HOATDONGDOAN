@@ -249,6 +249,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
           isChecker,
           isSecurity,
           tier: explicitTier,
+          managed_events: Array.isArray(demoUser.managed_events) ? demoUser.managed_events : undefined,
         };
       }
     }
@@ -350,7 +351,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     // Check event_roles table
     (async () => {
       try {
-        const q = adminClient.from('event_roles').select('role_type');
+        const q = adminClient.from('event_roles').select('event_id, role_type');
         const { data } = typeof q.ilike === 'function'
           ? await q.ilike('email', email)
           : await q.eq('email', email);
@@ -436,6 +437,15 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     tier = 'checker';
   }
 
+  const managed_events = Array.isArray(eventRoles)
+    ? eventRoles
+        .filter((r: any) => r && (r.event_id || r.role_type))
+        .map((r: any) => ({
+          event_id: r.event_id,
+          role_type: r.role_type,
+        }))
+    : [];
+
   const ctx: AuthContext = {
     email,
     isSuperAdmin,
@@ -443,6 +453,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     isChecker,
     isSecurity,
     tier,
+    managed_events,
   };
 
   authContextCache.set(email.toLowerCase(), { ctx, expiresAt: Date.now() + 60000 });

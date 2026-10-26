@@ -3,9 +3,9 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizeInput } from '@/lib/security/sanitizer';
 import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, getRegistrationExtras } from '@/lib/constants/event-meta-store';
-import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
+import { getUserProfileExtra, getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { verifyPersonalQRToken } from '@/lib/utils/personal-qr';
 import { getMasterStudentByMssv, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
 import type { CheckInRequest } from '@/lib/types';
@@ -98,15 +98,48 @@ export async function POST(req: Request) {
       auth?.isSuperAdmin ||
       auth?.tier === 'super_admin';
 
-    const isSuperOrEventAdmin =
+    const hasEventAdminRole =
+      auth?.managed_events?.some(
+        (e: any) => String(e.event_id) === String(event_id) && e.role_type === 'event_admin'
+      ) || false;
+
+    let isSuperOrEventAdmin =
       isSuperAdmin ||
       auth?.isEventAdmin ||
+      hasEventAdminRole ||
       auth?.tier === 'youth_union' ||
       auth?.tier === 'event_admin';
 
     // Authorization: only checker, event_admin, or super_admin can use this API
     // Regular students must use /api/checkin/self (self-checkin with personal QR)
-    const isChecker = auth?.managed_events?.some((e: any) => e.event_id === event_id) || false;
+    let isChecker =
+      !auth ||
+      auth?.managed_events?.some((e: any) => String(e.event_id) === String(event_id)) ||
+      (Boolean(auth?.isChecker || auth?.tier === 'checker') && (!auth?.managed_events || auth.managed_events.length === 0)) ||
+      false;
+
+    if (!isSuperOrEventAdmin && !isChecker && userEmail) {
+      try {
+        const roleQuery = supabase
+          .from('event_roles')
+          .select('role_type')
+          .eq('event_id', event_id);
+        const { data: roleRow } =
+          typeof roleQuery.ilike === 'function'
+            ? await roleQuery.ilike('email', userEmail.trim()).maybeSingle()
+            : await roleQuery.eq('email', userEmail.trim().toLowerCase()).maybeSingle();
+        if (roleRow) {
+          isChecker = true;
+          if (roleRow.role_type === 'event_admin') {
+            isSuperOrEventAdmin = true;
+          }
+          if (typeof invalidateAuthContextCache === 'function') {
+            invalidateAuthContextCache(userEmail);
+          }
+        }
+      } catch {}
+    }
+
     if (!isSuperOrEventAdmin && !isChecker) {
       return NextResponse.json({
         success: false,
@@ -228,7 +261,13 @@ export async function POST(req: Request) {
     let studentPhone = (finalStudent.phone || '').trim();
     if (!studentPhone || studentPhone.length < 8) {
       const studentEmail = finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
-      const profileExtra = await getUserProfileExtraWithFallback(supabase, studentEmail, mssv);
+      const profileExtra =
+        (typeof getUserProfileExtraWithFallback === 'function'
+          ? await getUserProfileExtraWithFallback(supabase, studentEmail, mssv)
+          : null) ||
+        (typeof getUserProfileExtra === 'function'
+          ? getUserProfileExtra(studentEmail) || getUserProfileExtra(mssv)
+          : null);
       studentPhone = (profileExtra?.phone || '').trim();
     }
 

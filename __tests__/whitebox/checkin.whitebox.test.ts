@@ -359,4 +359,96 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
   });
+
+  test('Branch 9: Returns 200 Success when CTV checker has matching event_id in managed_events', async () => {
+    setupMockSupabase({ email: 'ctv@student.ptithcm.edu.vn' });
+    (getAuthContext as jest.Mock).mockResolvedValueOnce({
+      email: 'ctv@student.ptithcm.edu.vn',
+      tier: 'checker',
+      isSuperAdmin: false,
+      isEventAdmin: false,
+      isChecker: true,
+      managed_events: [{ event_id: 'event-uuid-active', role_type: 'checker' }],
+    });
+
+    const req = new Request('http://localhost:3000/api/checkin', {
+      method: 'POST',
+      body: JSON.stringify({
+        mssv: 'N22DCCN001',
+        event_id: 'event-uuid-active',
+        participate_role: 'participant',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+
+  test('Branch 10: Returns 200 Success when CTV checker was just assigned in event_roles (fallback DB check)', async () => {
+    setupMockSupabase({ email: 'newctv@student.ptithcm.edu.vn' });
+    const origFrom = mockSupabase.from;
+    mockSupabase.from = jest.fn().mockImplementation((table: string) => {
+      if (table === 'event_roles') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: { role_type: 'checker' }, error: null }),
+        };
+      }
+      return origFrom(table);
+    });
+
+    (getAuthContext as jest.Mock).mockResolvedValueOnce({
+      email: 'newctv@student.ptithcm.edu.vn',
+      tier: 'user',
+      isSuperAdmin: false,
+      isEventAdmin: false,
+      isChecker: false,
+      managed_events: [],
+    });
+
+    const req = new Request('http://localhost:3000/api/checkin', {
+      method: 'POST',
+      body: JSON.stringify({
+        mssv: 'N22DCCN001',
+        event_id: 'event-uuid-active',
+        participate_role: 'participant',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+
+  test('Branch 11: Returns 403 Forbidden when regular student without checker role attempts checkin', async () => {
+    setupMockSupabase({ email: 'student@student.ptithcm.edu.vn' });
+    (getAuthContext as jest.Mock).mockResolvedValueOnce({
+      email: 'student@student.ptithcm.edu.vn',
+      tier: 'user',
+      isSuperAdmin: false,
+      isEventAdmin: false,
+      isChecker: false,
+      managed_events: [],
+    });
+
+    const req = new Request('http://localhost:3000/api/checkin', {
+      method: 'POST',
+      body: JSON.stringify({
+        mssv: 'N22DCCN001',
+        event_id: 'event-uuid-active',
+        participate_role: 'participant',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.message).toContain('Bạn không có quyền điểm danh');
+  });
 });
