@@ -369,7 +369,44 @@ function saveToFile(list: OfficerRoleItem[]) {
 
 const OFFICER_SETTINGS_KEY = 'officer_roles_registry';
 
+// Cache ngắn hạn: danh sách cán bộ hiếm khi đổi nhưng được đọc ở mọi lượt đăng nhập / /api/me.
+// Khi hàng trăm sinh viên vào cùng lúc, không cần hỏi Supabase lại cho từng người.
+const OFFICER_CACHE_TTL_MS = 20000;
+let officerRolesCache: { list: OfficerRoleItem[]; expiresAt: number } | null = null;
+let officerRolesInflight: Promise<OfficerRoleItem[]> | null = null;
+
+export function invalidateOfficerRolesCache() {
+  officerRolesCache = null;
+  officerRolesInflight = null;
+}
+
 export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRoleItem[]> {
+  if (process.env.NODE_ENV === 'test' || !supabase) {
+    return loadOfficerRoles(supabase);
+  }
+
+  if (officerRolesCache && officerRolesCache.expiresAt > Date.now()) {
+    return officerRolesCache.list;
+  }
+
+  // Gộp các lượt gọi đồng thời thành một truy vấn duy nhất (tránh "thundering herd")
+  if (officerRolesInflight) return officerRolesInflight;
+
+  const inflight = loadOfficerRoles(supabase)
+    .then((list) => {
+      if (officerRolesInflight === inflight) {
+        officerRolesCache = { list, expiresAt: Date.now() + OFFICER_CACHE_TTL_MS };
+      }
+      return list;
+    })
+    .finally(() => {
+      if (officerRolesInflight === inflight) officerRolesInflight = null;
+    });
+  officerRolesInflight = inflight;
+  return inflight;
+}
+
+async function loadOfficerRoles(supabase?: any): Promise<OfficerRoleItem[]> {
   // 1. Try Supabase officer_roles table first if available
   if (supabase) {
     try {
@@ -472,6 +509,7 @@ export async function saveOfficerRole(officer: OfficerRoleItem, supabase?: any):
 
   inMemoryOfficers = updated;
   saveToFile(updated);
+  invalidateOfficerRolesCache();
 
   if (supabase) {
     // 1. Try upserting to officer_roles table
@@ -495,6 +533,7 @@ export async function saveOfficerRole(officer: OfficerRoleItem, supabase?: any):
         updated_at: new Date().toISOString(),
       });
     } catch {}
+    invalidateOfficerRolesCache();
   }
 }
 
@@ -518,6 +557,7 @@ export async function removeOfficerRole(email: string, roleTier?: string, id?: s
 
   inMemoryOfficers = updated;
   saveToFile(updated);
+  invalidateOfficerRolesCache();
 
   if (supabase) {
     // 1. Try deleting from officer_roles table
@@ -539,5 +579,6 @@ export async function removeOfficerRole(email: string, roleTier?: string, id?: s
         updated_at: new Date().toISOString(),
       });
     } catch {}
+    invalidateOfficerRolesCache();
   }
 }

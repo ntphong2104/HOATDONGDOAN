@@ -16,6 +16,54 @@ export const dynamic = 'force-dynamic';
 const checkinEventCache = new Map<string, { data: any; meta: any; ts: number }>();
 const CHECKIN_CACHE_TTL = 10000; // 10 giây
 
+// ═══ Cache dữ liệu dùng chung của sự kiện (danh sách CTV/BTC) — tránh tải lại blob đăng ký mỗi lượt quét ═══
+const checkinExtrasCache = new Map<string, { data: Record<string, any>; ts: number }>();
+const checkinStaffRoleCache = new Map<string, { isStaff: boolean; ts: number }>();
+const CHECKIN_STAFF_CACHE_TTL = 8000; // 8 giây
+const CHECKIN_CACHE_MAX_ENTRIES = 500;
+
+function trimCache<T extends { ts: number }>(cache: Map<string, T>) {
+  if (cache.size <= CHECKIN_CACHE_MAX_ENTRIES) return;
+  const now = Date.now();
+  for (const [k, v] of cache) {
+    if (now - v.ts > CHECKIN_STAFF_CACHE_TTL) cache.delete(k);
+  }
+  if (cache.size > CHECKIN_CACHE_MAX_ENTRIES) cache.clear();
+}
+
+async function getCachedRegistrationExtras(supabase: any, eventId: string): Promise<Record<string, any>> {
+  const hit = checkinExtrasCache.get(eventId);
+  if (hit && Date.now() - hit.ts < CHECKIN_STAFF_CACHE_TTL) return hit.data;
+  try {
+    const data = (await getRegistrationExtras(supabase, eventId)) || {};
+    checkinExtrasCache.set(eventId, { data, ts: Date.now() });
+    trimCache(checkinExtrasCache);
+    return data;
+  } catch {
+    return hit?.data || {};
+  }
+}
+
+async function getCachedStaffRole(supabase: any, eventId: string, email: string): Promise<boolean> {
+  const key = `${eventId}:${email.toLowerCase()}`;
+  const hit = checkinStaffRoleCache.get(key);
+  if (hit && Date.now() - hit.ts < CHECKIN_STAFF_CACHE_TTL) return hit.isStaff;
+  try {
+    const { data } = await supabase
+      .from('event_roles')
+      .select('role_type')
+      .eq('event_id', eventId)
+      .eq('email', email)
+      .maybeSingle();
+    const isStaff = Boolean(data);
+    checkinStaffRoleCache.set(key, { isStaff, ts: Date.now() });
+    trimCache(checkinStaffRoleCache);
+    return isStaff;
+  } catch {
+    return hit?.isStaff || false;
+  }
+}
+
 export async function POST(req: Request) {
   const auth = await getAuthContext();
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
@@ -163,6 +211,7 @@ export async function POST(req: Request) {
     const [
       studentResult,
       regResult,
+      registrationExtras,
       ...eventResults
     ] = await Promise.all([
       supabase
@@ -176,6 +225,7 @@ export async function POST(req: Request) {
         .eq('event_id', event_id)
         .eq('mssv', mssv)
         .maybeSingle(),
+      getCachedRegistrationExtras(supabase, event_id),
       // Only fetch event + meta if cache expired
       ...(cachedEvent && Date.now() - cachedEvent.ts < CHECKIN_CACHE_TTL
         ? []
@@ -257,21 +307,31 @@ export async function POST(req: Request) {
       }
     }
 
-    // Check phone number requirement (fast path from users table, fallback only if missing)
+    // Check phone number requirement (fast path from local store, DB fallback only if missing)
+    // Chạy song song với truy vấn vai trò BTC/Admin của sinh viên để giảm số vòng chờ DB.
+    const studentEmailForLookup = finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
+    const staffRolePromise = getCachedStaffRole(supabase, event_id, studentEmailForLookup);
+
     let studentPhone = (finalStudent.phone || '').trim();
     if (!studentPhone || studentPhone.length < 8) {
-      const studentEmail = finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
-      const profileExtra =
-        (typeof getUserProfileExtraWithFallback === 'function'
-          ? await getUserProfileExtraWithFallback(supabase, studentEmail, mssv)
-          : null) ||
-        (typeof getUserProfileExtra === 'function'
-          ? getUserProfileExtra(studentEmail) || getUserProfileExtra(mssv)
-          : null);
-      studentPhone = (profileExtra?.phone || '').trim();
+      const studentEmail = studentEmailForLookup;
+      const localProfile = typeof getUserProfileExtra === 'function'
+        ? getUserProfileExtra(studentEmail) || getUserProfileExtra(mssv)
+        : null;
+      const localPhone = (localProfile?.phone || '').trim();
+      if (localPhone.length >= 8) {
+        studentPhone = localPhone;
+      } else {
+        const profileExtra =
+          (typeof getUserProfileExtraWithFallback === 'function'
+            ? await getUserProfileExtraWithFallback(supabase, studentEmail, mssv)
+            : null) || localProfile;
+        studentPhone = (profileExtra?.phone || '').trim();
+      }
     }
 
     if (!studentPhone || studentPhone.length < 8) {
+      await staffRolePromise.catch(() => false);
       return NextResponse.json({
         success: false,
         error: `📱 Sinh viên ${finalStudent.full_name || mssv} (${mssv}) chưa cập nhật SĐT!\n\n👉 Hướng dẫn sinh viên:\n1. Mở trang web hệ thống trên điện thoại\n2. Bấm vào ảnh đại diện → "Hồ Sơ Cá Nhân"\n3. Nhập Số Điện Thoại / Zalo\n4. Bấm "Lưu" rồi quay lại quét mã để điểm danh`,
@@ -324,29 +384,17 @@ export async function POST(req: Request) {
     const registeredRole = regData?.role_type || null;
 
     // Check if student is an accepted volunteer in registration extras (department / Ban CTV)
+    // (đã được tải song song ở bước đầu + cache ngắn hạn)
     let isAcceptedVolunteer = false;
     try {
-      const extras = await getRegistrationExtras(supabase, event_id);
-      const studentExtra = extras[mssv.toUpperCase().trim()];
+      const studentExtra = (registrationExtras || {})[mssv.toUpperCase().trim()];
       if (studentExtra && (studentExtra.department_name || studentExtra.department_id || studentExtra.review_status === 'accepted')) {
         isAcceptedVolunteer = true;
       }
     } catch {}
 
-    // Check if student is an organizer/admin in event_roles
-    let isEventOrganizerStaff = false;
-    try {
-      const studentEmail = finalStudent.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
-      const { data: studentEventRole } = await supabase
-        .from('event_roles')
-        .select('role_type')
-        .eq('event_id', event_id)
-        .eq('email', studentEmail)
-        .maybeSingle();
-      if (studentEventRole) {
-        isEventOrganizerStaff = true;
-      }
-    } catch {}
+    // Check if student is an organizer/admin in event_roles (đã chạy song song với kiểm tra SĐT)
+    const isEventOrganizerStaff = await staffRolePromise.catch(() => false);
 
     const isVolunteer = registeredRole === 'volunteer' || isAcceptedVolunteer;
     const isOrganizer = registeredRole === 'organizer' || isEventOrganizerStaff;
