@@ -40,9 +40,8 @@ interface StudentDashboardClientProps {
   tier: string;
   initialHistory: HistoryItem[];
   initialRegistrations?: any[];
+  activeSection?: 'overview' | 'registered' | 'history' | 'delegate';
 }
-
-type PortalTab = 'history' | 'registered' | 'delegate';
 
 function normalizeVN(val: string): string {
   return String(val || '')
@@ -59,6 +58,7 @@ export default function StudentDashboardClient({
   tier,
   initialHistory,
   initialRegistrations = [],
+  activeSection = 'overview',
 }: StudentDashboardClientProps) {
   const toast = useToast();
   const [currentUser, setCurrentUser] = useState(user);
@@ -71,8 +71,7 @@ export default function StudentDashboardClient({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Portal Tabs & History Filters
-  const [activeTab, setActiveTab] = useState<PortalTab>('history');
+  // History Filters
   const [historySearch, setHistorySearch] = useState('');
   const [semesterFilter, setSemesterFilter] = useState('ALL');
   const [roleFilter, setRoleFilter] = useState<'all' | 'participant' | 'volunteer' | 'organizer'>('all');
@@ -298,7 +297,8 @@ export default function StudentDashboardClient({
         </div>
       )}
 
-      {/* ═══ 2-COLUMN STUDENT PORTAL GRID ═══ */}
+      {/* ═══ SECTION 1: TỔNG QUAN CÁ NHÂN (/?view=student) ═══ */}
+      {activeSection === 'overview' && (
       <div className={styles.portalGrid}>
         {/* ── LEFT STICKY COLUMN: LCĐ Identity + QR Card + Self Scanner ── */}
         <aside className={styles.leftColumn}>
@@ -353,7 +353,7 @@ export default function StudentDashboardClient({
           </div>
         </aside>
 
-        {/* ── RIGHT MAIN COLUMN: Alerts + KPIs + Discovery CTA + Profile + Tabbed Panel ── */}
+        {/* ── RIGHT MAIN COLUMN: Alerts + KPIs + Discovery CTA + Profile + Quick Links ── */}
         <div className={styles.rightColumn}>
           {/* Missing Phone Alert */}
           {isPhoneMissing && (
@@ -379,31 +379,31 @@ export default function StudentDashboardClient({
             </div>
           )}
 
-          {/* 4 KPI Summary Cards */}
+          {/* 4 KPI Summary Cards (clickable to jump to dedicated sections) */}
           <div className={styles.kpiGrid}>
-            <div className={styles.kpiCard}>
+            <Link href="/?view=student&tab=history" className={styles.kpiCard} style={{ textDecoration: 'none' }}>
               <span className={styles.kpiLabel}>Hoạt động ĐRL</span>
               <span className={styles.kpiValue} style={{ color: '#16a34a' }}>
                 {history.length}
               </span>
-              <span className={styles.kpiSub}>Đã điểm danh hợp lệ</span>
-            </div>
+              <span className={styles.kpiSub}>Xem lịch sử minh chứng ➔</span>
+            </Link>
 
             <div className={styles.kpiCard}>
               <span className={styles.kpiLabel}>CTV / BTC</span>
               <span className={styles.kpiValue} style={{ color: '#7c3aed' }}>
                 {volunteerOrOrganizerCount}
               </span>
-              <span className={styles.kpiSub}>Vai trò hỗ trợ & điều hành</span>
+              <span className={styles.kpiSub}>Vai trò hỗ trợ &amp; điều hành</span>
             </div>
 
-            <div className={styles.kpiCard}>
+            <Link href="/?view=student&tab=registered" className={styles.kpiCard} style={{ textDecoration: 'none' }}>
               <span className={styles.kpiLabel}>Chờ điểm danh</span>
               <span className={styles.kpiValue} style={{ color: '#2563eb' }}>
                 {pendingRegistrations.length}
               </span>
-              <span className={styles.kpiSub}>Sự kiện sắp tham gia</span>
-            </div>
+              <span className={styles.kpiSub}>Xem sự kiện đã đăng ký ➔</span>
+            </Link>
 
             <div className={styles.kpiCard}>
               <span className={styles.kpiLabel}>Hồ sơ liên hệ</span>
@@ -543,44 +543,153 @@ export default function StudentDashboardClient({
             </div>
           </section>
 
-          {/* ── TABBED ACTIVITY PANEL: History | Registered | Class Delegate ── */}
-          <section className={styles.historySection}>
-            <div className={styles.panelTabsRow}>
-              <button
-                type="button"
-                className={`${styles.panelTab} ${activeTab === 'history' ? styles.panelTabActive : ''}`}
-                onClick={() => setActiveTab('history')}
+          {/* BCH Chi Đoàn Shortcut Card (if student is an active Class Delegate) */}
+          {delegateInfo?.isDelegate && (
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
+                border: '1.5px solid #bfdbfe',
+                borderRadius: '14px',
+                padding: '1rem 1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.85rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <ShieldCheckIcon size={20} color="#1d4ed8" />
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e3a8a' }}>
+                    Quyền BCH Chi Đoàn {delegateInfo.class_id} (còn {delegateInfo.daysLeft} ngày)
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>
+                    Tra cứu minh chứng &amp; xuất Excel ĐRL cho toàn bộ đoàn viên trong lớp.
+                  </div>
+                </div>
+              </div>
+              <Link
+                href="/?view=student&tab=delegate"
+                style={{
+                  padding: '0.5rem 0.95rem',
+                  borderRadius: '10px',
+                  background: '#1d4ed8',
+                  color: '#ffffff',
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap',
+                }}
               >
-                <CheckCircleIcon size={15} />
-                <span>Lịch sử minh chứng ĐRL</span>
-                <span className={styles.panelTabCount}>{history.length}</span>
-              </button>
+                Mở Tra Cứu Lớp ➔
+              </Link>
+            </div>
+          )}
 
-              <button
-                type="button"
-                className={`${styles.panelTab} ${activeTab === 'registered' ? styles.panelTabActive : ''}`}
-                onClick={() => setActiveTab('registered')}
+          {/* Compact Recent 3 Attendance Proofs Preview */}
+          <section className={styles.profileCard}>
+            <div className={styles.profileHeader} style={{ marginBottom: '0.75rem', paddingBottom: '0.75rem' }}>
+              <h3 className={styles.historyTitle}>
+                <CheckCircleIcon size={17} color="#16a34a" />
+                <span>Hoạt động minh chứng gần nhất</span>
+              </h3>
+              <Link
+                href="/?view=student&tab=history"
+                style={{ fontSize: '0.82rem', fontWeight: 800, color: '#2563eb', textDecoration: 'none' }}
               >
-                <CalendarIcon size={15} />
-                <span>Sự kiện đã đăng ký</span>
-                <span className={styles.panelTabCount}>{pendingRegistrations.length}</span>
-              </button>
-
-              {delegateInfo?.isDelegate && (
-                <button
-                  type="button"
-                  className={`${styles.panelTab} ${activeTab === 'delegate' ? styles.panelTabActive : ''}`}
-                  onClick={() => setActiveTab('delegate')}
-                >
-                  <ShieldCheckIcon size={15} />
-                  <span>Tra cứu Chi Đoàn {delegateInfo.class_id}</span>
-                  <span className={styles.panelTabCount}>{classStudents.length}</span>
-                </button>
-              )}
+                Xem tất cả ({history.length}) ➔
+              </Link>
             </div>
 
-            {/* TAB 1: ATTENDANCE HISTORY WITH SEARCH & FILTERS */}
-            {activeTab === 'history' && (
+            {history.length === 0 ? (
+              <div className={styles.emptyHistory} style={{ padding: '1.25rem' }}>
+                Bạn chưa có lượt điểm danh minh chứng nào.
+              </div>
+            ) : (
+              <ul className={styles.historyList}>
+                {history.slice(0, 3).map((item, idx) => (
+                  <li key={item.event_id ? `${item.event_id}-${idx}` : idx} className={styles.historyItem} style={{ padding: '0.8rem 1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span className={styles.eventName} style={{ fontSize: '0.92rem' }}>{item.event_name}</span>
+                      <RoleBadge role={item.participate_role} />
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <ClockIcon size={13} />
+                      <span>
+                        {item.event_date
+                          ? new Date(item.event_date).toLocaleDateString('vi-VN')
+                          : new Date(item.checkin_time).toLocaleDateString('vi-VN')}
+                      </span>
+                      {item.semester && <span>• {item.semester}</span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
+      )}
+
+      {/* ═══ SECTION 2 / 3 / 4: DEDICATED FULL-WIDTH PAGES (history | registered | delegate) ═══ */}
+      {activeSection !== 'overview' && (
+        <section className={styles.historySection}>
+          <div className={styles.historyHeader} style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
+            <h2 className={styles.historyTitle}>
+              {activeSection === 'history' ? (
+                <>
+                  <CheckCircleIcon size={20} color="#2563eb" />
+                  <span>Lịch sử điểm danh minh chứng ĐRL ({history.length})</span>
+                </>
+              ) : activeSection === 'registered' ? (
+                <>
+                  <CalendarIcon size={20} color="#2563eb" />
+                  <span>Sự kiện đã đăng ký chờ điểm danh ({pendingRegistrations.length})</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheckIcon size={20} color="#2563eb" />
+                  <span>Tra cứu minh chứng Chi Đoàn {delegateInfo?.class_id || ''}</span>
+                </>
+              )}
+            </h2>
+
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <Link
+                href="/?view=student"
+                style={{
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#334155',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                }}
+              >
+                ← Về Tổng quan cá nhân
+              </Link>
+              <Link
+                href="/events"
+                style={{
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: '10px',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                }}
+              >
+                Tổng quan Sự kiện ➔
+              </Link>
+            </div>
+          </div>
+
+          {/* DEDICATED VIEW: ATTENDANCE HISTORY WITH SEARCH & FILTERS */}
+          {activeSection === 'history' && (
               <div>
                 {history.length > 0 && (
                   <>
@@ -734,8 +843,8 @@ export default function StudentDashboardClient({
               </div>
             )}
 
-            {/* TAB 2: REGISTERED UPCOMING EVENTS */}
-            {activeTab === 'registered' && (
+            {/* DEDICATED VIEW: REGISTERED UPCOMING EVENTS */}
+            {activeSection === 'registered' && (
               <div>
                 {loadingRegistrations ? (
                   <p style={{ textAlign: 'center', padding: '1.5rem', color: '#64748b', fontSize: '0.86rem' }}>
@@ -890,8 +999,8 @@ export default function StudentDashboardClient({
               </div>
             )}
 
-            {/* TAB 3: CLASS DELEGATE LOOKUP */}
-            {activeTab === 'delegate' && delegateInfo?.isDelegate && (
+            {/* DEDICATED VIEW: CLASS DELEGATE LOOKUP */}
+            {activeSection === 'delegate' && delegateInfo?.isDelegate && (
               <div>
                 <div
                   style={{
@@ -1037,9 +1146,14 @@ export default function StudentDashboardClient({
                 />
               </div>
             )}
-          </section>
-        </div>
-      </div>
+
+            {activeSection === 'delegate' && !delegateInfo?.isDelegate && (
+              <div className={styles.emptyHistory}>
+                Tài khoản của bạn hiện chưa được cấp quyền Ban Chấp Hành Chi Đoàn (Bí thư / Phó Bí thư / BCS lớp).
+              </div>
+            )}
+        </section>
+      )}
 
       {/* Modal Chỉnh Sửa Hồ Sơ */}
       {showProfileModal && (

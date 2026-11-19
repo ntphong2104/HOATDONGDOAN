@@ -21,7 +21,7 @@ export const revalidate = 0;
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ view?: string }>;
+  searchParams?: Promise<{ view?: string; tab?: string }>;
 }) {
   let auth = await getAuthContext();
   if (!auth) {
@@ -248,15 +248,26 @@ export default async function HomePage({
     setBoundedMeResponseCache(auth.email, sessionUser, 15000);
   }
 
+  const rawTab = resolvedParams?.tab;
+  const activeStudentTab: 'overview' | 'registered' | 'history' | 'delegate' =
+    rawTab === 'registered' || rawTab === 'history' || rawTab === 'delegate'
+      ? rawTab
+      : 'overview';
+
   return (
     <div className={styles.container}>
-      <Header user={sessionUser} userName={sessionUser.full_name} />
+      <Header
+        user={sessionUser}
+        userName={sessionUser.full_name}
+        activeStudentTab={activeStudentTab}
+      />
       <main className={styles.main}>
         <StudentDashboardClient
           user={user}
           tier={auth.tier}
           initialHistory={history}
           initialRegistrations={initialRegistrations}
+          activeSection={activeStudentTab}
         />
       </main>
     </div>

@@ -17,6 +17,8 @@ import {
   ScanCameraIcon,
   KeyIcon,
   PlusIcon,
+  CheckCircleIcon,
+  HistoryIcon,
 } from '@/components/icons';
 import DualLogos from '@/components/DualLogos';
 import UserMenuDropdown from '@/components/UserMenuDropdown';
@@ -35,6 +37,7 @@ interface HeaderProps {
   onToggleSidebar?: () => void;
   isSidebarOpen?: boolean;
   hideNavbar?: boolean;
+  activeStudentTab?: 'overview' | 'registered' | 'history' | 'delegate';
 }
 
 export default function Header({
@@ -49,6 +52,7 @@ export default function Header({
   onToggleSidebar,
   isSidebarOpen = true,
   hideNavbar = false,
+  activeStudentTab = 'overview',
 }: HeaderProps = {}) {
   const pathname = usePathname() || '';
   const [resolvedUser, setResolvedUser] = useState<SessionUser | null>(user || null);
@@ -106,7 +110,9 @@ export default function Header({
   const effectiveUser = user || resolvedUser;
 
   const isEventsActive = pathname === '/events' || pathname.startsWith('/events/');
-  const isProfileActive = pathname === '/';
+  const isOverviewActive = pathname === '/' && activeStudentTab === 'overview';
+  const isRegisteredActive = pathname === '/' && activeStudentTab === 'registered';
+  const isHistoryActive = pathname === '/' && activeStudentTab === 'history';
   const isSuperAdminPage = pathname.startsWith('/super-admin');
   const isProposalsPage = pathname.startsWith('/admin/proposals');
   const isAdminHome = pathname === '/admin' || (pathname.startsWith('/admin/events') && !isProposalsPage);
@@ -260,14 +266,38 @@ export default function Header({
 
               <Link
                 href="/?view=student"
-                title="Trang cá nhân & QR"
-                className={`${styles.sidebarItem} ${isProfileActive ? styles.sidebarItemActive : ''}`}
+                title="Tổng quan cá nhân & QR"
+                className={`${styles.sidebarItem} ${isOverviewActive ? styles.sidebarItemActive : ''}`}
                 onClick={() => setMobileOpen(false)}
               >
                 <span className={styles.sidebarIcon}>
                   <QrCodeIcon size={18} />
                 </span>
-                <span className={styles.sidebarLabel}>Trang cá nhân &amp; QR</span>
+                <span className={styles.sidebarLabel}>Tổng quan cá nhân</span>
+              </Link>
+
+              <Link
+                href="/?view=student&tab=registered"
+                title="Sự kiện đã đăng ký"
+                className={`${styles.sidebarItem} ${isRegisteredActive ? styles.sidebarItemActive : ''}`}
+                onClick={() => setMobileOpen(false)}
+              >
+                <span className={styles.sidebarIcon}>
+                  <CheckCircleIcon size={18} />
+                </span>
+                <span className={styles.sidebarLabel}>Sự kiện đã đăng ký</span>
+              </Link>
+
+              <Link
+                href="/?view=student&tab=history"
+                title="Lịch sử minh chứng ĐRL"
+                className={`${styles.sidebarItem} ${isHistoryActive ? styles.sidebarItemActive : ''}`}
+                onClick={() => setMobileOpen(false)}
+              >
+                <span className={styles.sidebarIcon}>
+                  <HistoryIcon size={18} />
+                </span>
+                <span className={styles.sidebarLabel}>Lịch sử minh chứng</span>
               </Link>
 
               {isOfficer && (
