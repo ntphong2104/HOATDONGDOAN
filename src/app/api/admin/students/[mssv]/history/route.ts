@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
+import { resolveActorLcdScope } from '@/lib/utils/lcd-auth';
+import { resolveStudentLcd } from '@/lib/utils/lcd';
 
 export async function GET(
   request: Request,
@@ -13,19 +15,21 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'event_admin') {
+    if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'youth_union' && auth.tier !== 'event_admin') {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const { mssv } = await params;
     const cleanMssv = decodeURIComponent(mssv).trim().toUpperCase();
 
-    const supabase = await createClient();
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
 
     // Run all queries in parallel for performance
-    const [userResult, checkInsResult, attendedRegsResult, penaltyResult] = await Promise.all([
+    const [scope, userResult, checkInsResult, attendedRegsResult, penaltyResult] = await Promise.all([
+      resolveActorLcdScope(supabase, auth),
       // Fetch user info
-      supabase.from('users').select('*').eq('mssv', cleanMssv).single(),
+      supabase.from('users').select('*').eq('mssv', cleanMssv).maybeSingle(),
       // Fetch check-ins
       supabase.from('check_ins').select(`
         id, event_id, participate_role, created_at,
@@ -41,6 +45,17 @@ export async function GET(
     ]);
 
     const user = userResult.data;
+
+    // If caller is a scoped LCĐ account, enforce that they only inspect students in their own LCĐ
+    if (scope.role === 'lcd' && scope.lcd) {
+      const targetLcd = resolveStudentLcd(user?.class_id, cleanMssv);
+      if (targetLcd && targetLcd.code !== scope.lcd.code) {
+        return NextResponse.json(
+          { success: false, error: `Sinh viên ${cleanMssv} thuộc ${targetLcd.shortName}, ngoài phạm vi của ${scope.lcd.shortName}.` },
+          { status: 403 }
+        );
+      }
+    }
     const checkIns = checkInsResult.data;
     const checkInErr = checkInsResult.error;
     const attendedRegs = attendedRegsResult.data;

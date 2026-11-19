@@ -173,7 +173,7 @@ describe('Admin API Routes Whitebox Tests', () => {
         data: [{ is_active: true, expires_at: new Date(Date.now() - 10000).toISOString() }, { is_active: false, expires_at: new Date(Date.now() + 1000000).toISOString() }], 
         error: null 
       }));
-      const res = await getDelegates();
+      const res = await getDelegates(new NextRequest('http://localhost/api/admin/delegates'));
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.data[0].status).toBe('expired');
@@ -182,13 +182,13 @@ describe('Admin API Routes Whitebox Tests', () => {
 
     it('GET returns 500 on db error', async () => {
       mockBuilder.then.mockImplementationOnce((resolve) => resolve({ data: null, error: { message: 'Err' } }));
-      const res = await getDelegates();
+      const res = await getDelegates(new NextRequest('http://localhost/api/admin/delegates'));
       expect(res.status).toBe(500);
     });
     
     it('GET returns 401 on unauth', async () => {
       (getAuthContext as jest.Mock).mockResolvedValue(null);
-      const res = await getDelegates();
+      const res = await getDelegates(new NextRequest('http://localhost/api/admin/delegates'));
       expect(res.status).toBe(401);
     });
 

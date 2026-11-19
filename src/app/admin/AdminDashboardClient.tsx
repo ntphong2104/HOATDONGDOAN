@@ -3,15 +3,35 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import EventCard from '@/components/EventCard';
-import { CalendarIcon, ScanCameraIcon, PlusIcon, CloseIcon, FileTextIcon } from '@/components/icons';
+import LcdManagementSection from './LcdManagementSection';
+import {
+  CalendarIcon,
+  ScanCameraIcon,
+  PlusIcon,
+  CloseIcon,
+  FileTextIcon,
+  UsersIcon,
+  ShieldCheckIcon,
+} from '@/components/icons';
 import type { Event } from '@/lib/types';
+import type { LcdCode } from '@/lib/utils/lcd';
 import styles from './AdminDashboardClient.module.css';
 
 interface AdminDashboardClientProps {
   initialEvents: Event[];
+  lcdScope?: {
+    role: 'all' | 'lcd' | 'none';
+    lcdCode: LcdCode | null;
+    lcdName: string | null;
+    lcdShortName: string | null;
+  };
 }
 
-export default function AdminDashboardClient({ initialEvents }: AdminDashboardClientProps) {
+export default function AdminDashboardClient({
+  initialEvents,
+  lcdScope,
+}: AdminDashboardClientProps) {
+  const [activeTab, setActiveTab] = useState<'events' | 'lcd_members' | 'lcd_delegates'>('events');
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [eventName, setEventName] = useState('');
@@ -19,6 +39,9 @@ export default function AdminDashboardClient({ initialEvents }: AdminDashboardCl
   const [startTime, setStartTime] = useState('07:30');
   const [endTime, setEndTime] = useState('22:00');
   const [submitting, setSubmitting] = useState(false);
+
+  const canManageLcd = lcdScope?.role === 'lcd' || lcdScope?.role === 'all';
+  const defaultLcdCode: LcdCode = lcdScope?.lcdCode || 'LCD_CNTT';
 
   const fetchEvents = async () => {
     try {
@@ -68,11 +91,38 @@ export default function AdminDashboardClient({ initialEvents }: AdminDashboardCl
   return (
     <>
       <div className={styles.tabs}>
-        <div className={styles.tabActive}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('events')}
+          className={activeTab === 'events' ? styles.tabActive : styles.tabInactive}
+        >
           <CalendarIcon size={16} />
-          Sự kiện phụ trách
-        </div>
-        <Link href="/admin/proposals" className={styles.tabInactive} style={{ color: '#c2410c', borderColor: '#fed7aa', background: '#fff7ed' }}>
+          <span>Sự kiện phụ trách</span>
+        </button>
+
+        {canManageLcd && (
+          <>
+            <button
+              type="button"
+              onClick={() => setActiveTab('lcd_members')}
+              className={activeTab === 'lcd_members' ? styles.tabActive : styles.tabInactive}
+            >
+              <UsersIcon size={16} />
+              <span>Đoàn viên &amp; Chi đoàn</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('lcd_delegates')}
+              className={activeTab === 'lcd_delegates' ? styles.tabActive : styles.tabInactive}
+            >
+              <ShieldCheckIcon size={16} />
+              <span>BCH Chi đoàn</span>
+            </button>
+          </>
+        )}
+
+        <Link href="/admin/proposals" className={styles.tabInactive} style={{ color: '#c2410c', border: '1px solid #fed7aa', background: '#fff7ed' }}>
           <FileTextIcon size={16} /> Kế hoạch trình duyệt
         </Link>
         <Link href="/scanner" className={styles.tabInactive}>
@@ -81,7 +131,21 @@ export default function AdminDashboardClient({ initialEvents }: AdminDashboardCl
         </Link>
       </div>
 
-      <div className={styles.headerSection}>
+      {canManageLcd && activeTab === 'lcd_members' ? (
+        <LcdManagementSection
+          mode="members"
+          initialLcdCode={defaultLcdCode}
+          canSwitchLcd={lcdScope?.role === 'all'}
+        />
+      ) : canManageLcd && activeTab === 'lcd_delegates' ? (
+        <LcdManagementSection
+          mode="delegates"
+          initialLcdCode={defaultLcdCode}
+          canSwitchLcd={lcdScope?.role === 'all'}
+        />
+      ) : (
+        <>
+          <div className={styles.headerSection}>
         <div className={styles.titleArea}>
           <h1 className={styles.title}>Quản lý sự kiện & Chương trình</h1>
           <p className={styles.subtitle}>
@@ -202,6 +266,8 @@ export default function AdminDashboardClient({ initialEvents }: AdminDashboardCl
           })
         )}
       </div>
+        </>
+      )}
     </>
   );
 }

@@ -7,6 +7,7 @@ import {
   describeLcdBlock,
   formatLcdsLabel,
 } from '@/lib/utils/lcd';
+import { resolveDelegateExpiry } from '@/lib/utils/lcd-auth';
 
 describe('LCĐ Classification & Registration Scope (8 Official PTIT HCM LCĐs)', () => {
   it('defines all 8 official Liên Chi Đoàn', () => {
@@ -103,5 +104,26 @@ describe('LCĐ Classification & Registration Scope (8 Official PTIT HCM LCĐs)',
     expect(formatLcdsLabel(joint.allowed)).toBe('LCĐ CNTT, LCĐ ATTT');
     expect(formatLcdsLabel([])).toBe('Toàn Học viện');
     expect(normalizeAllowedLcds(['LCD_CNTT', 'invalid', 'lcd_cntt'])).toEqual(['LCD_CNTT']);
+  });
+
+  it('computes delegate term expiry accurately', () => {
+    const now = Date.now();
+    // Default = 365 days (1 term)
+    const defaultExp = resolveDelegateExpiry();
+    const diffDays = Math.round((defaultExp.getTime() - now) / (1000 * 60 * 60 * 24));
+    expect(diffDays).toBeGreaterThanOrEqual(364);
+    expect(diffDays).toBeLessThanOrEqual(366);
+
+    // Explicit future YYYY-MM-DD date
+    const nextYear = new Date().getFullYear() + 1;
+    const termDate = `${nextYear}-06-30`;
+    const explicitExp = resolveDelegateExpiry({ expires_at: termDate });
+    expect(explicitExp.getFullYear()).toBe(nextYear);
+
+    // Custom duration_days = 180
+    const semExp = resolveDelegateExpiry({ duration_days: 180 });
+    const semDiff = Math.round((semExp.getTime() - now) / (1000 * 60 * 60 * 24));
+    expect(semDiff).toBeGreaterThanOrEqual(179);
+    expect(semDiff).toBeLessThanOrEqual(181);
   });
 });

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { resolveActorLcdScope } from '@/lib/utils/lcd-auth';
 import Header from '@/components/Header';
 import AdminDashboardClient from './AdminDashboardClient';
 import styles from './page.module.css';
@@ -56,17 +57,28 @@ export default async function AdminEventsPage() {
     }
   }
 
-  const { data: events } = await eventsQuery;
+  const [{ data: events }, lcdScope] = await Promise.all([
+    eventsQuery,
+    resolveActorLcdScope(supabase, auth),
+  ]);
 
   return (
     <div className={styles.container}>
       <Header
         showBack={auth.isSuperAdmin}
         backHref={auth.isSuperAdmin ? '/super-admin' : '/'}
-        title="BÀN LÀM VIỆC ĐƠN VỊ TỔ CHỨC"
+        title={lcdScope.lcd ? `BÀN LÀM VIỆC — ${lcdScope.lcd.shortName.toUpperCase()}` : 'BÀN LÀM VIỆC ĐƠN VỊ TỔ CHỨC'}
       />
       <main className={styles.main}>
-        <AdminDashboardClient initialEvents={events || []} />
+        <AdminDashboardClient
+          initialEvents={events || []}
+          lcdScope={{
+            role: lcdScope.role,
+            lcdCode: lcdScope.lcd?.code || null,
+            lcdName: lcdScope.lcd?.name || null,
+            lcdShortName: lcdScope.lcd?.shortName || null,
+          }}
+        />
       </main>
     </div>
   );
