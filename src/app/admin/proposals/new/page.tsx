@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import { fetchMeCached } from '@/lib/client/me-cache';
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -216,10 +217,9 @@ export default function NewProposalPage() {
 
   // Auto-detect logged-in user unit
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data) {
+    fetchMeCached()
+      .then(({ json: data }) => {
+        if (data?.success && data?.data) {
           setCurrentUser(data.data);
           const resolved = resolveUnitForUser(data.data);
           setOrganizationUnit(resolved.unitName);

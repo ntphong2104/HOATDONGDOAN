@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import { fetchMeCached } from '@/lib/client/me-cache';
 import {
   PlusIcon,
   CalendarIcon,
@@ -29,9 +30,8 @@ export default function ProposalsListPage() {
 
   const fetchUser = async () => {
     try {
-      const res = await fetch('/api/me');
-      const data = await res.json();
-      if (data.success && data.data) {
+      const { json: data } = await fetchMeCached();
+      if (data?.success && data?.data) {
         setUser(data.data);
       } else {
         window.location.replace('/login');

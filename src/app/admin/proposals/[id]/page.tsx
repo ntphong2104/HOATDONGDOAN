@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
+import { fetchMeCached } from '@/lib/client/me-cache';
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -72,9 +73,8 @@ export default function ProposalDetailPage({
 
   const fetchUser = async () => {
     try {
-      const res = await fetch('/api/me');
-      const data = await res.json();
-      if (data.success && data.data) {
+      const { json: data } = await fetchMeCached();
+      if (data?.success && data?.data) {
         setCurrentUser(data.data);
       } else {
         router.replace('/login');

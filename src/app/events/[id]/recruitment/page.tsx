@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import DualLogos from '@/components/DualLogos';
+import { fetchMeCached } from '@/lib/client/me-cache';
 import {
   CalendarIcon,
   ClockIcon,
@@ -45,9 +46,8 @@ export default function EventRecruitmentPage({
 
   const fetchUser = async () => {
     try {
-      const res = await fetch('/api/me');
-      const data = await res.json();
-      if (data.success && data.data) {
+      const { json: data } = await fetchMeCached();
+      if (data?.success && data?.data) {
         setCurrentUser(data.data);
         if (data.data.gender) setGender(data.data.gender);
         if (data.data.phone) setPhone(data.data.phone);

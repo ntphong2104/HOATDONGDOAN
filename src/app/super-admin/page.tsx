@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import { fetchMeCached } from '@/lib/client/me-cache';
 import DualLogos from '@/components/DualLogos';
 import StatCard from '@/components/StatCard';
 import FileUploadZone from '@/components/FileUploadZone';
@@ -303,13 +304,8 @@ function SuperAdminContent() {
   useEffect(() => {
     const verifySuperAdmin = async () => {
       try {
-        const res = await fetch('/api/me');
-        if (!res.ok) {
-          window.location.replace('/login');
-          return;
-        }
-        const data = await res.json();
-        if (!data.success) {
+        const { ok, json: data } = await fetchMeCached();
+        if (!ok || !data?.success) {
           window.location.replace('/login');
           return;
         }

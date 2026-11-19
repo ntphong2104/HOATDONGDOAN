@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import InAppBrowserWarning from '@/components/InAppBrowserWarning';
+import { fetchMeCached } from '@/lib/client/me-cache';
 import QRScanner from '@/components/QRScanner';
 import EventSelector from '@/components/EventSelector';
 import RoleSelector from '@/components/RoleSelector';
@@ -74,10 +75,9 @@ export default function ScannerPage() {
   const [scanCount, setScanCount] = useState(0);
 
   useEffect(() => {
-    fetch('/api/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
+    fetchMeCached()
+      .then(({ json: data }) => {
+        if (data?.success && data?.data) {
           setUser(data.data);
           const activeList = (data.data.managed_events || []).filter(
             (e: any) => e.status === 'active' && e.is_active !== false
