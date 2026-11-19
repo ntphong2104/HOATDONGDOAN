@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
-import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
+import { getUserProfileExtraWithFallback, setBoundedMeResponseCache } from '@/lib/constants/user-profile-store';
 import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
 import {
   isPlaceholderName,
@@ -221,6 +221,12 @@ export default async function HomePage({
     }
   } catch {}
 
+  const profileMissingFields: ('full_name' | 'class_id')[] = [];
+  if (!auth.isSuperAdmin && extractMSSV(auth.email)) {
+    if (isPlaceholderName(user.full_name, user.mssv)) profileMissingFields.push('full_name');
+    if (isPlaceholderClass(user.class_id)) profileMissingFields.push('class_id');
+  }
+
   const sessionUser: SessionUser = {
     mssv: user.mssv,
     full_name: user.full_name,
@@ -232,8 +238,15 @@ export default async function HomePage({
     isSuperAdmin: auth.isSuperAdmin,
     isEventAdmin: auth.isEventAdmin,
     isChecker: auth.isChecker,
-    managed_events: [],
+    managed_events: auth.managed_events || [],
+    profile_incomplete: profileMissingFields.length > 0,
+    profile_missing_fields: profileMissingFields,
   };
+
+  // Warm /api/me server cache during SSR so immediate client /api/me calls return in <0.5ms with 0 DB queries
+  if (profileMissingFields.length === 0) {
+    setBoundedMeResponseCache(auth.email, sessionUser, 15000);
+  }
 
   return (
     <div className={styles.container}>
