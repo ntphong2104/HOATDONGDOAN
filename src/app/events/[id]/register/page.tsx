@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import DualLogos from '@/components/DualLogos';
+import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
 import {
   CalendarIcon,
   ClockIcon,
@@ -45,12 +46,12 @@ export default function EventRegisterPage({
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const lastRefreshAtRef = useRef<number>(0);
 
   const fetchUser = async () => {
     try {
-      const res = await fetch('/api/me');
-      const data = await res.json();
-      if (data.success && data.data) {
+      const { json: data } = await fetchMeCached();
+      if (data?.success && data?.data) {
         setCurrentUser(data.data);
         if (data.data.gender) setGender(data.data.gender);
         if (data.data.phone) setPhone(data.data.phone);
@@ -61,6 +62,7 @@ export default function EventRegisterPage({
   };
 
   const fetchRegistrationData = async () => {
+    lastRefreshAtRef.current = Date.now();
     try {
       const res = await fetch(`/api/events/${resolvedParams.id}/register`, { cache: 'no-store' });
       const data = await res.json();
@@ -92,7 +94,7 @@ export default function EventRegisterPage({
     fetchRegistrationData();
 
     const onRefresh = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && Date.now() - lastRefreshAtRef.current >= 5000) {
         fetchRegistrationData();
       }
     };
@@ -192,6 +194,7 @@ export default function EventRegisterPage({
       });
       const data = await res.json();
       if (data.success) {
+        invalidateClientMeCache();
         setCurrentUser((prev) => (prev ? { ...prev, gender, phone } : prev));
         alert(data.message || 'Chúc mừng bạn đã đăng ký tham gia sự kiện thành công!');
         fetchRegistrationData();

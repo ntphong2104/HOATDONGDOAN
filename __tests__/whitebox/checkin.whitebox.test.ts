@@ -27,6 +27,17 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
   });
 
   const setupMockSupabase = (sessionUser: any = { email: 'checker@ptit.edu.vn' }) => {
+    (getAuthContext as jest.Mock).mockResolvedValue(
+      sessionUser
+        ? {
+            email: sessionUser.email,
+            tier: 'checker',
+            isSuperAdmin: false,
+            isEventAdmin: false,
+            isChecker: true,
+          }
+        : null
+    );
     mockSupabase = {
       auth: {
         getSession: jest.fn().mockResolvedValue({

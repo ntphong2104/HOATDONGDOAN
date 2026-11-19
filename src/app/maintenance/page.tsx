@@ -5,13 +5,27 @@ import styles from './page.module.css';
 
 export default async function MaintenancePage() {
   const supabase = await createClient();
-  
+
   const { data: settings } = await supabase
     .from('system_settings')
-    .select('maintenance_message')
-    .single();
+    .select('value')
+    .eq('key', 'maintenance_mode')
+    .maybeSingle();
 
-  const message = settings?.maintenance_message || 'Hệ thống đang bảo trì để nâng cấp. Vui lòng quay lại sau.';
+  let customMessage = '';
+  if (settings?.value) {
+    let val: any = settings.value;
+    if (typeof val === 'string') {
+      try {
+        val = JSON.parse(val);
+      } catch {}
+    }
+    if (val && typeof val === 'object') {
+      customMessage = val.message || val.maintenance_message || '';
+    }
+  }
+
+  const message = customMessage || 'Hệ thống đang bảo trì để nâng cấp. Vui lòng quay lại sau.';
 
   return (
     <div className={styles.container}>

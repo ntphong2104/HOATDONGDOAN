@@ -176,7 +176,7 @@ describe('UserMenuDropdown', () => {
     const trigger = screen.getByTitle('Bấm để mở danh mục chức năng cá nhân');
     await userEvent.click(trigger);
     
-    expect(screen.getByText('Phòng CSVC (Phê Duyệt)')).toBeInTheDocument();
+    expect(screen.getByText('Phòng. TC-HC-QT (Phê Duyệt)')).toBeInTheDocument();
     expect(screen.queryByText('PHONG-CSVC')).not.toBeInTheDocument(); // excluded
   });
 

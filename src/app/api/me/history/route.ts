@@ -12,14 +12,14 @@ export async function GET() {
 
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
   const supabase = (await getSupabase()) || (await createClient());
-  const email = auth.email;
-  const fallbackMssv = extractMSSV(email) || email.split('@')[0].toUpperCase();
+  const email = auth.email.toLowerCase().trim();
+  const fallbackMssv = (extractMSSV(email) || email.split('@')[0]).toUpperCase();
 
   try {
     const { data: user } = await supabase
       .from('users')
       .select('mssv')
-      .or(`email.ilike.${email},mssv.ilike.${fallbackMssv}`)
+      .or(`email.eq.${email},mssv.eq.${fallbackMssv}`)
       .maybeSingle();
 
     const targetMssv = (user?.mssv || fallbackMssv).trim().toUpperCase();
@@ -33,7 +33,7 @@ export async function GET() {
         created_at,
         events (event_id, event_name, event_date, semester)
       `)
-      .ilike('mssv', targetMssv)
+      .eq('mssv', targetMssv)
       .order('created_at', { ascending: false });
 
     const historyMap = new Map<string, any>();

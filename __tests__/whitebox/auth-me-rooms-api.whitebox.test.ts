@@ -139,7 +139,7 @@ describe('API Route Whitebox Tests', () => {
 
   describe('auth/logout/route', () => {
     it('POST should clear cookies and sign out', async () => {
-      (cookies().getAll as jest.Mock).mockReturnValue([{ name: 'sb-test' }]);
+      ((cookies as unknown as () => any)().getAll as jest.Mock).mockReturnValue([{ name: 'sb-test' }]);
       const req = new Request('http://localhost', { method: 'POST' });
       const res = await LogoutPOST(req);
       const data = await res.json();
@@ -157,7 +157,7 @@ describe('API Route Whitebox Tests', () => {
 
   describe('me/route', () => {
     it('GET should return demo user if cookie exists', async () => {
-      (cookies().get as jest.Mock).mockReturnValue({ value: encodeURIComponent(JSON.stringify({ mssv: 'TEST', email: 'test@student.ptithcm.edu.vn' })) });
+      ((cookies as unknown as () => any)().get as jest.Mock).mockReturnValue({ value: encodeURIComponent(JSON.stringify({ mssv: 'TEST', email: 'test@student.ptithcm.edu.vn' })) });
       const res = await MeGET();
       const data = await res.json();
       expect(data.success).toBe(true);
@@ -165,14 +165,14 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('GET should return 401 if not logged in', async () => {
-      (cookies().get as jest.Mock).mockReturnValue(undefined);
+      ((cookies as unknown as () => any)().get as jest.Mock).mockReturnValue(undefined);
       mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } });
       const res = await MeGET();
       expect(res.status).toBe(401);
     });
 
     it('GET should return user data if logged in', async () => {
-      (cookies().get as jest.Mock).mockReturnValue(undefined);
+      ((cookies as unknown as () => any)().get as jest.Mock).mockReturnValue(undefined);
       mockSupabase.auth.getUser.mockResolvedValueOnce({ 
         data: { user: { email: 'test@student.ptithcm.edu.vn', user_metadata: {} } } 
       });

@@ -18,5 +18,5 @@ jobs:
             cd /var/www/hoatdongdoan
             git pull origin main
             npx next build
-            pm2 restart hoatdongdoan --update-env
+            pm2 startOrReload ecosystem.config.cjs --update-env || pm2 restart hoatdongdoan --update-env
             echo "✅ Deploy completed in lightning speed at $(date)"

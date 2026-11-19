@@ -103,12 +103,55 @@ export default async function HomePage({
   try {
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
+    const lowerEmail = auth.email.toLowerCase().trim();
 
-    const { data: dbUser } = await supabase
-      .from('users')
-      .select('mssv, full_name, class_id')
-      .or(`email.ilike.${auth.email},mssv.ilike.${rawMssv}`)
-      .maybeSingle();
+    // Run all student dashboard queries IN PARALLEL and use .eq() on normalized keys to hit B-tree indexes!
+    const [
+      { data: dbUser },
+      profileExtra,
+      { data: historyData },
+      { data: regData },
+    ] = await Promise.all([
+      supabase
+        .from('users')
+        .select('mssv, full_name, class_id')
+        .or(`email.eq.${lowerEmail},mssv.eq.${rawMssv}`)
+        .maybeSingle(),
+      getUserProfileExtraWithFallback(supabase, lowerEmail, rawMssv),
+      supabase
+        .from('check_ins')
+        .select(`
+          id,
+          event_id,
+          participate_role,
+          created_at,
+          events (event_id, event_name, event_date, semester)
+        `)
+        .eq('mssv', rawMssv)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('event_registrations')
+        .select(`
+          id,
+          event_id,
+          mssv,
+          role_type,
+          attended,
+          created_at,
+          events (
+            event_id,
+            event_name,
+            event_date,
+            start_time,
+            end_time,
+            semester,
+            status,
+            is_active
+          )
+        `)
+        .or(`email.eq.${lowerEmail},mssv.eq.${rawMssv}`)
+        .order('created_at', { ascending: false }),
+    ]);
 
     if (dbUser) {
       const realName = (dbUser.full_name && !dbUser.full_name.includes('@')) ? dbUser.full_name : user.full_name;
@@ -134,23 +177,10 @@ export default async function HomePage({
       }
     }
 
-    const profileExtra = await getUserProfileExtraWithFallback(supabase, auth.email, user.mssv);
     if (profileExtra) {
       if (profileExtra.gender) user.gender = profileExtra.gender;
       if (profileExtra.phone) user.phone = profileExtra.phone;
     }
-
-    const { data: historyData } = await supabase
-      .from('check_ins')
-      .select(`
-        id,
-        event_id,
-        participate_role,
-        created_at,
-        events (event_id, event_name, event_date, semester)
-      `)
-      .ilike('mssv', user.mssv)
-      .order('created_at', { ascending: false });
 
     if (historyData) {
       const historyMap = new Map<string, HistoryItem>();
@@ -174,29 +204,6 @@ export default async function HomePage({
       );
     }
 
-    const { data: regData } = await supabase
-      .from('event_registrations')
-      .select(`
-        id,
-        event_id,
-        mssv,
-        role_type,
-        attended,
-        created_at,
-        events (
-          event_id,
-          event_name,
-          event_date,
-          start_time,
-          end_time,
-          semester,
-          status,
-          is_active
-        )
-      `)
-      .or(`email.ilike.${auth.email},mssv.ilike.${user.mssv}`)
-      .order('created_at', { ascending: false });
-
     if (regData) {
       initialRegistrations = regData.map((r: any) => ({
         id: r.id,
@@ -213,25 +220,6 @@ export default async function HomePage({
       }));
     }
   } catch {}
-
-  if (history.length === 0 && auth.email.toLowerCase().includes('n22dccn158')) {
-    history = [
-      {
-        event_name: 'Workshop Lập Trình Web Hiện Đại & Next.js 2026',
-        event_date: '2026-08-15',
-        semester: 'HK1 (2026-2027)',
-        participate_role: 'participant',
-        checkin_time: '2026-08-15T08:30:00Z',
-      },
-      {
-        event_name: 'Lễ Khai Mạc Giải Bóng Đá Mini PTIT Cup',
-        event_date: '2026-07-20',
-        semester: 'HK1 (2026-2027)',
-        participate_role: 'organizer',
-        checkin_time: '2026-07-20T07:15:00Z',
-      },
-    ];
-  }
 
   const sessionUser: SessionUser = {
     mssv: user.mssv,

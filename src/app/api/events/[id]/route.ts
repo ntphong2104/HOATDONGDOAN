@@ -287,10 +287,16 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   // Delete all dependent records in parallel
   await Promise.allSettled([
     supabase.from('check_ins').delete().eq('event_id', resolvedParams.id),
+    supabase.from('session_checkins').delete().eq('event_id', resolvedParams.id),
     supabase.from('event_roles').delete().eq('event_id', resolvedParams.id),
-    supabase.from('event_ratings').delete().eq('event_id', resolvedParams.id),
+    supabase.from('unit_ratings').delete().eq('event_id', resolvedParams.id),
     supabase.from('event_registrations').delete().eq('event_id', resolvedParams.id),
     supabase.from('event_proposals').delete().eq('created_event_id', resolvedParams.id),
+    supabase.from('system_settings').delete().in('key', [
+      `event_meta_${resolvedParams.id}`,
+      `event_regs_${resolvedParams.id}`,
+      `event_session_checkins_${resolvedParams.id}`,
+    ]),
   ]);
 
   const { error } = await supabase.from('events').delete().eq('event_id', resolvedParams.id);

@@ -2,10 +2,11 @@ interface RateLimitRecord {
   timestamps: number[];
 }
 
+const MAX_RATE_LIMIT_KEYS = 10000;
 const rateLimitMap = new Map<string, RateLimitRecord>();
 
-// Cleanup stale rate limit records every 60 seconds
-setInterval(() => {
+// Cleanup stale rate limit records every 60 seconds (unref so it never blocks Node/Jest exit)
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, record] of rateLimitMap.entries()) {
     record.timestamps = record.timestamps.filter((ts) => now - ts < 60000);
@@ -14,6 +15,10 @@ setInterval(() => {
     }
   }
 }, 60000);
+
+if (typeof cleanupTimer === 'object' && cleanupTimer !== null && 'unref' in cleanupTimer && typeof cleanupTimer.unref === 'function') {
+  cleanupTimer.unref();
+}
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -53,6 +58,10 @@ export function checkRateLimit(
   }
 
   validTimestamps.push(now);
+  if (!rateLimitMap.has(identifier) && rateLimitMap.size >= MAX_RATE_LIMIT_KEYS) {
+    const oldestKey = rateLimitMap.keys().next().value;
+    if (oldestKey !== undefined) rateLimitMap.delete(oldestKey);
+  }
   rateLimitMap.set(identifier, { timestamps: validTimestamps });
 
   return {

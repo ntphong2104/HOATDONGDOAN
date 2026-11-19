@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 
 export async function GET(request: Request) {
   try {
@@ -40,7 +41,10 @@ export async function GET(request: Request) {
       .order('mssv', { ascending: true });
 
     if (query) {
-      dbQuery = dbQuery.or(`mssv.ilike.%${query}%,full_name.ilike.%${query}%,email.ilike.%${query}%`);
+      const safeQuery = sanitizePostgrestValue(query);
+      if (safeQuery) {
+        dbQuery = dbQuery.or(`mssv.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%`);
+      }
     }
 
     const { data: classStudents, error } = await dbQuery.limit(500);

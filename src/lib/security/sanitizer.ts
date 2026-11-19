@@ -37,3 +37,15 @@ export function sanitizeInput(input: string, maxLength = 255): string {
     .replace(/on\w+\s*=/gi, '')
     .substring(0, maxLength);
 }
+
+/**
+ * Sanitizes a user search string before interpolating into a PostgREST `.or(...)` filter
+ * to prevent PostgREST filter syntax injection (commas, parentheses, wildcards).
+ */
+export function sanitizePostgrestValue(input: string, maxLength = 100): string {
+  if (!input || typeof input !== 'string') return '';
+  return input
+    .trim()
+    .replace(/[,()*%\\]/g, '')
+    .substring(0, maxLength);
+}

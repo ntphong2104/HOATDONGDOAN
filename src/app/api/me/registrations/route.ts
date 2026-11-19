@@ -14,7 +14,8 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Unauthorized', message: 'Vui lòng đăng nhập' }, { status: 401 });
     }
 
-    const rawMssv = extractMSSV(auth.email) || auth.email.split('@')[0].toUpperCase();
+    const lowerEmail = auth.email.toLowerCase().trim();
+    const rawMssv = (extractMSSV(lowerEmail) || lowerEmail.split('@')[0]).toUpperCase();
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
 
@@ -38,7 +39,7 @@ export async function GET() {
           is_active
         )
       `)
-      .or(`email.ilike.${auth.email},mssv.ilike.${rawMssv}`)
+      .or(`email.eq.${lowerEmail},mssv.eq.${rawMssv}`)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -60,12 +61,12 @@ export async function GET() {
       Promise.all(uniqueEventIds.map(eid => getEventMeta(supabase, eid).then(d => [eid, d] as const))),
       // Batch fetch session checkins for all events
       Promise.all(uniqueEventIds.map(eid => getSessionCheckIns(supabase, eid).then(d => [eid, d] as const))),
-      // Single query: get ALL check_ins for this student across all events
+      // Single query: get ALL check_ins for this student across all events (uses B-tree index idx_checkins_mssv)
       supabase
         .from('check_ins')
         .select('event_id, checked_by, created_at')
         .in('event_id', uniqueEventIds)
-        .ilike('mssv', rawMssv),
+        .eq('mssv', rawMssv),
     ]);
 
     // Build lookup maps

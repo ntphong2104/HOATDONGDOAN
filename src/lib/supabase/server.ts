@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseJsClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 function getValidUrl(url: string | undefined): string {
@@ -13,6 +14,11 @@ function getValidUrl(url: string | undefined): string {
   }
   return 'https://placeholder.supabase.co';
 }
+
+const g = globalThis as unknown as {
+  __hddAdminSupabaseClient?: SupabaseClient;
+  __hddAdminSupabaseKey?: string;
+};
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -51,17 +57,22 @@ export async function createAdminClient() {
   if (!serviceRoleKey) {
     return createClient();
   }
-  return createServerClient(
-    supabaseUrl,
-    serviceRoleKey,
-    {
-      cookies: {
-        getAll() {
-          return [];
-        },
-        setAll() {},
-      },
-    }
-  );
+
+  const cacheKey = `${supabaseUrl}::${serviceRoleKey}`;
+  if (g.__hddAdminSupabaseClient && g.__hddAdminSupabaseKey === cacheKey) {
+    return g.__hddAdminSupabaseClient;
+  }
+
+  const client = createSupabaseJsClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+
+  g.__hddAdminSupabaseClient = client;
+  g.__hddAdminSupabaseKey = cacheKey;
+  return client;
 }
 

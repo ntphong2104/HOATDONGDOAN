@@ -18,12 +18,14 @@ export function verifyCookie(signed: string): string | null {
   const enc = signed.slice(0, lastDot);
   const signature = signed.slice(lastDot + 1);
   const expectedSignature = crypto.createHmac('sha256', COOKIE_SECRET).update(enc).digest('hex');
-  if (signature === expectedSignature) {
-    try {
+  try {
+    const sigBuf = Buffer.from(signature, 'hex');
+    const expBuf = Buffer.from(expectedSignature, 'hex');
+    if (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf)) {
       return decodeURIComponent(enc);
-    } catch {
-      return null;
     }
+  } catch {
+    return null;
   }
   return null;
 }

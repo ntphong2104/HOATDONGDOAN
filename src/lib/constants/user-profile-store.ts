@@ -11,23 +11,49 @@ export interface UserProfileExtra {
   updated_at?: string;
 }
 
+const MAX_ME_RESPONSE_CACHE = 2000;
+const NEGATIVE_PROFILE_CACHE_TTL_MS = 60000;
+
 const g = globalThis as unknown as {
   __hddUserProfiles?: Record<string, UserProfileExtra>;
   __hddMeResponseCache?: Map<string, { data: any; expiresAt: number }>;
+  __hddMissingProfileKeys?: Map<string, number>;
+  __hddInflightProfileLookup?: Map<string, Promise<UserProfileExtra | null>>;
 };
 
 export function getMeResponseCache(): Map<string, { data: any; expiresAt: number }> {
   return g.__hddMeResponseCache || (g.__hddMeResponseCache = new Map());
 }
 
+export function setBoundedMeResponseCache(emailKey: string, data: any, ttlMs = 15000): void {
+  const cache = getMeResponseCache();
+  const key = emailKey.trim().toLowerCase();
+  const now = Date.now();
+  if (!cache.has(key) && cache.size >= MAX_ME_RESPONSE_CACHE) {
+    for (const [k, v] of cache.entries()) {
+      if (v.expiresAt <= now) cache.delete(k);
+    }
+    if (cache.size >= MAX_ME_RESPONSE_CACHE) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey !== undefined) cache.delete(oldestKey);
+    }
+  }
+  cache.set(key, { data, expiresAt: now + ttlMs });
+}
+
 export function invalidateMeResponseCache(email?: string | null, mssv?: string | null): void {
   const cache = getMeResponseCache();
+  const missingCache = g.__hddMissingProfileKeys;
   if (email) {
-    cache.delete(email.trim().toLowerCase());
+    const cleanEmail = email.trim().toLowerCase();
+    cache.delete(cleanEmail);
+    missingCache?.delete(cleanEmail);
   }
   if (mssv) {
     const cleanMssv = mssv.trim().toLowerCase();
     cache.delete(`${cleanMssv}@student.ptithcm.edu.vn`);
+    missingCache?.delete(cleanMssv);
+    missingCache?.delete(`${cleanMssv}@student.ptithcm.edu.vn`);
   }
 }
 
@@ -43,15 +69,24 @@ function loadProfiles(): Record<string, UserProfileExtra> {
   return g.__hddUserProfiles;
 }
 
+let profileWriteTimer: ReturnType<typeof setTimeout> | null = null;
+
 function saveProfiles(data: Record<string, UserProfileExtra>) {
   // Update shared globalThis cache immediately across all Next.js route bundles
   g.__hddUserProfiles = data;
-  try {
-    if (!fs.existsSync(PROFILE_DIR)) {
-      fs.mkdirSync(PROFILE_DIR, { recursive: true });
-    }
-    fs.promises.writeFile(PROFILE_FILE, JSON.stringify(data, null, 2), 'utf-8').catch(() => {});
-  } catch {}
+  if (profileWriteTimer) return;
+  profileWriteTimer = setTimeout(() => {
+    profileWriteTimer = null;
+    try {
+      if (!fs.existsSync(PROFILE_DIR)) {
+        fs.mkdirSync(PROFILE_DIR, { recursive: true });
+      }
+      fs.promises.writeFile(PROFILE_FILE, JSON.stringify(g.__hddUserProfiles || data, null, 2), 'utf-8').catch(() => {});
+    } catch {}
+  }, 300);
+  if (typeof profileWriteTimer === 'object' && profileWriteTimer && 'unref' in profileWriteTimer && typeof profileWriteTimer.unref === 'function') {
+    profileWriteTimer.unref();
+  }
 }
 
 export function getUserProfileExtra(key: string): UserProfileExtra | null {
@@ -101,47 +136,93 @@ export async function getUserProfileExtraWithFallback(
     return fromLocal;
   }
 
-  // 2. Fallback: check Supabase system_settings (both email key and student email key)
-  if (supabase && (cleanEmail || cleanMssv)) {
+  // Check negative cache (avoid hammering system_settings twice on every page load for students without phone)
+  const missingCache = g.__hddMissingProfileKeys || (g.__hddMissingProfileKeys = new Map());
+  const lookupKey = cleanEmail || cleanMssv.toLowerCase();
+  const missingUntil = lookupKey ? missingCache.get(lookupKey) : undefined;
+  if (missingUntil && missingUntil > Date.now()) {
+    return fromLocal;
+  }
+
+  // In-flight deduplication
+  const inflightMap = g.__hddInflightProfileLookup || (g.__hddInflightProfileLookup = new Map());
+  if (lookupKey && inflightMap.has(lookupKey)) {
+    return inflightMap.get(lookupKey)!;
+  }
+
+  const lookupTask = (async (): Promise<UserProfileExtra | null> => {
     try {
-      const candidateKeys = Array.from(
-        new Set(
-          [
-            cleanEmail ? `user_profile_${cleanEmail}` : '',
-            cleanMssv ? `user_profile_${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn` : '',
-          ].filter(Boolean)
-        )
-      );
+      // 2. Fallback: check Supabase system_settings in a single query (.in) instead of sequential loop
+      if (supabase && (cleanEmail || cleanMssv)) {
+        try {
+          const candidateKeys = Array.from(
+            new Set(
+              [
+                cleanEmail ? `user_profile_${cleanEmail}` : '',
+                cleanMssv ? `user_profile_${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn` : '',
+              ].filter(Boolean)
+            )
+          );
 
-      for (const profileKey of candidateKeys) {
-        const { data } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', profileKey)
-          .maybeSingle();
+          if (candidateKeys.length === 1) {
+            const { data } = await supabase
+              .from('system_settings')
+              .select('value')
+              .eq('key', candidateKeys[0])
+              .maybeSingle();
 
-        if (data?.value) {
-          const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-          if (parsed?.phone && String(parsed.phone).trim().length >= 8) {
-            if (cleanEmail) saveUserProfileExtra(cleanEmail, parsed);
-            if (cleanMssv) saveUserProfileExtra(cleanMssv, parsed);
-            return parsed;
+            if (data?.value) {
+              const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+              if (parsed?.phone && String(parsed.phone).trim().length >= 8) {
+                if (cleanEmail) saveUserProfileExtra(cleanEmail, parsed);
+                if (cleanMssv) saveUserProfileExtra(cleanMssv, parsed);
+                return parsed;
+              }
+            }
+          } else if (candidateKeys.length > 1) {
+            const settingsQuery = supabase.from('system_settings').select('key, value');
+            const rows = typeof settingsQuery.in === 'function'
+              ? (await settingsQuery.in('key', candidateKeys)).data
+              : null;
+
+            if (Array.isArray(rows)) {
+              for (const row of rows) {
+                if (!row?.value) continue;
+                const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                if (parsed?.phone && String(parsed.phone).trim().length >= 8) {
+                  if (cleanEmail) saveUserProfileExtra(cleanEmail, parsed);
+                  if (cleanMssv) saveUserProfileExtra(cleanMssv, parsed);
+                  return parsed;
+                }
+              }
+            }
           }
+        } catch {}
+      }
+
+      // 3. Fallback: check registration-extras history (for students who entered phone in CTV/event registration)
+      if (cleanMssv) {
+        const fromRegs = findUserProfileFromRegExtras(cleanMssv);
+        if (fromRegs?.phone) {
+          await saveUserProfileExtraWithSync(supabase, cleanEmail, cleanMssv, fromRegs);
+          return fromRegs;
         }
       }
-    } catch {}
-  }
 
-  // 3. Fallback: check registration-extras history (for students who entered phone in CTV/event registration)
-  if (cleanMssv) {
-    const fromRegs = findUserProfileFromRegExtras(cleanMssv);
-    if (fromRegs?.phone) {
-      await saveUserProfileExtraWithSync(supabase, cleanEmail, cleanMssv, fromRegs);
-      return fromRegs;
+      if (lookupKey) {
+        if (missingCache.size > 3000) missingCache.clear();
+        missingCache.set(lookupKey, Date.now() + NEGATIVE_PROFILE_CACHE_TTL_MS);
+      }
+      return fromLocal;
+    } finally {
+      if (lookupKey) inflightMap.delete(lookupKey);
     }
-  }
+  })();
 
-  return fromLocal;
+  if (lookupKey) {
+    inflightMap.set(lookupKey, lookupTask);
+  }
+  return lookupTask;
 }
 
 export function saveUserProfileExtra(key: string, extra: Partial<UserProfileExtra>) {

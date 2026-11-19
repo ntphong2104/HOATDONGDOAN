@@ -311,10 +311,12 @@ export async function POST(
   }
 
   // 3. Get User Profile info (only select real columns of public.users: mssv, full_name, class_id)
+  const lowerAuthEmail = auth.email.toLowerCase().trim();
+  const upperMssv = String(mssv).toUpperCase().trim();
   const { data: userProfile } = await supabase
     .from('users')
     .select('mssv, full_name, class_id')
-    .or(`email.ilike.${auth.email},mssv.ilike.${mssv}`)
+    .or(`email.eq.${lowerAuthEmail},mssv.eq.${upperMssv}`)
     .maybeSingle();
 
   const masterStudent = getMasterStudentByMssv(mssv);

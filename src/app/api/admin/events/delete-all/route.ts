@@ -19,8 +19,9 @@ export async function POST(req: Request) {
       // Delete all dependent records in parallel
       await Promise.allSettled([
         supabase.from('check_ins').delete().in('event_id', ids),
+        supabase.from('session_checkins').delete().in('event_id', ids),
         supabase.from('event_roles').delete().in('event_id', ids),
-        supabase.from('event_ratings').delete().in('event_id', ids),
+        supabase.from('unit_ratings').delete().in('event_id', ids),
         supabase.from('event_registrations').delete().in('event_id', ids),
         supabase.from('event_proposals').delete().in('created_event_id', ids),
       ]);

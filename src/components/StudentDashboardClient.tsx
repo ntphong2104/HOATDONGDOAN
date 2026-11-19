@@ -7,6 +7,7 @@ import RoleBadge from '@/components/RoleBadge';
 import StudentSelfScannerModal from '@/components/StudentSelfScannerModal';
 import DataTable from '@/components/DataTable';
 import ExcelExportButton from '@/components/ExcelExportButton';
+import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
 import {
   ShieldCheckIcon,
   SettingsIcon,
@@ -109,9 +110,8 @@ export default function StudentDashboardClient({
 
   const syncUserProfile = async () => {
     try {
-      const res = await fetch('/api/me');
-      const data = await res.json();
-      if (data.success && data.data) {
+      const { json: data } = await fetchMeCached();
+      if (data?.success && data?.data) {
         const d = data.data;
         setCurrentUser((prev) => ({
           ...prev,
@@ -130,7 +130,10 @@ export default function StudentDashboardClient({
   useEffect(() => {
     checkDelegateStatus();
     syncUserProfile();
-    fetchRegisteredEvents();
+    // Only fetch enriched registrations from API if SSR passed un-enriched registration rows
+    if (initialRegistrations.length > 0 && initialRegistrations[0]?.review_status === undefined) {
+      fetchRegisteredEvents();
+    }
   }, []);
 
   const fetchClassStudents = async (query?: string) => {
@@ -169,10 +172,6 @@ export default function StudentDashboardClient({
       setLoadingClassmateHistory(false);
     }
   };
-
-  useEffect(() => {
-    checkDelegateStatus();
-  }, []);
 
   return (
     <>
@@ -440,6 +439,7 @@ export default function StudentDashboardClient({
                   });
                   const data = await res.json();
                   if (data.success) {
+                    invalidateClientMeCache();
                     setCurrentUser((prev) => ({
                       ...prev,
                       gender: userGender,

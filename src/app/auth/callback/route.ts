@@ -54,45 +54,48 @@ export async function GET(request: Request) {
     }
 
     const email = session.user.email.toLowerCase().trim();
+    const studentMssv = extractMSSV(email);
+    const adminSupabase = (typeof createAdminClient === 'function' ? await createAdminClient() : supabase) || supabase;
 
-    // Run all auth checks in parallel for faster response
-    const [superAdminResult, registeredUserResult, eventRolesResult] = await Promise.all([
+    // Run all auth checks in parallel (using B-tree indexes via .eq instead of .ilike)
+    const [superAdminResult, existingUser, eventRolesResult] = await Promise.all([
       // 1. Check super admin
       (async () => {
         try {
-          const res = await supabase
+          const res = await adminSupabase
             .from('super_admins')
             .select('email')
-            .ilike('email', email)
+            .eq('email', email)
             .maybeSingle();
           return res.data;
         } catch { return null; }
       })(),
-      // 2. Check registered student or unit in users table
+      // 2. Check registered student or unit in users table (single query reused for upsert decision)
       (async () => {
         try {
-          const res = await supabase
+          const q = adminSupabase
             .from('users')
-            .select('email')
-            .ilike('email', email)
-            .maybeSingle();
+            .select('mssv, email, full_name, class_id');
+          const res = studentMssv
+            ? await q.or(`email.eq.${email},mssv.eq.${studentMssv}`).maybeSingle()
+            : await q.eq('email', email).maybeSingle();
           return res.data;
         } catch { return null; }
       })(),
       // 3. Check event role
       (async () => {
         try {
-          const res = await supabase
+          const res = await adminSupabase
             .from('event_roles')
             .select('role_type')
-            .ilike('email', email);
+            .eq('email', email);
           return res.data || [];
         } catch { return []; }
       })(),
     ]);
 
     const superAdmin = superAdminResult;
-    const registeredUser = registeredUserResult;
+    const registeredUser = existingUser;
     const eventRoles = eventRolesResult;
 
     const isSuperAdmin = !!superAdmin || email === 'n22dccn158@student.ptithcm.edu.vn';
@@ -103,7 +106,6 @@ export async function GET(request: Request) {
 
     if (!isAuthorized) {
       try {
-        const adminSupabase = await createAdminClient();
         if (session.user.id && adminSupabase) {
           await adminSupabase.auth.admin.deleteUser(session.user.id);
         }
@@ -112,20 +114,9 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/login?error=invalid_domain`);
     }
 
-    // Check or auto-register student user in users table only if it's a real student email with MSSV format
-    const studentMssv = extractMSSV(email);
-
+    // Check or auto-register student user in users table ONLY when missing or placeholder fields need healing
     if (studentMssv) {
       try {
-        const adminSupabase = (typeof createAdminClient === 'function' ? await createAdminClient() : supabase) || supabase;
-
-        // Check existing user in users table first
-        const { data: existingUser } = await adminSupabase
-          .from('users')
-          .select('mssv, full_name, class_id')
-          .or(`email.ilike.${email},mssv.ilike.${studentMssv}`)
-          .maybeSingle();
-
         const rawName =
           session.user.user_metadata?.full_name ||
           session.user.user_metadata?.name ||
@@ -143,15 +134,23 @@ export async function GET(request: Request) {
           ? existingUser!.full_name
           : (masterRecord?.full_name || googleName || existingUser?.full_name || studentMssv);
 
-        await adminSupabase.from('users').upsert(
-          {
-            mssv: studentMssv,
-            email,
-            full_name: actualName,
-            class_id: className,
-          },
-          { onConflict: 'mssv' }
-        );
+        const needsUpsert =
+          !existingUser ||
+          existingUser.full_name !== actualName ||
+          existingUser.class_id !== className ||
+          (existingUser.email || '').toLowerCase() !== email;
+
+        if (needsUpsert) {
+          await adminSupabase.from('users').upsert(
+            {
+              mssv: studentMssv,
+              email,
+              full_name: actualName,
+              class_id: className,
+            },
+            { onConflict: 'mssv' }
+          );
+        }
       } catch (upsertErr) {
         console.error('Student upsert error:', upsertErr);
       }
@@ -161,11 +160,6 @@ export async function GET(request: Request) {
       email.startsWith('lcd') ||
       email.startsWith('clb') ||
       email.startsWith('doi') ||
-      email.includes('marketing') ||
-      email.includes('ketoan') ||
-      email.includes('vienthong') ||
-      email.includes('dientu') ||
-      email.includes('itmc') ||
       isEventAdmin;
 
     // If a specific target page was requested (e.g. /events/[id]/register)

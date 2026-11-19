@@ -13,11 +13,12 @@ const WINDOW_SECONDS = 30;
 const TOLERANCE_WINDOWS = 2; // Valid for current + 2 previous windows (~90s max)
 
 function getSecret(): string {
-  const secret = process.env.DYNAMIC_QR_SECRET || process.env.PERSONAL_QR_SECRET;
+  const secret =
+    process.env.DYNAMIC_QR_SECRET ||
+    process.env.PERSONAL_QR_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.DEMO_COOKIE_SECRET;
   if (secret) return secret;
-  // Fallback: derive from Supabase URL for consistency across server/client
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  if (supabaseUrl) return `qr-secret-${supabaseUrl}`;
   return 'dev-only-secret-key';
 }
 

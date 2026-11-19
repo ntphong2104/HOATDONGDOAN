@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
 
 export async function GET(req: Request) {
@@ -39,11 +40,15 @@ export async function GET(req: Request) {
     };
 
     if (query) {
+      const safeQuery = sanitizePostgrestValue(query);
+      if (!safeQuery) {
+        return NextResponse.json({ success: true, data: [] });
+      }
       // Direct server-side search across all records
       const { data: searchResults, error } = await supabase
         .from('users')
         .select('*')
-        .or(`mssv.ilike.%${query}%,full_name.ilike.%${query}%,email.ilike.%${query}%,class_id.ilike.%${query}%`)
+        .or(`mssv.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%,class_id.ilike.%${safeQuery}%`)
         .order('mssv', { ascending: true })
         .limit(200);
 

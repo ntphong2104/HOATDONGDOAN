@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { isValidSchoolEmail } from '@/lib/utils/extract-mssv';
+import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
 
 declare global {
   interface Window {
@@ -94,7 +95,7 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
 
             if (data?.session) {
               const email = data.session.user.email?.toLowerCase().trim() || '';
-              const isSchool = isValidSchoolEmail(email) || email.includes('bchdoan');
+              const isSchool = isValidSchoolEmail(email) || getOfficialTierForEmail(email) !== null;
 
               if (!isSchool) {
                 await supabase.auth.signOut();

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
 import styles from './ProfileCompletionGate.module.css';
 
 type MissingField = 'full_name' | 'class_id';
@@ -35,12 +36,11 @@ export default function ProfileCompletionGate() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/me', { cache: 'no-store', credentials: 'same-origin' });
-        if (!res.ok) {
+        const { ok, json } = await fetchMeCached();
+        if (!ok) {
           if (!cancelled) setCheckedFor('guest');
           return;
         }
-        const json = await res.json();
         const u = json?.data;
         if (cancelled || !u) return;
         setCheckedFor('user');
@@ -98,6 +98,7 @@ export default function ProfileCompletionGate() {
         setError(json?.error || 'Không lưu được thông tin, vui lòng thử lại.');
         return;
       }
+      invalidateClientMeCache();
       setMissing([]);
       // Reload so every screen picks up the real name/class
       window.location.reload();

@@ -9,6 +9,7 @@ import {
   saveUserProfileExtra,
   saveUserProfileExtraWithSync,
   getMeResponseCache,
+  setBoundedMeResponseCache,
   invalidateMeResponseCache,
 } from '@/lib/constants/user-profile-store';
 import type { SessionUser, UserTier } from '@/lib/types';
@@ -196,39 +197,45 @@ export async function GET() {
   }
   
   try {
-    const username = email.split('@')[0].toUpperCase();
+    const lowerEmail = email.toLowerCase().trim();
+    const username = lowerEmail.split('@')[0].toUpperCase();
 
-    // Run all 5 user data queries in parallel
+    // Run all 5 user data queries in parallel (using .eq on normalized keys to hit B-tree indexes!)
     const [userResult, superAdminResult, officerRolesResult, eventRolesResult, createdEventsResult] = await Promise.all([
       // 1. User profile
-      Promise.resolve(
-        adminClient
-          .from('users')
-          .select('mssv, full_name, class_id')
-          .or(`email.ilike.${email},mssv.ilike.${username}`)
-          .maybeSingle()
-      )
-        .then(r => r.data)
-        .catch(() => null),
+      (async () => {
+        try {
+          const q = adminClient.from('users').select('mssv, full_name, class_id');
+          if (typeof q.or === 'function') {
+            const r = await q.or(`email.eq.${lowerEmail},mssv.eq.${username}`).maybeSingle();
+            return r?.data || null;
+          }
+          if (typeof q.eq === 'function') {
+            const sub = q.eq('email', lowerEmail);
+            const r = typeof sub.maybeSingle === 'function' ? await sub.maybeSingle() : (typeof sub.single === 'function' ? await sub.single() : null);
+            return r?.data || null;
+          }
+          return null;
+        } catch { return null; }
+      })(),
 
       // 2. Super admin check
       (async () => {
         try {
           const q = adminClient.from('super_admins').select('email');
-          const res = typeof q.ilike === 'function' ? await q.ilike('email', email).maybeSingle() : (typeof q.eq === 'function' ? await q.eq('email', email).single() : null);
+          if (typeof q.eq === 'function') {
+            const sub = q.eq('email', lowerEmail);
+            const res = typeof sub.maybeSingle === 'function' ? await sub.maybeSingle() : (typeof sub.single === 'function' ? await sub.single() : await sub);
+            return Array.isArray(res?.data) ? res.data[0] : (res?.data || null);
+          }
+          const res = typeof q.ilike === 'function' ? await q.ilike('email', lowerEmail).maybeSingle() : null;
           return res?.data || null;
-        } catch {
-          try {
-            const q = adminClient.from('super_admins').select('email');
-            const res = typeof q.eq === 'function' ? await q.eq('email', email) : null;
-            return Array.isArray(res?.data) ? res.data[0] : res?.data;
-          } catch { return null; }
-        }
+        } catch { return null; }
       })(),
 
       // 3. Officer roles
       getStoredOfficerRoles(adminClient)
-        .then(roles => roles.find((r) => r.email.toLowerCase() === email.toLowerCase()) || null)
+        .then(roles => roles.find((r) => r.email.toLowerCase() === lowerEmail) || null)
         .catch(() => null),
 
       // 4. Event roles
@@ -241,7 +248,7 @@ export async function GET() {
               role_type,
               events (event_name, status, is_active, event_date, start_time, end_time)
             `);
-          const res = typeof q.ilike === 'function' ? await q.ilike('email', email) : (typeof q.eq === 'function' ? await q.eq('email', email) : null);
+          const res = typeof q.eq === 'function' ? await q.eq('email', lowerEmail) : (typeof q.ilike === 'function' ? await q.ilike('email', lowerEmail) : null);
           return res?.data || [];
         } catch { return []; }
       })(),
@@ -252,7 +259,7 @@ export async function GET() {
           const q = adminClient
             .from('events')
             .select('event_id, event_name, status, is_active, event_date, start_time, end_time');
-          const res = typeof q.ilike === 'function' ? await q.ilike('created_by', email) : (typeof q.eq === 'function' ? await q.eq('created_by', email) : null);
+          const res = typeof q.eq === 'function' ? await q.eq('created_by', lowerEmail) : (typeof q.ilike === 'function' ? await q.ilike('created_by', lowerEmail) : null);
           return res?.data || [];
         } catch { return []; }
       })(),
@@ -264,18 +271,12 @@ export async function GET() {
     const eventRoles = eventRolesResult;
     const createdEvents = createdEventsResult;
 
-    const lowerEmail = email.toLowerCase();
-    // SECURITY: exact-match allowlist for official approver accounts
+    // SECURITY: exact-match allowlist for official approver accounts (no unsafe substring matching)
     const officialTier = getOfficialTierForEmail(lowerEmail);
     const isSubAdminUnit =
       lowerEmail.startsWith('lcd') ||
       lowerEmail.startsWith('clb') ||
-      lowerEmail.startsWith('doi') ||
-      lowerEmail.includes('marketing') ||
-      lowerEmail.includes('ketoan') ||
-      lowerEmail.includes('vienthong') ||
-      lowerEmail.includes('dientu') ||
-      lowerEmail.includes('itmc');
+      lowerEmail.startsWith('doi');
 
     const isSuperAdmin =
       lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
@@ -514,7 +515,7 @@ export async function GET() {
       profile_missing_fields: profileMissingFields,
     };
 
-    meResponseCache.set(email.toLowerCase(), { data: sessionUser, expiresAt: Date.now() + 15000 });
+    setBoundedMeResponseCache(email.toLowerCase(), sessionUser, 15000);
     return NextResponse.json({ success: true, data: sessionUser }, { headers: noCacheHeaders });
 
   } catch (err: any) {

@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { fetchMeCached, primeClientMeCache, invalidateClientMeCache } from '@/lib/client/me-cache';
 import {
   UserIcon,
   ShieldCheckIcon,
@@ -39,29 +40,29 @@ export default function UserMenuDropdown({
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Use propUser as initial state immediately for fast render
+    // Use propUser as initial state immediately for fast render (no redundant /api/me fetch when SSR provided rich user)
     if (propUser && propUser.full_name) {
       setCurrentUser(propUser);
+      primeClientMeCache(propUser);
       try {
         sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(propUser));
       } catch {}
-    } else {
-      // Read cached session on client mount
-      try {
-        const cached = sessionStorage.getItem('ptit_user_session_cache');
-        if (cached) {
-          setCurrentUser(JSON.parse(cached));
-        }
-      } catch {}
+      return;
     }
 
-    // Always fetch /api/me to get latest role data (checker/event_admin may have been added after login)
+    // Read cached session on client mount
+    try {
+      const cached = sessionStorage.getItem('ptit_user_session_cache');
+      if (cached) {
+        setCurrentUser(JSON.parse(cached));
+      }
+    } catch {}
+
+    // Fetch /api/me (coalesced via shared client cache) only when rich propUser was not passed from SSR
     if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
-      window
-        .fetch('/api/me')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success && data.data) {
+      fetchMeCached()
+        .then(({ json: data }) => {
+          if (data?.success && data?.data) {
             setCurrentUser(data.data);
             try {
               sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(data.data));
@@ -74,18 +75,32 @@ export default function UserMenuDropdown({
     }
   }, [propUser, propUserName, propAvatarUrl]);
 
-  // Click outside listener
+  // Click outside & Escape key listener
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const handleLogout = async () => {
+    invalidateClientMeCache();
+    if (onLogout) {
+      onLogout();
+      return;
+    }
     try {
       sessionStorage.removeItem('ptit_user_session_cache');
       sessionStorage.removeItem('demo_role');
@@ -96,7 +111,6 @@ export default function UserMenuDropdown({
     } catch (e) {
       console.error('Logout error:', e);
     }
-    if (onLogout) onLogout();
     router.push('/login');
   };
 

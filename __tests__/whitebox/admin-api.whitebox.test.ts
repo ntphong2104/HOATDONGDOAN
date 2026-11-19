@@ -263,29 +263,27 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('PATCH 401', async () => {
-      mockSupabase.auth.getSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce(null);
       const req = new NextRequest('http://localhost', { method: 'PATCH', body: JSON.stringify({ enabled: true }) });
       const res = await patchMaintenance(req);
       expect(res.status).toBe(401);
     });
 
     it('PATCH 403', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: null, error: null }); // no super admin
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ isSuperAdmin: false, tier: 'user' });
       const req = new NextRequest('http://localhost', { method: 'PATCH', body: JSON.stringify({ enabled: true }) });
       const res = await patchMaintenance(req);
       expect(res.status).toBe(403);
     });
 
     it('PATCH 200', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null });
-      mockBuilder.single.mockResolvedValueOnce({ data: { maintenance_mode: true }, error: null });
+      mockBuilder.single.mockResolvedValueOnce({ data: { value: { enabled: true } }, error: null });
       const req = new NextRequest('http://localhost', { method: 'PATCH', body: JSON.stringify({ enabled: true }) });
       const res = await patchMaintenance(req);
       expect(res.status).toBe(200);
     });
     
     it('PATCH 500', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null });
       mockBuilder.single.mockResolvedValueOnce({ data: null, error: { message: 'Err' } });
       const req = new NextRequest('http://localhost', { method: 'PATCH', body: JSON.stringify({ enabled: true }) });
       const res = await patchMaintenance(req);

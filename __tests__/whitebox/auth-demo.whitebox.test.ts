@@ -17,7 +17,7 @@ jest.mock('next/headers', () => ({
 
 // Polyfill NextResponse.cookies for test env
 import { NextResponse } from 'next/server';
-const origJson = NextResponse.json.bind(NextResponse);
+const origJson = NextResponse.json.bind(NextResponse) as (...args: any[]) => NextResponse;
 jest.spyOn(NextResponse, 'json').mockImplementation((...args: any[]) => {
   const resp = origJson(...args);
   if (!resp.cookies || typeof resp.cookies.set !== 'function') {

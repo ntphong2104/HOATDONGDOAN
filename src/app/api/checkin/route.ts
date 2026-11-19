@@ -100,27 +100,19 @@ export async function POST(req: Request) {
     // Format: MSSV:window:signature (3 parts separated by colons)
     const qrParts = mssv.split(':');
     if (qrParts.length === 3 && !isNaN(parseInt(qrParts[1], 10))) {
-      // This is a dynamic personal QR token
+      // This is a dynamic personal QR token — must pass cryptographic verification (no fallback bypass)
       const verification = verifyPersonalQRToken(mssv);
       if (!verification.valid) {
-        // Fallback: if MSSV portion looks valid (e.g. N25DCCN001), accept it with warning
-        const possibleMssv = qrParts[0].toUpperCase().trim();
-        if (/^[A-Z]\d{2}[A-Z]{2,5}\d{2,4}$/.test(possibleMssv)) {
-          console.warn(`QR verify failed for ${possibleMssv} (expired=${verification.expired}), allowing fallback`);
-          mssv = possibleMssv;
-        } else {
-          return NextResponse.json({
-            success: false,
-            error: 'QR Expired',
-            message: verification.expired
-              ? '⏳ Mã QR đã hết hạn (ảnh chụp cũ). Yêu cầu sinh viên mở lại trang Cổng Sinh Viên trên điện thoại để lấy mã mới.'
-              : '❌ Mã QR không hợp lệ. Yêu cầu sinh viên mở Cổng Sinh Viên để lấy mã QR mới.',
-          }, { status: 400 });
-        }
-      } else {
-        // Use verified MSSV from token
-        mssv = verification.mssv.toUpperCase().trim();
+        return NextResponse.json({
+          success: false,
+          error: 'QR Expired',
+          message: verification.expired
+            ? '⏳ Mã QR đã hết hạn (ảnh chụp cũ). Yêu cầu sinh viên mở lại trang Cổng Sinh Viên trên điện thoại để lấy mã mới.'
+            : '❌ Mã QR không hợp lệ. Yêu cầu sinh viên mở Cổng Sinh Viên để lấy mã QR mới.',
+        }, { status: 400 });
       }
+      // Use verified MSSV from token
+      mssv = verification.mssv.toUpperCase().trim();
     } else if (qrParts.length >= 5 && /^[0-9a-fA-F-]{36}$/.test(qrParts[0])) {
       // This is a dynamic EVENT QR token: EVENT_ID:MSSV:ROLE:SESSION:HASH
       // Scanner should NOT be scanning event QR codes — those are for self-checkin
@@ -161,7 +153,6 @@ export async function POST(req: Request) {
     // Authorization: only checker, event_admin, or super_admin can use this API
     // Regular students must use /api/checkin/self (self-checkin with personal QR)
     let isChecker =
-      !auth ||
       auth?.managed_events?.some((e: any) => String(e.event_id) === String(event_id)) ||
       (Boolean(auth?.isChecker || auth?.tier === 'checker') && (!auth?.managed_events || auth.managed_events.length === 0)) ||
       false;
@@ -250,9 +241,10 @@ export async function POST(req: Request) {
       event = eventResult?.data;
       eventErr = eventResult?.error;
       meta = eventResults[1] as any || {};
-      // Save to cache
+      // Save to cache (bounded)
       if (event) {
         checkinEventCache.set(event_id, { data: event, meta, ts: Date.now() });
+        trimCache(checkinEventCache);
       }
     }
 

@@ -74,13 +74,69 @@ export interface AuthContext {
 }
 
 // In-memory cache for AuthContext to avoid redundant DB queries on every request (TTL: 60s)
-const authContextCache = new Map<string, { ctx: AuthContext; expiresAt: number }>();
+const MAX_AUTH_CTX_CACHE = 2000;
+const MAX_VERIFIED_TOKEN_CACHE = 3000;
+const VERIFIED_TOKEN_MAX_TTL_SEC = 300; // 5 minutes max (capped by JWT exp)
+
+export interface VerifiedTokenCacheItem {
+  email: string;
+  id: string;
+  exp: number; // Unix timestamp in seconds
+  verifiedAt: number; // ms
+}
+
+const gAuth = globalThis as unknown as {
+  __hddAuthContextCache?: Map<string, { ctx: AuthContext; expiresAt: number }>;
+  __hddInflightAuthContext?: Map<string, Promise<AuthContext>>;
+  __hddVerifiedTokenCache?: Map<string, VerifiedTokenCacheItem>;
+  __hddInflightTokenVerify?: Map<string, Promise<{ email: string; id: string } | null>>;
+};
+
+const authContextCache =
+  gAuth.__hddAuthContextCache || (gAuth.__hddAuthContextCache = new Map());
+const inflightAuthContext =
+  gAuth.__hddInflightAuthContext || (gAuth.__hddInflightAuthContext = new Map());
+const verifiedTokenCache =
+  gAuth.__hddVerifiedTokenCache || (gAuth.__hddVerifiedTokenCache = new Map());
+const inflightTokenVerify =
+  gAuth.__hddInflightTokenVerify || (gAuth.__hddInflightTokenVerify = new Map());
+
+function setBoundedAuthContext(key: string, ctx: AuthContext, ttlMs = 60000) {
+  const now = Date.now();
+  if (!authContextCache.has(key) && authContextCache.size >= MAX_AUTH_CTX_CACHE) {
+    for (const [k, v] of authContextCache.entries()) {
+      if (v.expiresAt <= now) authContextCache.delete(k);
+    }
+    if (authContextCache.size >= MAX_AUTH_CTX_CACHE) {
+      const oldestKey = authContextCache.keys().next().value;
+      if (oldestKey !== undefined) authContextCache.delete(oldestKey);
+    }
+  }
+  authContextCache.set(key, { ctx, expiresAt: now + ttlMs });
+}
+
+function setBoundedVerifiedToken(tokenHash: string, item: VerifiedTokenCacheItem) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!verifiedTokenCache.has(tokenHash) && verifiedTokenCache.size >= MAX_VERIFIED_TOKEN_CACHE) {
+    for (const [k, v] of verifiedTokenCache.entries()) {
+      if (v.exp <= nowSec) verifiedTokenCache.delete(k);
+    }
+    if (verifiedTokenCache.size >= MAX_VERIFIED_TOKEN_CACHE) {
+      const oldestKey = verifiedTokenCache.keys().next().value;
+      if (oldestKey !== undefined) verifiedTokenCache.delete(oldestKey);
+    }
+  }
+  verifiedTokenCache.set(tokenHash, item);
+}
 
 export function invalidateAuthContextCache(email?: string) {
   if (email) {
-    authContextCache.delete(email.toLowerCase().trim());
+    const k = email.toLowerCase().trim();
+    authContextCache.delete(k);
+    inflightAuthContext.delete(k);
   } else {
     authContextCache.clear();
+    inflightAuthContext.clear();
   }
 }
 
@@ -97,15 +153,54 @@ function decodeBase64Safe(str: string): string {
   }
 }
 
-// In-memory cache for cryptographically verified tokens: tokenHash -> VerifiedUser
-interface VerifiedTokenCacheItem {
-  email: string;
-  id: string;
-  exp: number; // Unix timestamp in seconds
-  verifiedAt: number; // ms
-}
+/**
+ * Local HMAC-SHA256 JWT verification when SUPABASE_JWT_SECRET is configured.
+ * Eliminates network round-trips to Supabase GoTrue under high concurrency.
+ */
+function verifySupabaseJwtLocally(rawToken: string): { email: string; id: string; exp: number } | null {
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+  if (!jwtSecret) return null;
 
-const verifiedTokenCache = new Map<string, VerifiedTokenCacheItem>();
+  try {
+    const parts = rawToken.split('.');
+    if (parts.length !== 3) return null;
+
+    const [headerB64, payloadB64, signatureB64] = parts;
+    const header = JSON.parse(decodeBase64Safe(headerB64));
+    if (header?.alg !== 'HS256') return null;
+
+    const expectedSigB64Url = crypto
+      .createHmac('sha256', jwtSecret)
+      .update(`${headerB64}.${payloadB64}`)
+      .digest('base64')
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+
+    const sigBuf = Buffer.from(signatureB64);
+    const expBuf = Buffer.from(expectedSigB64Url);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return null;
+    }
+
+    const payload = JSON.parse(decodeBase64Safe(payloadB64));
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (!payload || typeof payload.exp !== 'number' || payload.exp <= nowSec) {
+      return null;
+    }
+
+    const email = typeof payload.email === 'string' ? payload.email.toLowerCase().trim() : '';
+    if (!email) return null;
+
+    return {
+      email,
+      id: typeof payload.sub === 'string' ? payload.sub : '',
+      exp: payload.exp,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function extractRawTokenFromCookies(cookieList: Array<{ name: string; value: string }>): string | null {
   try {
@@ -151,7 +246,7 @@ export async function getVerifiedUserFromCookies(
   const nowSec = Math.floor(Date.now() / 1000);
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
-  // 1. FAST-PATH: Check cryptographic verified token cache (instant sub-millisecond return!)
+  // 1. FAST-PATH: Check shared cryptographic verified token cache (instant sub-millisecond return!)
   const cached = verifiedTokenCache.get(tokenHash);
   if (cached) {
     if (cached.exp > nowSec + 5) {
@@ -160,49 +255,64 @@ export async function getVerifiedUserFromCookies(
     verifiedTokenCache.delete(tokenHash);
   }
 
-  // 2. CACHE-MISS: Verify token cryptographic signature with Supabase Auth
-  try {
-    const { data, error } = await supabase.auth.getUser(rawToken);
-    if (!error && data?.user?.email) {
-      const email = data.user.email.toLowerCase().trim();
-      const id = data.user.id || '';
-
-      // Determine expiration from token payload if available
-      let exp = nowSec + 60;
-      try {
-        const parts = rawToken.split('.');
-        if (parts.length >= 2) {
-          const payload = JSON.parse(decodeBase64Safe(parts[1]));
-          if (payload?.exp && typeof payload.exp === 'number') {
-            exp = payload.exp;
-          }
-        }
-      } catch {}
-
-      // Cache verified token: TTL = min(token remaining, 60s)
-      const ttlSec = Math.min(Math.max(exp - nowSec, 5), 60);
-      verifiedTokenCache.set(tokenHash, {
-        email,
-        id,
-        exp: nowSec + ttlSec,
-        verifiedAt: Date.now(),
-      });
-
-      // Cleanup cache if too large
-      if (verifiedTokenCache.size > 2000) {
-        const nowMs = Date.now();
-        for (const [k, v] of verifiedTokenCache.entries()) {
-          if (v.exp * 1000 < nowMs) verifiedTokenCache.delete(k);
-        }
-      }
-
-      return { email, id };
-    }
-  } catch (err) {
-    console.error('Cryptographic token verification error:', err);
+  // 2. ZERO-NETWORK FAST-PATH: Local HMAC-SHA256 verification when SUPABASE_JWT_SECRET is set
+  const localVerified = verifySupabaseJwtLocally(rawToken);
+  if (localVerified) {
+    const ttlSec = Math.min(Math.max(localVerified.exp - nowSec, 5), VERIFIED_TOKEN_MAX_TTL_SEC);
+    setBoundedVerifiedToken(tokenHash, {
+      email: localVerified.email,
+      id: localVerified.id,
+      exp: nowSec + ttlSec,
+      verifiedAt: Date.now(),
+    });
+    return { email: localVerified.email, id: localVerified.id };
   }
 
-  return null;
+  // 3. IN-FLIGHT DEDUPLICATION: Coalesce concurrent verifications of the same token
+  const existingInflight = inflightTokenVerify.get(tokenHash);
+  if (existingInflight) {
+    return existingInflight;
+  }
+
+  // 4. CACHE-MISS: Verify token cryptographic signature with Supabase Auth
+  const verifyPromise = (async (): Promise<{ email: string; id: string } | null> => {
+    try {
+      const { data, error } = await supabase.auth.getUser(rawToken);
+      if (!error && data?.user?.email) {
+        const email = data.user.email.toLowerCase().trim();
+        const id = data.user.id || '';
+
+        let exp = nowSec + VERIFIED_TOKEN_MAX_TTL_SEC;
+        try {
+          const parts = rawToken.split('.');
+          if (parts.length >= 2) {
+            const payload = JSON.parse(decodeBase64Safe(parts[1]));
+            if (payload?.exp && typeof payload.exp === 'number') {
+              exp = payload.exp;
+            }
+          }
+        } catch {}
+
+        const ttlSec = Math.min(Math.max(exp - nowSec, 5), VERIFIED_TOKEN_MAX_TTL_SEC);
+        setBoundedVerifiedToken(tokenHash, {
+          email,
+          id,
+          exp: nowSec + ttlSec,
+          verifiedAt: Date.now(),
+        });
+
+        return { email, id };
+      }
+    } catch (err) {
+      console.error('Cryptographic token verification error:', err);
+    } finally {
+      inflightTokenVerify.delete(tokenHash);
+    }
+    return null;
+  })();
+
+  inflightTokenVerify.set(tokenHash, verifyPromise);
+  return verifyPromise;
 }
 
 // Backwards-compatible safe wrapper: only returns user if token was cryptographically verified
@@ -320,142 +430,158 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       isSecurity,
       tier: explicitTier,
     };
-    authContextCache.set(email.toLowerCase(), { ctx, expiresAt: Date.now() + 60000 });
+    setBoundedAuthContext(email.toLowerCase(), ctx, 60000);
     return ctx;
   }
 
-  const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : null) || supabase;
-  const lowerEmail = email.toLowerCase();
-  const isRegularStudent = lowerEmail.endsWith('@student.ptithcm.edu.vn') && lowerEmail !== ROOT_SUPER_ADMIN.toLowerCase();
+  const lowerEmail = email.toLowerCase().trim();
 
-  // Run all auth queries in parallel for performance (skip events/super_admins for plain students)
-  const [superAdmin, assignedOfficerRole, eventRoles, hasCreatedEvents] = await Promise.all([
-    // Check super_admins table
-    (async () => {
-      if (isRegularStudent) return null;
-      try {
-        const q = adminClient.from('super_admins').select('email');
-        const { data } = typeof q.ilike === 'function'
-          ? await q.ilike('email', email).maybeSingle()
-          : await q.eq('email', email).maybeSingle();
-        return data;
-      } catch { return null; }
-    })(),
-    // Check dynamic officer_roles via persistent store
-    (async () => {
-      try {
-        const roles = await getStoredOfficerRoles(adminClient);
-        return roles.find((r) => r.email.toLowerCase() === lowerEmail) || null;
-      } catch { return null; }
-    })(),
-    // Check event_roles table
-    (async () => {
-      try {
-        const q = adminClient.from('event_roles').select('event_id, role_type');
-        const { data } = typeof q.ilike === 'function'
-          ? await q.ilike('email', email)
-          : await q.eq('email', email);
-        return data || [];
-      } catch { return []; }
-    })(),
-    // Check if created any events (students never create events)
-    (async () => {
-      if (isRegularStudent) return false;
-      try {
-        const q = adminClient.from('events').select('event_id');
-        const { data } = typeof q.ilike === 'function'
-          ? await q.ilike('created_by', email).limit(1)
-          : await q.eq('created_by', email).limit(1);
-        return Boolean(data && data.length > 0);
-      } catch { return false; }
-    })(),
-  ]);
-
-  const isSubAdminUnit = lowerEmail.startsWith('lcd') || lowerEmail.startsWith('clb') || lowerEmail.startsWith('doi');
-
-  // SECURITY: exact-match allowlist only (no substring matching on email)
-  const officialTier = getOfficialTierForEmail(lowerEmail);
-
-  const isSuperAdmin =
-    lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
-    !!superAdmin ||
-    assignedOfficerRole?.role_tier === 'super_admin' ||
-    explicitTier === 'super_admin';
-
-  const isYouthUnion =
-    officialTier === 'youth_union' ||
-    assignedOfficerRole?.role_tier === 'youth_union' ||
-    explicitTier === 'youth_union';
-
-  const isCtsv =
-    officialTier === 'ctsv' ||
-    assignedOfficerRole?.role_tier === 'ctsv' ||
-    explicitTier === 'ctsv';
-
-  const isFacility =
-    officialTier === 'facility' ||
-    assignedOfficerRole?.role_tier === 'facility' ||
-    explicitTier === 'facility';
-
-  const isSecurity =
-    officialTier === 'security' ||
-    assignedOfficerRole?.role_tier === 'security' ||
-    explicitTier === 'security';
-
-  const isEventAdmin =
-    isSuperAdmin ||
-    isYouthUnion ||
-    isCtsv ||
-    isFacility ||
-    isSubAdminUnit ||
-    hasCreatedEvents ||
-    assignedOfficerRole?.role_tier === 'event_admin' ||
-    (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
-    explicitTier === 'event_admin';
-
-  const isChecker =
-    isSuperAdmin ||
-    isSecurity ||
-    assignedOfficerRole?.role_tier === 'checker' ||
-    (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) ||
-    explicitTier === 'checker';
-
-  let tier: UserTier = explicitTier || 'user';
-  if (isSuperAdmin) {
-    tier = 'super_admin';
-  } else if (isYouthUnion) {
-    tier = 'youth_union';
-  } else if (isCtsv) {
-    tier = 'ctsv';
-  } else if (isFacility) {
-    tier = 'facility';
-  } else if (isSecurity) {
-    tier = 'security';
-  } else if (isEventAdmin) {
-    tier = 'event_admin';
-  } else if (isChecker) {
-    tier = 'checker';
+  // In-flight deduplication for concurrent getAuthContext calls of the same user
+  const existingCtxInflight = inflightAuthContext.get(lowerEmail);
+  if (existingCtxInflight) {
+    return existingCtxInflight;
   }
 
-  const managed_events = Array.isArray(eventRoles)
-    ? eventRoles
-        .filter((r: any) => r && (r.event_id || r.role_type))
-        .map((r: any) => ({
-          event_id: r.event_id,
-          role_type: r.role_type,
-        }))
-    : [];
+  const resolveCtxPromise = (async (): Promise<AuthContext> => {
+    try {
+      const adminClient = (typeof createAdminClient === 'function' ? await createAdminClient() : null) || supabase;
+      const isRegularStudent = lowerEmail.endsWith('@student.ptithcm.edu.vn') && lowerEmail !== ROOT_SUPER_ADMIN.toLowerCase();
 
-  const ctx: AuthContext = {
-    email,
-    isSuperAdmin,
-    isEventAdmin,
-    isChecker,
-    isSecurity,
-    tier,
-    managed_events,
-  };
+      // Run all auth queries in parallel for performance (use .eq on lowerEmail to hit B-tree indexes!)
+      const [superAdmin, assignedOfficerRole, eventRoles, hasCreatedEvents] = await Promise.all([
+        // Check super_admins table
+        (async () => {
+          if (isRegularStudent) return null;
+          try {
+            const q = adminClient.from('super_admins').select('email');
+            const { data } = typeof q.eq === 'function'
+              ? await q.eq('email', lowerEmail).maybeSingle()
+              : await q.ilike('email', lowerEmail).maybeSingle();
+            return data;
+          } catch { return null; }
+        })(),
+        // Check dynamic officer_roles via persistent store
+        (async () => {
+          try {
+            const roles = await getStoredOfficerRoles(adminClient);
+            return roles.find((r) => r.email.toLowerCase() === lowerEmail) || null;
+          } catch { return null; }
+        })(),
+        // Check event_roles table (use B-tree index idx_event_roles_email via .eq)
+        (async () => {
+          try {
+            const q = adminClient.from('event_roles').select('event_id, role_type');
+            const { data } = typeof q.eq === 'function'
+              ? await q.eq('email', lowerEmail)
+              : await q.ilike('email', lowerEmail);
+            return data || [];
+          } catch { return []; }
+        })(),
+        // Check if created any events (students never create events)
+        (async () => {
+          if (isRegularStudent) return false;
+          try {
+            const q = adminClient.from('events').select('event_id');
+            const { data } = typeof q.eq === 'function'
+              ? await q.eq('created_by', lowerEmail).limit(1)
+              : await q.ilike('created_by', lowerEmail).limit(1);
+            return Boolean(data && data.length > 0);
+          } catch { return false; }
+        })(),
+      ]);
 
-  authContextCache.set(email.toLowerCase(), { ctx, expiresAt: Date.now() + 60000 });
-  return ctx;
+      const isSubAdminUnit = lowerEmail.startsWith('lcd') || lowerEmail.startsWith('clb') || lowerEmail.startsWith('doi');
+
+      // SECURITY: exact-match allowlist only (no substring matching on email)
+      const officialTier = getOfficialTierForEmail(lowerEmail);
+
+      const isSuperAdmin =
+        lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
+        !!superAdmin ||
+        assignedOfficerRole?.role_tier === 'super_admin' ||
+        explicitTier === 'super_admin';
+
+      const isYouthUnion =
+        officialTier === 'youth_union' ||
+        assignedOfficerRole?.role_tier === 'youth_union' ||
+        explicitTier === 'youth_union';
+
+      const isCtsv =
+        officialTier === 'ctsv' ||
+        assignedOfficerRole?.role_tier === 'ctsv' ||
+        explicitTier === 'ctsv';
+
+      const isFacility =
+        officialTier === 'facility' ||
+        assignedOfficerRole?.role_tier === 'facility' ||
+        explicitTier === 'facility';
+
+      const isSecurity =
+        officialTier === 'security' ||
+        assignedOfficerRole?.role_tier === 'security' ||
+        explicitTier === 'security';
+
+      const isEventAdmin =
+        isSuperAdmin ||
+        isYouthUnion ||
+        isCtsv ||
+        isFacility ||
+        isSubAdminUnit ||
+        hasCreatedEvents ||
+        assignedOfficerRole?.role_tier === 'event_admin' ||
+        (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
+        explicitTier === 'event_admin';
+
+      const isChecker =
+        isSuperAdmin ||
+        isSecurity ||
+        assignedOfficerRole?.role_tier === 'checker' ||
+        (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) ||
+        explicitTier === 'checker';
+
+      let tier: UserTier = explicitTier || 'user';
+      if (isSuperAdmin) {
+        tier = 'super_admin';
+      } else if (isYouthUnion) {
+        tier = 'youth_union';
+      } else if (isCtsv) {
+        tier = 'ctsv';
+      } else if (isFacility) {
+        tier = 'facility';
+      } else if (isSecurity) {
+        tier = 'security';
+      } else if (isEventAdmin) {
+        tier = 'event_admin';
+      } else if (isChecker) {
+        tier = 'checker';
+      }
+
+      const managed_events = Array.isArray(eventRoles)
+        ? eventRoles
+            .filter((r: any) => r && (r.event_id || r.role_type))
+            .map((r: any) => ({
+              event_id: r.event_id,
+              role_type: r.role_type,
+            }))
+        : [];
+
+      const ctx: AuthContext = {
+        email,
+        isSuperAdmin,
+        isEventAdmin,
+        isChecker,
+        isSecurity,
+        tier,
+        managed_events,
+      };
+
+      setBoundedAuthContext(lowerEmail, ctx, 60000);
+      return ctx;
+    } finally {
+      inflightAuthContext.delete(lowerEmail);
+    }
+  })();
+
+  inflightAuthContext.set(lowerEmail, resolveCtxPromise);
+  return resolveCtxPromise;
 }

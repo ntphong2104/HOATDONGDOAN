@@ -58,7 +58,7 @@ describe('Proposals API Routes', () => {
     };
 
     // Fix `then` to allow awaiting the chain directly
-    mockSupabaseQuery.then.mockImplementation((resolve) => resolve({ data: [], error: null }));
+    mockSupabaseQuery.then.mockImplementation((resolve: any) => resolve({ data: [], error: null }));
 
     (createClient as jest.Mock).mockResolvedValue({
       from: jest.fn().mockReturnValue(mockSupabaseQuery),

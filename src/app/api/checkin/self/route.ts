@@ -9,7 +9,8 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, type EventSession } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 
-// In-memory cache for event metadata during high-concurrency check-in spikes (TTL: 5 seconds)
+// In-memory cache for event metadata during high-concurrency check-in spikes (TTL: 5 seconds, bounded)
+const MAX_SELF_CHECKIN_CACHE = 200;
 const eventCheckinCache = new Map<string, { event: any; meta: any; expiresAt: number }>();
 
 // In-memory maintenance cache (TTL: 30 seconds)
@@ -52,7 +53,11 @@ export async function POST(req: Request) {
           .eq('key', 'maintenance_mode')
           .single();
 
-        isMaintenance = maintenanceSetting?.value === true || maintenanceSetting?.value === 'true';
+        const val = maintenanceSetting?.value;
+        isMaintenance =
+          val === true ||
+          val === 'true' ||
+          (val && typeof val === 'object' && (val.enabled === true || val.enabled === 'true'));
         selfCheckinMaintenanceCache = { enabled: isMaintenance, timestamp: now };
       } catch {}
     }
@@ -108,6 +113,10 @@ export async function POST(req: Request) {
         getEventMeta(supabase, eventId),
       ]);
       if (fetchedEvent) {
+        if (!eventCheckinCache.has(eventId) && eventCheckinCache.size >= MAX_SELF_CHECKIN_CACHE) {
+          const oldestKey = eventCheckinCache.keys().next().value;
+          if (oldestKey !== undefined) eventCheckinCache.delete(oldestKey);
+        }
         cachedEventInfo = {
           event: fetchedEvent,
           meta: fetchedMeta,
@@ -125,11 +134,6 @@ export async function POST(req: Request) {
       .select('mssv, full_name, class_id')
       .eq('email', email)
       .maybeSingle();
-
-    if (eventId === 'bbfe063b-c18f-4003-afe1-665334d13743' && (!meta.max_participants || meta.max_participants <= 130)) {
-      meta.max_participants = 230;
-      saveEventMeta(supabase, eventId, { max_participants: 230 }).catch(() => {});
-    }
 
     if (!event) {
       return NextResponse.json({ success: false, error: 'Sự kiện không tồn tại' }, { status: 404 });

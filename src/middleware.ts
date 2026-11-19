@@ -67,7 +67,7 @@ async function parseDemoCookie(cookieVal: string): Promise<any | null> {
 
 const securityHeaders = {
   'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
+  'X-Frame-Options': 'SAMEORIGIN',
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=self, microphone=(), geolocation=()',
@@ -161,8 +161,40 @@ function decodeBase64Safe(str: string): string {
   }
 }
 
-// In-memory cache for middleware verified tokens: tokenHash -> { email, exp }
-const verifiedMiddlewareTokenCache = new Map<string, { email: string; exp: number }>();
+// Shared verified token cache + in-flight deduplication across middleware and route handlers
+interface SharedVerifiedTokenItem {
+  email: string;
+  id: string;
+  exp: number;
+  verifiedAt: number;
+}
+
+const gMiddleware = globalThis as unknown as {
+  __hddVerifiedTokenCache?: Map<string, SharedVerifiedTokenItem>;
+  __hddInflightTokenVerify?: Map<string, Promise<{ email: string; id: string } | null>>;
+};
+
+const verifiedMiddlewareTokenCache =
+  gMiddleware.__hddVerifiedTokenCache || (gMiddleware.__hddVerifiedTokenCache = new Map());
+const inflightMiddlewareVerify =
+  gMiddleware.__hddInflightTokenVerify || (gMiddleware.__hddInflightTokenVerify = new Map());
+
+const MAX_MIDDLEWARE_TOKEN_CACHE = 3000;
+const MIDDLEWARE_TOKEN_MAX_TTL_SEC = 300; // 5 minutes max
+
+function setBoundedMiddlewareToken(tokenHash: string, item: SharedVerifiedTokenItem) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!verifiedMiddlewareTokenCache.has(tokenHash) && verifiedMiddlewareTokenCache.size >= MAX_MIDDLEWARE_TOKEN_CACHE) {
+    for (const [k, v] of verifiedMiddlewareTokenCache.entries()) {
+      if (v.exp <= nowSec) verifiedMiddlewareTokenCache.delete(k);
+    }
+    if (verifiedMiddlewareTokenCache.size >= MAX_MIDDLEWARE_TOKEN_CACHE) {
+      const oldestKey = verifiedMiddlewareTokenCache.keys().next().value;
+      if (oldestKey !== undefined) verifiedMiddlewareTokenCache.delete(oldestKey);
+    }
+  }
+  verifiedMiddlewareTokenCache.set(tokenHash, item);
+}
 
 async function hashTokenEdge(token: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -170,6 +202,57 @@ async function hashTokenEdge(token: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifyJwtLocallyEdge(rawToken: string): Promise<{ email: string; id: string; exp: number } | null> {
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+  if (!jwtSecret) return null;
+
+  try {
+    const parts = rawToken.split('.');
+    if (parts.length !== 3) return null;
+    const [headerB64, payloadB64, signatureB64] = parts;
+    const header = JSON.parse(decodeBase64Safe(headerB64));
+    if (header?.alg !== 'HS256') return null;
+
+    const encoder = new TextEncoder();
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(jwtSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const paddedSig = signatureB64.length % 4 === 0 ? signatureB64 : signatureB64 + '='.repeat(4 - (signatureB64.length % 4));
+    const sigBinary = decodeBase64Safe(paddedSig);
+    const sigBytes = new Uint8Array(sigBinary.length);
+    for (let i = 0; i < sigBinary.length; i++) {
+      sigBytes[i] = sigBinary.charCodeAt(i);
+    }
+
+    const isValid = await crypto.subtle.verify(
+      'HMAC',
+      cryptoKey,
+      sigBytes,
+      encoder.encode(`${headerB64}.${payloadB64}`)
+    );
+    if (!isValid) return null;
+
+    const payload = JSON.parse(decodeBase64Safe(payloadB64));
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (!payload || typeof payload.exp !== 'number' || payload.exp <= nowSec) return null;
+    const email = typeof payload.email === 'string' ? payload.email.toLowerCase().trim() : '';
+    if (!email) return null;
+
+    return {
+      email,
+      id: typeof payload.sub === 'string' ? payload.sub : '',
+      exp: payload.exp,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function extractRawTokenFromCookies(cookieList: Array<{ name: string; value: string }>): string | null {
@@ -206,6 +289,20 @@ function extractRawTokenFromCookies(cookieList: Array<{ name: string; value: str
   return null;
 }
 
+function parseMaintenanceEnabled(val: any): boolean {
+  if (val === true || val === 'true') return true;
+  if (val && typeof val === 'object') {
+    return val.enabled === true || val.enabled === 'true' || val.maintenance_mode === true;
+  }
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      return parseMaintenanceEnabled(parsed);
+    } catch {}
+  }
+  return false;
+}
+
 async function getCachedMaintenanceMode(supabase: any): Promise<boolean> {
   const now = Date.now();
   if (now - maintenanceCache.timestamp < 30000) {
@@ -218,7 +315,7 @@ async function getCachedMaintenanceMode(supabase: any): Promise<boolean> {
       .eq('key', 'maintenance_mode')
       .maybeSingle();
 
-    const isEnabled = data?.value === 'true' || data?.value === true;
+    const isEnabled = parseMaintenanceEnabled(data?.value);
     maintenanceCache = {
       enabled: isEnabled,
       timestamp: now,
@@ -277,8 +374,22 @@ export async function middleware(request: NextRequest) {
       if (cached && cached.exp > nowSec + 5) {
         // Fast-path: Token signature was ALREADY cryptographically verified! Sub-millisecond return!
         authenticatedEmail = cached.email;
-      } else if (cached) {
-        verifiedMiddlewareTokenCache.delete(tokenHash);
+      } else {
+        if (cached) {
+          verifiedMiddlewareTokenCache.delete(tokenHash);
+        }
+        // Try local HMAC-SHA256 verification when SUPABASE_JWT_SECRET is configured (0 network calls!)
+        const localVerified = await verifyJwtLocallyEdge(rawToken);
+        if (localVerified) {
+          authenticatedEmail = localVerified.email;
+          const ttlSec = Math.min(Math.max(localVerified.exp - nowSec, 5), MIDDLEWARE_TOKEN_MAX_TTL_SEC);
+          setBoundedMiddlewareToken(tokenHash, {
+            email: localVerified.email,
+            id: localVerified.id,
+            exp: nowSec + ttlSec,
+            verifiedAt: Date.now(),
+          });
+        }
       }
     } catch {}
   }
@@ -293,63 +404,81 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     'placeholder-anon-key';
 
-  // 4. Cache-miss: Cryptographically verify token with Supabase Auth SDK
+  // 4. Cache-miss: Cryptographically verify token with Supabase Auth SDK (with in-flight deduplication)
   if (!authenticatedEmail) {
     try {
-      const supabase = createServerClient(
-        supabaseUrl,
-        supabaseAnonKey,
-        {
-          cookies: {
-            getAll() {
-              return request.cookies.getAll();
+      const existingInflight = tokenHash ? inflightMiddlewareVerify.get(tokenHash) : null;
+      if (existingInflight) {
+        const res = await existingInflight;
+        if (res?.email) authenticatedEmail = res.email;
+      } else {
+        const supabase = createServerClient(
+          supabaseUrl,
+          supabaseAnonKey,
+          {
+            cookies: {
+              getAll() {
+                return request.cookies.getAll();
+              },
+              setAll(cookiesToSet) {
+                cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+                supabaseResponse = NextResponse.next({
+                  request,
+                });
+                cookiesToSet.forEach(({ name, value, options }) =>
+                  supabaseResponse.cookies.set(name, value, options)
+                );
+              },
             },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-              supabaseResponse = NextResponse.next({
-                request,
-              });
-              cookiesToSet.forEach(({ name, value, options }) =>
-                supabaseResponse.cookies.set(name, value, options)
-              );
-            },
-          },
-        }
-      );
-
-      const { data, error } = rawToken
-        ? await supabase.auth.getUser(rawToken)
-        : await supabase.auth.getUser();
-
-      if (!error && data?.user?.email) {
-        authenticatedEmail = data.user.email.toLowerCase().trim();
-
-        // If we have tokenHash, cache this verified session for 60s
-        if (tokenHash) {
-          const nowSec = Math.floor(Date.now() / 1000);
-          let exp = nowSec + 60;
-          try {
-            const parts = rawToken!.split('.');
-            if (parts.length >= 2) {
-              const payload = JSON.parse(decodeBase64Safe(parts[1]));
-              if (payload?.exp && typeof payload.exp === 'number') {
-                exp = payload.exp;
-              }
-            }
-          } catch {}
-
-          const ttlSec = Math.min(Math.max(exp - nowSec, 5), 60);
-          verifiedMiddlewareTokenCache.set(tokenHash, {
-            email: authenticatedEmail,
-            exp: nowSec + ttlSec,
-          });
-
-          // Cleanup stale cache
-          if (verifiedMiddlewareTokenCache.size > 2000) {
-            for (const [k, v] of verifiedMiddlewareTokenCache.entries()) {
-              if (v.exp < nowSec) verifiedMiddlewareTokenCache.delete(k);
-            }
           }
+        );
+
+        const verifyTask = (async (): Promise<{ email: string; id: string } | null> => {
+          try {
+            const { data, error } = rawToken
+              ? await supabase.auth.getUser(rawToken)
+              : await supabase.auth.getUser();
+
+            if (!error && data?.user?.email) {
+              const email = data.user.email.toLowerCase().trim();
+              const id = data.user.id || '';
+
+              if (tokenHash) {
+                const nowSec = Math.floor(Date.now() / 1000);
+                let exp = nowSec + MIDDLEWARE_TOKEN_MAX_TTL_SEC;
+                try {
+                  const parts = rawToken!.split('.');
+                  if (parts.length >= 2) {
+                    const payload = JSON.parse(decodeBase64Safe(parts[1]));
+                    if (payload?.exp && typeof payload.exp === 'number') {
+                      exp = payload.exp;
+                    }
+                  }
+                } catch {}
+
+                const ttlSec = Math.min(Math.max(exp - nowSec, 5), MIDDLEWARE_TOKEN_MAX_TTL_SEC);
+                setBoundedMiddlewareToken(tokenHash, {
+                  email,
+                  id,
+                  exp: nowSec + ttlSec,
+                  verifiedAt: Date.now(),
+                });
+              }
+
+              return { email, id };
+            }
+          } finally {
+            if (tokenHash) inflightMiddlewareVerify.delete(tokenHash);
+          }
+          return null;
+        })();
+
+        if (tokenHash) {
+          inflightMiddlewareVerify.set(tokenHash, verifyTask);
+        }
+        const verified = await verifyTask;
+        if (verified?.email) {
+          authenticatedEmail = verified.email;
         }
       }
     } catch {}
