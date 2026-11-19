@@ -11,7 +11,6 @@ import {
   CalendarIcon,
   QrCodeIcon,
   MenuIcon,
-  CloseIcon,
   ShieldCheckIcon,
   BuildingIcon,
   FileTextIcon,
@@ -53,7 +52,10 @@ export default function Header({
 }: HeaderProps = {}) {
   const pathname = usePathname() || '';
   const [resolvedUser, setResolvedUser] = useState<SessionUser | null>(user || null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [desktopExpanded, setDesktopExpanded] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const usePersistentSidebar = !showSidebarToggle && !hideNavbar;
 
   useEffect(() => {
     if (user) return;
@@ -71,17 +73,37 @@ export default function Header({
     };
   }, [user]);
 
+  // Sync Gmail-style body layout padding with persistent sidebar state
   useEffect(() => {
-    if (!drawerOpen) return;
+    if (typeof document === 'undefined') return;
+    if (!usePersistentSidebar) {
+      delete document.body.dataset.sidebar;
+      return;
+    }
+    document.body.dataset.sidebar = desktopExpanded ? 'expanded' : 'collapsed';
+    return () => {
+      delete document.body.dataset.sidebar;
+    };
+  }, [usePersistentSidebar, desktopExpanded]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false);
+      if (e.key === 'Escape') setMobileOpen(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [drawerOpen]);
+  }, [mobileOpen]);
+
+  const handleToggleBuiltInSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setMobileOpen((prev) => !prev);
+    } else {
+      setDesktopExpanded((prev) => !prev);
+    }
+  };
 
   const effectiveUser = user || resolvedUser;
-  const useBuiltInDrawer = !showSidebarToggle && !hideNavbar;
 
   const isEventsActive = pathname === '/events' || pathname.startsWith('/events/');
   const isProfileActive = pathname === '/';
@@ -93,8 +115,12 @@ export default function Header({
 
   const tier = effectiveUser?.tier || 'user';
   const isSuperAdmin = Boolean(effectiveUser?.isSuperAdmin || tier === 'super_admin');
-  const isOfficer = tier !== 'user' || isSuperAdmin || Boolean(effectiveUser?.isEventAdmin || effectiveUser?.isChecker || effectiveUser?.isSecurity);
-  const canManageEvents = isSuperAdmin || tier === 'youth_union' || tier === 'event_admin' || Boolean(effectiveUser?.isEventAdmin);
+  const isOfficer =
+    tier !== 'user' ||
+    isSuperAdmin ||
+    Boolean(effectiveUser?.isEventAdmin || effectiveUser?.isChecker || effectiveUser?.isSecurity);
+  const canManageEvents =
+    isSuperAdmin || tier === 'youth_union' || tier === 'event_admin' || Boolean(effectiveUser?.isEventAdmin);
   const canViewProposals = canManageEvents || tier === 'ctsv' || tier === 'facility';
   const canScan = canManageEvents || tier === 'checker' || Boolean(effectiveUser?.isChecker);
   const canSecurity = isSuperAdmin || tier === 'security' || Boolean(effectiveUser?.isSecurity);
@@ -132,7 +158,7 @@ export default function Header({
 
   return (
     <>
-      <header className={styles.header}>
+      <header className={`${styles.header} ${usePersistentSidebar ? styles.headerFixed : ''}`}>
         <div className={styles.left}>
           {showSidebarToggle ? (
             <button
@@ -144,14 +170,13 @@ export default function Header({
             >
               <MenuIcon size={20} />
             </button>
-          ) : useBuiltInDrawer ? (
+          ) : usePersistentSidebar ? (
             <button
               type="button"
-              onClick={() => setDrawerOpen((prev) => !prev)}
+              onClick={handleToggleBuiltInSidebar}
               className={styles.menuToggleBtn}
-              title={drawerOpen ? 'Đóng Menu Điều Hướng' : 'Mở Menu Điều Hướng'}
-              aria-label="Mở menu điều hướng"
-              aria-expanded={drawerOpen}
+              title={desktopExpanded ? 'Thu gọn thanh điều hướng' : 'Mở rộng thanh điều hướng'}
+              aria-label="Thu gọn hoặc mở rộng thanh điều hướng"
             >
               <MenuIcon size={20} />
             </button>
@@ -176,138 +201,147 @@ export default function Header({
         </div>
       </header>
 
-      {/* Gmail-style Slide-Out Navigation Drawer */}
-      {useBuiltInDrawer && (
+      {/* Gmail-style Persistent Collapsible Left Sidebar */}
+      {usePersistentSidebar && (
         <>
-          {drawerOpen && (
+          {mobileOpen && (
             <div
-              className={styles.drawerBackdrop}
-              onClick={() => setDrawerOpen(false)}
+              className={styles.mobileBackdrop}
+              onClick={() => setMobileOpen(false)}
               aria-hidden="true"
             />
           )}
 
           <aside
-            className={`${styles.drawer} ${drawerOpen ? styles.drawerOpen : styles.drawerClosed}`}
-            aria-label="Menu điều hướng"
+            className={`${styles.sidebar} ${
+              desktopExpanded ? styles.sidebarExpanded : styles.sidebarCollapsed
+            } ${mobileOpen ? styles.sidebarMobileOpen : ''}`}
+            aria-label="Thanh điều hướng chính"
           >
-            <div className={styles.drawerHeader}>
-              <div className={styles.drawerBrand}>
-                <DualLogos size="sm" />
-                <span className={styles.drawerHeaderTitle}>Điều Hướng</span>
-              </div>
-              <button
-                type="button"
-                className={styles.drawerCloseBtn}
-                onClick={() => setDrawerOpen(false)}
-                title="Đóng menu"
-                aria-label="Đóng menu"
-              >
-                <CloseIcon size={16} />
-              </button>
-            </div>
-
-            {/* Gmail-style Rounded Primary Action Button */}
-            <div className={styles.drawerCtaWrap}>
+            {/* Gmail-style Rounded Primary Pill Button */}
+            <div className={styles.sidebarCtaWrap}>
               {canViewProposals ? (
                 <Link
                   href="/admin/proposals/new"
-                  className={styles.drawerPrimaryCta}
-                  onClick={() => setDrawerOpen(false)}
+                  className={styles.sidebarPrimaryCta}
+                  title="Trình Kế Hoạch Mới"
+                  onClick={() => setMobileOpen(false)}
                 >
                   <PlusIcon size={18} />
-                  <span>Trình Kế Hoạch Mới</span>
+                  <span className={styles.sidebarLabel}>Trình Kế Hoạch</span>
                 </Link>
               ) : (
                 <Link
                   href="/events"
-                  className={styles.drawerPrimaryCta}
-                  onClick={() => setDrawerOpen(false)}
+                  className={styles.sidebarPrimaryCta}
+                  title="Khám Phá Sự Kiện"
+                  onClick={() => setMobileOpen(false)}
                 >
                   <CalendarIcon size={18} />
-                  <span>Khám Phá Sự Kiện</span>
+                  <span className={styles.sidebarLabel}>Khám Phá Sự Kiện</span>
                 </Link>
               )}
             </div>
 
-            <nav className={styles.drawerNav} aria-label="Điều hướng chính">
-              <div className={styles.drawerSectionLabel}>Cổng Sinh Viên</div>
+            <nav className={styles.sidebarNav} aria-label="Điều hướng chính">
+              <div className={styles.sidebarSectionLabel}>Cổng Sinh Viên</div>
 
               <Link
                 href="/events"
-                className={`${styles.drawerItem} ${isEventsActive ? styles.drawerItemActive : ''}`}
-                onClick={() => setDrawerOpen(false)}
+                title="Tổng quan Sự kiện"
+                className={`${styles.sidebarItem} ${isEventsActive ? styles.sidebarItemActive : ''}`}
+                onClick={() => setMobileOpen(false)}
               >
-                <CalendarIcon size={18} />
-                <span>Tổng quan Sự kiện</span>
+                <span className={styles.sidebarIcon}>
+                  <CalendarIcon size={18} />
+                </span>
+                <span className={styles.sidebarLabel}>Tổng quan Sự kiện</span>
               </Link>
 
               <Link
                 href="/?view=student"
-                className={`${styles.drawerItem} ${isProfileActive ? styles.drawerItemActive : ''}`}
-                onClick={() => setDrawerOpen(false)}
+                title="Trang cá nhân & QR"
+                className={`${styles.sidebarItem} ${isProfileActive ? styles.sidebarItemActive : ''}`}
+                onClick={() => setMobileOpen(false)}
               >
-                <QrCodeIcon size={18} />
-                <span>Trang cá nhân &amp; QR</span>
+                <span className={styles.sidebarIcon}>
+                  <QrCodeIcon size={18} />
+                </span>
+                <span className={styles.sidebarLabel}>Trang cá nhân &amp; QR</span>
               </Link>
 
               {isOfficer && (
                 <>
-                  <div className={styles.drawerDivider} />
-                  <div className={styles.drawerSectionLabel}>Không Gian Cán Bộ &amp; LCĐ</div>
+                  <div className={styles.sidebarDivider} />
+                  <div className={styles.sidebarSectionLabel}>Cán Bộ &amp; LCĐ</div>
 
                   {isSuperAdmin && (
                     <Link
                       href="/super-admin"
-                      className={`${styles.drawerItem} ${isSuperAdminPage ? styles.drawerItemActive : ''}`}
-                      onClick={() => setDrawerOpen(false)}
+                      title="Quản Trị Toàn Trường"
+                      className={`${styles.sidebarItem} ${isSuperAdminPage ? styles.sidebarItemActive : ''}`}
+                      onClick={() => setMobileOpen(false)}
                     >
-                      <ShieldCheckIcon size={18} />
-                      <span>Quản Trị Toàn Trường</span>
+                      <span className={styles.sidebarIcon}>
+                        <ShieldCheckIcon size={18} />
+                      </span>
+                      <span className={styles.sidebarLabel}>Quản Trị Trường</span>
                     </Link>
                   )}
 
                   {canManageEvents && (
                     <Link
                       href="/admin"
-                      className={`${styles.drawerItem} ${isAdminHome ? styles.drawerItemActive : ''}`}
-                      onClick={() => setDrawerOpen(false)}
+                      title="Sự kiện & Quản lý LCĐ"
+                      className={`${styles.sidebarItem} ${isAdminHome ? styles.sidebarItemActive : ''}`}
+                      onClick={() => setMobileOpen(false)}
                     >
-                      <BuildingIcon size={18} />
-                      <span>Sự kiện &amp; Quản lý LCĐ</span>
+                      <span className={styles.sidebarIcon}>
+                        <BuildingIcon size={18} />
+                      </span>
+                      <span className={styles.sidebarLabel}>Sự kiện &amp; LCĐ</span>
                     </Link>
                   )}
 
                   {canViewProposals && (
                     <Link
                       href="/admin/proposals"
-                      className={`${styles.drawerItem} ${isProposalsPage ? styles.drawerItemActive : ''}`}
-                      onClick={() => setDrawerOpen(false)}
+                      title="Kế hoạch trình duyệt"
+                      className={`${styles.sidebarItem} ${isProposalsPage ? styles.sidebarItemActive : ''}`}
+                      onClick={() => setMobileOpen(false)}
                     >
-                      <FileTextIcon size={18} />
-                      <span>Kế hoạch trình duyệt</span>
+                      <span className={styles.sidebarIcon}>
+                        <FileTextIcon size={18} />
+                      </span>
+                      <span className={styles.sidebarLabel}>Kế hoạch duyệt</span>
                     </Link>
                   )}
 
                   {canScan && (
                     <Link
                       href="/scanner"
-                      className={`${styles.drawerItem} ${isScannerPage ? styles.drawerItemActive : ''}`}
-                      onClick={() => setDrawerOpen(false)}
+                      title="Máy quét QR Điểm danh"
+                      className={`${styles.sidebarItem} ${isScannerPage ? styles.sidebarItemActive : ''}`}
+                      onClick={() => setMobileOpen(false)}
                     >
-                      <ScanCameraIcon size={18} />
-                      <span>Máy quét QR Điểm danh</span>
+                      <span className={styles.sidebarIcon}>
+                        <ScanCameraIcon size={18} />
+                      </span>
+                      <span className={styles.sidebarLabel}>Máy quét QR</span>
                     </Link>
                   )}
 
                   {canSecurity && (
                     <Link
                       href="/security"
-                      className={`${styles.drawerItem} ${isSecurityPage ? styles.drawerItemActive : ''}`}
-                      onClick={() => setDrawerOpen(false)}
+                      title="Bàn giao chìa khóa"
+                      className={`${styles.sidebarItem} ${isSecurityPage ? styles.sidebarItemActive : ''}`}
+                      onClick={() => setMobileOpen(false)}
                     >
-                      <KeyIcon size={18} />
-                      <span>Bàn giao chìa khóa</span>
+                      <span className={styles.sidebarIcon}>
+                        <KeyIcon size={18} />
+                      </span>
+                      <span className={styles.sidebarLabel}>Chìa khóa phòng</span>
                     </Link>
                   )}
                 </>
@@ -315,14 +349,14 @@ export default function Header({
             </nav>
 
             {effectiveUser && (
-              <div className={styles.drawerFooter}>
-                <div className={styles.drawerUserName}>{effectiveUser.full_name || effectiveUser.mssv}</div>
-                <div className={styles.drawerUserMeta}>
+              <div className={styles.sidebarFooter}>
+                <div className={styles.sidebarUserName}>{effectiveUser.full_name || effectiveUser.mssv}</div>
+                <div className={styles.sidebarUserMeta}>
                   {effectiveUser.mssv} {effectiveUser.class_id ? `• ${effectiveUser.class_id}` : ''}
                 </div>
                 {studentLcd && (
                   <span
-                    className={styles.drawerLcdPill}
+                    className={styles.sidebarLcdPill}
                     style={{
                       background: studentLcd.bg,
                       color: studentLcd.color,
