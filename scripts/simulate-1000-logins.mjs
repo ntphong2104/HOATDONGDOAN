@@ -1,7 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import * as XLSX from 'xlsx';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const XLSX = require('xlsx');
 
 const BASE_URL = process.env.TEST_BASE_URL || 'http://127.0.0.1:3000';
 const JWT_SECRET = process.env.SUPABASE_JWT_SECRET || 'load-test-jwt-secret-ptithcm-2026';
