@@ -261,18 +261,6 @@ export default function Header({
               <div className={styles.sidebarSectionLabel}>Cổng Sinh Viên</div>
 
               <Link
-                href="/events"
-                title="Tổng quan Sự kiện"
-                className={`${styles.sidebarItem} ${isEventsActive ? styles.sidebarItemActive : ''}`}
-                onClick={() => setMobileOpen(false)}
-              >
-                <span className={styles.sidebarIcon}>
-                  <CalendarIcon size={18} />
-                </span>
-                <span className={styles.sidebarLabel}>Tổng quan Sự kiện</span>
-              </Link>
-
-              <Link
                 href="/?view=student"
                 title="Tổng quan cá nhân & QR"
                 className={`${styles.sidebarItem} ${isOverviewActive ? styles.sidebarItemActive : ''}`}
@@ -282,6 +270,18 @@ export default function Header({
                   <QrCodeIcon size={18} />
                 </span>
                 <span className={styles.sidebarLabel}>Tổng quan cá nhân</span>
+              </Link>
+
+              <Link
+                href="/events"
+                title="Tổng quan Sự kiện"
+                className={`${styles.sidebarItem} ${isEventsActive ? styles.sidebarItemActive : ''}`}
+                onClick={() => setMobileOpen(false)}
+              >
+                <span className={styles.sidebarIcon}>
+                  <CalendarIcon size={18} />
+                </span>
+                <span className={styles.sidebarLabel}>Tổng quan Sự kiện</span>
               </Link>
 
               <Link

@@ -168,7 +168,12 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}${nextTarget}`);
     }
 
-    // Smart role-based redirection
+    // Mặc định hiển thị Tổng quan cá nhân cho mọi tài khoản sinh viên (có MSSV) sau khi đăng nhập
+    if (studentMssv) {
+      return NextResponse.redirect(`${origin}/`);
+    }
+
+    // Các tài khoản đơn vị/phòng ban (không có MSSV: LCĐ, CLB, Phòng CTSV, Quản trị, Bảo vệ) vào thẳng không gian quản trị
     if (isSuperAdmin) {
       return NextResponse.redirect(`${origin}/super-admin`);
     }

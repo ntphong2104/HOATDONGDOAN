@@ -50,9 +50,11 @@ export default async function HomePage({
 
   const resolvedParams = searchParams ? await searchParams : {};
   const isStudentView = resolvedParams?.view === 'student';
+  const hasStudentMssv = Boolean(extractMSSV(auth.email));
 
-  // ──── Điều hướng các cấp Quản trị về đúng Không Gian Làm Việc (Trừ khi chủ động vào xem Cổng Sinh Viên) ────
-  if (!isStudentView) {
+  // ──── Chỉ tự động chuyển hướng tài khoản đơn vị/phòng ban (không có MSSV) về không gian làm việc riêng ────
+  // Tài khoản sinh viên (kể cả cán bộ Đoàn có MSSV) mặc định mở Tổng quan cá nhân khi đăng nhập
+  if (!isStudentView && !hasStudentMssv) {
     if (auth.tier === 'super_admin' || auth.isSuperAdmin) {
       redirect('/super-admin');
     }
