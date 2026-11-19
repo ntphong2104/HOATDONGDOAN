@@ -141,6 +141,11 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
           sessions,
         });
 
+        // Không hiển thị các sự kiện đã kết thúc trên Cổng Khám Phá Sự Kiện (/events)
+        if (isExpired) {
+          continue;
+        }
+
         const maxParticipants = Number(meta.max_participants) || 0;
         const maxVolunteers = Number(meta.max_volunteers) || 0;
         const departments = Array.isArray(meta.departments) ? meta.departments : [];

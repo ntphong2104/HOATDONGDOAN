@@ -131,21 +131,22 @@ export default function StudentEventsDiscoverPage() {
   }, []);
 
   const counts = useMemo(() => {
-    const forMe = events.filter((e) => e.is_eligible_for_me && !e.is_expired);
-    const myLcd = events.filter((e) => e.is_my_lcd_event && !e.is_expired);
-    const recruiting = events.filter(
-      (e) => e.is_eligible_for_me && e.recruitment_window.isOpen && !e.is_expired
+    const activeEvents = events.filter((e) => !e.is_expired);
+    const forMe = activeEvents.filter((e) => e.is_eligible_for_me);
+    const myLcd = activeEvents.filter((e) => e.is_my_lcd_event);
+    const recruiting = activeEvents.filter(
+      (e) => e.is_eligible_for_me && e.recruitment_window.isOpen
     );
     const openNow = forMe.filter(
       (e) => e.registration_window.isOpen || e.recruitment_window.isOpen
     );
-    const registered = events.filter((e) => e.is_registered);
+    const registered = activeEvents.filter((e) => e.is_registered);
 
     return {
       forMe: forMe.length,
       myLcd: myLcd.length,
       recruiting: recruiting.length,
-      all: events.length,
+      all: activeEvents.length,
       openNow: openNow.length,
       registered: registered.length,
     };
@@ -155,12 +156,13 @@ export default function StudentEventsDiscoverPage() {
     const q = normalizeSearch(searchQuery);
 
     return events.filter((ev) => {
+      if (ev.is_expired) return false;
       if (activeTab === 'for_me') {
-        if (!ev.is_eligible_for_me || ev.is_expired) return false;
+        if (!ev.is_eligible_for_me) return false;
       } else if (activeTab === 'my_lcd') {
-        if (!ev.is_my_lcd_event || ev.is_expired) return false;
+        if (!ev.is_my_lcd_event) return false;
       } else if (activeTab === 'recruiting') {
-        if (!ev.is_eligible_for_me || !ev.recruitment_window.isOpen || ev.is_expired) {
+        if (!ev.is_eligible_for_me || !ev.recruitment_window.isOpen) {
           return false;
         }
       }
