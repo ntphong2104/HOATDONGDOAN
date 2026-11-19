@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { fetchMeCached } from '@/lib/client/me-cache';
 import { ArrowLeftIcon, CalendarIcon, QrCodeIcon, MenuIcon, ShieldCheckIcon } from '@/components/icons';
 import DualLogos from '@/components/DualLogos';
 import UserMenuDropdown from '@/components/UserMenuDropdown';
@@ -38,20 +39,44 @@ export default function Header({
   hideNavbar = false,
 }: HeaderProps = {}) {
   const pathname = usePathname() || '';
-  const showNav = !hideNavbar && !showSidebarToggle;
+  const [resolvedUser, setResolvedUser] = useState<SessionUser | null>(user || null);
+
+  useEffect(() => {
+    if (user) return;
+    let active = true;
+    (async () => {
+      try {
+        const { json } = await fetchMeCached();
+        if (active && json?.success && json?.data) {
+          setResolvedUser(json.data as SessionUser);
+        }
+      } catch {}
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const effectiveUser = user || resolvedUser;
+  const showNav = !hideNavbar;
   const isEventsActive = pathname === '/events' || pathname.startsWith('/events/');
   const isProfileActive = pathname === '/';
+  const isAdminActive =
+    pathname.startsWith('/super-admin') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/security') ||
+    pathname.startsWith('/scanner');
 
   const adminHref =
-    user?.tier === 'super_admin' || user?.isSuperAdmin
+    effectiveUser?.tier === 'super_admin' || effectiveUser?.isSuperAdmin
       ? '/super-admin'
-      : user?.tier === 'youth_union' || user?.tier === 'ctsv' || user?.tier === 'facility'
+      : effectiveUser?.tier === 'youth_union' || effectiveUser?.tier === 'ctsv' || effectiveUser?.tier === 'facility'
       ? '/admin/proposals'
-      : user?.tier === 'event_admin' || user?.isEventAdmin
+      : effectiveUser?.tier === 'event_admin' || effectiveUser?.isEventAdmin
       ? '/admin'
-      : user?.tier === 'security'
+      : effectiveUser?.tier === 'security'
       ? '/security'
-      : user?.tier === 'checker' || user?.isChecker
+      : effectiveUser?.tier === 'checker' || effectiveUser?.isChecker
       ? '/scanner'
       : null;
   const handleLogout = async () => {
@@ -132,7 +157,7 @@ export default function Header({
             {adminHref && (
               <Link
                 href={adminHref}
-                className={`${styles.navLink} ${pathname.startsWith('/admin') || pathname.startsWith('/super-admin') ? styles.navLinkActive : ''}`}
+                className={`${styles.navLink} ${isAdminActive ? styles.navLinkActive : ''}`}
               >
                 <ShieldCheckIcon size={15} />
                 <span>Quản trị</span>
@@ -142,7 +167,7 @@ export default function Header({
         )}
 
         <div className={styles.right}>
-          <UserMenuDropdown user={user} userName={userName} avatarUrl={avatarUrl} onLogout={handleLogout} />
+          <UserMenuDropdown user={effectiveUser} userName={userName} avatarUrl={avatarUrl} onLogout={handleLogout} />
         </div>
       </header>
 
@@ -165,7 +190,7 @@ export default function Header({
           {adminHref && (
             <Link
               href={adminHref}
-              className={`${styles.mobileNavLink} ${pathname.startsWith('/admin') || pathname.startsWith('/super-admin') ? styles.mobileNavLinkActive : ''}`}
+              className={`${styles.mobileNavLink} ${isAdminActive ? styles.mobileNavLinkActive : ''}`}
             >
               <ShieldCheckIcon size={15} />
               <span>Quản trị</span>

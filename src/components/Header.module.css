@@ -91,13 +91,13 @@
   border-color: #93c5fd;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1280px) {
   .appSubtitle {
     display: none;
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 920px) {
   .desktopNav {
     display: none;
   }
