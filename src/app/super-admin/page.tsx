@@ -2085,6 +2085,47 @@ function SuperAdminContent() {
               <span>Bảo trì hệ thống</span>
             </div>
           </button>
+
+          <div style={{ height: '1px', background: '#f1f5f9', margin: '0.5rem 0' }} />
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0.2rem 0.75rem' }}>
+            Chuyển nhanh Không gian
+          </div>
+
+          <Link
+            href="/events"
+            className={styles.tabButton}
+            style={{ textDecoration: 'none' }}
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <div className={styles.tabButtonLeft}>
+              <CalendarIcon size={18} />
+              <span>Tổng quan Sự kiện</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/admin"
+            className={styles.tabButton}
+            style={{ textDecoration: 'none' }}
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <div className={styles.tabButtonLeft}>
+              <UsersIcon size={18} />
+              <span>Quản lý LCĐ &amp; BCH Chi đoàn</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/?view=student"
+            className={styles.tabButton}
+            style={{ textDecoration: 'none' }}
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <div className={styles.tabButtonLeft}>
+              <QrCodeIcon size={18} />
+              <span>Trang cá nhân &amp; QR</span>
+            </div>
+          </Link>
         </nav>
 
         <div className={styles.sidebarFooter}>
