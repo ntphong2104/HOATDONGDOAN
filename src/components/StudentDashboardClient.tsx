@@ -144,61 +144,6 @@ export default function StudentDashboardClient({
     }
   };
 
-  const fetchRegisteredEvents = async () => {
-    setLoadingRegistrations(true);
-    try {
-      const res = await fetch('/api/me/registrations');
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        setRegisteredEvents(data.data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingRegistrations(false);
-    }
-  };
-
-  const checkDelegateStatus = async () => {
-    try {
-      const res = await fetch('/api/me/class-lookup');
-      const data = await res.json();
-      if (data.success && data.data?.isDelegate) {
-        setDelegateInfo(data.data);
-        fetchClassStudents();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const syncUserProfile = async () => {
-    try {
-      const { json: data } = await fetchMeCached();
-      if (data?.success && data?.data) {
-        const d = data.data;
-        setCurrentUser((prev) => ({
-          ...prev,
-          mssv: d.mssv || prev.mssv,
-          full_name: d.full_name && !d.full_name.includes('@') ? d.full_name : prev.full_name,
-          class_id: d.class_id && d.class_id !== 'PTIT-HCM' ? d.class_id : prev.class_id,
-          gender: d.gender || prev.gender,
-          phone: d.phone || prev.phone,
-        }));
-        if (d.gender) setUserGender(d.gender);
-        if (d.phone) setUserPhone(d.phone);
-      }
-    } catch {}
-  };
-
-  useEffect(() => {
-    checkDelegateStatus();
-    syncUserProfile();
-    if (initialRegistrations.length > 0 && initialRegistrations[0]?.review_status === undefined) {
-      fetchRegisteredEvents();
-    }
-  }, []);
-
   const fetchClassStudents = async (query?: string) => {
     setLoadingClass(true);
     try {
@@ -216,6 +161,65 @@ export default function StudentDashboardClient({
       setLoadingClass(false);
     }
   };
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/me/class-lookup');
+        const data = await res.json();
+        if (active && data.success && data.data?.isDelegate) {
+          setDelegateInfo(data.data);
+          const stRes = await fetch('/api/me/class-lookup/students');
+          const stData = await stRes.json();
+          if (active && stData.success && stData.data?.students) {
+            setClassStudents(stData.data.students);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+
+    (async () => {
+      try {
+        const { json: data } = await fetchMeCached();
+        if (active && data?.success && data?.data) {
+          const d = data.data;
+          setCurrentUser((prev) => ({
+            ...prev,
+            mssv: d.mssv || prev.mssv,
+            full_name: d.full_name && !d.full_name.includes('@') ? d.full_name : prev.full_name,
+            class_id: d.class_id && d.class_id !== 'PTIT-HCM' ? d.class_id : prev.class_id,
+            gender: d.gender || prev.gender,
+            phone: d.phone || prev.phone,
+          }));
+          if (d.gender) setUserGender(d.gender);
+          if (d.phone) setUserPhone(d.phone);
+        }
+      } catch {}
+    })();
+
+    if (initialRegistrations.length > 0 && initialRegistrations[0]?.review_status === undefined) {
+      (async () => {
+        try {
+          const res = await fetch('/api/me/registrations');
+          const data = await res.json();
+          if (active && data.success && Array.isArray(data.data)) {
+            setRegisteredEvents(data.data);
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          if (active) setLoadingRegistrations(false);
+        }
+      })();
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [initialRegistrations]);
 
   const openClassmateHistory = async (student: any) => {
     setSelectedClassmate(student);

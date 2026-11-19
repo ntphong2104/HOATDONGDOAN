@@ -172,12 +172,43 @@ export default function LcdManagementSection({
   }, [toast]);
 
   useEffect(() => {
-    setClassFilter('ALL');
-    setCohortFilter('ALL');
-    setPage(1);
-    loadMembersData(selectedLcd);
-    loadDelegatesData(selectedLcd);
-  }, [selectedLcd, loadMembersData, loadDelegatesData]);
+    let active = true;
+    (async () => {
+      try {
+        const [membersRes, delegatesRes] = await Promise.all([
+          fetch(`/api/lcd/members?lcd=${encodeURIComponent(selectedLcd)}`, { cache: 'no-store' }),
+          fetch(`/api/admin/delegates?lcd=${encodeURIComponent(selectedLcd)}`, { cache: 'no-store' }),
+        ]);
+        const [membersJson, delegatesJson] = await Promise.all([
+          membersRes.json(),
+          delegatesRes.json(),
+        ]);
+        if (!active) return;
+        if (membersJson.success && membersJson.data) {
+          setLcdInfo(membersJson.data.lcd);
+          setSummary(membersJson.data.summary);
+          setClasses(membersJson.data.classes || []);
+          setClassesWithoutDelegate(membersJson.data.classes_without_delegate || []);
+          setStudents(membersJson.data.students || []);
+        } else {
+          toast.error(membersJson.error || 'Không thể tải danh sách đoàn viên');
+        }
+        if (delegatesJson.success && Array.isArray(delegatesJson.data)) {
+          setDelegates(delegatesJson.data);
+        }
+      } catch {
+        if (active) toast.error('Lỗi kết nối máy chủ khi tải dữ liệu LCĐ');
+      } finally {
+        if (active) {
+          setLoadingMembers(false);
+          setLoadingDelegates(false);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [selectedLcd, toast]);
 
   const cohorts = useMemo(() => {
     const s = new Set<string>();
@@ -407,7 +438,14 @@ export default function LcdManagementSection({
         {canSwitchLcd && (
           <select
             value={selectedLcd}
-            onChange={(e) => setSelectedLcd(e.target.value as LcdCode)}
+            onChange={(e) => {
+              setSelectedLcd(e.target.value as LcdCode);
+              setClassFilter('ALL');
+              setCohortFilter('ALL');
+              setPage(1);
+              setLoadingMembers(true);
+              setLoadingDelegates(true);
+            }}
             className={styles.lcdSelect}
             aria-label="Chọn Liên Chi Đoàn"
           >

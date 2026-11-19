@@ -37,7 +37,7 @@ export default function Header({
   isSidebarOpen = true,
   hideNavbar = false,
 }: HeaderProps = {}) {
-  const pathname = typeof usePathname === 'function' ? usePathname() || '' : '';
+  const pathname = usePathname() || '';
   const showNav = !hideNavbar && !showSidebarToggle;
   const isEventsActive = pathname === '/events' || pathname.startsWith('/events/');
   const isProfileActive = pathname === '/';
@@ -66,7 +66,7 @@ export default function Header({
         try {
           localStorage.clear();
           sessionStorage.clear();
-        } catch (e) {}
+        } catch {}
 
         await Promise.allSettled([
           window.fetch('/api/auth/logout', { method: 'POST' }),

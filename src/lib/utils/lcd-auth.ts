@@ -1,4 +1,4 @@
-import { getStoredOfficerRoles, DEFAULT_OFFICERS } from '@/lib/constants/officers-store';
+import { getStoredOfficerRoles, DEFAULT_OFFICERS, type OfficerRoleItem } from '@/lib/constants/officers-store';
 import { getLcdByCode, normalizeLcdCode, type LcdDefinition } from '@/lib/utils/lcd';
 import type { AuthContext } from '@/lib/supabase/auth-helper';
 
@@ -14,6 +14,7 @@ export interface ActorLcdScope {
  * - Các đơn vị khác (CLB/Đội/Nhóm/SV thường) -> role: 'none'
  */
 export async function resolveActorLcdScope(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   auth: AuthContext | null
 ): Promise<ActorLcdScope> {
@@ -35,7 +36,7 @@ export async function resolveActorLcdScope(
   }
 
   // 2. Match against default officers + stored officers
-  let storedOfficers: any[] = [];
+  let storedOfficers: OfficerRoleItem[] = [];
   try {
     storedOfficers = (await getStoredOfficerRoles()) || [];
   } catch {}

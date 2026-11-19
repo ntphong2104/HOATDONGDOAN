@@ -105,26 +105,29 @@ export default function StudentEventsDiscoverPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLcdFilter, setSelectedLcdFilter] = useState<string>('ALL');
 
-  const fetchDiscover = async () => {
-    try {
-      const res = await fetch('/api/events/discover', { cache: 'no-store' });
-      const json = await res.json();
-      if (json.success && json.data) {
-        setProfile(json.data.my_profile || null);
-        setEvents(Array.isArray(json.data.events) ? json.data.events : []);
-        setErrorMsg('');
-      } else {
-        setErrorMsg(json.error || 'Không thể tải danh sách sự kiện');
-      }
-    } catch {
-      setErrorMsg('Lỗi kết nối máy chủ. Vui lòng thử lại.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchDiscover();
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/events/discover', { cache: 'no-store' });
+        const json = await res.json();
+        if (!active) return;
+        if (json.success && json.data) {
+          setProfile(json.data.my_profile || null);
+          setEvents(Array.isArray(json.data.events) ? json.data.events : []);
+          setErrorMsg('');
+        } else {
+          setErrorMsg(json.error || 'Không thể tải danh sách sự kiện');
+        }
+      } catch {
+        if (active) setErrorMsg('Lỗi kết nối máy chủ. Vui lòng thử lại.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const counts = useMemo(() => {

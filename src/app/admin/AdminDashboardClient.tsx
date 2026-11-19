@@ -81,8 +81,9 @@ export default function AdminDashboardClient({
       } else {
         alert(`Không thể gửi yêu cầu: ${data.message || data.error || 'Lỗi kết nối'}`);
       }
-    } catch (err: any) {
-      alert(`Đã xảy ra lỗi: ${err.message || 'Lỗi mạng'}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Lỗi mạng';
+      alert(`Đã xảy ra lỗi: ${msg}`);
     } finally {
       setSubmitting(false);
     }
@@ -231,7 +232,7 @@ export default function AdminDashboardClient({
       <div className={styles.eventGrid}>
         {!events || events.length === 0 ? (
           <div className={styles.empty}>
-            Bạn chưa có sự kiện nào. Hãy bấm <strong>"Đề xuất / Yêu cầu mở chương trình mới"</strong> ở phía trên để gửi yêu cầu tới Super Admin Đoàn trường!
+            Bạn chưa có sự kiện nào. Hãy bấm <strong>&ldquo;Trình Kế Hoạch Sự Kiện Mới&rdquo;</strong> ở phía trên để gửi yêu cầu tới Super Admin Đoàn trường!
           </div>
         ) : (
           events.map((event) => {

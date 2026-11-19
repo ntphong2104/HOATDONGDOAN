@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       });
 
     return NextResponse.json({ success: true, data: delegates });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 }
@@ -346,7 +346,7 @@ export async function PATCH(request: Request) {
       data: updated,
       message: `Đã gia hạn quyền BCH Chi đoàn ${existing.class_id} (${existing.full_name}) đến ${newExpiry.toLocaleDateString('vi-VN')}!`,
     });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 }
@@ -400,7 +400,7 @@ export async function DELETE(request: Request) {
     }
 
     return NextResponse.json({ success: true, message: `Đã thu hồi quyền BCH Chi đoàn lớp ${existing.class_id} (${existing.full_name})` });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 }
