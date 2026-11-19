@@ -11,6 +11,7 @@ import { useToast } from '@/components/ToastProvider';
 import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
 import { resolveStudentLcd } from '@/lib/utils/lcd';
 import { getCohortFromMssv } from '@/lib/utils/cohort';
+import { isEventPastDeadline } from '@/lib/utils/event-logic';
 import {
   ShieldCheckIcon,
   ScanCameraIcon,
@@ -98,9 +99,47 @@ export default function StudentDashboardClient({
   );
   const myCohort = useMemo(() => getCohortFromMssv(currentUser.mssv), [currentUser.mssv]);
 
+  const checkedInEventIdSet = useMemo(
+    () => new Set(history.map((h) => h.event_id).filter(Boolean)),
+    [history]
+  );
+
+  // Chỉ tính các sự kiện CHƯA điểm danh và CHƯA kết thúc là "Chờ điểm danh"
   const pendingRegistrations = useMemo(
-    () => registeredEvents.filter((ev) => !ev.attended),
-    [registeredEvents]
+    () =>
+      registeredEvents.filter((ev) => {
+        if (ev.attended || checkedInEventIdSet.has(ev.event_id)) return false;
+        const isClosedOrPast =
+          ev.status === 'closed' ||
+          ev.status === 'rejected' ||
+          isEventPastDeadline({
+            event_date: ev.event_date,
+            start_time: ev.start_time,
+            end_time: ev.end_time,
+            status: ev.status,
+          });
+        return !isClosedOrPast;
+      }),
+    [registeredEvents, checkedInEventIdSet]
+  );
+
+  // Các sự kiện đã đăng ký nhưng đã kết thúc mà chưa có check-in
+  const pastMissedRegistrations = useMemo(
+    () =>
+      registeredEvents.filter((ev) => {
+        if (ev.attended || checkedInEventIdSet.has(ev.event_id)) return false;
+        return (
+          ev.status === 'closed' ||
+          ev.status === 'rejected' ||
+          isEventPastDeadline({
+            event_date: ev.event_date,
+            start_time: ev.start_time,
+            end_time: ev.end_time,
+            status: ev.status,
+          })
+        );
+      }),
+    [registeredEvents, checkedInEventIdSet]
   );
 
   const volunteerOrOrganizerCount = useMemo(
@@ -892,9 +931,13 @@ export default function StudentDashboardClient({
                       >
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 800, background: '#eff6ff', color: '#2563eb', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
-                              {ev.semester || 'Học Kỳ Mới'}
-                            </span>
+                            {ev.semester && ev.semester !== 'Chưa xếp kỳ' ? (
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, background: '#eff6ff', color: '#2563eb', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
+                                {ev.semester}
+                              </span>
+                            ) : (
+                              <span />
+                            )}
                             {ev.role_type === 'volunteer' && ev.review_status === 'pending' ? (
                               <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
                                 Đang chờ duyệt CTV
@@ -919,7 +962,9 @@ export default function StudentDashboardClient({
                               <ClockIcon size={14} color="#2563eb" />
                               <span>
                                 {ev.event_date ? new Date(ev.event_date).toLocaleDateString('vi-VN') : 'Chưa xếp ngày'}{' '}
-                                {ev.start_time ? `(${ev.start_time}${ev.end_time ? ` - ${ev.end_time}` : ''})` : ''}
+                                {ev.start_time
+                                  ? `(${String(ev.start_time).slice(0, 5)}${ev.end_time ? ` - ${String(ev.end_time).slice(0, 5)}` : ''})`
+                                  : ''}
                               </span>
                             </div>
                             {ev.location && (
@@ -994,6 +1039,54 @@ export default function StudentDashboardClient({
                         </Link>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {pastMissedRegistrations.length > 0 && (
+                  <div style={{ marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1.5px dashed #e2e8f0' }}>
+                    <h3 style={{ margin: '0 0 0.85rem', fontSize: '0.92rem', fontWeight: 800, color: '#64748b' }}>
+                      Sự kiện đã kết thúc — Chưa ghi nhận điểm danh ({pastMissedRegistrations.length})
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.9rem' }}>
+                      {pastMissedRegistrations.map((ev) => (
+                        <div
+                          key={ev.id || ev.event_id}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '14px',
+                            padding: '1rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.55rem',
+                            opacity: 0.9,
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', background: '#e2e8f0', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
+                              {ev.role_type === 'volunteer'
+                                ? `Cộng tác viên${ev.department_name ? ` (${ev.department_name})` : ''}`
+                                : 'Người tham gia'}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+                              Đã kết thúc • Chưa check-in
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#334155', lineHeight: 1.35 }}>
+                            {ev.event_name}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: '#64748b' }}>
+                            <ClockIcon size={13} color="#64748b" />
+                            <span>
+                              {ev.event_date ? new Date(ev.event_date).toLocaleDateString('vi-VN') : 'Chưa xếp ngày'}{' '}
+                              {ev.start_time
+                                ? `(${String(ev.start_time).slice(0, 5)}${ev.end_time ? ` - ${String(ev.end_time).slice(0, 5)}` : ''})`
+                                : ''}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

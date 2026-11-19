@@ -119,7 +119,11 @@ export async function GET() {
         } catch {}
       }
 
-      if (mySessionCount === 0 && r.attended) {
+      const isEffectivelyAttended = Boolean(
+        r.attended || checkInRecords.length > 0 || mySessionCount > 0
+      );
+
+      if (mySessionCount === 0 && isEffectivelyAttended) {
         mySessionCount = 1;
       }
 
@@ -128,14 +132,14 @@ export async function GET() {
         event_id: r.event_id,
         event_name: ev.event_name || 'Sự kiện Học Viện',
         event_date: ev.event_date || null,
-        start_time: ev.start_time || null,
-        end_time: ev.end_time || null,
-        semester: ev.semester || 'Học kỳ mới',
+        start_time: ev.start_time ? String(ev.start_time).slice(0, 5) : null,
+        end_time: ev.end_time ? String(ev.end_time).slice(0, 5) : null,
+        semester: ev.semester && ev.semester !== 'Chưa xếp kỳ' ? ev.semester : null,
         status: ev.status || 'active',
         role_type: r.role_type || 'participant',
         department_name: extra.department_name || null,
         review_status: extra.review_status || (r.role_type === 'volunteer' ? 'pending' : 'accepted'),
-        attended: Boolean(r.attended),
+        attended: isEffectivelyAttended,
         registered_at: r.created_at,
         session_count: mySessionCount,
         total_sessions: totalSessions,

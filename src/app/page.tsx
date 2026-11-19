@@ -205,17 +205,20 @@ export default async function HomePage({
     }
 
     if (regData) {
+      const checkedInEventIds = new Set(
+        history.map((h) => h.event_id).filter((id): id is string => Boolean(id))
+      );
       initialRegistrations = regData.map((r: any) => ({
         id: r.id,
         event_id: r.event_id,
         event_name: r.events?.event_name || 'Sự kiện Học Viện',
         event_date: r.events?.event_date,
-        start_time: r.events?.start_time,
-        end_time: r.events?.end_time,
-        semester: r.events?.semester || 'Học kỳ mới',
+        start_time: r.events?.start_time ? String(r.events.start_time).slice(0, 5) : null,
+        end_time: r.events?.end_time ? String(r.events.end_time).slice(0, 5) : null,
+        semester: r.events?.semester && r.events.semester !== 'Chưa xếp kỳ' ? r.events.semester : null,
         status: r.events?.status || 'active',
         role_type: r.role_type || 'participant',
-        attended: Boolean(r.attended),
+        attended: Boolean(r.attended || checkedInEventIds.has(r.event_id)),
         registered_at: r.created_at,
       }));
     }
