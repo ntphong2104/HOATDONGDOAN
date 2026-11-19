@@ -8,7 +8,6 @@ import {
   UsersIcon,
   ShieldCheckIcon,
   SearchIcon,
-  PlusIcon,
   TrashIcon,
   RefreshIcon,
   CheckCircleIcon,
@@ -82,8 +81,11 @@ function normalizeVN(text: string): string {
 
 function getDefaultTermEndDate(): string {
   const now = new Date();
-  const year = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
-  return `${year}-06-30`;
+  // Tháng 0-indexed: Tháng 1 = 0, Tháng 4 = 3, Tháng 5 = 4
+  // Nếu hiện tại đã từ cuối tháng 4 hoặc từ tháng 5 trở đi, nhiệm kỳ kết thúc vào 30/04 năm sau
+  const isPastApril = now.getMonth() > 3 || (now.getMonth() === 3 && now.getDate() >= 25);
+  const year = isPastApril ? now.getFullYear() + 1 : now.getFullYear();
+  return `${year}-04-30`;
 }
 
 export default function LcdManagementSection({
@@ -318,34 +320,6 @@ export default function LcdManagementSection({
       toast.error('Lỗi kết nối máy chủ');
     } finally {
       setSubmittingGrant(false);
-    }
-  };
-
-  const handleQuickGrantFromMember = async (st: LcdMemberRow) => {
-    const confirmed = window.confirm(
-      `Cấp quyền BCH Chi đoàn lớp ${st.class_id} cho ${st.full_name} (${st.mssv}) theo nhiệm kỳ đến ${new Date(getDefaultTermEndDate()).toLocaleDateString('vi-VN')}?`
-    );
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch('/api/admin/delegates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mssv: st.mssv,
-          role_title: 'BCH Chi đoàn',
-          expires_at: getDefaultTermEndDate(),
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        toast.success(json.message || 'Đã cấp quyền BCH Chi đoàn thành công!');
-        await Promise.all([loadDelegatesData(selectedLcd), loadMembersData(selectedLcd)]);
-      } else {
-        toast.error(json.error || 'Không thể cấp quyền');
-      }
-    } catch {
-      toast.error('Lỗi kết nối máy chủ');
     }
   };
 
@@ -640,17 +614,6 @@ export default function LcdManagementSection({
                             >
                               Minh chứng
                             </button>
-                            {!st.is_delegate && (
-                              <button
-                                type="button"
-                                className={styles.secondaryBtn}
-                                style={{ background: '#f5f3ff', borderColor: '#ddd6fe', color: '#6d28d9' }}
-                                onClick={() => handleQuickGrantFromMember(st)}
-                              >
-                                <PlusIcon size={12} />
-                                <span>Cấp BCH</span>
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -763,7 +726,7 @@ export default function LcdManagementSection({
                       className={styles.selectInput}
                       style={{ height: 40 }}
                     >
-                      <option value="term_end">Theo nhiệm kỳ (đến 30/06/{new Date(getDefaultTermEndDate()).getFullYear()})</option>
+                      <option value="term_end">Theo nhiệm kỳ (đến 30/04/{new Date(getDefaultTermEndDate()).getFullYear()})</option>
                       <option value="365">12 tháng (1 nhiệm kỳ)</option>
                       <option value="180">6 tháng (1 học kỳ)</option>
                       <option value="30">30 ngày (đợt chấm ĐRL)</option>
@@ -796,7 +759,6 @@ export default function LcdManagementSection({
                   </div>
 
                   <button type="submit" disabled={submittingGrant} className={styles.primaryBtn}>
-                    <PlusIcon size={16} />
                     <span>{submittingGrant ? 'Đang cấp quyền...' : 'Cấp quyền BCH Chi đoàn'}</span>
                   </button>
                 </div>
@@ -840,7 +802,7 @@ export default function LcdManagementSection({
                         className={styles.selectInput}
                         style={{ height: 40 }}
                       >
-                        <option value="term_end">Theo nhiệm kỳ (đến 30/06/{new Date(getDefaultTermEndDate()).getFullYear()})</option>
+                        <option value="term_end">Theo nhiệm kỳ (đến 30/04/{new Date(getDefaultTermEndDate()).getFullYear()})</option>
                         <option value="365">12 tháng (1 nhiệm kỳ)</option>
                         <option value="180">6 tháng (1 học kỳ)</option>
                         <option value="custom">Tự chọn ngày kết thúc</option>

@@ -213,7 +213,14 @@ export async function POST(request: Request) {
           .single();
 
         if (updErr) {
-          errors.push({ mssv: cleanMssv, reason: 'Không thể cập nhật quyền trong cơ sở dữ liệu' });
+          console.error('POST /api/admin/delegates update error:', updErr);
+          const isRls = updErr.code === '42501' || updErr.code === 'PGRST116';
+          errors.push({
+            mssv: cleanMssv,
+            reason: isRls
+              ? 'CSDL chưa mở quyền RLS bảng class_delegates cho LCĐ (hãy chạy migration 012_lcd_rls_policies.sql trên Supabase hoặc cấu hình SUPABASE_SERVICE_ROLE_KEY).'
+              : 'Không thể cập nhật quyền trong cơ sở dữ liệu',
+          });
         } else if (updatedRow) {
           updated.push(updatedRow);
         }
@@ -235,7 +242,14 @@ export async function POST(request: Request) {
           .single();
 
         if (insErr) {
-          errors.push({ mssv: cleanMssv, reason: 'Không thể lưu quyền trong cơ sở dữ liệu' });
+          console.error('POST /api/admin/delegates insert error:', insErr);
+          const isRls = insErr.code === '42501' || insErr.code === 'PGRST116';
+          errors.push({
+            mssv: cleanMssv,
+            reason: isRls
+              ? 'CSDL chưa mở quyền RLS bảng class_delegates cho LCĐ (hãy chạy migration 012_lcd_rls_policies.sql trên Supabase hoặc cấu hình SUPABASE_SERVICE_ROLE_KEY).'
+              : 'Không thể lưu quyền trong cơ sở dữ liệu',
+          });
         } else if (insertedRow) {
           added.push(insertedRow);
         }
@@ -337,8 +351,18 @@ export async function PATCH(request: Request) {
       .select()
       .single();
 
-    if (updErr) {
-      return NextResponse.json({ success: false, error: 'Không thể gia hạn quyền BCH Chi đoàn' }, { status: 500 });
+    if (updErr || !updated) {
+      console.error('PATCH /api/admin/delegates error:', updErr);
+      const isRls = !updErr || updErr.code === '42501' || updErr.code === 'PGRST116';
+      return NextResponse.json(
+        {
+          success: false,
+          error: isRls
+            ? 'CSDL chưa mở quyền RLS bảng class_delegates cho LCĐ (hãy chạy migration 012_lcd_rls_policies.sql trên Supabase hoặc cấu hình SUPABASE_SERVICE_ROLE_KEY).'
+            : 'Không thể gia hạn quyền BCH Chi đoàn',
+        },
+        { status: isRls ? 403 : 500 }
+      );
     }
 
     return NextResponse.json({
@@ -393,10 +417,24 @@ export async function DELETE(request: Request) {
       }
     }
 
-    const { error } = await supabase.from('class_delegates').delete().eq('id', id);
+    const { data: deleted, error } = await supabase
+      .from('class_delegates')
+      .delete()
+      .eq('id', id)
+      .select('id');
 
-    if (error) {
-      return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
+    if (error || !deleted || deleted.length === 0) {
+      console.error('DELETE /api/admin/delegates error:', error);
+      const isRls = !error || error.code === '42501' || error.code === 'PGRST116';
+      return NextResponse.json(
+        {
+          success: false,
+          error: isRls
+            ? 'CSDL chưa mở quyền RLS bảng class_delegates cho LCĐ (hãy chạy migration 012_lcd_rls_policies.sql trên Supabase hoặc cấu hình SUPABASE_SERVICE_ROLE_KEY).'
+            : 'Lỗi hệ thống, vui lòng thử lại',
+        },
+        { status: isRls ? 403 : 500 }
+      );
     }
 
     return NextResponse.json({ success: true, message: `Đã thu hồi quyền BCH Chi đoàn lớp ${existing.class_id} (${existing.full_name})` });

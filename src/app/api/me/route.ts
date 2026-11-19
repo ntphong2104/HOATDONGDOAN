@@ -299,6 +299,11 @@ export async function GET() {
       officialTier === 'security' ||
       assignedOfficerRole?.role_tier === 'security';
 
+    // Admin Văn phòng Đoàn (dưới Super Admin): quản lý trực văn phòng & mượn dụng cụ
+    const isOfficeAdmin =
+      isSuperAdmin ||
+      assignedOfficerRole?.role_tier === 'office_admin';
+
     // Students who only have event_roles but are not officers/sub-admin units
     // should NOT be promoted to event_admin tier — they stay as 'user' with managed_events
     const isOfficerLevelAdmin =
@@ -329,8 +334,23 @@ export async function GET() {
     else if (isFacility) tier = 'facility';
     else if (isSecurity) tier = 'security';
     else if (isOfficerLevelAdmin) tier = 'event_admin';
+    else if (isOfficeAdmin) tier = 'office_admin';
     else if (isChecker) tier = 'checker';
     // hasEventRolesOnly students stay tier = 'user'
+
+    // CTV trực văn phòng: nằm trong danh sách do Admin VPĐ nạp (bảng có thể chưa migrate → bỏ qua lỗi)
+    let isDutyVolunteer = false;
+    try {
+      const { data: dutyRow } = await adminClient
+        .from('office_duty_volunteers')
+        .select('mssv')
+        .ilike('email', lowerEmail)
+        .eq('is_active', true)
+        .limit(1);
+      isDutyVolunteer = Array.isArray(dutyRow) && dutyRow.length > 0;
+    } catch {
+      isDutyVolunteer = false;
+    }
 
     const googleName = authMetadata?.full_name || authMetadata?.name;
     const avatarUrl = authMetadata?.avatar_url || authMetadata?.picture;
@@ -507,6 +527,8 @@ export async function GET() {
       isSuperAdmin,
       isEventAdmin,
       isChecker,
+      isOfficeAdmin,
+      isDutyVolunteer,
       avatar_url: avatarUrl,
       unit_name: assignedOfficerRole?.unit_name,
       unit_code: assignedOfficerRole?.unit_code,

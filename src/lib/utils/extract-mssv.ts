@@ -53,6 +53,57 @@ export function extractMSSV(input: string): string | null {
 }
 
 /**
+ * Nhận diện tài khoản đơn vị / chức năng (LCĐ, CLB, Đội, Phòng ban, Cán bộ cấp trường).
+ * Các tài khoản này KHÔNG PHẢI là sinh viên cá nhân, không có mã QR tích lũy ĐRL.
+ */
+export function isUnitAccount(
+  account?: { mssv?: string | null; email?: string | null } | string | null
+): boolean {
+  if (!account) return false;
+  const rawEmail = typeof account === 'string' ? (account.includes('@') ? account : '') : (account.email || '');
+  const rawMssv = typeof account === 'string' ? (!account.includes('@') ? account : '') : (account.mssv || '');
+  const m = String(rawMssv || '').trim().toUpperCase();
+  const e = String(rawEmail || '').trim().toLowerCase();
+
+  return (
+    m.startsWith('LCD_') ||
+    m.startsWith('CLB_') ||
+    m.startsWith('DOI_') ||
+    m.startsWith('PHONG_') ||
+    m.startsWith('DOAN_') ||
+    m.startsWith('SUPER_') ||
+    m.startsWith('LCD') ||
+    m.startsWith('BCH') ||
+    e.startsWith('lcd') ||
+    e.startsWith('clb') ||
+    e.startsWith('doi') ||
+    e.startsWith('bch') ||
+    e.startsWith('doan') ||
+    e.includes('ctsv') ||
+    e.includes('quantri') ||
+    e.includes('superadmin') ||
+    e.includes('bchdoan') ||
+    e.includes('baove')
+  );
+}
+
+/**
+ * Kiểm tra tài khoản có phải là tài khoản sinh viên cá nhân (có MSSV cá nhân thật, không phải tài khoản đơn vị).
+ */
+export function isStudentPersonalAccount(
+  account?: { mssv?: string | null; email?: string | null } | string | null
+): boolean {
+  if (!account) return false;
+  if (isUnitAccount(account)) return false;
+  const rawEmail = typeof account === 'string' ? (account.includes('@') ? account : '') : (account.email || '');
+  const rawMssv = typeof account === 'string' ? (!account.includes('@') ? account : '') : (account.mssv || '');
+  const extracted = rawEmail ? extractMSSV(rawEmail) : null;
+  if (extracted) return true;
+  if (rawMssv && isValidMSSV(rawMssv)) return true;
+  return false;
+}
+
+/**
  * Validates whether a string looks like a legitimate PTIT MSSV.
  * 
  * Accepted MSSV patterns:

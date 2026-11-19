@@ -15,7 +15,7 @@
 
 import { ROOT_SUPER_ADMIN, getStoredOfficerRoles } from './officers-store';
 import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
-import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { getEffectiveEndDate, parseDateStringToTime } from '@/lib/utils/event-logic';
 
 /** Cấp cán bộ được giữ quyền sự kiện vĩnh viễn (không bị thu hồi tự động). */
 const PERMANENT_OFFICER_TIERS = new Set(['super_admin', 'youth_union', 'ctsv', 'facility', 'security']);
@@ -96,24 +96,45 @@ export async function fetchEventSessionsMap(
 }
 
 /**
- * Quyền theo sự kiện đã hết hạn khi sự kiện KHÔNG còn 'active' và đã kết thúc
- * (theo buổi cuối cùng) quá 3 ngày. Sự kiện đang active không bao giờ bị thu hồi.
+ * Quyền theo sự kiện (Admin sự kiện / CTV quét mã) tự động hết hạn khi:
+ *  - Sự kiện đã đóng (status = 'closed') và buổi cuối đã qua 3 ngày (hoặc không rõ ngày).
+ *  - HOẶC thời điểm kết thúc thực tế của buổi cuối cùng đã trôi qua quá 3 ngày (72 giờ),
+ *    bất kể status trong DB có là 'active' hay chưa (vì đa phần BTC quên bấm nút đóng sự kiện).
+ *
+ * Chỉ trong vòng 3 ngày kể từ khi sự kiện kết thúc thì Admin/CTV sự kiện mới được giữ quyền
+ * để chốt số liệu điểm danh và xuất báo cáo. Quá 3 ngày thì bắt buộc hết hạn để tránh tích tụ.
  */
-export function isEventRoleExpired(ev: any, sessions?: any[] | null): boolean {
+export function isEventRoleExpired(
+  ev: any,
+  sessions?: any[] | null,
+  currentTimeMs: number = Date.now()
+): boolean {
   if (!ev) return false;
-  return isEventLockedPast3Days({
-    event_date: ev.event_date,
-    start_time: ev.start_time,
-    end_time: ev.end_time,
-    status: ev.status,
-    sessions: sessions || null,
-  });
+
+  // 1. Nếu sự kiện đã đóng thủ công (status = 'closed' hoặc is_active = false)
+  if (ev.status === 'closed' || ev.is_active === false) {
+    const effective = getEffectiveEndDate({ ...ev, sessions });
+    if (!effective) return true;
+    const endDateTimeMs = parseDateStringToTime(effective.date, effective.endTime);
+    if (endDateTimeMs === null) return true;
+    return currentTimeMs - endDateTimeMs > 3 * 24 * 60 * 60 * 1000;
+  }
+
+  // 2. Dù status vẫn là 'active' nhưng buổi cuối đã trôi qua quá 3 ngày (72 giờ)
+  const effective = getEffectiveEndDate({ ...ev, sessions });
+  if (!effective) return false;
+
+  const endDateTimeMs = parseDateStringToTime(effective.date, effective.endTime);
+  if (endDateTimeMs === null) return false;
+
+  const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+  return currentTimeMs - endDateTimeMs > THREE_DAYS_MS;
 }
 
 /**
  * Thu hồi quyền event_roles đối với các sự kiện đã kết thúc > 3 ngày.
  * @param supabase Client có quyền thao tác (admin client hoặc authenticated)
- * @param _daysThreshold Giữ để tương thích — ngưỡng hiện cố định 3 ngày theo isEventLockedPast3Days
+ * @param _daysThreshold Giữ để tương thích — ngưỡng hiện cố định 3 ngày
  */
 export async function cleanupExpiredStudentEventRoles(
   supabase: any,
@@ -142,6 +163,7 @@ export async function cleanupExpiredStudentEventRoles(
     );
 
     const expiredIds: (string | number)[] = [];
+    const autoCloseEventIds = new Set<string | number>();
 
     for (const er of eventRolesRes || []) {
       const email = (er.email || '').toLowerCase().trim();
@@ -158,7 +180,20 @@ export async function cleanupExpiredStudentEventRoles(
         if (er.id !== undefined && er.id !== null) {
           expiredIds.push(er.id);
         }
+        if (er.event_id && ev.status === 'active') {
+          autoCloseEventIds.add(er.event_id);
+        }
       }
+    }
+
+    // Tự động đóng các sự kiện đã qua > 3 ngày để làm sạch hệ thống
+    if (autoCloseEventIds.size > 0) {
+      try {
+        await supabase
+          .from('events')
+          .update({ status: 'closed', is_active: false })
+          .in('event_id', Array.from(autoCloseEventIds));
+      } catch {}
     }
 
     // Thực hiện xóa theo lô, chỉ đếm những dòng thực sự đã bị xóa

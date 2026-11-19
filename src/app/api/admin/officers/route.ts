@@ -209,7 +209,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const validTiers: UserTier[] = ['super_admin', 'youth_union', 'ctsv', 'facility', 'security', 'event_admin'];
+    const validTiers: UserTier[] = ['super_admin', 'youth_union', 'ctsv', 'facility', 'security', 'event_admin', 'office_admin'];
     if (!validTiers.includes(roleTier)) {
       return NextResponse.json({ success: false, error: 'Vai trò cấp quyền không hợp lệ' }, { status: 400 });
     }

@@ -28,12 +28,29 @@ const g = globalThis as unknown as {
  * họ tên & lớp cho sinh viên bị thiếu hoặc mang giá trị tạm (MSSV / PTIT-HCM).
  */
 export function getMasterStudentDirectory(): Map<string, { full_name: string; class_id: string }> {
-  if (g.__hddExcelStudentsMap) return g.__hddExcelStudentsMap;
+  if (g.__hddExcelStudentsMap && g.__hddExcelStudentsMap.size > 0) {
+    return g.__hddExcelStudentsMap;
+  }
   const map = new Map<string, { full_name: string; class_id: string }>();
   try {
-    const excelPath = path.join(process.cwd(), 'data', 'Data.xlsx');
-    if (fs.existsSync(excelPath)) {
-      const wb = XLSX.readFile(excelPath);
+    const candidates = [
+      path.join(process.cwd(), 'data', 'Data.xlsx'),
+      path.resolve(process.cwd(), 'data', 'Data.xlsx'),
+      path.resolve(__dirname, '../../../data/Data.xlsx'),
+      path.resolve(__dirname, '../../../../data/Data.xlsx'),
+      '/Users/mac/Dev/HOATDONGDOAN/data/Data.xlsx',
+    ];
+    const excelPath = candidates.find((p) => {
+      try {
+        return fs.existsSync(p);
+      } catch {
+        return false;
+      }
+    });
+
+    if (excelPath) {
+      const fileBuffer = fs.readFileSync(excelPath);
+      const wb = XLSX.read(fileBuffer, { type: 'buffer' });
       const sheetName = wb.SheetNames[0];
       if (sheetName && wb.Sheets[sheetName]) {
         const rows = XLSX.utils.sheet_to_json<Record<string, any>>(wb.Sheets[sheetName], { defval: '' });
@@ -54,9 +71,17 @@ export function getMasterStudentDirectory(): Map<string, { full_name: string; cl
           }
         }
       }
+      console.log(`[student-profile] Loaded ${map.size} students from Master Directory (${excelPath})`);
+    } else {
+      console.warn('[student-profile] Data.xlsx not found in candidate paths:', candidates);
     }
-  } catch {}
-  g.__hddExcelStudentsMap = map;
+  } catch (err) {
+    console.error('[student-profile] Error reading Data.xlsx:', err);
+  }
+
+  if (map.size > 0) {
+    g.__hddExcelStudentsMap = map;
+  }
   return map;
 }
 

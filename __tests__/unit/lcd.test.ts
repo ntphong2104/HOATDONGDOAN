@@ -8,6 +8,8 @@ import {
   formatLcdsLabel,
 } from '@/lib/utils/lcd';
 import { resolveDelegateExpiry } from '@/lib/utils/lcd-auth';
+import { isUnitAccount, isStudentPersonalAccount } from '@/lib/utils/extract-mssv';
+import { getMasterStudentDirectory } from '@/lib/utils/student-profile';
 
 describe('LCĐ Classification & Registration Scope (8 Official PTIT HCM LCĐs)', () => {
   it('defines all 8 official Liên Chi Đoàn', () => {
@@ -125,5 +127,40 @@ describe('LCĐ Classification & Registration Scope (8 Official PTIT HCM LCĐs)',
     const semDiff = Math.round((semExp.getTime() - now) / (1000 * 60 * 60 * 24));
     expect(semDiff).toBeGreaterThanOrEqual(179);
     expect(semDiff).toBeLessThanOrEqual(181);
+  });
+
+  it('correctly distinguishes unit/officer accounts from student personal accounts', () => {
+    // 8 LCĐ unit accounts
+    expect(isUnitAccount({ email: 'lcdcntt@student.ptithcm.edu.vn' })).toBe(true);
+    expect(isUnitAccount({ email: 'lcdattt@student.ptithcm.edu.vn' })).toBe(true);
+    expect(isUnitAccount({ mssv: 'LCDCNTT' })).toBe(true);
+    expect(isStudentPersonalAccount({ email: 'lcdcntt@student.ptithcm.edu.vn' })).toBe(false);
+    expect(isStudentPersonalAccount({ mssv: 'LCDCNTT' })).toBe(false);
+
+    // School offices
+    expect(isUnitAccount({ email: 'ctsv@ptithcm.edu.vn' })).toBe(true);
+    expect(isUnitAccount({ email: 'quantri@ptithcm.edu.vn' })).toBe(true);
+    expect(isUnitAccount({ email: 'bchdoan@ptithcm.edu.vn' })).toBe(true);
+    expect(isStudentPersonalAccount({ email: 'ctsv@ptithcm.edu.vn' })).toBe(false);
+
+    // Real students
+    expect(isUnitAccount({ email: 'n22dccn158@student.ptithcm.edu.vn' })).toBe(false);
+    expect(isUnitAccount({ mssv: 'N22DCCN158' })).toBe(false);
+    expect(isStudentPersonalAccount({ email: 'n22dccn158@student.ptithcm.edu.vn' })).toBe(true);
+    expect(isStudentPersonalAccount({ mssv: 'N22DCCN158' })).toBe(true);
+  });
+
+  it('loads Master Student Directory from data/Data.xlsx and classifies students by LCĐ', () => {
+    const dir = getMasterStudentDirectory();
+    console.log('Total Master Students from Data.xlsx:', dir.size);
+    expect(dir.size).toBeGreaterThan(0);
+
+    let cnttCount = 0;
+    for (const [mssv, info] of dir.entries()) {
+      const lcd = resolveStudentLcd(info.class_id, mssv);
+      if (lcd?.code === 'LCD_CNTT') cnttCount++;
+    }
+    console.log('Total LCD_CNTT students:', cnttCount);
+    expect(cnttCount).toBeGreaterThan(500);
   });
 });

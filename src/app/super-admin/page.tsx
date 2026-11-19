@@ -11,9 +11,12 @@ import FileUploadZone from '@/components/FileUploadZone';
 import ExcelExportButton from '@/components/ExcelExportButton';
 import MaintenanceToggle from '@/components/MaintenanceToggle';
 import DataTable from '@/components/DataTable';
+import RankingBoard from '@/components/RankingBoard';
+import SemesterManagerSection from '@/components/SemesterManagerSection';
 import {
   UsersIcon,
   CalendarIcon,
+  BadgeMedalIcon,
   CheckIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -44,7 +47,7 @@ import { parsePenaltyNotes, type ParsedPenaltyItem, hasActiveManualBan } from '@
 import type { Event, User, EventProposal, Room, UserPenalty, UserTier } from '@/lib/types';
 import styles from './page.module.css';
 
-type SuperAdminTab = 'events' | 'proposals' | 'officers' | 'rooms' | 'units' | 'students' | 'delegates' | 'blacklist' | 'settings';
+type SuperAdminTab = 'events' | 'proposals' | 'officers' | 'rooms' | 'units' | 'students' | 'delegates' | 'blacklist' | 'ranking' | 'settings';
 
 function SuperAdminContent() {
   const router = useRouter();
@@ -289,7 +292,7 @@ function SuperAdminContent() {
         const savedTab = localStorage.getItem('superadmin_active_tab') as SuperAdminTab | null;
         if (
           savedTab &&
-          ['events', 'proposals', 'officers', 'rooms', 'units', 'students', 'delegates', 'blacklist', 'settings'].includes(
+          ['events', 'proposals', 'officers', 'rooms', 'units', 'students', 'delegates', 'blacklist', 'ranking', 'settings'].includes(
             savedTab
           )
         ) {
@@ -481,6 +484,9 @@ function SuperAdminContent() {
       } else if (officerRoleTier === 'security') {
         finalUnitCode = 'TO_BAO_VE';
         finalUnitName = 'Tổ Bảo Vệ & Quản Lý Chìa Khóa Phòng';
+      } else if (officerRoleTier === 'office_admin') {
+        finalUnitCode = 'VAN_PHONG_DOAN';
+        finalUnitName = 'Văn phòng Đoàn (Trực VP & Mượn dụng cụ)';
       } else if (officerRoleTier === 'event_admin') {
         if (officerUnitCode === '__NEW_CUSTOM__') {
           if (!customUnitCode.trim() || !customUnitName.trim()) {
@@ -557,6 +563,8 @@ function SuperAdminContent() {
         ? 'Phòng. TC-HC-QT'
         : officer.role_tier === 'security'
         ? 'Tổ Bảo Vệ'
+        : officer.role_tier === 'office_admin'
+        ? 'Admin Văn phòng Đoàn'
         : 'Admin Đơn vị LCĐ';
 
     if (!confirm(`Xác nhận THU HỒI QUYỀN "${roleLabel}" của cán bộ ${officerDisplayName} (${officer.email})?`)) {
@@ -2077,12 +2085,23 @@ function SuperAdminContent() {
 
           <button
             type="button"
+            className={`${styles.tabButton} ${activeTab === 'ranking' ? styles.tabActive : ''}`}
+            onClick={() => switchTab('ranking')}
+          >
+            <div className={styles.tabButtonLeft}>
+              <BadgeMedalIcon size={18} />
+              <span>Bảng Xếp Hạng</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
             className={`${styles.tabButton} ${activeTab === 'settings' ? styles.tabActive : ''}`}
             onClick={() => switchTab('settings')}
           >
             <div className={styles.tabButtonLeft}>
-              <ShieldCheckIcon size={18} />
-              <span>Bảo trì hệ thống</span>
+              <SettingsIcon size={18} />
+              <span>Học kỳ &amp; Hệ thống</span>
             </div>
           </button>
 
@@ -2099,7 +2118,19 @@ function SuperAdminContent() {
           >
             <div className={styles.tabButtonLeft}>
               <CalendarIcon size={18} />
-              <span>Tổng quan Sự kiện</span>
+              <span>Sự kiện</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/office/admin"
+            className={styles.tabButton}
+            style={{ textDecoration: 'none' }}
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <div className={styles.tabButtonLeft}>
+              <ClockIcon size={18} />
+              <span>Quản trị Văn phòng Đoàn</span>
             </div>
           </Link>
 
@@ -3217,6 +3248,7 @@ function SuperAdminContent() {
                     <option value="ctsv">Phòng Công Tác Sinh Viên (CTSV)</option>
                     <option value="facility">Phòng Tổ Chức - Hành Chính - Quản Trị (TC-HC-QT)</option>
                     <option value="security">Tổ Bảo Vệ (Quản Lý & Bàn Giao Chìa Khóa)</option>
+                    <option value="office_admin">Admin Văn phòng Đoàn (Trực VP & Mượn dụng cụ)</option>
                     <option value="event_admin">Ban Chủ Nhiệm / Trợ Lý Khoa & Ban Chấp Hành LCĐ / CLB</option>
                     <option value="super_admin">Super Admin (Toàn Quyền Quản Trị)</option>
                   </select>
@@ -3476,6 +3508,7 @@ function SuperAdminContent() {
                     { key: 'ctsv', label: `Phòng CTSV (${officers.filter(o => o.role_tier === 'ctsv').length})` },
                     { key: 'facility', label: `Phòng. TC-HC-QT (${officers.filter(o => o.role_tier === 'facility').length})` },
                     { key: 'security', label: `Tổ Bảo Vệ (${officers.filter(o => o.role_tier === 'security').length})` },
+                    { key: 'office_admin', label: `Admin Văn phòng Đoàn (${officers.filter(o => o.role_tier === 'office_admin').length})` },
                     { key: 'lcd_clb', label: `Admin LCĐ / CLB (${officers.filter(o => o.role_tier === 'event_admin' && !o.unit_name?.startsWith('Sự kiện:') && !o.notes?.includes('Admin sự kiện') && !o.notes?.includes('CTV quét mã')).length})` },
                     { key: 'event_specific', label: `Admin Sự Kiện (${officers.filter(o => o.unit_name?.startsWith('Sự kiện:') || o.notes?.includes('Admin sự kiện') || o.notes?.includes('CTV quét mã')).length})` },
                   ].map((f) => (
@@ -3591,6 +3624,11 @@ function SuperAdminContent() {
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ecfdf5', color: '#047857', fontSize: '0.78rem', fontWeight: 800 }}>
                                     <KeyIcon size={14} color="#047857" />
                                     <span>Tổ Bảo Vệ</span>
+                                  </span>
+                                ) : officer.role_tier === 'office_admin' ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#fef3c7', color: '#92400e', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <BuildingIcon size={14} color="#92400e" />
+                                    <span>Admin Văn phòng Đoàn</span>
                                   </span>
                                 ) : officer.notes?.includes('CTV quét mã') || (officer as any).event_role_type === 'checker' ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#e0f2fe', color: '#0369a1', fontSize: '0.78rem', fontWeight: 800 }}>
@@ -3723,6 +3761,10 @@ function SuperAdminContent() {
                             ) : officer.role_tier === 'security' ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#ecfdf5', color: '#047857', fontSize: '0.72rem', fontWeight: 800 }}>
                                 <KeyIcon size={12} color="#047857" /> Tổ Bảo Vệ
+                              </span>
+                            ) : officer.role_tier === 'office_admin' ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#fef3c7', color: '#92400e', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <BuildingIcon size={12} color="#92400e" /> Admin Văn phòng Đoàn
                               </span>
                             ) : officer.notes?.includes('CTV quét mã') || (officer as any).event_role_type === 'checker' ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#e0f2fe', color: '#0369a1', fontSize: '0.72rem', fontWeight: 800 }}>
@@ -6007,8 +6049,21 @@ Phạm Cao Huyền Trinh N24DCQT083`}
         )}
 
         {/* TAB 6: BẢO TRÌ & CÀI ĐẶT */}
+        {activeTab === 'ranking' && (
+          <div className={styles.tabContent}>
+            <RankingBoard
+              canExport
+              onManageSemestersClick={() => switchTab('settings')}
+            />
+          </div>
+        )}
+
         {activeTab === 'settings' && (
           <div className={styles.tabContent}>
+            <section className={styles.section}>
+              <SemesterManagerSection />
+            </section>
+
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>

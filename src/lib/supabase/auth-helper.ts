@@ -69,6 +69,8 @@ export interface AuthContext {
   isEventAdmin: boolean;
   isChecker: boolean;
   isSecurity: boolean;
+  /** Admin Văn phòng Đoàn (bao gồm cả Super Admin). */
+  isOfficeAdmin?: boolean;
   tier: UserTier;
   managed_events?: any[];
 }
@@ -428,6 +430,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       isEventAdmin,
       isChecker,
       isSecurity,
+      isOfficeAdmin: isSuperAdmin || explicitTier === 'office_admin',
       tier: explicitTier,
     };
     setBoundedAuthContext(email.toLowerCase(), ctx, 60000);
@@ -521,6 +524,11 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         assignedOfficerRole?.role_tier === 'security' ||
         explicitTier === 'security';
 
+      const isOfficeAdmin =
+        isSuperAdmin ||
+        assignedOfficerRole?.role_tier === 'office_admin' ||
+        explicitTier === 'office_admin';
+
       const isEventAdmin =
         isSuperAdmin ||
         isYouthUnion ||
@@ -552,6 +560,8 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         tier = 'security';
       } else if (isEventAdmin) {
         tier = 'event_admin';
+      } else if (isOfficeAdmin) {
+        tier = 'office_admin';
       } else if (isChecker) {
         tier = 'checker';
       }
@@ -571,6 +581,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         isEventAdmin,
         isChecker,
         isSecurity,
+        isOfficeAdmin,
         tier,
         managed_events,
       };

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import EventCard from '@/components/EventCard';
 import LcdManagementSection from './LcdManagementSection';
+import RankingBoard from '@/components/RankingBoard';
 import {
   CalendarIcon,
   ScanCameraIcon,
@@ -12,6 +13,7 @@ import {
   FileTextIcon,
   UsersIcon,
   ShieldCheckIcon,
+  BadgeMedalIcon,
 } from '@/components/icons';
 import type { Event } from '@/lib/types';
 import type { LcdCode } from '@/lib/utils/lcd';
@@ -31,7 +33,7 @@ export default function AdminDashboardClient({
   initialEvents,
   lcdScope,
 }: AdminDashboardClientProps) {
-  const [activeTab, setActiveTab] = useState<'events' | 'lcd_members' | 'lcd_delegates'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'lcd_members' | 'lcd_delegates' | 'ranking'>('events');
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [eventName, setEventName] = useState('');
@@ -123,6 +125,18 @@ export default function AdminDashboardClient({
           </>
         )}
 
+        <button
+          type="button"
+          onClick={() => setActiveTab('ranking')}
+          className={activeTab === 'ranking' ? styles.tabActive : styles.tabInactive}
+        >
+          <BadgeMedalIcon size={16} />
+          <span>Bảng xếp hạng</span>
+        </button>
+
+        <Link href="/office/borrow" className={styles.tabInactive} style={{ color: '#0369a1', border: '1px solid #bae6fd', background: '#f0f9ff' }}>
+          <FileTextIcon size={16} /> Mượn dụng cụ VPĐ
+        </Link>
         <Link href="/admin/proposals" className={styles.tabInactive} style={{ color: '#c2410c', border: '1px solid #fed7aa', background: '#fff7ed' }}>
           <FileTextIcon size={16} /> Kế hoạch trình duyệt
         </Link>
@@ -132,7 +146,9 @@ export default function AdminDashboardClient({
         </Link>
       </div>
 
-      {canManageLcd && activeTab === 'lcd_members' ? (
+      {activeTab === 'ranking' ? (
+        <RankingBoard highlightLcdCode={lcdScope?.lcdCode} canExport />
+      ) : canManageLcd && activeTab === 'lcd_members' ? (
         <LcdManagementSection
           mode="members"
           initialLcdCode={defaultLcdCode}

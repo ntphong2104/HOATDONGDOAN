@@ -78,7 +78,7 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ──── Gmail-style Persistent Collapsible Left Sidebar Offset ──── */
+/* ──── Persistent Collapsible Left Sidebar Offset ──── */
 body[data-sidebar] {
   padding-top: 60px;
   transition: padding-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
@@ -89,8 +89,9 @@ body[data-sidebar] {
     padding-left: 256px;
   }
 
-  body[data-sidebar='collapsed'] {
-    padding-left: 72px;
+  body[data-sidebar='collapsed'],
+  body[data-sidebar='hidden'] {
+    padding-left: 0;
   }
 }
 

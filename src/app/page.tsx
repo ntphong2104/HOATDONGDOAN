@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
-import { extractMSSV } from '@/lib/utils/extract-mssv';
+import { extractMSSV, isStudentPersonalAccount } from '@/lib/utils/extract-mssv';
 import { getUserProfileExtraWithFallback, setBoundedMeResponseCache } from '@/lib/constants/user-profile-store';
 import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
 import {
@@ -49,16 +49,22 @@ export default async function HomePage({
   }
 
   const resolvedParams = searchParams ? await searchParams : {};
-  const isStudentView = resolvedParams?.view === 'student';
-  const hasStudentMssv = Boolean(extractMSSV(auth.email));
+  const isStudent = isStudentPersonalAccount({
+    email: auth.email,
+    mssv: auth.email.split('@')[0],
+  });
 
-  // ──── Chỉ tự động chuyển hướng tài khoản đơn vị/phòng ban (không có MSSV) về không gian làm việc riêng ────
-  // Tài khoản sinh viên (kể cả cán bộ Đoàn có MSSV) mặc định mở Tổng quan cá nhân khi đăng nhập
-  if (!isStudentView && !hasStudentMssv) {
+  // ──── Tài khoản Cán bộ / Đơn vị / LCĐ (không phải sinh viên cá nhân) ────
+  // Luôn chuyển hướng thẳng đến Bàn làm việc Quản trị, TUYỆT ĐỐI không đưa vào Cổng sinh viên
+  // (kể cả khi URL có `?view=student`)
+  if (!isStudent) {
     if (auth.tier === 'super_admin' || auth.isSuperAdmin) {
       redirect('/super-admin');
     }
-    if (auth.tier === 'youth_union' || auth.tier === 'ctsv' || auth.tier === 'facility') {
+    if (auth.tier === 'youth_union') {
+      redirect('/admin');
+    }
+    if (auth.tier === 'ctsv' || auth.tier === 'facility') {
       redirect('/admin/proposals');
     }
     if (auth.tier === 'event_admin') {
@@ -70,6 +76,7 @@ export default async function HomePage({
     if (auth.tier === 'checker') {
       redirect('/scanner');
     }
+    redirect('/admin');
   }
 
   // ──── Giao diện Dành Riêng Cho Sinh Viên (Mã QR Điểm Danh & Lịch Sử) ────

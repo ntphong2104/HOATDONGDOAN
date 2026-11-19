@@ -12,6 +12,7 @@ import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
 import { resolveStudentLcd } from '@/lib/utils/lcd';
 import { getCohortFromMssv } from '@/lib/utils/cohort';
 import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { isUnitAccount } from '@/lib/utils/extract-mssv';
 import {
   ShieldCheckIcon,
   ScanCameraIcon,
@@ -279,6 +280,55 @@ export default function StudentDashboardClient({
       setLoadingClassmateHistory(false);
     }
   };
+
+  const isUnit = isUnitAccount({ mssv: currentUser.mssv });
+  if (isUnit) {
+    return (
+      <div style={{ maxWidth: 720, margin: '3rem auto', padding: '2.5rem 2rem', background: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', textAlign: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
+        <div style={{ display: 'inline-flex', padding: '1rem', background: '#eff6ff', borderRadius: '50%', color: '#1d4ed8', marginBottom: '1.25rem' }}>
+          <BuildingIcon size={40} />
+        </div>
+        <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.65rem' }}>
+          Không Gian Cán Bộ — {currentUser.full_name || currentUser.mssv}
+        </h2>
+        <p style={{ color: '#64748b', fontSize: '0.92rem', lineHeight: 1.6, marginBottom: '2rem' }}>
+          Đây là tài khoản chức năng của Ban Chấp Hành Liên Chi Đoàn / Đơn vị. Cổng Sinh Viên cá nhân (mã QR điểm danh và tích lũy ĐRL) chỉ dành riêng cho sinh viên cá nhân. Vui lòng chuyển sang Bàn Làm Việc để quản lý đoàn viên, sự kiện và xét duyệt kế hoạch.
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link
+            href="/admin"
+            style={{
+              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+              color: '#ffffff',
+              padding: '0.75rem 1.5rem',
+              borderRadius: 10,
+              fontSize: '0.9rem',
+              fontWeight: 800,
+              textDecoration: 'none',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+            }}
+          >
+            Vào Bàn Làm Việc LCĐ ➔
+          </Link>
+          <Link
+            href="/admin/proposals"
+            style={{
+              background: '#ffffff',
+              color: '#1d4ed8',
+              border: '1.5px solid #bfdbfe',
+              padding: '0.75rem 1.25rem',
+              borderRadius: 10,
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            Kế Hoạch Trình Duyệt
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

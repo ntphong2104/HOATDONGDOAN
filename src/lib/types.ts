@@ -178,6 +178,7 @@ export type UserTier =
   | 'ctsv'        // Phòng Công Tác Sinh Viên
   | 'facility'    // Phòng. TC-HC-QT (Quản Trị CSVC & Phòng)
   | 'security'    // Tổ Bảo Vệ (Bàn Giao & Quản Lý Chìa Khóa Phòng)
+  | 'office_admin' // Admin Văn phòng Đoàn (dưới Super Admin: trực VP & mượn dụng cụ)
   | 'super_admin';
 
 export interface SessionUser {
@@ -190,6 +191,10 @@ export interface SessionUser {
   isEventAdmin?: boolean;
   isChecker?: boolean;
   isSecurity?: boolean;
+  /** Admin Văn phòng Đoàn (hoặc Super Admin) — quản lý trực VP & mượn dụng cụ. */
+  isOfficeAdmin?: boolean;
+  /** CTV nằm trong danh sách trực văn phòng — được thấy menu "Trực văn phòng". */
+  isDutyVolunteer?: boolean;
   avatar_url?: string;
   gender?: string;
   phone?: string;
@@ -356,4 +361,71 @@ export interface ProposalLog {
   actor_name?: string;
   notes?: string;
   created_at: string;
+}
+
+// ──── Academic Semester & Ranking Types ────
+export interface AcademicSemester {
+  id: string;
+  name: string;
+  academic_year: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
+  is_active: boolean;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface LcdRankingItem {
+  rank: number;
+  lcd_code: string;
+  lcd_name: string;
+  lcd_short_name: string;
+  lcd_color: string;
+  total_students: number;
+  active_students_count: number;
+  total_participations: number;
+  participation_rate: number; // 0 - 100
+  events_organized_count: number;
+}
+
+export interface UnitRankingItem {
+  rank: number;
+  unit_name: string;
+  unit_type: 'lcd' | 'clb' | 'school';
+  lcd_code: string | null;
+  lcd_color: string | null;
+  events_count: number;
+  total_participants: number;
+  unique_participants: number;
+  avg_participants_per_event: number;
+}
+
+export interface StudentRankingItem {
+  rank: number;
+  mssv: string;
+  full_name: string;
+  class_id: string;
+  lcd_code: string | null;
+  lcd_name: string | null;
+  lcd_color: string | null;
+  participations_count: number;
+}
+
+export interface MyRankingSummary extends StudentRankingItem {
+  total_ranked_students: number;
+  gap_to_top50: number;
+}
+
+export interface RankingResponseData {
+  semester: AcademicSemester;
+  all_semesters: AcademicSemester[];
+  can_select_semester?: boolean;
+  my_rank?: MyRankingSummary | null;
+  lcd_rankings: LcdRankingItem[];
+  unit_rankings: UnitRankingItem[];
+  top_students: StudentRankingItem[];
+  total_events_in_semester: number;
+  total_participations_in_semester: number;
+  total_students_participated: number;
 }

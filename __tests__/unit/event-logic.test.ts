@@ -1,4 +1,5 @@
 import { isEventPastDeadline, getEffectiveEventStatus, isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { isEventRoleExpired } from '@/lib/constants/event-roles-cleanup';
 
 describe('event-logic unit tests', () => {
   test('returns true if event is already marked as closed', () => {
@@ -97,6 +98,54 @@ describe('event-logic unit tests', () => {
       // On 2026-10-08, session on 07-10 is only 1 day old, NOT locked
       const now = new Date(2026, 9, 8, 16, 0, 0).getTime();
       expect(isEventLockedPast3Days(event, now)).toBe(false);
+    });
+  });
+
+  describe('isEventRoleExpired (auto-revoke per-event admin/checker after 3 days)', () => {
+    test('expires event role when event ended > 3 days ago even if status is still active', () => {
+      const event = {
+        event_date: '2026-11-10',
+        end_time: '21:00',
+        status: 'active', // BTC did not manually close
+      };
+      // 5 days later (2026-11-15 12:00)
+      const now5DaysLater = new Date(2026, 10, 15, 12, 0, 0).getTime();
+      expect(isEventRoleExpired(event, null, now5DaysLater)).toBe(true);
+    });
+
+    test('retains event role when event is within 3 days grace period', () => {
+      const event = {
+        event_date: '2026-11-18',
+        end_time: '21:00',
+        status: 'active',
+      };
+      // 1 day later (2026-11-19 12:00) -> Still within 3-day wrap-up window
+      const now1DayLater = new Date(2026, 10, 19, 12, 0, 0).getTime();
+      expect(isEventRoleExpired(event, null, now1DayLater)).toBe(false);
+
+      // Exactly 2 days later -> Still retained
+      const now2DaysLater = new Date(2026, 10, 20, 12, 0, 0).getTime();
+      expect(isEventRoleExpired(event, null, now2DaysLater)).toBe(false);
+    });
+
+    test('expires multi-session event when last session ended > 3 days ago', () => {
+      const event = {
+        event_date: '2026-11-01',
+        end_time: '18:00',
+        status: 'active',
+      };
+      const sessions = [
+        { id: 's1', session_date: '2026-11-01', end_time: '18:00' },
+        { id: 's2', session_date: '2026-11-10', end_time: '20:00' },
+      ];
+
+      // On 2026-11-12 (2 days after session 2) -> NOT expired
+      const onNov12 = new Date(2026, 10, 12, 10, 0, 0).getTime();
+      expect(isEventRoleExpired(event, sessions, onNov12)).toBe(false);
+
+      // On 2026-11-14 (4 days after session 2) -> EXPIRED
+      const onNov14 = new Date(2026, 10, 14, 10, 0, 0).getTime();
+      expect(isEventRoleExpired(event, sessions, onNov14)).toBe(true);
     });
   });
 });

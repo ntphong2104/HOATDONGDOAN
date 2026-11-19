@@ -1,0 +1,68 @@
+import type { AuthContext } from '@/lib/supabase/auth-helper';
+import { OFFICIAL_UNITS } from '@/lib/constants/units';
+import { getLcdByCode, normalizeLcdCode } from '@/lib/utils/lcd';
+import { isUnitAccount } from '@/lib/utils/extract-mssv';
+
+export function isOfficeAdminAuth(auth: AuthContext | null): boolean {
+  if (!auth) return false;
+  return Boolean(
+    auth.isSuperAdmin ||
+      auth.isOfficeAdmin ||
+      auth.tier === 'super_admin' ||
+      auth.tier === 'office_admin'
+  );
+}
+
+export async function getDutyVolunteerRecord(
+  supabase: any,
+  email: string
+): Promise<{ mssv: string; email: string; full_name: string | null; class_id: string | null } | null> {
+  try {
+    const { data, error } = await supabase
+      .from('office_duty_volunteers')
+      .select('mssv, email, full_name, class_id')
+      .ilike('email', email.trim().toLowerCase())
+      .eq('is_active', true)
+      .limit(1);
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data[0];
+    }
+  } catch {}
+  return null;
+}
+
+/**
+ * Kiểm tra tài khoản có quyền tạo đơn mượn dụng cụ VPĐ (LCĐ, CLB, Đội, hoặc Admin).
+ */
+export function canCreateBorrowRequest(auth: AuthContext | null): boolean {
+  if (!auth) return false;
+  if (isOfficeAdminAuth(auth)) return true;
+  if (
+    auth.tier === 'event_admin' ||
+    auth.tier === 'youth_union' ||
+    auth.tier === 'ctsv' ||
+    auth.tier === 'facility' ||
+    auth.isEventAdmin
+  ) {
+    return true;
+  }
+  return isUnitAccount({ email: auth.email });
+}
+
+export function resolveBorrowerUnit(auth: AuthContext): { unit_code: string; unit_name: string } {
+  const emailLower = (auth.email || '').trim().toLowerCase();
+  const matchedOfficial = OFFICIAL_UNITS.find((u) => u.email.toLowerCase() === emailLower);
+  if (matchedOfficial) {
+    return { unit_code: matchedOfficial.code, unit_name: matchedOfficial.name };
+  }
+  const lcdCode = normalizeLcdCode(emailLower);
+  if (lcdCode) {
+    const lcd = getLcdByCode(lcdCode);
+    if (lcd) return { unit_code: lcd.code, unit_name: lcd.name };
+  }
+  const username = emailLower.split('@')[0] || 'DON_VI';
+  return {
+    unit_code: username.toUpperCase().replace(/[^A-Z0-9_]/g, '_'),
+    unit_name: username.toUpperCase(),
+  };
+}

@@ -4,6 +4,11 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
 import { resolveActorLcdScope } from '@/lib/utils/lcd-auth';
 import { resolveStudentLcd } from '@/lib/utils/lcd';
+import {
+  getMasterStudentByMssv,
+  isPlaceholderClass,
+  isPlaceholderName,
+} from '@/lib/utils/student-profile';
 
 export async function GET(
   request: Request,
@@ -44,11 +49,35 @@ export async function GET(
       supabase.from('user_penalties').select('*').eq('mssv', cleanMssv).maybeSingle(),
     ]);
 
-    const user = userResult.data;
+    const dbUser = userResult.data;
+    const masterUser = getMasterStudentByMssv(cleanMssv);
+    const resolvedFullName =
+      dbUser?.full_name && !isPlaceholderName(dbUser.full_name, cleanMssv)
+        ? dbUser.full_name
+        : masterUser?.full_name || dbUser?.full_name || 'Chưa có thông tin';
+    const resolvedClassId =
+      dbUser?.class_id && !isPlaceholderClass(dbUser.class_id)
+        ? String(dbUser.class_id).trim().toUpperCase()
+        : masterUser?.class_id || dbUser?.class_id || 'N/A';
+
+    const user = dbUser
+      ? {
+          ...dbUser,
+          full_name: resolvedFullName,
+          class_id: resolvedClassId,
+        }
+      : masterUser
+      ? {
+          mssv: cleanMssv,
+          full_name: masterUser.full_name,
+          class_id: masterUser.class_id,
+          email: `${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn`,
+        }
+      : null;
 
     // If caller is a scoped LCĐ account, enforce that they only inspect students in their own LCĐ
     if (scope.role === 'lcd' && scope.lcd) {
-      const targetLcd = resolveStudentLcd(user?.class_id, cleanMssv);
+      const targetLcd = resolveStudentLcd(resolvedClassId !== 'N/A' ? resolvedClassId : null, cleanMssv);
       if (targetLcd && targetLcd.code !== scope.lcd.code) {
         return NextResponse.json(
           { success: false, error: `Sinh viên ${cleanMssv} thuộc ${targetLcd.shortName}, ngoài phạm vi của ${scope.lcd.shortName}.` },

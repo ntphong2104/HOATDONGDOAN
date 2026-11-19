@@ -197,9 +197,9 @@ export default function StudentEventsDiscoverPage() {
         <section className={styles.heroBanner}>
           <div className={styles.heroLeft}>
             <span className={styles.heroEyebrow}>Cổng Khám Phá & Đăng Ký Sự Kiện PTIT HCM</span>
-            <h1 className={styles.heroTitle}>Tổng Quan Sự Kiện Dành Cho Bạn</h1>
+            <h1 className={styles.heroTitle}>Tổng Quan Sự Kiện</h1>
             <p className={styles.heroSubtitle}>
-              Hệ thống tự động lọc các chương trình toàn Học viện và chương trình riêng thuộc Liên Chi Đoàn của bạn để bạn đăng ký nhanh chóng, không lo nhầm đối tượng.
+              Hệ thống tự động phân loại các chương trình toàn Học viện và chương trình theo Liên Chi Đoàn để đăng ký nhanh chóng, đúng đối tượng.
             </p>
             {profile && (
               <div className={styles.profilePills}>
@@ -282,7 +282,7 @@ export default function StudentEventsDiscoverPage() {
                 onClick={() => setActiveTab('for_me')}
               >
                 <StarIcon size={14} />
-                <span>Dành cho tôi</span>
+                <span>Sự kiện phù hợp</span>
                 <span className={styles.tabCount}>{counts.forMe}</span>
               </button>
 
@@ -292,7 +292,7 @@ export default function StudentEventsDiscoverPage() {
                 onClick={() => setActiveTab('my_lcd')}
               >
                 <BuildingIcon size={14} />
-                <span>{profile?.lcd ? `Riêng ${profile.lcd.shortName}` : 'Riêng LCĐ của tôi'}</span>
+                <span>{profile?.lcd ? `Riêng ${profile.lcd.shortName}` : 'Riêng LCĐ'}</span>
                 <span className={styles.tabCount}>{counts.myLcd}</span>
               </button>
 

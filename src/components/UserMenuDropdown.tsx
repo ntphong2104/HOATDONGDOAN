@@ -16,7 +16,9 @@ import {
   YouthUnionIcon,
   UsersIcon,
   KeyIcon,
+  BuildingIcon,
 } from '@/components/icons';
+import { isUnitAccount } from '@/lib/utils/extract-mssv';
 import type { SessionUser } from '@/lib/types';
 import styles from './UserMenuDropdown.module.css';
 
@@ -144,6 +146,12 @@ export default function UserMenuDropdown({
   const hasRealAvatar = !!rawAvatar && !imgError && (rawAvatar.startsWith('http') || rawAvatar.startsWith('/'));
   const initialLetter = (displayName ? displayName.trim().charAt(0).toUpperCase() : 'U');
 
+  const isUnit = isUnitAccount({
+    email: currentUser?.email || propUser?.email,
+    mssv: currentUser?.mssv || propUser?.mssv,
+  });
+  const isStudentAccount = !isUnit;
+
   return (
     <div className={styles.wrapper} ref={menuRef}>
       {/* Trigger Button */}
@@ -244,19 +252,34 @@ export default function UserMenuDropdown({
 
           {/* Navigation Links */}
           <ul className={styles.menuList}>
-            {/* Cổng Sinh Viên & Mã QR Cá Nhân (Dành cho MỌI tài khoản kể cả Admin) */}
-            <li>
-              <Link
-                href="/?view=student"
-                className={styles.menuItem}
-                onClick={() => setIsOpen(false)}
-              >
-                <div className={styles.menuItemIcon} style={{ color: '#16a34a' }}>
-                  <QrCodeIcon size={16} />
-                </div>
-                <span>Cổng Sinh Viên & Mã QR Cá Nhân</span>
-              </Link>
-            </li>
+            {/* Cổng Sinh Viên & Mã QR Cá Nhân (Chỉ dành cho sinh viên cá nhân có MSSV thật) */}
+            {isStudentAccount ? (
+              <li>
+                <Link
+                  href="/?view=student"
+                  className={styles.menuItem}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <div className={styles.menuItemIcon} style={{ color: '#16a34a' }}>
+                    <QrCodeIcon size={16} />
+                  </div>
+                  <span>Cổng Sinh Viên & Mã QR Cá Nhân</span>
+                </Link>
+              </li>
+            ) : (
+              <li>
+                <Link
+                  href="/admin"
+                  className={styles.menuItem}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <div className={styles.menuItemIcon} style={{ color: '#2563eb' }}>
+                    <BuildingIcon size={16} />
+                  </div>
+                  <span>Bàn Làm Việc LCĐ &amp; Quản Lý Sự Kiện</span>
+                </Link>
+              </li>
+            )}
 
             {/* Pure Department Approvers Menu */}
             {isPureApprover && (
