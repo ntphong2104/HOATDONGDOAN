@@ -32,6 +32,7 @@ import {
   MapPinIcon,
 } from '@/components/icons';
 import { getSelectableCohorts, normalizeAllowedCohorts } from '@/lib/utils/cohort';
+import { LCD_DEFINITIONS, normalizeAllowedLcds, formatLcdsLabel } from '@/lib/utils/lcd';
 import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepartment } from '@/lib/types';
 import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
@@ -1431,6 +1432,111 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       {isAll
                         ? 'Mặc định: tất cả khóa đều đăng ký được (khán giả & CTV). Bỏ chọn khóa nào thì khóa đó không đăng ký được.'
                         : `Chỉ SV khóa ${currentCohorts.join(', ')} được đăng ký (khán giả & CTV). SV khóa khác sẽ được báo "không nằm trong khóa".`}
+                    </span>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Phân phạm vi Liên Chi Đoàn (LCĐ) được đăng ký */}
+          {!isLockedPast3Days && (
+            <div
+              style={{
+                marginTop: '0.85rem',
+                padding: '1rem 1.25rem',
+                background: '#faf5ff',
+                border: '1px solid #e9d5ff',
+                borderRadius: '12px',
+              }}
+            >
+              <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#6b21a8', display: 'block', marginBottom: '0.5rem' }}>
+                🏛️ Phạm vi Liên Chi Đoàn (LCĐ) được đăng ký
+              </label>
+              {(() => {
+                const currentLcds = normalizeAllowedLcds((event as any).allowed_lcds);
+                const isAllLcds = currentLcds.length === 0;
+
+                const saveLcds = async (next: string[]) => {
+                  try {
+                    const res = await fetch(`/api/events/${event.event_id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ allowed_lcds: next }),
+                    });
+                    const data = await res.json();
+                    if (data.success !== false) {
+                      setEvent((prev: any) => prev ? { ...prev, allowed_lcds: next } : prev);
+                      notifyEventSync(event.event_id);
+                    } else {
+                      alert(data.error || 'Lỗi cập nhật phạm vi LCĐ');
+                    }
+                  } catch {
+                    alert('Lỗi kết nối');
+                  }
+                };
+
+                const toggleLcd = (code: string) => {
+                  if (isAllLcds) {
+                    saveLcds([code]);
+                    return;
+                  }
+                  const next = currentLcds.includes(code as any)
+                    ? currentLcds.filter((c) => c !== code)
+                    : [...currentLcds, code];
+                  if (next.length === 0 || next.length === LCD_DEFINITIONS.length) {
+                    saveLcds([]);
+                  } else {
+                    saveLcds(next);
+                  }
+                };
+
+                const chipStyle = (active: boolean): React.CSSProperties => ({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '8px',
+                  border: active ? '2px solid #7c3aed' : '1px solid #cbd5e1',
+                  background: active ? '#f3e8ff' : '#ffffff',
+                  color: active ? '#6b21a8' : '#334155',
+                  cursor: 'pointer',
+                  fontSize: '0.84rem',
+                  fontWeight: active ? 700 : 500,
+                  transition: 'all 0.15s',
+                });
+
+                return (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginBottom: '0.5rem' }}>
+                      <label style={chipStyle(isAllLcds)}>
+                        <input
+                          type="checkbox"
+                          checked={isAllLcds}
+                          onChange={() => { if (!isAllLcds) saveLcds([]); }}
+                          style={{ width: '15px', height: '15px', accentColor: '#7c3aed' }}
+                        />
+                        Toàn Học viện (Tất cả LCĐ)
+                      </label>
+                      {LCD_DEFINITIONS.map((lcd) => {
+                        const active = !isAllLcds && currentLcds.includes(lcd.code);
+                        return (
+                          <label key={lcd.code} style={chipStyle(active)}>
+                            <input
+                              type="checkbox"
+                              checked={active}
+                              onChange={() => toggleLcd(lcd.code)}
+                              style={{ width: '15px', height: '15px', accentColor: '#7c3aed' }}
+                            />
+                            {lcd.shortName}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
+                      {isAllLcds
+                        ? 'Mặc định: mở cho toàn thể sinh viên Học viện. Chọn riêng 1 hoặc nhiều LCĐ để giới hạn chỉ sinh viên thuộc LCĐ đó được đăng ký.'
+                        : `Chỉ sinh viên thuộc ${formatLcdsLabel(currentLcds)} được đăng ký (khán giả & CTV). Sinh viên LCĐ khác sẽ bị chặn.`}
                     </span>
                   </>
                 );

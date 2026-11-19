@@ -12,6 +12,7 @@ import { saveEventMeta, saveProposalMeta } from '@/lib/constants/event-meta-stor
 import { deriveBookingSchedule, describeConflict, findInternalOverlaps, describeInternalOverlap } from '@/lib/utils/room-booking';
 import { checkRoomConflicts } from '@/lib/utils/room-booking-server';
 import { normalizeAllowedCohorts } from '@/lib/utils/cohort';
+import { normalizeAllowedLcds } from '@/lib/utils/lcd';
 import type { EventProposal } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -192,9 +193,12 @@ export async function POST(req: Request) {
       room_name = 'Không mượn',
       sessions = [],
       allowed_cohorts = [],
+      allowed_lcds = [],
     } = body;
     // Giới hạn khóa SV được đăng ký — rỗng = tất cả khóa (mặc định)
     const normalizedCohorts = normalizeAllowedCohorts(allowed_cohorts);
+    // Giới hạn Liên Chi Đoàn được đăng ký — rỗng = Toàn Học viện (mặc định)
+    const normalizedLcds = normalizeAllowedLcds(allowed_lcds);
 
     // Sanitize description and plan_url
     const sanitizedDescription = description ? sanitizeInput(String(description).slice(0, 5000)) : null;
@@ -405,6 +409,8 @@ export async function POST(req: Request) {
           sessions: normalizedSessions,
           description: sanitizedDescription,
           plan_url: sanitizedPlanUrl,
+          allowed_cohorts: normalizedCohorts,
+          allowed_lcds: normalizedLcds,
         };
 
         // Persist proposal sessions and metadata into Supabase system_settings
@@ -413,6 +419,7 @@ export async function POST(req: Request) {
           description: sanitizedDescription ?? undefined,
           plan_url: sanitizedPlanUrl ?? undefined,
           allowed_cohorts: normalizedCohorts,
+          allowed_lcds: normalizedLcds,
         });
         saveProposalToStore(newProposal);
 
@@ -440,6 +447,8 @@ export async function POST(req: Request) {
         sessions: normalizedSessions,
         description: sanitizedDescription,
         plan_url: sanitizedPlanUrl,
+        allowed_cohorts: normalizedCohorts,
+        allowed_lcds: normalizedLcds,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -448,6 +457,7 @@ export async function POST(req: Request) {
         description: sanitizedDescription ?? undefined,
         plan_url: sanitizedPlanUrl ?? undefined,
         allowed_cohorts: normalizedCohorts,
+        allowed_lcds: normalizedLcds,
       });
       saveProposalToStore(newProposal);
       addStoredProposalLog({

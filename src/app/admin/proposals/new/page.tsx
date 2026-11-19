@@ -33,6 +33,7 @@ import {
   type RoomConflict,
 } from '@/lib/utils/room-booking';
 import { getSelectableCohorts } from '@/lib/utils/cohort';
+import { LCD_DEFINITIONS, normalizeLcdCode, formatLcdsLabel } from '@/lib/utils/lcd';
 import styles from './page.module.css';
 
 // Giá trị của lựa chọn "Không mượn phòng" trong ô chọn (khác '' = chưa chọn)
@@ -65,6 +66,8 @@ export default function NewProposalPage() {
   // Giới hạn khóa SV được đăng ký: [] = tất cả khóa (mặc định nếu không chọn gì)
   const [allowedCohorts, setAllowedCohorts] = useState<string[]>([]);
   const cohortOptions = getSelectableCohorts(allowedCohorts);
+  // Giới hạn Liên Chi Đoàn được đăng ký: [] = Toàn Học viện (mặc định)
+  const [allowedLcds, setAllowedLcds] = useState<string[]>([]);
 
   const handleNumberChange = (setter: React.Dispatch<React.SetStateAction<number | string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -441,6 +444,7 @@ export default function NewProposalPage() {
           volunteer_count: Number(volunteerCount) || 0,
           organizer_count: Number(organizerCount) || 0,
           allowed_cohorts: allowedCohorts,
+          allowed_lcds: allowedLcds,
           ...buildBookingPayload(),
         }),
       });
@@ -888,6 +892,101 @@ export default function NewProposalPage() {
                     {isAll
                       ? 'Mặc định: tất cả khóa. Bỏ chọn khóa nào thì SV khóa đó sẽ không đăng ký được. Khi kế hoạch được duyệt, giới hạn này tự động áp vào sự kiện.'
                       : `Chỉ SV khóa ${allowedCohorts.join(', ')} được đăng ký. Khi kế hoạch được duyệt, giới hạn này tự động áp vào sự kiện.`}
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* Giới hạn Liên Chi Đoàn (LCĐ) được đăng ký — phân lớp theo 8 LCĐ PTIT HCM */}
+            {(() => {
+              const isAllLcds = allowedLcds.length === 0;
+              const ownLcdCode = normalizeLcdCode(organizationUnit);
+              const ownLcdDef = ownLcdCode ? LCD_DEFINITIONS.find((d) => d.code === ownLcdCode) : null;
+
+              const toggleLcd = (code: string) => {
+                if (isAllLcds) {
+                  setAllowedLcds([code]);
+                  return;
+                }
+                const next = allowedLcds.includes(code)
+                  ? allowedLcds.filter((c) => c !== code)
+                  : [...allowedLcds, code];
+                if (next.length === 0 || next.length === LCD_DEFINITIONS.length) {
+                  setAllowedLcds([]);
+                } else {
+                  setAllowedLcds(next);
+                }
+              };
+
+              const lcdChip = (active: boolean): React.CSSProperties => ({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.4rem 0.75rem',
+                borderRadius: '8px',
+                border: active ? '2px solid #7c3aed' : '1px solid #cbd5e1',
+                background: active ? '#f3e8ff' : '#ffffff',
+                color: active ? '#6b21a8' : '#334155',
+                cursor: 'pointer',
+                fontSize: '0.84rem',
+                fontWeight: active ? 700 : 500,
+                transition: 'all 0.15s ease',
+              });
+
+              return (
+                <div style={{ marginTop: '1rem', padding: '1rem 1.25rem', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.875rem', color: '#6b21a8', margin: 0 }}>
+                      🏛️ Phân phạm vi Liên Chi Đoàn (LCĐ) được đăng ký
+                    </label>
+                    {ownLcdDef && (
+                      <button
+                        type="button"
+                        onClick={() => setAllowedLcds([ownLcdDef.code])}
+                        style={{
+                          padding: '0.3rem 0.7rem',
+                          borderRadius: '8px',
+                          border: '1px solid #c4b5fd',
+                          background: '#ffffff',
+                          color: '#6d28d9',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ⚡ Chỉ {ownLcdDef.shortName}
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginBottom: '0.55rem' }}>
+                    <label style={lcdChip(isAllLcds)}>
+                      <input
+                        type="checkbox"
+                        checked={isAllLcds}
+                        onChange={() => setAllowedLcds([])}
+                        style={{ width: '15px', height: '15px', accentColor: '#7c3aed' }}
+                      />
+                      Toàn Học viện (Tất cả LCĐ)
+                    </label>
+                    {LCD_DEFINITIONS.map((lcd) => {
+                      const active = !isAllLcds && allowedLcds.includes(lcd.code);
+                      return (
+                        <label key={lcd.code} style={lcdChip(active)}>
+                          <input
+                            type="checkbox"
+                            checked={active}
+                            onChange={() => toggleLcd(lcd.code)}
+                            style={{ width: '15px', height: '15px', accentColor: '#7c3aed' }}
+                          />
+                          {lcd.shortName}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    {isAllLcds
+                      ? 'Mặc định: mở cho sinh viên toàn Học viện. Chọn 1 hoặc nhiều LCĐ nếu chương trình chỉ dành riêng cho sinh viên thuộc LCĐ đó.'
+                      : `Chỉ sinh viên thuộc ${formatLcdsLabel(allowedLcds)} mới thấy mục "Riêng LCĐ" và được phép đăng ký. SV LCĐ khác sẽ bị chặn tự động.`}
                   </span>
                 </div>
               );

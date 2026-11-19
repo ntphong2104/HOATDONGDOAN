@@ -9,6 +9,7 @@ import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/li
 import { getUserProfileExtraWithFallback, saveUserProfileExtraWithSync } from '@/lib/constants/user-profile-store';
 import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass, getMasterStudentByMssv } from '@/lib/utils/student-profile';
 import { checkCohortEligibility, describeCohortBlock } from '@/lib/utils/cohort';
+import { checkLcdEligibility, describeLcdBlock } from '@/lib/utils/lcd';
 
 export async function GET(
   req: Request,
@@ -21,6 +22,8 @@ export async function GET(
 
   const mssv = auth?.email ? extractMSSV(auth.email) || auth.email : null;
   const isAdmin = auth?.isSuperAdmin || auth?.isEventAdmin;
+  const lowerAuthEmailForGet = auth?.email ? auth.email.toLowerCase().trim() : null;
+  const upperMssvForGet = mssv ? String(mssv).toUpperCase().trim() : null;
 
   // Parallelize all independent queries
   const [
@@ -30,6 +33,7 @@ export async function GET(
     regExtras,
     { data: reg },
     { data: penalty },
+    { data: studentRow },
     { data: list },
     { data: checkinList }
   ] = await Promise.all([
@@ -43,6 +47,9 @@ export async function GET(
       : Promise.resolve({ data: null }),
     mssv
       ? supabase.from('user_penalties').select('*').eq('mssv', mssv).maybeSingle()
+      : Promise.resolve({ data: null }),
+    lowerAuthEmailForGet && upperMssvForGet
+      ? supabase.from('users').select('class_id').or(`email.eq.${lowerAuthEmailForGet},mssv.eq.${upperMssvForGet}`).maybeSingle()
       : Promise.resolve({ data: null }),
     isAdmin
       ? supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id).order('created_at', { ascending: false })
@@ -79,6 +86,7 @@ export async function GET(
     departments: meta.departments || [],
     is_recruitment_open: meta.is_recruitment_open !== false,
     target_scope: meta.target_scope || 'all',
+    allowed_lcds: meta.allowed_lcds || [],
     max_participants: meta.max_participants || 0,
     max_volunteers: meta.max_volunteers || 0,
   };
@@ -170,6 +178,11 @@ export async function GET(
     }
   }
 
+  const masterForGet = mssv ? getMasterStudentByMssv(mssv) : null;
+  const resolvedClassIdForGet = (studentRow?.class_id && !isPlaceholderClass(studentRow.class_id))
+    ? studentRow.class_id
+    : (masterForGet?.class_id || studentRow?.class_id || null);
+
   return NextResponse.json({
     success: true,
     data: {
@@ -177,6 +190,7 @@ export async function GET(
       registrationWindow,
       recruitmentWindow: getRecruitmentWindow(rawEvent, meta),
       cohortEligibility: checkCohortEligibility(rawEvent.allowed_cohorts, mssv),
+      lcdEligibility: checkLcdEligibility(meta.allowed_lcds, resolvedClassIdForGet, mssv),
       totalRegistered: totalRegistered || 0,
       myRegistration,
       penaltyStatus,
@@ -337,6 +351,17 @@ export async function POST(
   const finalClassId = (userProfile?.class_id && !isPlaceholderClass(userProfile.class_id))
     ? userProfile.class_id
     : (masterStudent?.class_id || userProfile?.class_id || 'PTIT-HCM');
+
+  // 3.5. CHECK LCĐ RESTRICTION (Phân chương trình theo Liên Chi Đoàn — áp dụng cho cả khán giả và CTV)
+  const lcdCheck = checkLcdEligibility(meta.allowed_lcds, finalClassId, mssv);
+  if (!lcdCheck.eligible) {
+    const target = isVolunteerRequest ? 'Cổng tuyển CTV của sự kiện này' : 'Sự kiện này';
+    return NextResponse.json({
+      success: false,
+      error: describeLcdBlock(lcdCheck, mssv, target),
+      not_in_lcd: true,
+    }, { status: 403 });
+  }
 
   // Check phone number & gender from profile store with Supabase + registration fallback
   const profileExtra = await getUserProfileExtraWithFallback(supabase, auth.email, mssv);

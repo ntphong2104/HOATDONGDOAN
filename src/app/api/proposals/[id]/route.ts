@@ -81,6 +81,7 @@ export async function GET(
           plan_url: proposal.plan_url || propMeta.plan_url || stored?.plan_url || '',
           sessions: proposalSessions,
           allowed_cohorts: Array.isArray(propMeta.allowed_cohorts) ? propMeta.allowed_cohorts : [],
+          allowed_lcds: Array.isArray(propMeta.allowed_lcds) ? propMeta.allowed_lcds : [],
           room_conflicts: roomConflicts,
           logs: logs || [],
           ratingSummary,

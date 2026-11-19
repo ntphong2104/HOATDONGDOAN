@@ -16,6 +16,7 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({
     push: jest.fn(),
   })),
+  usePathname: jest.fn(() => '/'),
 }));
 
 describe('Header component branches', () => {

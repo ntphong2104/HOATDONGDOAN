@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { normalizeAllowedLcds } from '@/lib/utils/lcd';
 import {
   getEventMeta,
   saveEventMeta,
@@ -68,6 +69,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     is_recruitment_open: meta.is_recruitment_open !== false,
     require_registration: meta.require_registration !== false,
     target_scope: meta.target_scope || 'all',
+    allowed_lcds: meta.allowed_lcds || [],
     max_participants: meta.max_participants || 0,
     max_volunteers: meta.max_volunteers || 0,
     is_locked_past_3_days: isEventLockedPast3Days({ ...data, sessions: meta.sessions || [] }),
@@ -140,6 +142,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     max_participants,
     max_volunteers,
     allowed_cohorts,
+    allowed_lcds,
   } = body;
 
 
@@ -177,6 +180,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const metaUpdates: Partial<EventMeta> = {};
   if (departments !== undefined) metaUpdates.departments = departments;
   if (target_scope !== undefined) metaUpdates.target_scope = target_scope;
+  if (allowed_lcds !== undefined) metaUpdates.allowed_lcds = normalizeAllowedLcds(allowed_lcds);
   if (is_recruitment_open !== undefined) metaUpdates.is_recruitment_open = is_recruitment_open;
   if (require_registration !== undefined) metaUpdates.require_registration = require_registration;
   if (max_participants !== undefined && isSuperAdmin) metaUpdates.max_participants = Math.max(0, Number(max_participants));
@@ -222,6 +226,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     is_recruitment_open: latestMeta.is_recruitment_open !== false,
     require_registration: latestMeta.require_registration !== false,
     target_scope: latestMeta.target_scope || 'all',
+    allowed_lcds: latestMeta.allowed_lcds || [],
     max_participants: latestMeta.max_participants || 0,
     max_volunteers: latestMeta.max_volunteers || 0,
   };

@@ -41,6 +41,8 @@ export interface EventMeta {
   is_recruitment_open?: boolean;
   require_registration?: boolean;
   target_scope?: string;
+  /** Giới hạn Liên Chi Đoàn được đăng ký; [] / không có = Toàn Học viện */
+  allowed_lcds?: string[];
   sessions?: EventSession[];
   max_participants?: number;
   max_volunteers?: number;
@@ -189,6 +191,11 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
           ? fileMeta.require_registration
           : true,
         target_scope: dbMeta?.target_scope || fileMeta?.target_scope || 'all',
+        allowed_lcds: Array.isArray(dbMeta?.allowed_lcds)
+          ? dbMeta.allowed_lcds
+          : Array.isArray(fileMeta?.allowed_lcds)
+          ? fileMeta.allowed_lcds
+          : [],
         max_participants: dbMeta?.max_participants ?? fileMeta?.max_participants ?? 0,
         max_volunteers: dbMeta?.max_volunteers ?? fileMeta?.max_volunteers ?? 0,
       };
@@ -472,6 +479,8 @@ export interface ProposalMeta {
   target_scope?: string;
   /** Giới hạn khóa SV được đăng ký; [] / không có = tất cả khóa */
   allowed_cohorts?: string[];
+  /** Giới hạn Liên Chi Đoàn được đăng ký; [] / không có = Toàn Học viện */
+  allowed_lcds?: string[];
 }
 
 export async function getProposalMeta(supabase: any, proposalId: string): Promise<ProposalMeta> {
@@ -744,6 +753,11 @@ export async function getEventMetaBatch(
             ? fileMeta.require_registration
             : true,
         target_scope: dbMeta?.target_scope || fileMeta?.target_scope || 'all',
+        allowed_lcds: Array.isArray(dbMeta?.allowed_lcds)
+          ? dbMeta.allowed_lcds
+          : Array.isArray(fileMeta?.allowed_lcds)
+          ? fileMeta.allowed_lcds
+          : [],
         max_participants: dbMeta?.max_participants ?? fileMeta?.max_participants ?? 0,
         max_volunteers: dbMeta?.max_volunteers ?? fileMeta?.max_volunteers ?? 0,
       };

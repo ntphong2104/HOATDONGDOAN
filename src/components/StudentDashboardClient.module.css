@@ -1,74 +1,86 @@
-.roleLinks {
+/* ── 2-Column Student Portal Layout ── */
+.portalGrid {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.leftColumn {
+  position: sticky;
+  top: 76px;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  gap: 1rem;
 }
 
-.adminLink {
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+/* ── Officer Top Banner ── */
+.officerBanner {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1.5px solid #bfdbfe;
+  border-radius: 16px;
+  padding: 0.9rem 1.25rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.625rem;
-  padding: 0.875rem 1.25rem;
-  border-radius: 12px;
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.95rem;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
 }
 
-.superAdminLink {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-  color: #dc2626;
-  border: 1px solid #fecaca;
+/* ── LCĐ Identity Strip above QR ── */
+.lcdIdentityCard {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
 }
 
-.superAdminLink:hover {
-  background: #fee2e2;
-  border-color: #f87171;
-  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.15);
-  transform: translateY(-1px);
+.lcdBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
-.eventAdminLink {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+.cohortBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
 }
 
-.eventAdminLink:hover {
-  background: #dbeafe;
-  border-color: #60a5fa;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
-  transform: translateY(-1px);
-}
-
-.scannerLink {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  color: #15803d;
-  border: 1px solid #bbf7d0;
-}
-
-.scannerLink:hover {
-  background: #dcfce7;
-  border-color: #4ade80;
-  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.15);
-  transform: translateY(-1px);
-}
-
-/* Scan Event Section */
+/* ── Scan Event Section ── */
 .scanEventSection {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-bottom: 2rem;
-  padding: 1.25rem;
+  padding: 1.1rem;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 1px solid #bfdbfe;
+  border: 1.5px solid #bfdbfe;
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
 }
@@ -77,57 +89,338 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   width: 100%;
-  padding: 1rem 1.5rem;
+  padding: 0.9rem 1.25rem;
   background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
   color: #ffffff;
   border: none;
   border-radius: 12px;
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 0.96rem;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.32);
   transition: all 0.2s ease;
 }
 
 .scanEventButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.42);
 }
 
 .scanHelpText {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: #475569;
-  margin: 0.625rem 0 0 0;
+  margin: 0.55rem 0 0 0;
+  line-height: 1.4;
 }
 
-.qrSection {
-  margin-bottom: 1.5rem;
+/* ── Missing Phone Alert Banner ── */
+.phoneAlert {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1.5px solid #f59e0b;
+  border-radius: 14px;
+  padding: 0.95rem 1.15rem;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
 }
 
+.phoneAlertBtn {
+  padding: 0.5rem 0.95rem;
+  background: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.phoneAlertBtn:hover {
+  background: #b45309;
+}
+
+/* ── KPI Mini Cards Grid ── */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.kpiCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem 1.05rem;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.kpiLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #64748b;
+}
+
+.kpiValue {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.15;
+}
+
+.kpiSub {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* ── Discovery CTA Banner ── */
+.discoverCta {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  border-radius: 16px;
+  padding: 1.15rem 1.35rem;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  box-shadow: 0 8px 20px -8px rgba(30, 64, 175, 0.4);
+}
+
+.discoverCtaBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.1rem;
+  background: #ffffff;
+  color: #1e40af;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
+  transition: transform 0.15s ease;
+}
+
+.discoverCtaBtn:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Profile Summary Card ── */
+.profileCard {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.35rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.profileHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.9rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.profileGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.profileField {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.8rem;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+}
+
+.profileFieldLabel {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.profileFieldValue {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: right;
+}
+
+/* ── Tabbed Content Panel ── */
 .historySection {
   background: #ffffff;
   border-radius: 16px;
-  padding: 1.75rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  padding: 1.35rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
   border: 1px solid #e2e8f0;
+}
+
+.panelTabsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  margin-bottom: 1.1rem;
+  border-bottom: 1.5px solid #f1f5f9;
+}
+
+.panelTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.52rem 0.95rem;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.panelTab:hover {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.panelTabActive {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.panelTabActive:hover {
+  background: #1e40af;
+  color: #ffffff;
+}
+
+.panelTabCount {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.panelTabActive .panelTabCount {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ── History Filters ── */
+.filterToolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.searchInputWrap {
+  position: relative;
+  flex: 1;
+  min-width: 210px;
+}
+
+.searchInput {
+  width: 100%;
+  height: 38px;
+  padding: 0 2rem 0 2.2rem;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #0f172a;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  display: flex;
+  pointer-events: none;
+}
+
+.semesterSelect {
+  height: 38px;
+  padding: 0 0.75rem;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.rolePills {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.rolePill {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rolePillActive {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
 }
 
 .historyHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid #f1f5f9;
 }
 
 .historyTitle {
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 800;
   margin: 0;
   color: #0f172a;
   display: flex;
@@ -136,10 +429,13 @@
 }
 
 .emptyHistory {
-  color: #94a3b8;
+  color: #64748b;
   text-align: center;
-  padding: 3rem 1rem;
-  font-size: 0.95rem;
+  padding: 2.25rem 1rem;
+  font-size: 0.9rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
 }
 
 .historyList {
@@ -148,17 +444,17 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 0.75rem;
 }
 
 .historyItem {
-  padding: 1.125rem;
+  padding: 1rem 1.1rem;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.55rem;
   transition: all 0.15s ease;
 }
 
@@ -171,73 +467,69 @@
 .historyMeta {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .eventName {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.96rem;
   color: #0f172a;
 }
 
 .semester {
-  font-size: 0.825rem;
+  font-size: 0.8rem;
   color: #64748b;
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  flex-wrap: wrap;
 }
 
 .historyDetails {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 0.35rem;
-  padding-top: 0.625rem;
+  margin-top: 0.25rem;
+  padding-top: 0.55rem;
   border-top: 1px dashed #e2e8f0;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .time {
-  font-size: 0.825rem;
+  font-size: 0.8rem;
   color: #64748b;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+@media (max-width: 1040px) {
+  .portalGrid {
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 1.15rem;
+  }
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 880px) {
+  .portalGrid {
+    grid-template-columns: 1fr;
+  }
+  .leftColumn {
+    position: static;
+  }
 }
 
 @media (max-width: 640px) {
-  .scanEventSection {
-    padding: 1rem;
-    margin-bottom: 1.5rem;
+  .profileGrid {
+    grid-template-columns: 1fr;
   }
-
-  .scanEventButton {
-    width: 100%;
-    padding: 0.875rem 1rem;
-    font-size: 0.95rem;
+  .historySection,
+  .profileCard {
+    padding: 1.1rem;
   }
-
-  .historySection {
-    padding: 1.25rem 1rem;
-  }
-
-  .historyTitle {
-    font-size: 1.05rem;
-  }
-
-  .eventName {
-    font-size: 0.95rem;
-  }
-
-  .historyDetails {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .historyList {
-    gap: 0.75rem;
-  }
-
-  .historyItem {
-    padding: 1rem;
+  .kpiValue {
+    font-size: 1.25rem;
   }
 }

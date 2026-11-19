@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import QRCodeDisplay from '@/components/QRCodeDisplay';
 import RoleBadge from '@/components/RoleBadge';
 import StudentSelfScannerModal from '@/components/StudentSelfScannerModal';
 import DataTable from '@/components/DataTable';
 import ExcelExportButton from '@/components/ExcelExportButton';
+import { useToast } from '@/components/ToastProvider';
 import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
+import { resolveStudentLcd } from '@/lib/utils/lcd';
+import { getCohortFromMssv } from '@/lib/utils/cohort';
 import {
   ShieldCheckIcon,
-  SettingsIcon,
   ScanCameraIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -19,6 +21,7 @@ import {
   CalendarIcon,
   AlertTriangleIcon,
   MapPinIcon,
+  SearchIcon,
 } from '@/components/icons';
 import type { HistoryItem } from '@/lib/types';
 import styles from './StudentDashboardClient.module.css';
@@ -36,12 +39,25 @@ interface StudentDashboardClientProps {
   initialRegistrations?: any[];
 }
 
+type PortalTab = 'history' | 'registered' | 'delegate';
+
+function normalizeVN(val: string): string {
+  return String(val || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .trim();
+}
+
 export default function StudentDashboardClient({
   user,
   tier,
   initialHistory,
   initialRegistrations = [],
 }: StudentDashboardClientProps) {
+  const toast = useToast();
   const [currentUser, setCurrentUser] = useState(user);
   const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
   const [registeredEvents, setRegisteredEvents] = useState<any[]>(initialRegistrations);
@@ -51,6 +67,12 @@ export default function StudentDashboardClient({
   const [userPhone, setUserPhone] = useState(user.phone || '');
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Portal Tabs & History Filters
+  const [activeTab, setActiveTab] = useState<PortalTab>('history');
+  const [historySearch, setHistorySearch] = useState('');
+  const [semesterFilter, setSemesterFilter] = useState('ALL');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'participant' | 'volunteer' | 'organizer'>('all');
 
   // Delegate states
   const [delegateInfo, setDelegateInfo] = useState<{
@@ -67,6 +89,45 @@ export default function StudentDashboardClient({
   const [classmateHistory, setClassmateHistory] = useState<any | null>(null);
   const [loadingClassmateHistory, setLoadingClassmateHistory] = useState(false);
   const [classmateHistoryError, setClassmateHistoryError] = useState<string | null>(null);
+
+  const myLcd = useMemo(
+    () => resolveStudentLcd(currentUser.class_id, currentUser.mssv),
+    [currentUser.class_id, currentUser.mssv]
+  );
+  const myCohort = useMemo(() => getCohortFromMssv(currentUser.mssv), [currentUser.mssv]);
+
+  const pendingRegistrations = useMemo(
+    () => registeredEvents.filter((ev) => !ev.attended),
+    [registeredEvents]
+  );
+
+  const volunteerOrOrganizerCount = useMemo(
+    () => history.filter((h) => h.participate_role === 'volunteer' || h.participate_role === 'organizer').length,
+    [history]
+  );
+
+  const availableSemesters = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of history) {
+      if (h.semester) set.add(h.semester);
+    }
+    return Array.from(set);
+  }, [history]);
+
+  const filteredHistory = useMemo(() => {
+    const q = normalizeVN(historySearch);
+    return history.filter((item) => {
+      if (semesterFilter !== 'ALL' && (item.semester || '') !== semesterFilter) return false;
+      if (roleFilter !== 'all' && item.participate_role !== roleFilter) return false;
+      if (q) {
+        const hay = normalizeVN(`${item.event_name} ${item.semester || ''} ${item.session_names || ''}`);
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [history, historySearch, semesterFilter, roleFilter]);
+
+  const isPhoneMissing = !userPhone || userPhone.trim().length < 8;
 
   const fetchHistory = async () => {
     try {
@@ -116,8 +177,8 @@ export default function StudentDashboardClient({
         setCurrentUser((prev) => ({
           ...prev,
           mssv: d.mssv || prev.mssv,
-          full_name: (d.full_name && !d.full_name.includes('@')) ? d.full_name : prev.full_name,
-          class_id: (d.class_id && d.class_id !== 'PTIT-HCM') ? d.class_id : prev.class_id,
+          full_name: d.full_name && !d.full_name.includes('@') ? d.full_name : prev.full_name,
+          class_id: d.class_id && d.class_id !== 'PTIT-HCM' ? d.class_id : prev.class_id,
           gender: d.gender || prev.gender,
           phone: d.phone || prev.phone,
         }));
@@ -130,7 +191,6 @@ export default function StudentDashboardClient({
   useEffect(() => {
     checkDelegateStatus();
     syncUserProfile();
-    // Only fetch enriched registrations from API if SSR passed un-enriched registration rows
     if (initialRegistrations.length > 0 && initialRegistrations[0]?.review_status === undefined) {
       fetchRegisteredEvents();
     }
@@ -139,7 +199,9 @@ export default function StudentDashboardClient({
   const fetchClassStudents = async (query?: string) => {
     setLoadingClass(true);
     try {
-      const url = query ? `/api/me/class-lookup/students?q=${encodeURIComponent(query)}` : '/api/me/class-lookup/students';
+      const url = query
+        ? `/api/me/class-lookup/students?q=${encodeURIComponent(query)}`
+        : '/api/me/class-lookup/students';
       const res = await fetch(url);
       const data = await res.json();
       if (data.success && data.data?.students) {
@@ -175,32 +237,16 @@ export default function StudentDashboardClient({
 
   return (
     <>
-      {/* Switch back to admin banner if viewing as student */}
+      {/* Officer Shortcut Banner */}
       {tier !== 'user' && (
-        <div
-          style={{
-            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-            border: '1.5px solid #bfdbfe',
-            borderRadius: '14px',
-            padding: '0.85rem 1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '1.5rem',
-            flexWrap: 'wrap',
-            gap: '0.75rem',
-            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div>
-              <span style={{ fontSize: '0.875rem', fontWeight: 800, color: '#1e40af', display: 'block' }}>
-                Không gian Cán bộ Đoàn — {user.full_name || user.mssv}
-              </span>
-              <span style={{ fontSize: '0.775rem', color: '#3b82f6', fontWeight: 600 }}>
-                Bạn đang xem Cổng Sinh Viên cá nhân. Sử dụng các lối tắt bên phải để vào Bàn Quản Trị.
-              </span>
-            </div>
+        <div className={styles.officerBanner}>
+          <div>
+            <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#1e40af', display: 'block' }}>
+              Không gian Cán bộ Đoàn — {currentUser.full_name || currentUser.mssv}
+            </span>
+            <span style={{ fontSize: '0.78rem', color: '#3b82f6', fontWeight: 600 }}>
+              Bạn đang xem Cổng Sinh Viên cá nhân. Sử dụng các lối tắt bên phải để vào Bàn Quản Trị.
+            </span>
           </div>
 
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -215,12 +261,9 @@ export default function StudentDashboardClient({
                 fontSize: '0.8rem',
                 fontWeight: 800,
                 textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
               }}
             >
-              <span>Trình Kế Hoạch ➔</span>
+              Trình Kế Hoạch ➔
             </Link>
 
             <Link
@@ -239,102 +282,228 @@ export default function StudentDashboardClient({
                 fontSize: '0.8rem',
                 fontWeight: 800,
                 textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
                 boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
               }}
             >
-              <span>Bàn Quản Trị Sự Kiện ➔</span>
+              Bàn Quản Trị Sự Kiện ➔
             </Link>
           </div>
         </div>
       )}
 
-      {/* Student Personal QR Code & Profile Info (2-Card Responsive Grid) */}
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '1.25rem',
-          marginBottom: '1.75rem',
-          alignItems: 'stretch',
-        }}
-      >
-        {/* Card 1: Mã QR Điểm Danh Cá Nhân */}
-        <QRCodeDisplay
-          value={currentUser.mssv}
-          studentName={currentUser.full_name}
-          studentClass={currentUser.class_id}
-          studentId={currentUser.mssv}
-        />
-
-        {/* Card 2: Hồ Sơ Đoàn Viên & Thông Tin Cá Nhân */}
-        <div
-          style={{
-            background: '#ffffff',
-            borderRadius: '16px',
-            padding: '1.5rem',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-            border: '1px solid #e2e8f0',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '1.25rem',
-          }}
-        >
-          <div>
-            {/* Header with Avatar & Title */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
-              <div
+      {/* ═══ 2-COLUMN STUDENT PORTAL GRID ═══ */}
+      <div className={styles.portalGrid}>
+        {/* ── LEFT STICKY COLUMN: LCĐ Identity + QR Card + Self Scanner ── */}
+        <aside className={styles.leftColumn}>
+          <div className={styles.lcdIdentityCard}>
+            {myLcd ? (
+              <span
+                className={styles.lcdBadge}
                 style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '14px',
-                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                  fontSize: '1.25rem',
-                  boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)',
+                  background: myLcd.bg,
+                  color: myLcd.color,
+                  border: `1px solid ${myLcd.border}`,
                 }}
               >
-                {currentUser.full_name ? currentUser.full_name.trim().charAt(0).toUpperCase() : 'S'}
+                🏛️ {myLcd.name}
+              </span>
+            ) : (
+              <span
+                className={styles.lcdBadge}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: '1px solid #cbd5e1',
+                }}
+              >
+                🏛️ Đoàn Viên PTIT HCM
+              </span>
+            )}
+            {myCohort && <span className={styles.cohortBadge}>Khóa {myCohort}</span>}
+          </div>
+
+          <QRCodeDisplay
+            value={currentUser.mssv}
+            studentName={currentUser.full_name}
+            studentClass={currentUser.class_id}
+            studentId={currentUser.mssv}
+          />
+
+          <div className={styles.scanEventSection}>
+            <button
+              type="button"
+              onClick={() => setShowScanner(true)}
+              className={styles.scanEventButton}
+            >
+              <ScanCameraIcon size={20} color="#ffffff" />
+              <span>Quét Mã QR Sự Kiện Trên Màn Hình</span>
+            </button>
+            <p className={styles.scanHelpText}>
+              Quét mã QR động trên máy chiếu / màn hình sự kiện để tự điểm danh minh chứng ĐRL
+            </p>
+          </div>
+        </aside>
+
+        {/* ── RIGHT MAIN COLUMN: Alerts + KPIs + Discovery CTA + Profile + Tabbed Panel ── */}
+        <div className={styles.rightColumn}>
+          {/* Missing Phone Alert */}
+          {isPhoneMissing && (
+            <div className={styles.phoneAlert}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1, minWidth: 220 }}>
+                <AlertTriangleIcon size={20} color="#d97706" />
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#92400e' }}>
+                    Bạn chưa cập nhật Số Điện Thoại / Zalo
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#78350f', fontWeight: 500 }}>
+                    SĐT là bắt buộc khi đăng ký sự kiện hoặc ứng tuyển CTV để Ban Tổ Chức liên hệ.
+                  </div>
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {currentUser.full_name || 'Đoàn Viên / Sinh Viên'}
-                </h3>
-                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
-                  Hồ Sơ Đoàn Viên Học Viện
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(true)}
+                className={styles.phoneAlertBtn}
+              >
+                Cập nhật ngay
+              </button>
+            </div>
+          )}
+
+          {/* 4 KPI Summary Cards */}
+          <div className={styles.kpiGrid}>
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiLabel}>Hoạt động ĐRL</span>
+              <span className={styles.kpiValue} style={{ color: '#16a34a' }}>
+                {history.length}
+              </span>
+              <span className={styles.kpiSub}>Đã điểm danh hợp lệ</span>
             </div>
 
-            {/* Info Grid List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
-                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Mã Số Sinh Viên</span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e40af', fontSize: '0.9rem' }}>
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiLabel}>CTV / BTC</span>
+              <span className={styles.kpiValue} style={{ color: '#7c3aed' }}>
+                {volunteerOrOrganizerCount}
+              </span>
+              <span className={styles.kpiSub}>Vai trò hỗ trợ & điều hành</span>
+            </div>
+
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiLabel}>Chờ điểm danh</span>
+              <span className={styles.kpiValue} style={{ color: '#2563eb' }}>
+                {pendingRegistrations.length}
+              </span>
+              <span className={styles.kpiSub}>Sự kiện sắp tham gia</span>
+            </div>
+
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiLabel}>Hồ sơ liên hệ</span>
+              <span
+                className={styles.kpiValue}
+                style={{ fontSize: '1.05rem', color: isPhoneMissing ? '#d97706' : '#0f766e', marginTop: '0.2rem' }}
+              >
+                {isPhoneMissing ? 'Thiếu SĐT' : 'Đã đầy đủ ✓'}
+              </span>
+              <span className={styles.kpiSub}>
+                {isPhoneMissing ? 'Cần bổ sung' : userPhone}
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Discovery CTA Banner */}
+          <div className={styles.discoverCta}>
+            <div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#bfdbfe', letterSpacing: '0.05em' }}>
+                Khám phá hoạt động Đoàn – Hội
+              </div>
+              <div style={{ fontSize: '1.08rem', fontWeight: 800, marginTop: '0.15rem' }}>
+                {myLcd
+                  ? `Xem các sự kiện đang mở dành cho ${myLcd.shortName} & Toàn Học viện`
+                  : 'Xem các sự kiện đang mở đăng ký & tuyển CTV'}
+              </div>
+            </div>
+            <Link href="/events" className={styles.discoverCtaBtn}>
+              <CalendarIcon size={16} color="#1e40af" />
+              <span>Tổng Quan Sự Kiện ➔</span>
+            </Link>
+          </div>
+
+          {/* Compact 2-Column Student Profile Card */}
+          <section className={styles.profileCard}>
+            <div className={styles.profileHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', minWidth: 0 }}>
+                <div
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    fontSize: '1.15rem',
+                    flexShrink: 0,
+                  }}
+                >
+                  {currentUser.full_name ? currentUser.full_name.trim().charAt(0).toUpperCase() : 'S'}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                    {currentUser.full_name || 'Đoàn Viên / Sinh Viên'}
+                  </h2>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+                    Hồ Sơ Đoàn Viên PTIT Cơ sở tại TP. Hồ Chí Minh
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(true)}
+                style={{
+                  padding: '0.5rem 0.9rem',
+                  background: '#eff6ff',
+                  color: '#2563eb',
+                  border: '1.5px solid #bfdbfe',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Chỉnh sửa SĐT / Giới tính
+              </button>
+            </div>
+
+            <div className={styles.profileGrid}>
+              <div className={styles.profileField}>
+                <span className={styles.profileFieldLabel}>MSSV</span>
+                <span className={styles.profileFieldValue} style={{ fontFamily: 'monospace', color: '#1e40af' }}>
                   {currentUser.mssv}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
-                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Chi Đoàn / Lớp</span>
-                <span style={{ fontWeight: 700, color: '#334155', fontSize: '0.875rem' }}>
-                  {currentUser.class_id || 'BCH-DOAN'}
+              <div className={styles.profileField}>
+                <span className={styles.profileFieldLabel}>Chi Đoàn / Lớp</span>
+                <span className={styles.profileFieldValue}>{currentUser.class_id || 'PTIT-HCM'}</span>
+              </div>
+
+              <div className={styles.profileField}>
+                <span className={styles.profileFieldLabel}>Liên Chi Đoàn</span>
+                <span className={styles.profileFieldValue} style={{ color: myLcd?.color || '#475569' }}>
+                  {myLcd ? myLcd.shortName : 'Chưa xác định'}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
-                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Giới tính</span>
+              <div className={styles.profileField}>
+                <span className={styles.profileFieldLabel}>Giới tính</span>
                 <span
                   style={{
                     fontWeight: 700,
-                    fontSize: '0.825rem',
+                    fontSize: '0.78rem',
                     padding: '2px 8px',
                     borderRadius: '12px',
                     background: userGender === 'Nam' ? '#dbeafe' : '#fce7f3',
@@ -345,47 +514,512 @@ export default function StudentDashboardClient({
                 </span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
-                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Số Điện Thoại / Zalo</span>
-                <span style={{ fontWeight: 700, color: userPhone ? '#0f172a' : '#94a3b8', fontSize: '0.875rem' }}>
+              <div className={styles.profileField} style={{ gridColumn: '1 / -1' }}>
+                <span className={styles.profileFieldLabel}>Số Điện Thoại / Zalo</span>
+                <span className={styles.profileFieldValue} style={{ color: userPhone ? '#0f172a' : '#d97706' }}>
                   {userPhone || 'Chưa cập nhật'}
                 </span>
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
-                <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>Sự kiện đã tham gia</span>
-                <span style={{ fontWeight: 800, color: '#16a34a', fontSize: '0.9rem' }}>
-                  {history.length} hoạt động
-                </span>
-              </div>
             </div>
-          </div>
+          </section>
 
-          {/* Edit Profile Button */}
-          <button
-            type="button"
-            onClick={() => setShowProfileModal(true)}
-            style={{
-              width: '100%',
-              padding: '0.75rem 1rem',
-              background: '#eff6ff',
-              color: '#2563eb',
-              border: '1.5px solid #bfdbfe',
-              borderRadius: '10px',
-              fontWeight: 700,
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.4rem',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span>Chỉnh Sửa Giới Tính & Số Điện Thoại</span>
-          </button>
+          {/* ── TABBED ACTIVITY PANEL: History | Registered | Class Delegate ── */}
+          <section className={styles.historySection}>
+            <div className={styles.panelTabsRow}>
+              <button
+                type="button"
+                className={`${styles.panelTab} ${activeTab === 'history' ? styles.panelTabActive : ''}`}
+                onClick={() => setActiveTab('history')}
+              >
+                <CheckCircleIcon size={15} />
+                <span>Lịch sử minh chứng ĐRL</span>
+                <span className={styles.panelTabCount}>{history.length}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.panelTab} ${activeTab === 'registered' ? styles.panelTabActive : ''}`}
+                onClick={() => setActiveTab('registered')}
+              >
+                <CalendarIcon size={15} />
+                <span>Sự kiện đã đăng ký</span>
+                <span className={styles.panelTabCount}>{pendingRegistrations.length}</span>
+              </button>
+
+              {delegateInfo?.isDelegate && (
+                <button
+                  type="button"
+                  className={`${styles.panelTab} ${activeTab === 'delegate' ? styles.panelTabActive : ''}`}
+                  onClick={() => setActiveTab('delegate')}
+                >
+                  <ShieldCheckIcon size={15} />
+                  <span>Tra cứu Chi Đoàn {delegateInfo.class_id}</span>
+                  <span className={styles.panelTabCount}>{classStudents.length}</span>
+                </button>
+              )}
+            </div>
+
+            {/* TAB 1: ATTENDANCE HISTORY WITH SEARCH & FILTERS */}
+            {activeTab === 'history' && (
+              <div>
+                {history.length > 0 && (
+                  <>
+                    <div className={styles.filterToolbar}>
+                      <div className={styles.searchInputWrap}>
+                        <span className={styles.searchIcon}>
+                          <SearchIcon size={15} />
+                        </span>
+                        <input
+                          type="text"
+                          value={historySearch}
+                          onChange={(e) => setHistorySearch(e.target.value)}
+                          placeholder="Tìm tên sự kiện minh chứng..."
+                          className={styles.searchInput}
+                        />
+                      </div>
+
+                      {availableSemesters.length > 0 && (
+                        <select
+                          value={semesterFilter}
+                          onChange={(e) => setSemesterFilter(e.target.value)}
+                          className={styles.semesterSelect}
+                          aria-label="Lọc theo học kỳ"
+                        >
+                          <option value="ALL">Tất cả học kỳ</option>
+                          {availableSemesters.map((sem) => (
+                            <option key={sem} value={sem}>
+                              {sem}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    <div className={styles.rolePills}>
+                      {(
+                        [
+                          { id: 'all', label: 'Tất cả vai trò' },
+                          { id: 'participant', label: 'Người tham gia' },
+                          { id: 'volunteer', label: 'Cộng tác viên' },
+                          { id: 'organizer', label: 'Ban tổ chức' },
+                        ] as const
+                      ).map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => setRoleFilter(r.id)}
+                          className={`${styles.rolePill} ${roleFilter === r.id ? styles.rolePillActive : ''}`}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {filteredHistory.length === 0 ? (
+                  <div className={styles.emptyHistory}>
+                    {history.length === 0
+                      ? 'Bạn chưa có lượt điểm danh minh chứng nào.'
+                      : 'Không tìm thấy sự kiện minh chứng nào phù hợp bộ lọc.'}
+                  </div>
+                ) : (
+                  <ul className={styles.historyList}>
+                    {filteredHistory.map((item, idx) => {
+                      const sessionCount = item.session_count || 1;
+                      const totalSessions = item.total_sessions || 1;
+                      const isFullAttendance = sessionCount >= totalSessions;
+                      const showSessionNames =
+                        totalSessions > 1 ||
+                        Boolean(item.session_names && item.session_names !== 'Buổi chính');
+
+                      return (
+                        <li key={item.event_id ? `${item.event_id}-${idx}` : idx} className={styles.historyItem}>
+                          <div className={styles.historyMeta}>
+                            <span className={styles.eventName}>{item.event_name}</span>
+                            <span className={styles.semester}>
+                              <ClockIcon size={14} />
+                              <span>
+                                Ngày tổ chức:{' '}
+                                {item.event_date
+                                  ? new Date(item.event_date).toLocaleDateString('vi-VN')
+                                  : new Date(item.checkin_time).toLocaleDateString('vi-VN')}
+                              </span>
+                              {item.semester && (
+                                <span
+                                  style={{
+                                    marginLeft: '0.35rem',
+                                    padding: '0.1rem 0.45rem',
+                                    borderRadius: '6px',
+                                    background: '#e2e8f0',
+                                    color: '#334155',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {item.semester}
+                                </span>
+                              )}
+                            </span>
+                            {showSessionNames && (
+                              <span
+                                style={{
+                                  fontSize: '0.78rem',
+                                  color: '#475569',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.35rem',
+                                }}
+                              >
+                                <CalendarIcon size={13} color="#2563eb" />
+                                Buổi đã tham gia: <strong style={{ color: '#1e40af' }}>{item.session_names}</strong>
+                              </span>
+                            )}
+                          </div>
+                          <div className={styles.historyDetails}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <RoleBadge role={item.participate_role} />
+                              <span
+                                title={`Đã điểm danh ${sessionCount} trên tổng số ${totalSessions} buổi của chương trình`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.3rem',
+                                  padding: '0.22rem 0.65rem',
+                                  borderRadius: '999px',
+                                  fontSize: '0.76rem',
+                                  fontWeight: 800,
+                                  background: isFullAttendance ? '#dcfce7' : '#fef3c7',
+                                  color: isFullAttendance ? '#15803d' : '#b45309',
+                                  border: `1px solid ${isFullAttendance ? '#bbf7d0' : '#fde68a'}`,
+                                }}
+                              >
+                                <CalendarIcon size={12} color={isFullAttendance ? '#15803d' : '#b45309'} />
+                                Số buổi: {sessionCount}/{totalSessions} buổi
+                              </span>
+                            </div>
+                            <span className={styles.time}>
+                              {new Date(item.checkin_time).toLocaleTimeString('vi-VN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: REGISTERED UPCOMING EVENTS */}
+            {activeTab === 'registered' && (
+              <div>
+                {loadingRegistrations ? (
+                  <p style={{ textAlign: 'center', padding: '1.5rem', color: '#64748b', fontSize: '0.86rem' }}>
+                    Đang tải sự kiện đã đăng ký...
+                  </p>
+                ) : pendingRegistrations.length === 0 ? (
+                  <div className={styles.emptyHistory}>
+                    <p style={{ margin: '0 0 0.85rem', fontWeight: 600 }}>
+                      Bạn chưa có sự kiện nào đang chờ điểm danh.
+                    </p>
+                    <Link
+                      href="/events"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.55rem 1rem',
+                        background: '#2563eb',
+                        color: '#ffffff',
+                        borderRadius: '10px',
+                        fontSize: '0.84rem',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                      }}
+                    >
+                      Khám phá sự kiện đang mở ➔
+                    </Link>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                    {pendingRegistrations.map((ev) => (
+                      <div
+                        key={ev.id || ev.event_id}
+                        style={{
+                          background: '#ffffff',
+                          border: '1.5px solid #e2e8f0',
+                          borderRadius: '14px',
+                          padding: '1.1rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: '0.8rem',
+                          boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 800, background: '#eff6ff', color: '#2563eb', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
+                              {ev.semester || 'Học Kỳ Mới'}
+                            </span>
+                            {ev.role_type === 'volunteer' && ev.review_status === 'pending' ? (
+                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                                Đang chờ duyệt CTV
+                              </span>
+                            ) : ev.role_type === 'volunteer' && ev.review_status === 'rejected' ? (
+                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#991b1b', background: '#fef2f2', border: '1px solid #fecaca', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                                Chưa trúng tuyển CTV
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                                Đã đăng ký (Chờ điểm danh)
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 style={{ margin: '0.2rem 0 0.4rem', fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>
+                            {ev.event_name}
+                          </h3>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8rem', color: '#475569' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <ClockIcon size={14} color="#2563eb" />
+                              <span>
+                                {ev.event_date ? new Date(ev.event_date).toLocaleDateString('vi-VN') : 'Chưa xếp ngày'}{' '}
+                                {ev.start_time ? `(${ev.start_time}${ev.end_time ? ` - ${ev.end_time}` : ''})` : ''}
+                              </span>
+                            </div>
+                            {ev.location && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <MapPinIcon size={14} color="#2563eb" />
+                                <span>{ev.location}</span>
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+                              <span style={{ fontWeight: 600 }}>Vai trò:</span>
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  fontSize: '0.75rem',
+                                  padding: '0.15rem 0.5rem',
+                                  borderRadius: '6px',
+                                  background: ev.role_type === 'volunteer' ? '#f5f3ff' : '#ecfdf5',
+                                  color: ev.role_type === 'volunteer' ? '#6d28d9' : '#047857',
+                                  border: `1px solid ${ev.role_type === 'volunteer' ? '#ddd6fe' : '#a7f3d0'}`,
+                                }}
+                              >
+                                {ev.role_type === 'volunteer'
+                                  ? `Cộng tác viên ${ev.department_name ? `(${ev.department_name})` : ''}`
+                                  : 'Người tham gia'}
+                              </span>
+                            </div>
+
+                            {ev.session_ratio && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+                                <span style={{ fontWeight: 600 }}>Điểm danh ca:</span>
+                                <span
+                                  style={{
+                                    fontWeight: 700,
+                                    fontSize: '0.75rem',
+                                    padding: '0.15rem 0.5rem',
+                                    borderRadius: '6px',
+                                    background: ev.session_count > 0 ? '#eff6ff' : '#f8fafc',
+                                    color: ev.session_count > 0 ? '#2563eb' : '#64748b',
+                                    border: '1px solid #bfdbfe',
+                                  }}
+                                >
+                                  {ev.session_ratio} {ev.session_names?.length ? `(${ev.session_names.join(', ')})` : ''}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <Link
+                          href={
+                            ev.role_type === 'volunteer'
+                              ? `/events/${ev.event_id}/recruitment`
+                              : `/events/${ev.event_id}/register`
+                          }
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem',
+                            padding: '0.55rem 0.9rem',
+                            background: '#f8fafc',
+                            color: '#2563eb',
+                            border: '1.5px solid #cbd5e1',
+                            borderRadius: '8px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <span>Xem Phiếu Đăng Ký / Chi Tiết</span>
+                          <span>➔</span>
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: CLASS DELEGATE LOOKUP */}
+            {activeTab === 'delegate' && delegateInfo?.isDelegate && (
+              <div>
+                <div
+                  style={{
+                    background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
+                    color: '#ffffff',
+                    padding: '1.15rem 1.35rem',
+                    borderRadius: '12px',
+                    marginBottom: '1.15rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        padding: '0.2rem 0.65rem',
+                        borderRadius: '12px',
+                        fontSize: '0.74rem',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      <ShieldCheckIcon size={14} color="#ffffff" /> Quyền Ban Chấp Hành Chi Đoàn
+                    </div>
+                    <h3 style={{ margin: '0.4rem 0 0.2rem', fontSize: '1.05rem', fontWeight: 800 }}>
+                      Tra Cứu Hoạt Động & Chấm ĐRL Chi Đoàn {delegateInfo.class_id}
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: '#e0e7ff' }}>
+                      Tra cứu danh sách, lịch sử sự kiện và minh chứng của đoàn viên thuộc lớp {delegateInfo.class_id}.
+                    </p>
+                  </div>
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      color: '#1e3a8a',
+                      padding: '0.45rem 0.9rem',
+                      borderRadius: '10px',
+                      textAlign: 'center',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <div style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Còn lại</div>
+                    <div style={{ color: '#16a34a', fontSize: '1.05rem' }}>{delegateInfo.daysLeft} ngày</div>
+                  </div>
+                </div>
+
+                <div className={styles.historyHeader} style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <h2 className={styles.historyTitle} style={{ color: '#1e40af' }}>
+                      <UsersIcon size={18} color="#2563eb" />
+                      Danh Sách Đoàn Viên Lớp {delegateInfo.class_id} ({classStudents.length})
+                    </h2>
+                  </div>
+                  <ExcelExportButton
+                    data={classStudents.map((s, idx) => ({
+                      stt: idx + 1,
+                      mssv: s.mssv,
+                      full_name: s.full_name,
+                      class_id: s.class_id,
+                      email: s.email,
+                      so_su_kien_tham_gia: s.total_attended,
+                    }))}
+                    filename={`danh-sach-drl-chidoan-${delegateInfo.class_id}.xlsx`}
+                    label={`Xuất Excel ĐRL ${delegateInfo.class_id}`}
+                  />
+                </div>
+
+                <DataTable
+                  columns={[
+                    {
+                      key: 'stt',
+                      label: 'STT',
+                      render: (_, __) => null,
+                    },
+                    {
+                      key: 'mssv',
+                      label: 'MSSV',
+                      render: (val) => <strong style={{ color: '#1d4ed8', fontFamily: 'monospace' }}>{val}</strong>,
+                    },
+                    {
+                      key: 'full_name',
+                      label: 'Họ và tên',
+                      render: (val) => <span style={{ fontWeight: 700 }}>{val}</span>,
+                    },
+                    {
+                      key: 'total_attended',
+                      label: 'Đã Tham Gia',
+                      render: (val) => (
+                        <span
+                          style={{
+                            padding: '0.25rem 0.65rem',
+                            borderRadius: '12px',
+                            fontWeight: 800,
+                            fontSize: '0.82rem',
+                            background: val > 0 ? '#dcfce7' : '#f1f5f9',
+                            color: val > 0 ? '#15803d' : '#64748b',
+                          }}
+                        >
+                          {val} sự kiện
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'actions',
+                      label: 'Minh Chứng ĐRL',
+                      render: (_, row) => (
+                        <button
+                          type="button"
+                          onClick={() => openClassmateHistory(row)}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '8px',
+                            color: '#1d4ed8',
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Xem Minh Chứng
+                        </button>
+                      ),
+                    },
+                  ]}
+                  data={classStudents}
+                  searchable={true}
+                  searchPlaceholder={`Tìm MSSV, họ tên trong lớp ${delegateInfo.class_id}...`}
+                  emptyMessage={
+                    loadingClass
+                      ? 'Đang tải danh sách lớp...'
+                      : `Không tìm thấy sinh viên nào trong lớp ${delegateInfo.class_id}.`
+                  }
+                  pageSize={50}
+                  onSearchChange={(q) => fetchClassStudents(q)}
+                />
+              </div>
+            )}
+          </section>
         </div>
-      </section>
+      </div>
 
       {/* Modal Chỉnh Sửa Hồ Sơ */}
       {showProfileModal && (
@@ -421,7 +1055,18 @@ export default function StudentDashboardClient({
               <button
                 type="button"
                 onClick={() => setShowProfileModal(false)}
-                style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', color: '#64748b', width: 36, height: 36, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{
+                  background: '#f1f5f9',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  width: 36,
+                  height: 36,
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
                 <CloseIcon size={18} />
               </button>
@@ -445,13 +1090,13 @@ export default function StudentDashboardClient({
                       gender: userGender,
                       phone: userPhone,
                     }));
-                    alert('Đã lưu thông tin hồ sơ thành công!');
+                    toast.success('Đã lưu thông tin hồ sơ thành công!');
                     setShowProfileModal(false);
                   } else {
-                    alert(data.error || 'Lỗi cập nhật');
+                    toast.error(data.error || 'Lỗi cập nhật hồ sơ');
                   }
                 } catch {
-                  alert('Lỗi kết nối');
+                  toast.error('Lỗi kết nối máy chủ');
                 } finally {
                   setSavingProfile(false);
                 }
@@ -465,7 +1110,17 @@ export default function StudentDashboardClient({
                 <select
                   value={userGender}
                   onChange={(e) => setUserGender(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', fontWeight: 600, fontSize: '0.95rem', color: '#0f172a', boxSizing: 'border-box' }}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1.5px solid #e2e8f0',
+                    borderRadius: '12px',
+                    background: '#f8fafc',
+                    fontWeight: 600,
+                    fontSize: '0.95rem',
+                    color: '#0f172a',
+                    boxSizing: 'border-box',
+                  }}
                 >
                   <option value="Nam">Nam</option>
                   <option value="Nữ">Nữ</option>
@@ -481,7 +1136,17 @@ export default function StudentDashboardClient({
                   value={userPhone}
                   onChange={(e) => setUserPhone(e.target.value)}
                   placeholder="Ví dụ: 0912345678"
-                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', fontWeight: 600, fontSize: '0.95rem', color: '#0f172a', boxSizing: 'border-box' }}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1.5px solid #e2e8f0',
+                    borderRadius: '12px',
+                    background: '#f8fafc',
+                    fontWeight: 600,
+                    fontSize: '0.95rem',
+                    color: '#0f172a',
+                    boxSizing: 'border-box',
+                  }}
                 />
               </div>
 
@@ -489,14 +1154,33 @@ export default function StudentDashboardClient({
                 <button
                   type="button"
                   onClick={() => setShowProfileModal(false)}
-                  style={{ padding: '0.65rem 1.25rem', background: '#f1f5f9', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', color: '#475569' }}
+                  style={{
+                    padding: '0.65rem 1.25rem',
+                    background: '#f1f5f9',
+                    border: '1.5px solid #e2e8f0',
+                    borderRadius: '12px',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    color: '#475569',
+                  }}
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={savingProfile}
-                  style={{ padding: '0.65rem 1.5rem', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: '#ffffff', border: 'none', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)' }}
+                  style={{
+                    padding: '0.65rem 1.5rem',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)',
+                  }}
                 >
                   {savingProfile ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                 </button>
@@ -504,359 +1188,6 @@ export default function StudentDashboardClient({
             </form>
           </div>
         </div>
-      )}
-
-      {/* Button to Scan Event Dynamic QR */}
-      <div className={styles.scanEventSection}>
-        <button
-          onClick={() => setShowScanner(true)}
-          className={styles.scanEventButton}
-        >
-          <ScanCameraIcon size={22} color="#ffffff" />
-          <span>Quét Mã QR Sự Kiện Trên Màn Hình</span>
-        </button>
-        <p className={styles.scanHelpText}>
-          Dùng camera điện thoại quét mã QR động đổi liên tục trên máy chiếu/màn hình để tự điểm danh
-        </p>
-      </div>
-
-
-
-      {/* My Registered Events Section */}
-      <section className={styles.historySection} style={{ marginBottom: '1.75rem' }}>
-        <div className={styles.historyHeader}>
-          <h2 className={styles.historyTitle}>
-            <CalendarIcon size={20} color="#2563eb" />
-            Sự Kiện Tôi Đã Đăng Ký ({registeredEvents.filter((ev) => !ev.attended).length})
-          </h2>
-        </div>
-        {loadingRegistrations ? (
-          <p style={{ textAlign: 'center', padding: '1rem', color: '#64748b', fontSize: '0.85rem' }}>
-            Đang tải sự kiện đã đăng ký...
-          </p>
-        ) : registeredEvents.filter((ev) => !ev.attended).length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '1.5rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-            <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
-              Bạn chưa đăng ký tham gia sự kiện nào. Khi bạn đăng ký tham gia qua link của Ban Tổ Chức, sự kiện sẽ hiển thị tại đây.
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '1rem' }}>
-            {registeredEvents.filter((ev) => !ev.attended).map((ev) => (
-              <div
-                key={ev.id || ev.event_id}
-                style={{
-                  background: '#ffffff',
-                  border: '1.5px solid #e2e8f0',
-                  borderRadius: '14px',
-                  padding: '1.15rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: '0.85rem',
-                  boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.725rem', fontWeight: 800, background: '#eff6ff', color: '#2563eb', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
-                      {ev.semester || 'Học Kỳ Mới'}
-                    </span>
-                    {ev.attended ? (
-                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#166534', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
-                        Đã điểm danh tham gia
-                      </span>
-                    ) : ev.role_type === 'volunteer' && ev.review_status === 'pending' ? (
-                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
-                        Đang chờ duyệt CTV
-                      </span>
-                    ) : ev.role_type === 'volunteer' && ev.review_status === 'rejected' ? (
-                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#991b1b', background: '#fef2f2', border: '1px solid #fecaca', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
-                        Chưa trúng tuyển CTV
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#1e40af', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
-                        Đã đăng ký (Chờ điểm danh)
-                      </span>
-                    )}
-                  </div>
-
-                  <h3 style={{ margin: '0.2rem 0 0.4rem', fontSize: '0.975rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>
-                    {ev.event_name}
-                  </h3>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8rem', color: '#475569' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <ClockIcon size={14} color="#2563eb" />
-                      <span>{ev.event_date ? new Date(ev.event_date).toLocaleDateString('vi-VN') : 'Chưa xếp ngày'} {ev.start_time ? `(${ev.start_time}${ev.end_time ? ` - ${ev.end_time}` : ''})` : ''}</span>
-                    </div>
-                    {ev.location && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <MapPinIcon size={14} color="#2563eb" />
-                        <span>{ev.location}</span>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-                      <span style={{ fontWeight: 600 }}>Vai trò:</span>
-                      <span style={{
-                        fontWeight: 700,
-                        fontSize: '0.75rem',
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '6px',
-                        background: ev.role_type === 'volunteer' ? '#f5f3ff' : '#ecfdf5',
-                        color: ev.role_type === 'volunteer' ? '#6d28d9' : '#047857',
-                        border: `1px solid ${ev.role_type === 'volunteer' ? '#ddd6fe' : '#a7f3d0'}`
-                      }}>
-                        {ev.role_type === 'volunteer' ? `Cộng tác viên ${ev.department_name ? `(${ev.department_name})` : ''}` : 'Người tham gia'}
-                      </span>
-                    </div>
-
-                    {ev.session_ratio && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-                        <span style={{ fontWeight: 600 }}>Điểm danh ca:</span>
-                        <span style={{
-                          fontWeight: 700,
-                          fontSize: '0.75rem',
-                          padding: '0.15rem 0.5rem',
-                          borderRadius: '6px',
-                          background: ev.session_count > 0 ? '#eff6ff' : '#f8fafc',
-                          color: ev.session_count > 0 ? '#2563eb' : '#64748b',
-                          border: '1px solid #bfdbfe'
-                        }}>
-                          {ev.session_ratio} {ev.session_names?.length ? `(${ev.session_names.join(', ')})` : ''}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <Link
-                  href={`/events/${ev.event_id}/register`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.4rem',
-                    padding: '0.55rem 0.9rem',
-                    background: '#f8fafc',
-                    color: '#2563eb',
-                    border: '1.5px solid #cbd5e1',
-                    borderRadius: '8px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    textDecoration: 'none',
-                    textAlign: 'center',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span>Xem Phiếu Đăng Ký / Chi Tiết</span>
-                  <span>➔</span>
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Check-in History of Current Student */}
-      <section className={styles.historySection}>
-        <div className={styles.historyHeader}>
-          <h2 className={styles.historyTitle}>
-            <CheckCircleIcon size={20} color="#2563eb" />
-            Lịch sử điểm danh minh chứng cá nhân ({history.length})
-          </h2>
-        </div>
-        {history.length === 0 ? (
-          <p className={styles.emptyHistory}>Bạn chưa có lượt điểm danh nào.</p>
-        ) : (
-          <ul className={styles.historyList}>
-            {history.map((item, idx) => {
-              const sessionCount = item.session_count || 1;
-              const totalSessions = item.total_sessions || 1;
-              const isFullAttendance = sessionCount >= totalSessions;
-              const showSessionNames =
-                totalSessions > 1 ||
-                Boolean(item.session_names && item.session_names !== 'Buổi chính');
-
-              return (
-                <li key={idx} className={styles.historyItem}>
-                  <div className={styles.historyMeta}>
-                    <span className={styles.eventName}>{item.event_name}</span>
-                    <span className={styles.semester}>
-                      <ClockIcon size={14} />
-                      Ngày tổ chức: {item.event_date ? new Date(item.event_date).toLocaleDateString('vi-VN') : new Date(item.checkin_time).toLocaleDateString('vi-VN')}
-                    </span>
-                    {showSessionNames && (
-                      <span
-                        style={{
-                          fontSize: '0.78rem',
-                          color: '#475569',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                        }}
-                      >
-                        <CalendarIcon size={13} color="#2563eb" />
-                        Buổi đã tham gia: <strong style={{ color: '#1e40af' }}>{item.session_names}</strong>
-                      </span>
-                    )}
-                  </div>
-                  <div className={styles.historyDetails}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <RoleBadge role={item.participate_role} />
-                      <span
-                        title={`Đã điểm danh ${sessionCount} trên tổng số ${totalSessions} buổi của chương trình`}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.3rem',
-                          padding: '0.22rem 0.65rem',
-                          borderRadius: '999px',
-                          fontSize: '0.76rem',
-                          fontWeight: 800,
-                          background: isFullAttendance ? '#dcfce7' : '#fef3c7',
-                          color: isFullAttendance ? '#15803d' : '#b45309',
-                          border: `1px solid ${isFullAttendance ? '#bbf7d0' : '#fde68a'}`,
-                        }}
-                      >
-                        <CalendarIcon size={12} color={isFullAttendance ? '#15803d' : '#b45309'} />
-                        Số buổi: {sessionCount}/{totalSessions} buổi
-                      </span>
-                    </div>
-                    <span className={styles.time}>{new Date(item.checkin_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      {/* DELEGATE SECTION: TRA CỨU DANH SÁCH & ĐIỂM RÈN LUYỆN CHI ĐOÀN */}
-      {delegateInfo?.isDelegate && (
-        <section className={styles.historySection} style={{ marginTop: '2rem', border: '2px solid #bfdbfe' }}>
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-              color: '#ffffff',
-              padding: '1.25rem 1.5rem',
-              borderRadius: '12px',
-              marginBottom: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '1rem',
-            }}
-          >
-            <div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.2)', padding: '0.2rem 0.65rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>
-                <ShieldCheckIcon size={14} color="#ffffff" /> Quyền Ban Chấp Hành Chi Đoàn (Bí Thư / Phó Bí Thư)
-              </div>
-              <h3 style={{ margin: '0.4rem 0 0.2rem', fontSize: '1.1rem', fontWeight: 800 }}>
-                Tra Cứu Hoạt Động & Chấm Điểm Rèn Luyện Chi Đoàn {delegateInfo.class_id}
-              </h3>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#e0e7ff' }}>
-                Quyền hạn tra cứu danh sách, lịch sử sự kiện và minh chứng của đoàn viên thuộc Chi đoàn (Lớp) {delegateInfo.class_id}.
-              </p>
-            </div>
-            <div style={{ background: '#ffffff', color: '#1e3a8a', padding: '0.5rem 1rem', borderRadius: '10px', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
-              <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Thời Hạn Còn Lại</div>
-              <div style={{ color: '#16a34a', fontSize: '1.1rem' }}>{delegateInfo.daysLeft} ngày</div>
-            </div>
-          </div>
-
-          <div className={styles.historyHeader} style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-            <div>
-              <h2 className={styles.historyTitle} style={{ color: '#1e40af' }}>
-                <UsersIcon size={20} color="#2563eb" />
-                Danh Sách Đoàn Viên Chi Đoàn {delegateInfo.class_id} ({classStudents.length})
-              </h2>
-              <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                Tra cứu số sự kiện đã tham gia và xem chi tiết minh chứng để phục vụ chấm Điểm Rèn Luyện (ĐRL)
-              </p>
-            </div>
-            <ExcelExportButton
-              data={classStudents.map((s, idx) => ({
-                stt: idx + 1,
-                mssv: s.mssv,
-                full_name: s.full_name,
-                class_id: s.class_id,
-                email: s.email,
-                so_su_kien_tham_gia: s.total_attended,
-              }))}
-              filename={`danh-sach-drl-chidoan-${delegateInfo.class_id}.xlsx`}
-              label={`Xuất Excel ĐRL Chi Đoàn ${delegateInfo.class_id}`}
-            />
-          </div>
-
-          <DataTable
-            columns={[
-              {
-                key: 'stt',
-                label: 'STT',
-                render: (_, __) => null, // fallback
-              },
-              {
-                key: 'mssv',
-                label: 'MSSV',
-                render: (val) => <strong style={{ color: '#1d4ed8', fontFamily: 'monospace' }}>{val}</strong>,
-              },
-              {
-                key: 'full_name',
-                label: 'Họ và tên',
-                render: (val) => <span style={{ fontWeight: 700 }}>{val}</span>,
-              },
-              {
-                key: 'total_attended',
-                label: 'Sự Kiện Đã Tham Gia',
-                render: (val) => (
-                  <span
-                    style={{
-                      padding: '0.25rem 0.65rem',
-                      borderRadius: '12px',
-                      fontWeight: 800,
-                      fontSize: '0.85rem',
-                      background: val > 0 ? '#dcfce7' : '#f1f5f9',
-                      color: val > 0 ? '#15803d' : '#64748b',
-                    }}
-                  >
-                    {val} sự kiện
-                  </span>
-                ),
-              },
-              {
-                key: 'actions',
-                label: 'Minh Chứng ĐRL',
-                render: (_, row) => (
-                  <button
-                    type="button"
-                    onClick={() => openClassmateHistory(row)}
-                    style={{
-                      padding: '0.35rem 0.75rem',
-                      background: '#eff6ff',
-                      border: '1px solid #bfdbfe',
-                      borderRadius: '8px',
-                      color: '#1d4ed8',
-                      fontWeight: 700,
-                      fontSize: '0.78rem',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Xem Minh Chứng
-                  </button>
-                ),
-              },
-            ]}
-            data={classStudents}
-            searchable={true}
-            searchPlaceholder={`Tìm MSSV, họ tên trong lớp ${delegateInfo.class_id}...`}
-            emptyMessage={`Không tìm thấy sinh viên nào trong lớp ${delegateInfo.class_id}.`}
-            pageSize={50}
-            onSearchChange={(q) => fetchClassStudents(q)}
-          />
-        </section>
       )}
 
       {/* Modal View Classmate Attendance Proofs */}
@@ -889,7 +1220,16 @@ export default function StudentDashboardClient({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '1.25rem 1.5rem', background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', color: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              style={{
+                padding: '1.25rem 1.5rem',
+                background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
               <div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#93c5fd' }}>
                   Minh Chứng Chấm Điểm Rèn Luyện
@@ -904,7 +1244,18 @@ export default function StudentDashboardClient({
               <button
                 type="button"
                 onClick={() => setSelectedClassmate(null)}
-                style={{ background: 'rgba(255, 255, 255, 0.2)', border: 'none', color: '#ffffff', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: 'none',
+                  color: '#ffffff',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
                 <CloseIcon size={16} color="#ffffff" />
               </button>
@@ -919,8 +1270,19 @@ export default function StudentDashboardClient({
                   <div>Vui lòng chờ trong giây lát.</div>
                 </div>
               ) : classmateHistoryError ? (
-                <div style={{ padding: '2rem 1.5rem', textAlign: 'center', background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '14px', color: '#b91c1c' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}><AlertTriangleIcon size={24} /></div>
+                <div
+                  style={{
+                    padding: '2rem 1.5rem',
+                    textAlign: 'center',
+                    background: '#fef2f2',
+                    border: '1.5px solid #fecaca',
+                    borderRadius: '14px',
+                    color: '#b91c1c',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
+                    <AlertTriangleIcon size={24} />
+                  </div>
                   <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.35rem' }}>
                     {classmateHistoryError}
                   </div>
@@ -930,7 +1292,15 @@ export default function StudentDashboardClient({
                 </div>
               ) : classmateHistory ? (
                 <>
-                  <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '12px', padding: '0.85rem 1rem', marginBottom: '1.25rem' }}>
+                  <div
+                    style={{
+                      background: '#f0fdf4',
+                      border: '1.5px solid #bbf7d0',
+                      borderRadius: '12px',
+                      padding: '0.85rem 1rem',
+                      marginBottom: '1.25rem',
+                    }}
+                  >
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>
                       Tổng Số Lượt Điểm Danh Hợp Lệ
                     </div>
@@ -994,11 +1364,25 @@ export default function StudentDashboardClient({
                                       borderRadius: '10px',
                                       fontSize: '0.75rem',
                                       fontWeight: 700,
-                                      background: h.participate_role === 'volunteer' ? '#fef3c7' : h.participate_role === 'organizer' ? '#f3e8ff' : '#dcfce7',
-                                      color: h.participate_role === 'volunteer' ? '#b45309' : h.participate_role === 'organizer' ? '#7e22ce' : '#15803d',
+                                      background:
+                                        h.participate_role === 'volunteer'
+                                          ? '#fef3c7'
+                                          : h.participate_role === 'organizer'
+                                          ? '#f3e8ff'
+                                          : '#dcfce7',
+                                      color:
+                                        h.participate_role === 'volunteer'
+                                          ? '#b45309'
+                                          : h.participate_role === 'organizer'
+                                          ? '#7e22ce'
+                                          : '#15803d',
                                     }}
                                   >
-                                    {h.participate_role === 'volunteer' ? 'Tình Nguyện Viên' : h.participate_role === 'organizer' ? 'Ban Tổ Chức' : 'Người Tham Gia'}
+                                    {h.participate_role === 'volunteer'
+                                      ? 'Tình Nguyện Viên'
+                                      : h.participate_role === 'organizer'
+                                      ? 'Ban Tổ Chức'
+                                      : 'Người Tham Gia'}
                                   </span>
                                 </td>
                               </tr>
@@ -1020,7 +1404,15 @@ export default function StudentDashboardClient({
               <button
                 type="button"
                 onClick={() => setSelectedClassmate(null)}
-                style={{ padding: '0.45rem 1rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}
+                style={{
+                  padding: '0.45rem 1rem',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                }}
               >
                 Đóng
               </button>

@@ -18,6 +18,7 @@ import {
 } from '@/components/icons';
 import type { Event, EventRegistration, UserPenalty, SessionUser } from '@/lib/types';
 import { checkCohortEligibility, describeCohortBlock, type CohortEligibility } from '@/lib/utils/cohort';
+import { describeLcdBlock, formatLcdsLabel, type LcdEligibility } from '@/lib/utils/lcd';
 import styles from './page.module.css';
 
 export default function EventRegisterPage({
@@ -38,6 +39,7 @@ export default function EventRegisterPage({
   const [penaltyStatus, setPenaltyStatus] = useState<UserPenalty | null>(null);
   const [registrationWindow, setRegistrationWindow] = useState<{ isOpen: boolean; cutoffTime?: string; reason?: string } | null>(null);
   const [cohortEligibility, setCohortEligibility] = useState<CohortEligibility | null>(null);
+  const [lcdEligibility, setLcdEligibility] = useState<LcdEligibility | null>(null);
   const [regType, setRegType] = useState<'participant' | 'volunteer'>('participant');
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [gender, setGender] = useState<'Nam' | 'Nữ'>('Nam');
@@ -73,6 +75,7 @@ export default function EventRegisterPage({
         setPenaltyStatus(data.data.penaltyStatus || null);
         setRegistrationWindow(data.data.registrationWindow || null);
         setCohortEligibility(data.data.cohortEligibility || null);
+        setLcdEligibility(data.data.lcdEligibility || null);
         if (data.data.event?.departments?.length > 0) {
           setSelectedDeptId((prev) => prev || data.data.event.departments[0].id);
         }
@@ -159,6 +162,12 @@ export default function EventRegisterPage({
     const cohortCheck = getCohortCheck();
     if (cohortCheck && !cohortCheck.eligible) {
       alert(cohortBlockMessage(cohortCheck));
+      return;
+    }
+
+    if (lcdEligibility && !lcdEligibility.eligible) {
+      const target = regType === 'volunteer' ? 'Cổng tuyển CTV của sự kiện này' : 'Sự kiện này';
+      alert(describeLcdBlock(lcdEligibility, currentUser?.mssv || null, target));
       return;
     }
 
@@ -389,6 +398,48 @@ export default function EventRegisterPage({
               >
                 <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   🎓 Sự kiện chỉ dành cho sinh viên khóa: {allowed.join(', ')}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 1.6. LCĐ RESTRICTION BANNER */}
+          {(() => {
+            if (currentUser && lcdEligibility && !lcdEligibility.eligible && !myRegistration) {
+              return (
+                <div className={styles.blacklistAlert}>
+                  <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <AlertTriangleIcon size={20} color="#b91c1c" />
+                    <span>BẠN KHÔNG THUỘC LIÊN CHI ĐOÀN ĐƯỢC ĐĂNG KÝ</span>
+                  </h3>
+                  <p className={styles.blacklistDesc}>
+                    {describeLcdBlock(lcdEligibility, currentUser?.mssv || null, 'Sự kiện này')}
+                  </p>
+                </div>
+              );
+            }
+            const allowedLcds = lcdEligibility?.allowed?.length
+              ? lcdEligibility.allowed
+              : (event.allowed_lcds || []);
+            if (!allowedLcds || allowedLcds.length === 0) return null;
+            return (
+              <div
+                style={{
+                  background: '#faf5ff',
+                  border: '1.5px solid #d8b4fe',
+                  borderRadius: '16px',
+                  padding: '1rem 1.5rem',
+                  marginBottom: '1rem',
+                  color: '#6b21a8',
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <span>🏛️ Sự kiện dành riêng cho sinh viên thuộc: {formatLcdsLabel(allowedLcds)}</span>
+                  {lcdEligibility?.myLcd && (
+                    <span style={{ fontSize: '0.78rem', padding: '0.15rem 0.55rem', borderRadius: '999px', background: '#dcfce7', color: '#166534', fontWeight: 800 }}>
+                      ✓ Đúng LCĐ của bạn ({lcdEligibility.myLcd.shortName})
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -704,23 +755,35 @@ export default function EventRegisterPage({
 
                   {(() => {
                     const check = getCohortCheck();
-                    return check && !check.eligible ? (
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#b91c1c', marginBottom: '0.75rem', lineHeight: 1.5 }}>
-                        {cohortBlockMessage(check)}
-                      </div>
-                    ) : null;
+                    if (check && !check.eligible) {
+                      return (
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#b91c1c', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+                          {cohortBlockMessage(check)}
+                        </div>
+                      );
+                    }
+                    if (lcdEligibility && !lcdEligibility.eligible) {
+                      return (
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#b91c1c', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+                          {describeLcdBlock(lcdEligibility, currentUser?.mssv || null, 'Sự kiện này')}
+                        </div>
+                      );
+                    }
+                    return null;
                   })()}
 
                   <button
                     type="submit"
-                    disabled={submitting || getCohortCheck()?.eligible === false}
+                    disabled={submitting || getCohortCheck()?.eligible === false || lcdEligibility?.eligible === false}
                     className={styles.submitBtn}
-                    style={getCohortCheck()?.eligible === false ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                    style={(getCohortCheck()?.eligible === false || lcdEligibility?.eligible === false) ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
                   >
                     {submitting
                       ? 'Đang xử lý đăng ký...'
                       : getCohortCheck()?.eligible === false
                       ? 'Không nằm trong khóa được đăng ký'
+                      : lcdEligibility?.eligible === false
+                      ? 'Không thuộc Liên Chi Đoàn được đăng ký'
                       : regType === 'volunteer'
                       ? 'Gửi Đơn Ứng Tuyển Ban Chuyên Trách'
                       : 'Xác Nhận Đăng Ký Tham Gia'}

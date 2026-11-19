@@ -18,6 +18,7 @@ import {
 } from '@/components/icons';
 import type { Event, EventRegistration, UserPenalty, SessionUser } from '@/lib/types';
 import { describeCohortBlock, type CohortEligibility } from '@/lib/utils/cohort';
+import { describeLcdBlock, formatLcdsLabel, type LcdEligibility } from '@/lib/utils/lcd';
 import styles from '../register/page.module.css';
 
 export default function EventRecruitmentPage({
@@ -37,6 +38,7 @@ export default function EventRecruitmentPage({
   const [penaltyStatus, setPenaltyStatus] = useState<UserPenalty | null>(null);
   const [registrationWindow, setRegistrationWindow] = useState<{ isOpen: boolean; cutoffTime?: string; reason?: string } | null>(null);
   const [cohortEligibility, setCohortEligibility] = useState<CohortEligibility | null>(null);
+  const [lcdEligibility, setLcdEligibility] = useState<LcdEligibility | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [gender, setGender] = useState<'Nam' | 'Nữ'>('Nam');
   const [phone, setPhone] = useState('');
@@ -68,6 +70,7 @@ export default function EventRecruitmentPage({
         // Cổng CTV độc lập với cổng khán giả (sự kiện chỉ tuyển CTV vẫn nhận đơn)
         setRegistrationWindow(data.data.recruitmentWindow || data.data.registrationWindow || null);
         setCohortEligibility(data.data.cohortEligibility || null);
+        setLcdEligibility(data.data.lcdEligibility || null);
         if (data.data.event?.departments?.length > 0) {
           setSelectedDeptId((prev) => prev || data.data.event.departments[0].id);
         }
@@ -127,6 +130,11 @@ export default function EventRecruitmentPage({
 
     if (cohortEligibility && !cohortEligibility.eligible) {
       alert(describeCohortBlock(cohortEligibility, currentUser.mssv || null, 'Cổng tuyển CTV của sự kiện này'));
+      return;
+    }
+
+    if (lcdEligibility && !lcdEligibility.eligible) {
+      alert(describeLcdBlock(lcdEligibility, currentUser.mssv || null, 'Cổng tuyển CTV của sự kiện này'));
       return;
     }
 
@@ -484,9 +492,40 @@ export default function EventRecruitmentPage({
             )
           )}
 
+          {/* LCĐ RESTRICTION */}
+          {!isVolunteerApplied && !isBlacklisted && lcdEligibility?.restricted && (
+            currentUser && !lcdEligibility.eligible ? (
+              <div className={styles.blacklistAlert}>
+                <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <AlertTriangleIcon size={20} color="#b91c1c" />
+                  <span>BẠN KHÔNG THUỘC LIÊN CHI ĐOÀN ĐƯỢC ĐĂNG KÝ</span>
+                </h3>
+                <p className={styles.blacklistDesc}>
+                  {describeLcdBlock(lcdEligibility, currentUser.mssv || null, 'Cổng tuyển CTV của sự kiện này')}
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  background: '#faf5ff',
+                  border: '1.5px solid #d8b4fe',
+                  borderRadius: '16px',
+                  padding: '1rem 1.5rem',
+                  marginBottom: '1rem',
+                  color: '#6b21a8',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                }}
+              >
+                🏛️ Chỉ nhận đơn sinh viên thuộc: {formatLcdsLabel(lcdEligibility.allowed)}
+              </div>
+            )
+          )}
+
           {/* APPLICATION FORM */}
           {!isVolunteerApplied && !isBlacklisted && registrationWindow?.isOpen && event.is_recruitment_open !== false
-            && !(currentUser && cohortEligibility && !cohortEligibility.eligible) && (
+            && !(currentUser && cohortEligibility && !cohortEligibility.eligible)
+            && !(currentUser && lcdEligibility && !lcdEligibility.eligible) && (
             <form onSubmit={handleApply} className={styles.formSection}>
               {!currentUser ? (
                 <div style={{ textAlign: 'center', padding: '1rem 0' }}>

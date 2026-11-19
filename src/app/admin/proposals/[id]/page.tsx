@@ -26,6 +26,7 @@ import {
 } from '@/components/icons';
 import { getStageLabel, isKhoaUnit } from '@/lib/utils/proposal-logic';
 import { getRatingDepartmentLabel } from '@/lib/utils/rating-logic';
+import { formatLcdsLabel } from '@/lib/utils/lcd';
 import type { EventProposal, ProposalLog, ProposalStage, SessionUser, UnitRating } from '@/lib/types';
 import {
   deriveBookingSchedule,
@@ -855,6 +856,14 @@ export default function ProposalDetailPage({
                 {proposal.allowed_cohorts && proposal.allowed_cohorts.length > 0
                   ? `Chỉ khóa ${proposal.allowed_cohorts.join(', ')}`
                   : 'Tất cả khóa (Full khóa)'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Phạm vi Liên Chi Đoàn</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.allowed_lcds && proposal.allowed_lcds.length > 0 ? '#7c3aed' : '#15803d' }}>
+                {proposal.allowed_lcds && proposal.allowed_lcds.length > 0
+                  ? `Chỉ ${formatLcdsLabel(proposal.allowed_lcds)}`
+                  : 'Toàn Học viện (Tất cả LCĐ)'}
               </span>
             </div>
             {/* ── BẢNG TÓM TẮT LỊCH TRÌNH & ĐỊA ĐIỂM CÁC CA ── */}

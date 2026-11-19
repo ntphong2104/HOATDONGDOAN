@@ -40,6 +40,7 @@ export interface Event {
   target_scope?: 'all' | 'unit_only';
   sessions?: EventSession[];
   allowed_cohorts?: string[] | null;
+  allowed_lcds?: string[] | null;
 }
 
 export interface EventSession {
@@ -326,6 +327,7 @@ export interface EventProposal {
   description?: string | null;
   plan_url?: string | null;
   allowed_cohorts?: string[] | null;
+  allowed_lcds?: string[] | null;
   sessions?: ProposalSessionItem[];
   key_status?: 'pending' | 'handed_over' | 'returned';
   key_handed_at?: string | null;

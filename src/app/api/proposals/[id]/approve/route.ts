@@ -237,10 +237,11 @@ export async function POST(
           }
         }
 
-        // Save departments, target scope, and sessions into event meta store
+        // Save departments, target scope, allowed LCĐs, and sessions into event meta store
         await saveEventMeta(supabase, newEvent.event_id, {
           departments: (proposal as any).departments || [],
           target_scope: (proposal as any).target_scope || 'all',
+          allowed_lcds: Array.isArray(propMetaInitial.allowed_lcds) ? propMetaInitial.allowed_lcds : [],
           sessions: finalSessions,
           is_recruitment_open: volunteerCount > 0 || Boolean((proposal as any).departments && (proposal as any).departments.length > 0),
           max_participants: participantCount,
