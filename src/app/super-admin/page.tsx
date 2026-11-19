@@ -92,6 +92,7 @@ function SuperAdminContent() {
   const [delegatesLoading, setDelegatesLoading] = useState(true);
   const [reconcilingAll, setReconcilingAll] = useState(false);
   const [eventStatusFilter, setEventStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
   const [proposalStatusFilter, setProposalStatusFilter] = useState<'all' | 'pending' | 'active' | 'closed'>('all');
   const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'info'; message: string }>>([]);
 
@@ -614,15 +615,41 @@ function SuperAdminContent() {
     }
   };
 
+  const normalizeForSearch = React.useCallback((val: unknown): string => {
+    return String(val || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'd')
+      .toLowerCase()
+      .trim();
+  }, []);
+
   const filteredEvents = React.useMemo(() => {
-    if (!selectedUnitFilter) return events;
-    return events.filter((ev) => {
-      return (
-        isSameUnit(ev.created_by, selectedUnitFilter) ||
-        (ev.event_name || '').toLowerCase().includes(selectedUnitFilter.toLowerCase())
-      );
-    });
-  }, [events, selectedUnitFilter]);
+    let list = events;
+    if (selectedUnitFilter) {
+      list = list.filter((ev) => {
+        return (
+          isSameUnit(ev.created_by, selectedUnitFilter) ||
+          (ev.event_name || '').toLowerCase().includes(selectedUnitFilter.toLowerCase())
+        );
+      });
+    }
+    const q = normalizeForSearch(eventSearchQuery);
+    if (q) {
+      list = list.filter((ev: any) => {
+        const dateStr = ev.event_date ? new Date(ev.event_date).toLocaleDateString('vi-VN') : '';
+        const roleEmails = Array.isArray(ev.event_roles)
+          ? ev.event_roles.map((r: any) => r?.email || '').join(' ')
+          : '';
+        const haystack = normalizeForSearch(
+          `${ev.event_name || ''} ${ev.created_by || ''} ${ev.semester || ''} ${ev.event_date || ''} ${dateStr} ${roleEmails}`
+        );
+        return haystack.includes(q);
+      });
+    }
+    return list;
+  }, [events, selectedUnitFilter, eventSearchQuery, normalizeForSearch]);
 
   const filteredUnitsList = React.useMemo(() => {
     if (unitFilterTab === 'lcd') {
@@ -639,8 +666,18 @@ function SuperAdminContent() {
     if (selectedUnitFilter) {
       list = list.filter((p) => isSameUnit(p.organization_unit, selectedUnitFilter));
     }
+    const q = normalizeForSearch(eventSearchQuery);
+    if (q) {
+      list = list.filter((p) => {
+        const dateStr = p.start_date ? new Date(p.start_date).toLocaleDateString('vi-VN') : '';
+        const haystack = normalizeForSearch(
+          `${p.title || ''} ${p.organization_unit || ''} ${p.created_by || ''} ${p.room_name || ''} ${p.start_date || ''} ${dateStr} ${getStageLabel(p.current_stage)}`
+        );
+        return haystack.includes(q);
+      });
+    }
     return list;
-  }, [proposals, selectedUnitFilter]);
+  }, [proposals, selectedUnitFilter, eventSearchQuery, normalizeForSearch]);
 
   const getProposalDisplayStatus = React.useCallback((p: EventProposal) => {
     if (p.status === 'rejected') {
@@ -2196,89 +2233,120 @@ function SuperAdminContent() {
                 </div>
               </div>
 
-              {/* Bộ lọc trạng thái kiểu Pills (Tất cả, Chờ duyệt, Đang mở, Đã đóng) */}
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem', marginBottom: '1.25rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setEventStatusFilter('all')}
-                  style={{
-                    padding: '0.4rem 0.9rem',
-                    borderRadius: '20px',
-                    border: '1.5px solid',
-                    borderColor: eventStatusFilter === 'all' ? '#2563eb' : '#e2e8f0',
-                    background: eventStatusFilter === 'all' ? '#2563eb' : '#ffffff',
-                    color: eventStatusFilter === 'all' ? '#ffffff' : '#475569',
-                    fontSize: '0.825rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  Tất cả ({pendingProposals.length + filteredEvents.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEventStatusFilter('pending')}
-                  style={{
-                    padding: '0.4rem 0.9rem',
-                    borderRadius: '20px',
-                    border: '1.5px solid',
-                    borderColor: eventStatusFilter === 'pending' ? '#d97706' : '#fed7aa',
-                    background: eventStatusFilter === 'pending' ? '#d97706' : '#fffbeb',
-                    color: eventStatusFilter === 'pending' ? '#ffffff' : '#b45309',
-                    fontSize: '0.825rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  Chờ duyệt ({pendingProposals.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEventStatusFilter('active')}
-                  style={{
-                    padding: '0.4rem 0.9rem',
-                    borderRadius: '20px',
-                    border: '1.5px solid',
-                    borderColor: eventStatusFilter === 'active' ? '#16a34a' : '#bbf7d0',
-                    background: eventStatusFilter === 'active' ? '#16a34a' : '#f0fdf4',
-                    color: eventStatusFilter === 'active' ? '#ffffff' : '#15803d',
-                    fontSize: '0.825rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  Đang mở ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'active').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEventStatusFilter('closed')}
-                  style={{
-                    padding: '0.4rem 0.9rem',
-                    borderRadius: '20px',
-                    border: '1.5px solid',
-                    borderColor: eventStatusFilter === 'closed' ? '#475569' : '#e2e8f0',
-                    background: eventStatusFilter === 'closed' ? '#475569' : '#f8fafc',
-                    color: eventStatusFilter === 'closed' ? '#ffffff' : '#64748b',
-                    fontSize: '0.825rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  Đã đóng ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'closed').length})
-                </button>
+              {/* Bộ lọc trạng thái kiểu Pills + Ô tìm kiếm sự kiện / kế hoạch */}
+              <div className={styles.eventsFilterBar}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEventStatusFilter('all')}
+                    style={{
+                      padding: '0.45rem 0.95rem',
+                      borderRadius: '20px',
+                      border: '1.5px solid',
+                      borderColor: eventStatusFilter === 'all' ? '#2563eb' : '#e2e8f0',
+                      background: eventStatusFilter === 'all' ? '#2563eb' : '#ffffff',
+                      color: eventStatusFilter === 'all' ? '#ffffff' : '#475569',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    Tất cả ({pendingProposals.length + filteredEvents.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEventStatusFilter('pending')}
+                    style={{
+                      padding: '0.45rem 0.95rem',
+                      borderRadius: '20px',
+                      border: '1.5px solid',
+                      borderColor: eventStatusFilter === 'pending' ? '#d97706' : '#fed7aa',
+                      background: eventStatusFilter === 'pending' ? '#d97706' : '#fffbeb',
+                      color: eventStatusFilter === 'pending' ? '#ffffff' : '#b45309',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    Chờ duyệt ({pendingProposals.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEventStatusFilter('active')}
+                    style={{
+                      padding: '0.45rem 0.95rem',
+                      borderRadius: '20px',
+                      border: '1.5px solid',
+                      borderColor: eventStatusFilter === 'active' ? '#16a34a' : '#bbf7d0',
+                      background: eventStatusFilter === 'active' ? '#16a34a' : '#f0fdf4',
+                      color: eventStatusFilter === 'active' ? '#ffffff' : '#15803d',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    Đang mở ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'active').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEventStatusFilter('closed')}
+                    style={{
+                      padding: '0.45rem 0.95rem',
+                      borderRadius: '20px',
+                      border: '1.5px solid',
+                      borderColor: eventStatusFilter === 'closed' ? '#475569' : '#e2e8f0',
+                      background: eventStatusFilter === 'closed' ? '#475569' : '#f8fafc',
+                      color: eventStatusFilter === 'closed' ? '#ffffff' : '#64748b',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    Đã đóng ({filteredEvents.filter((ev) => getEffectiveEventStatus(ev) === 'closed').length})
+                  </button>
+                </div>
+
+                {/* Ô tìm kiếm sự kiện / kế hoạch */}
+                <div className={styles.eventSearchWrapper}>
+                  <span className={styles.eventSearchIcon} aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    value={eventSearchQuery}
+                    onChange={(e) => setEventSearchQuery(e.target.value)}
+                    placeholder="Tìm tên sự kiện, đơn vị (LCĐ/CLB), phòng, email, ngày..."
+                    aria-label="Tìm kiếm sự kiện và kế hoạch"
+                    className={styles.eventSearchInput}
+                  />
+                  {eventSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setEventSearchQuery('')}
+                      title="Xóa từ khóa tìm kiếm"
+                      aria-label="Xóa từ khóa tìm kiếm"
+                      className={styles.eventSearchClearBtn}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
               <div className={styles.tableWrapper}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ width: '28%', minWidth: '220px' }}>Tên sự kiện / Kế hoạch</th>
-                      <th style={{ width: '20%', minWidth: '170px' }}>Thời gian & Địa điểm</th>
-                      <th style={{ width: '17%', minWidth: '150px' }}>Trạng thái</th>
-                      <th style={{ width: '35%', minWidth: '340px' }}>Ban quản trị & Thao tác</th>
+                      <th style={{ width: '32%', minWidth: '280px' }}>Tên sự kiện / Kế hoạch</th>
+                      <th style={{ width: '19%', minWidth: '190px' }}>Thời gian & Địa điểm</th>
+                      <th style={{ width: '14%', minWidth: '150px' }}>Trạng thái</th>
+                      <th style={{ width: '35%', minWidth: '400px' }}>Ban quản trị & Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2360,7 +2428,7 @@ function SuperAdminContent() {
                               <td onClick={(e) => e.stopPropagation()}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.775rem', color: '#475569', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.8rem', color: '#475569', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.created_by}>
                                       {p.created_by}
                                     </span>
                                     <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Người lập hồ sơ</span>
@@ -2638,7 +2706,30 @@ function SuperAdminContent() {
                           (eventStatusFilter === 'all' && pendingProposals.length === 0 && filteredEvents.length === 0)) && (
                           <tr>
                             <td colSpan={4} className={styles.emptyState}>
-                              Không có sự kiện hoặc kế hoạch nào {selectedUnitFilter ? `của đơn vị ${selectedUnitFilter}` : ''} phù hợp bộ lọc
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
+                                <span>
+                                  Không có sự kiện hoặc kế hoạch nào {selectedUnitFilter ? `của đơn vị ${selectedUnitFilter} ` : ''}
+                                  {eventSearchQuery.trim() ? `khớp với từ khóa "${eventSearchQuery.trim()}"` : 'phù hợp bộ lọc'}
+                                </span>
+                                {eventSearchQuery.trim() && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEventSearchQuery('')}
+                                    style={{
+                                      padding: '0.35rem 0.85rem',
+                                      borderRadius: '8px',
+                                      border: '1.5px solid #bfdbfe',
+                                      background: '#eff6ff',
+                                      color: '#2563eb',
+                                      fontSize: '0.825rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Xóa từ khóa tìm kiếm
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )}
