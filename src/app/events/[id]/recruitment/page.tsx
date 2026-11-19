@@ -15,6 +15,7 @@ import {
   ShieldCheckIcon,
   QrCodeIcon,
   AlertTriangleIcon,
+  BuildingIcon,
 } from '@/components/icons';
 import type { Event, EventRegistration, UserPenalty, SessionUser } from '@/lib/types';
 import { describeCohortBlock, type CohortEligibility } from '@/lib/utils/cohort';
@@ -515,9 +516,13 @@ export default function EventRecruitmentPage({
                   color: '#6b21a8',
                   fontWeight: 700,
                   fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
                 }}
               >
-                🏛️ Chỉ nhận đơn sinh viên thuộc: {formatLcdsLabel(lcdEligibility.allowed)}
+                <BuildingIcon size={16} color="#6b21a8" />
+                <span>Chỉ nhận đơn sinh viên thuộc: {formatLcdsLabel(lcdEligibility.allowed)}</span>
               </div>
             )
           )}

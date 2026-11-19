@@ -30,6 +30,7 @@ import {
   LightbulbIcon,
   PlusIcon,
   MapPinIcon,
+  BuildingIcon,
 } from '@/components/icons';
 import { getSelectableCohorts, normalizeAllowedCohorts } from '@/lib/utils/cohort';
 import { LCD_DEFINITIONS, normalizeAllowedLcds, formatLcdsLabel } from '@/lib/utils/lcd';
@@ -1450,8 +1451,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 borderRadius: '12px',
               }}
             >
-              <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#6b21a8', display: 'block', marginBottom: '0.5rem' }}>
-                🏛️ Phạm vi Liên Chi Đoàn (LCĐ) được đăng ký
+              <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#6b21a8', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                <BuildingIcon size={15} color="#6b21a8" />
+                <span>Phạm vi Liên Chi Đoàn (LCĐ) được đăng ký</span>
               </label>
               {(() => {
                 const currentLcds = normalizeAllowedLcds((event as any).allowed_lcds);

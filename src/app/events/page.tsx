@@ -14,6 +14,10 @@ import {
   LockIcon,
   QrCodeIcon,
   AlertTriangleIcon,
+  StarIcon,
+  YouthUnionIcon,
+  BadgeMedalIcon,
+  UserIcon,
 } from '@/components/icons';
 import { LCD_DEFINITIONS, type LcdCode, type LcdEligibility } from '@/lib/utils/lcd';
 import type { CohortEligibility } from '@/lib/utils/cohort';
@@ -199,23 +203,28 @@ export default function StudentEventsDiscoverPage() {
                     className={styles.lcdHeroPill}
                     style={{ color: profile.lcd.color }}
                   >
-                    🏛️ {profile.lcd.name}
+                    <BuildingIcon size={14} color={profile.lcd.color} />
+                    <span>{profile.lcd.name}</span>
                   </span>
                 ) : (
                   <span className={styles.profilePill}>
-                    🏛️ Chưa xác định LCĐ (Cập nhật Mã lớp ở Trang cá nhân)
+                    <BuildingIcon size={14} />
+                    <span>Chưa xác định LCĐ (Cập nhật Mã lớp ở Trang cá nhân)</span>
                   </span>
                 )}
                 <span className={styles.profilePill}>
-                  🎓 Lớp {profile.class_id}
+                  <UsersIcon size={13} />
+                  <span>Lớp {profile.class_id}</span>
                 </span>
                 {profile.cohort && (
                   <span className={styles.profilePill}>
-                    Khóa {profile.cohort}
+                    <BadgeMedalIcon size={13} />
+                    <span>Khóa {profile.cohort}</span>
                   </span>
                 )}
                 <span className={styles.profilePill}>
-                  MSSV: {profile.mssv}
+                  <UserIcon size={13} />
+                  <span>MSSV: {profile.mssv}</span>
                 </span>
               </div>
             )}
@@ -267,7 +276,8 @@ export default function StudentEventsDiscoverPage() {
                 className={`${styles.tabBtn} ${activeTab === 'for_me' ? styles.tabBtnActive : ''}`}
                 onClick={() => setActiveTab('for_me')}
               >
-                <span>✨ Dành cho tôi</span>
+                <StarIcon size={14} />
+                <span>Dành cho tôi</span>
                 <span className={styles.tabCount}>{counts.forMe}</span>
               </button>
 
@@ -276,7 +286,8 @@ export default function StudentEventsDiscoverPage() {
                 className={`${styles.tabBtn} ${activeTab === 'my_lcd' ? styles.tabBtnActive : ''}`}
                 onClick={() => setActiveTab('my_lcd')}
               >
-                <span>🏛️ {profile?.lcd ? `Riêng ${profile.lcd.shortName}` : 'Riêng LCĐ của tôi'}</span>
+                <BuildingIcon size={14} />
+                <span>{profile?.lcd ? `Riêng ${profile.lcd.shortName}` : 'Riêng LCĐ của tôi'}</span>
                 <span className={styles.tabCount}>{counts.myLcd}</span>
               </button>
 
@@ -285,7 +296,8 @@ export default function StudentEventsDiscoverPage() {
                 className={`${styles.tabBtn} ${activeTab === 'recruiting' ? styles.tabBtnActive : ''}`}
                 onClick={() => setActiveTab('recruiting')}
               >
-                <span>🤝 Tuyển CTV</span>
+                <UsersIcon size={14} />
+                <span>Tuyển CTV</span>
                 <span className={styles.tabCount}>{counts.recruiting}</span>
               </button>
 
@@ -294,7 +306,8 @@ export default function StudentEventsDiscoverPage() {
                 className={`${styles.tabBtn} ${activeTab === 'all' ? styles.tabBtnActive : ''}`}
                 onClick={() => setActiveTab('all')}
               >
-                <span>🌐 Tất cả sự kiện</span>
+                <YouthUnionIcon size={14} />
+                <span>Tất cả sự kiện</span>
                 <span className={styles.tabCount}>{counts.all}</span>
               </button>
             </div>
@@ -441,30 +454,34 @@ export default function StudentEventsDiscoverPage() {
                   <div className={styles.badgesRow}>
                     {ev.allowed_lcds.length > 0 ? (
                       <span className={`${styles.badge} ${styles.badgeLcd}`}>
-                        🏛️ {ev.allowed_lcds_label}
+                        <BuildingIcon size={12} color="#6b21a8" />
+                        <span>{ev.allowed_lcds_label}</span>
                       </span>
                     ) : (
                       <span className={`${styles.badge} ${styles.badgeAll}`}>
-                        🌐 Toàn Học viện
+                        <YouthUnionIcon size={12} color="#1d4ed8" />
+                        <span>Toàn Học viện</span>
                       </span>
                     )}
 
                     {ev.allowed_cohorts.length > 0 && (
                       <span className={`${styles.badge} ${styles.badgeCohort}`}>
-                        🎓 Khóa {ev.allowed_cohorts.join(', ')}
+                        <BadgeMedalIcon size={12} color="#0e7490" />
+                        <span>Khóa {ev.allowed_cohorts.join(', ')}</span>
                       </span>
                     )}
 
                     {ev.is_registered && (
                       <span className={`${styles.badge} ${styles.badgeRegistered}`}>
                         <CheckCircleIcon size={12} color="#15803d" />
-                        Đã đăng ký
+                        <span>Đã đăng ký</span>
                       </span>
                     )}
 
                     {ev.recruitment_window.isOpen && !ev.is_expired && (
                       <span className={`${styles.badge} ${styles.badgeRecruiting}`}>
-                        🤝 Tuyển CTV
+                        <UsersIcon size={12} color="#b45309" />
+                        <span>Tuyển CTV</span>
                       </span>
                     )}
 

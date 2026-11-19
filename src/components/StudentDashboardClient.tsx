@@ -22,6 +22,9 @@ import {
   AlertTriangleIcon,
   MapPinIcon,
   SearchIcon,
+  BuildingIcon,
+  YouthUnionIcon,
+  PencilIcon,
 } from '@/components/icons';
 import type { HistoryItem } from '@/lib/types';
 import styles from './StudentDashboardClient.module.css';
@@ -305,7 +308,8 @@ export default function StudentDashboardClient({
                   border: `1px solid ${myLcd.border}`,
                 }}
               >
-                🏛️ {myLcd.name}
+                <BuildingIcon size={14} color={myLcd.color} />
+                <span>{myLcd.name}</span>
               </span>
             ) : (
               <span
@@ -316,7 +320,8 @@ export default function StudentDashboardClient({
                   border: '1px solid #cbd5e1',
                 }}
               >
-                🏛️ Đoàn Viên PTIT HCM
+                <YouthUnionIcon size={14} color="#475569" />
+                <span>Đoàn Viên PTIT HCM</span>
               </span>
             )}
             {myCohort && <span className={styles.cohortBadge}>Khóa {myCohort}</span>}
@@ -400,9 +405,16 @@ export default function StudentDashboardClient({
               <span className={styles.kpiLabel}>Hồ sơ liên hệ</span>
               <span
                 className={styles.kpiValue}
-                style={{ fontSize: '1.05rem', color: isPhoneMissing ? '#d97706' : '#0f766e', marginTop: '0.2rem' }}
+                style={{ fontSize: '1.05rem', color: isPhoneMissing ? '#d97706' : '#0f766e', marginTop: '0.2rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
               >
-                {isPhoneMissing ? 'Thiếu SĐT' : 'Đã đầy đủ ✓'}
+                {isPhoneMissing ? (
+                  <span>Thiếu SĐT</span>
+                ) : (
+                  <>
+                    <CheckCircleIcon size={16} color="#0f766e" />
+                    <span>Đã đầy đủ</span>
+                  </>
+                )}
               </span>
               <span className={styles.kpiSub}>
                 {isPhoneMissing ? 'Cần bổ sung' : userPhone}
@@ -472,9 +484,13 @@ export default function StudentDashboardClient({
                   fontSize: '0.82rem',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
                 }}
               >
-                Chỉnh sửa SĐT / Giới tính
+                <PencilIcon size={14} color="#2563eb" />
+                <span>Chỉnh sửa SĐT / Giới tính</span>
               </button>
             </div>
 

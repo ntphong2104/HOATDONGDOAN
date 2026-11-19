@@ -936,8 +936,9 @@ export default function NewProposalPage() {
               return (
                 <div style={{ marginTop: '1rem', padding: '1rem 1.25rem', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.6rem' }}>
-                    <label style={{ fontWeight: 700, fontSize: '0.875rem', color: '#6b21a8', margin: 0 }}>
-                      🏛️ Phân phạm vi Liên Chi Đoàn (LCĐ) được đăng ký
+                    <label style={{ fontWeight: 700, fontSize: '0.875rem', color: '#6b21a8', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <BuildingIcon size={16} color="#6b21a8" />
+                      <span>Phân phạm vi Liên Chi Đoàn (LCĐ) được đăng ký</span>
                     </label>
                     {ownLcdDef && (
                       <button
@@ -954,7 +955,7 @@ export default function NewProposalPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        ⚡ Chỉ {ownLcdDef.shortName}
+                        Chọn nhanh: Chỉ {ownLcdDef.shortName}
                       </button>
                     )}
                   </div>

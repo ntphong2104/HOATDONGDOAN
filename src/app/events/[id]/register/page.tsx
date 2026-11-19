@@ -15,6 +15,7 @@ import {
   ShieldCheckIcon,
   QrCodeIcon,
   AlertTriangleIcon,
+  BuildingIcon,
 } from '@/components/icons';
 import type { Event, EventRegistration, UserPenalty, SessionUser } from '@/lib/types';
 import { checkCohortEligibility, describeCohortBlock, type CohortEligibility } from '@/lib/utils/cohort';
@@ -433,11 +434,13 @@ export default function EventRegisterPage({
                   color: '#6b21a8',
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  <span>🏛️ Sự kiện dành riêng cho sinh viên thuộc: {formatLcdsLabel(allowedLcds)}</span>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                  <BuildingIcon size={16} color="#6b21a8" />
+                  <span>Sự kiện dành riêng cho sinh viên thuộc: {formatLcdsLabel(allowedLcds)}</span>
                   {lcdEligibility?.myLcd && (
-                    <span style={{ fontSize: '0.78rem', padding: '0.15rem 0.55rem', borderRadius: '999px', background: '#dcfce7', color: '#166534', fontWeight: 800 }}>
-                      ✓ Đúng LCĐ của bạn ({lcdEligibility.myLcd.shortName})
+                    <span style={{ fontSize: '0.78rem', padding: '0.15rem 0.55rem', borderRadius: '999px', background: '#dcfce7', color: '#166534', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <CheckCircleIcon size={13} color="#166534" />
+                      <span>Đúng LCĐ của bạn ({lcdEligibility.myLcd.shortName})</span>
                     </span>
                   )}
                 </div>
