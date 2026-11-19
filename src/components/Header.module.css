@@ -134,6 +134,10 @@
   width: 256px;
 }
 
+.sidebarHoverPeek {
+  box-shadow: 10px 0 28px rgba(15, 23, 42, 0.14);
+}
+
 .sidebarCollapsed {
   width: 72px;
 }

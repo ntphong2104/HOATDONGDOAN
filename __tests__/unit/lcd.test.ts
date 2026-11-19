@@ -14,8 +14,8 @@ describe('LCĐ Classification & Registration Scope (8 Official PTIT HCM LCĐs)',
     expect(LCD_DEFINITIONS).toHaveLength(8);
     expect(LCD_DEFINITIONS.map((d) => d.code)).toEqual([
       'LCD_CNTT',
-      'LCD_ATTT',
       'LCD_CNDPT',
+      'LCD_ATTT',
       'LCD_VT',
       'LCD_DT',
       'LCD_QTKD',
@@ -101,7 +101,7 @@ describe('LCĐ Classification & Registration Scope (8 Official PTIT HCM LCĐs)',
     // Multi-LCĐ joint event
     const joint = checkLcdEligibility(['LCD_CNTT', 'LCD_ATTT'], 'D25CQAT01-N', 'N25DCAT012');
     expect(joint.eligible).toBe(true);
-    expect(formatLcdsLabel(joint.allowed)).toBe('LCĐ CNTT, LCĐ ATTT');
+    expect(formatLcdsLabel(joint.allowed)).toBe('LCĐ Khoa Công nghệ Thông tin, LCĐ An toàn Thông tin');
     expect(formatLcdsLabel([])).toBe('Toàn Học viện');
     expect(normalizeAllowedLcds(['LCD_CNTT', 'invalid', 'lcd_cntt'])).toEqual(['LCD_CNTT']);
   });

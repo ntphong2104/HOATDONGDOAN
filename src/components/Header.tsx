@@ -19,6 +19,7 @@ import {
   PlusIcon,
   CheckCircleIcon,
   HistoryIcon,
+  StarIcon,
 } from '@/components/icons';
 import DualLogos from '@/components/DualLogos';
 import UserMenuDropdown from '@/components/UserMenuDropdown';
@@ -56,10 +57,13 @@ export default function Header({
 }: HeaderProps = {}) {
   const pathname = usePathname() || '';
   const [resolvedUser, setResolvedUser] = useState<SessionUser | null>(user || null);
-  const [desktopExpanded, setDesktopExpanded] = useState(true);
+  // Mặc định thu gọn dạng mini-rail 72px (giống Gmail); rê chuột vào tự mở rộng, bấm ≡ để ghim cố định
+  const [desktopExpanded, setDesktopExpanded] = useState(false);
+  const [desktopHovered, setDesktopHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const usePersistentSidebar = !showSidebarToggle && !hideNavbar;
+  const isVisuallyExpanded = desktopExpanded || desktopHovered;
 
   useEffect(() => {
     if (user) return;
@@ -220,8 +224,12 @@ export default function Header({
 
           <aside
             className={`${styles.sidebar} ${
-              desktopExpanded ? styles.sidebarExpanded : styles.sidebarCollapsed
-            } ${mobileOpen ? styles.sidebarMobileOpen : ''}`}
+              isVisuallyExpanded ? styles.sidebarExpanded : styles.sidebarCollapsed
+            } ${!desktopExpanded && desktopHovered ? styles.sidebarHoverPeek : ''} ${
+              mobileOpen ? styles.sidebarMobileOpen : ''
+            }`}
+            onMouseEnter={() => setDesktopHovered(true)}
+            onMouseLeave={() => setDesktopHovered(false)}
             aria-label="Thanh điều hướng chính"
           >
             {/* Gmail-style Rounded Primary Pill Button */}
@@ -240,11 +248,11 @@ export default function Header({
                 <Link
                   href="/events"
                   className={styles.sidebarPrimaryCta}
-                  title="Khám Phá Sự Kiện"
+                  title="Sự kiện dành cho bạn"
                   onClick={() => setMobileOpen(false)}
                 >
-                  <CalendarIcon size={18} />
-                  <span className={styles.sidebarLabel}>Khám Phá Sự Kiện</span>
+                  <StarIcon size={18} />
+                  <span className={styles.sidebarLabel}>Sự kiện cho tôi</span>
                 </Link>
               )}
             </div>
