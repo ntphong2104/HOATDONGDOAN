@@ -37,7 +37,7 @@ export default function AdminDashboardClient({
 }: AdminDashboardClientProps) {
   const [activeTab, setActiveTab] = useState<'events' | 'lcd_members' | 'lcd_delegates' | 'ranking'>('events');
   const [events, setEvents] = useState<Event[]>(initialEvents);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'closed'>('all');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'closed' | 'all'>('active');
   const [eventSearch, setEventSearch] = useState('');
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [eventName, setEventName] = useState('');
@@ -282,13 +282,6 @@ export default function AdminDashboardClient({
           <div className={styles.filterPills}>
             <button
               type="button"
-              onClick={() => setStatusFilter('all')}
-              className={`${styles.filterPill} ${statusFilter === 'all' ? styles.filterPillActive : ''}`}
-            >
-              Tất cả ({events.length})
-            </button>
-            <button
-              type="button"
               onClick={() => setStatusFilter('active')}
               className={`${styles.filterPill} ${statusFilter === 'active' ? styles.filterPillActive : ''}`}
             >
@@ -300,6 +293,13 @@ export default function AdminDashboardClient({
               className={`${styles.filterPill} ${statusFilter === 'closed' ? styles.filterPillActive : ''}`}
             >
               Đã đóng ({closedCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`${styles.filterPill} ${statusFilter === 'all' ? styles.filterPillActive : ''}`}
+            >
+              Tất cả ({events.length})
             </button>
           </div>
 

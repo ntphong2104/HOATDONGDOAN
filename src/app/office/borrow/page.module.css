@@ -13,30 +13,34 @@
 }
 
 .hero {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  border-radius: 18px;
-  padding: 1.35rem 1.6rem;
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .heroEyebrow {
-  font-size: 0.74rem;
-  font-weight: 800;
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #bfdbfe;
+  letter-spacing: 0.06em;
+  color: #1d4ed8;
 }
 
 .heroTitle {
-  margin: 0.25rem 0;
-  font-size: 1.4rem;
+  margin: 0.2rem 0;
+  font-size: 1.35rem;
   font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
 }
 
 .heroSub {
   margin: 0;
   font-size: 0.85rem;
-  color: #dbeafe;
+  color: #64748b;
   line-height: 1.45;
 }
 
@@ -51,31 +55,34 @@
   gap: 0.75rem;
 }
 
-/* 2-Column Borrow Workspace */
+/* 2-Column Borrow Workspace — Equal-height aligned cards with internal scroll */
 .borrowGrid {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(340px, 1fr);
   gap: 1.25rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 920px) {
   .borrowGrid {
     grid-template-columns: 1fr;
+    align-items: start;
   }
 }
 
 .card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 1.2rem;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .stickyCard {
-  position: sticky;
-  top: 84px;
+  position: static;
 }
 
 @media (max-width: 920px) {
@@ -187,7 +194,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  max-height: 460px;
+  flex: 1;
+  min-height: 0;
+  max-height: 360px;
   overflow-y: auto;
   padding-right: 0.25rem;
 }
@@ -345,8 +354,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  max-height: 150px;
+  max-height: 112px;
   overflow-y: auto;
+  padding-right: 0.2rem;
 }
 
 .selectedItem {

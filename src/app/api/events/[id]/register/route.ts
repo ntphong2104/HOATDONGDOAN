@@ -4,7 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV, isValidMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
-import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { isEventLockedPast3Days, isEventScheduleExpired } from '@/lib/utils/event-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 import { runWithConcurrency, QueueTimeoutError } from '@/lib/utils/concurrency-queue';
 import { getGraduatedCohorts, getGraduatedBlockReason } from '@/lib/utils/graduated-cohorts';
@@ -93,6 +93,14 @@ export async function GET(
     max_volunteers: meta.max_volunteers || 0,
   };
 
+  const scheduleExpired = isEventScheduleExpired({
+    event_date: rawEvent.event_date,
+    start_time: rawEvent.start_time,
+    end_time: rawEvent.end_time,
+    status: rawEvent.status,
+    sessions: allSessions,
+  });
+
   let registrationWindow = isRegistrationWindowOpen(
     event.event_date,
     event.start_time,
@@ -100,7 +108,12 @@ export async function GET(
     event.is_registration_open
   );
 
-  if (event.is_registration_open === false || event.status !== 'active') {
+  if (scheduleExpired) {
+    registrationWindow = {
+      isOpen: false,
+      reason: 'Sự kiện đã kết thúc. Cổng đăng ký đã tự động đóng.',
+    };
+  } else if (event.is_registration_open === false || event.status !== 'active') {
     registrationWindow = {
       isOpen: false,
       reason: 'Sự kiện này không mở cổng đăng ký người tham gia (Chỉ dành cho Ban Tổ Chức & Cộng Tác Viên).',
@@ -212,7 +225,16 @@ export async function GET(
  * (sự kiện chỉ tuyển CTV có is_registration_open = false nhưng vẫn phải nhận đơn CTV).
  */
 function getRecruitmentWindow(rawEvent: any, meta: any): { isOpen: boolean; reason?: string } {
-  if (rawEvent.status !== 'active') {
+  if (
+    rawEvent.status !== 'active' ||
+    isEventScheduleExpired({
+      event_date: rawEvent.event_date,
+      start_time: rawEvent.start_time,
+      end_time: rawEvent.end_time,
+      status: rawEvent.status,
+      sessions: meta?.sessions || [],
+    })
+  ) {
     return { isOpen: false, reason: 'Sự kiện đã kết thúc hoặc đã đóng.' };
   }
   if (meta?.is_recruitment_open === false) {
@@ -281,6 +303,21 @@ async function handleRegisterPost(
   const isVolunteerRequest = body.role_type === 'volunteer';
 
   // Khán giả: theo cổng đăng ký tham gia. CTV: theo cổng tuyển CTV (độc lập — sự kiện chỉ tuyển CTV vẫn nhận đơn).
+  const isPostScheduleExpired = isEventScheduleExpired({
+    event_date: rawEvent.event_date,
+    start_time: rawEvent.start_time,
+    end_time: rawEvent.end_time,
+    status: rawEvent.status,
+    sessions: meta.sessions || [],
+  });
+
+  if (isPostScheduleExpired) {
+    return NextResponse.json(
+      { success: false, error: 'Sự kiện đã kết thúc. Không thể đăng ký mới.' },
+      { status: 400 }
+    );
+  }
+
   if (isVolunteerRequest) {
     const recruitmentWindow = getRecruitmentWindow(rawEvent, meta);
     if (!recruitmentWindow.isOpen) {

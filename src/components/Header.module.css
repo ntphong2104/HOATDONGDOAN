@@ -69,6 +69,7 @@
 }
 
 .menuToggleBtn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -81,6 +82,18 @@
   cursor: pointer;
   transition: background 0.16s ease;
   flex-shrink: 0;
+}
+
+.menuAlertDot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #ef4444;
+  border: 2px solid #1e3a8a;
+  pointer-events: none;
 }
 
 .menuToggleBtn:hover {
@@ -166,35 +179,35 @@
 .sidebarNav {
   display: flex;
   flex-direction: column;
-  gap: 0.18rem;
-  padding: 0 0.75rem 0.75rem 0;
+  gap: 0.15rem;
+  padding: 0 0.65rem 0.75rem;
   flex: 1;
 }
 
 .sidebarSectionLabel {
-  font-size: 0.69rem;
+  font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #94a3b8;
-  padding: 0.45rem 1rem 0.25rem 1.25rem;
+  padding: 0.5rem 0.75rem 0.25rem;
   white-space: nowrap;
 }
 
 .sidebarDivider {
   height: 1px;
   background: #f1f5f9;
-  margin: 0.5rem 0 0.4rem 1rem;
+  margin: 0.5rem 0.5rem 0.4rem;
 }
 
 .sidebarItem {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  height: 40px;
-  padding: 0 1rem 0 1.25rem;
-  border-radius: 0 999px 999px 0;
-  font-size: 0.87rem;
+  gap: 0.75rem;
+  height: 38px;
+  padding: 0 0.85rem;
+  border-radius: 8px;
+  font-size: 0.86rem;
   font-weight: 600;
   color: #334155;
   text-decoration: none;
@@ -208,9 +221,9 @@
 }
 
 .sidebarItemActive {
-  background: #dbeafe;
+  background: #eff6ff;
   color: #1d4ed8;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .sidebarItemActive:hover {
@@ -228,6 +241,23 @@
 .sidebarLabel {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.sidebarBadgeRed {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .sidebarFooter {
@@ -276,9 +306,23 @@
 
 /* ── Tablet & Mobile (< 1024px): slide-over sidebar ── */
 @media (max-width: 1023px) {
+  .edgeHoverZone {
+    display: none;
+  }
+
   .sidebar {
-    width: 264px;
+    width: 268px;
+    z-index: 150;
     box-shadow: 8px 0 30px rgba(15, 23, 42, 0.18);
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .sidebarOpen {
+    transform: translateX(-100%);
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .sidebarMobileOpen {
@@ -294,12 +338,15 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(15, 23, 42, 0.4);
-    z-index: 124;
+    background: rgba(15, 23, 42, 0.42);
+    z-index: 145;
   }
 }
 
 @media (max-width: 768px) {
+  .menuToggleHideMobile {
+    display: none;
+  }
   .appSubtitle {
     font-size: 0.65rem;
     max-width: 220px;
@@ -322,6 +369,12 @@
     text-overflow: ellipsis;
   }
   .appSubtitle {
+    display: none;
+  }
+}
+
+@media (max-width: 440px) {
+  .branding {
     display: none;
   }
 }

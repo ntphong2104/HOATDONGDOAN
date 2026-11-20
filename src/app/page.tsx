@@ -54,21 +54,13 @@ export default async function HomePage({
     mssv: auth.email.split('@')[0],
   });
 
-  // ──── Tài khoản Cán bộ / Đơn vị / LCĐ (không phải sinh viên cá nhân) ────
-  // Luôn chuyển hướng thẳng đến Bàn làm việc Quản trị, TUYỆT ĐỐI không đưa vào Cổng sinh viên
-  // (kể cả khi URL có `?view=student`)
+  // Tài khoản Đơn vị / LCĐ / CLB / Phòng ban (không phải sinh viên cá nhân) vào thẳng Bàn làm việc
   if (!isStudent) {
     if (auth.tier === 'super_admin' || auth.isSuperAdmin) {
       redirect('/super-admin');
     }
-    if (auth.tier === 'youth_union') {
-      redirect('/admin');
-    }
     if (auth.tier === 'ctsv' || auth.tier === 'facility') {
       redirect('/admin/proposals');
-    }
-    if (auth.tier === 'event_admin') {
-      redirect('/admin');
     }
     if (auth.tier === 'security') {
       redirect('/security');
@@ -79,7 +71,7 @@ export default async function HomePage({
     redirect('/admin');
   }
 
-  // ──── Giao diện Dành Riêng Cho Sinh Viên (Mã QR Điểm Danh & Lịch Sử) ────
+  // Tài khoản sinh viên mặc định vào Trang Tổng Quan cá nhân & Thẻ QR (/)
   const rawMssv = extractMSSV(auth.email) || auth.email.split('@')[0].toUpperCase();
   let user = {
     mssv: rawMssv,

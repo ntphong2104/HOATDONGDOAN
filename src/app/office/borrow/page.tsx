@@ -13,6 +13,17 @@ import styles from './page.module.css';
 
 function fmtDateVN(d?: string | null): string {
   if (!d) return '—';
+  if (d.includes('T')) {
+    const dt = new Date(d);
+    if (!isNaN(dt.getTime())) {
+      return dt.toLocaleDateString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    }
+  }
   const p = String(d).split('T')[0].split('-');
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
 }

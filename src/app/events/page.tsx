@@ -279,17 +279,17 @@ export default function StudentEventsDiscoverPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.4rem',
-                padding: '0.5rem 0.95rem',
-                borderRadius: '10px',
-                background: 'rgba(255, 255, 255, 0.16)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: '#ffffff',
-                fontSize: '0.82rem',
+                padding: '0.45rem 0.85rem',
+                borderRadius: '9px',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                color: '#0f172a',
+                fontSize: '0.8rem',
                 fontWeight: 700,
                 textDecoration: 'none',
               }}
             >
-              <QrCodeIcon size={15} />
+              <QrCodeIcon size={15} color="#1d4ed8" />
               <span>Mở Thẻ QR Cá Nhân</span>
             </Link>
           </div>

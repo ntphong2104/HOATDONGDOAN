@@ -25,6 +25,10 @@ interface RankingBoardProps {
 
 type BoardTab = 'lcd' | 'units' | 'students';
 
+const CLIENT_RANKING_FRESH_MS = 180_000; // 3 phút fresh ngay tại trình duyệt
+const CLIENT_RANKING_STALE_MS = 900_000; // 15 phút hiện tức thì + làm mới ngầm
+const clientRankingCache = new Map<string, { ts: number; data: RankingResponseData }>();
+
 function formatDateVN(dateStr?: string | null): string {
   if (!dateStr) return '—';
   const parts = String(dateStr).split('T')[0].split('-');
@@ -46,9 +50,12 @@ export default function RankingBoard({
   allowSemesterSelect,
   onManageSemestersClick,
 }: RankingBoardProps) {
-  const [data, setData] = useState<RankingResponseData | null>(null);
-  const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const initialCached = clientRankingCache.get('default')?.data || null;
+  const [data, setData] = useState<RankingResponseData | null>(initialCached);
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>(
+    initialCached?.semester?.id || ''
+  );
+  const [loading, setLoading] = useState(!initialCached);
   const [errorMsg, setErrorMsg] = useState('');
   const [activeTab, setActiveTab] = useState<BoardTab>('lcd');
 
@@ -57,8 +64,31 @@ export default function RankingBoard({
   const [studentLcdFilter, setStudentLcdFilter] = useState('ALL');
 
   const fetchRanking = useCallback(async (semesterId?: string, forceRefresh = false) => {
-    setLoading(true);
+    const cacheKey = semesterId || 'default';
+    const cached = !forceRefresh ? clientRankingCache.get(cacheKey) : undefined;
+    const now = Date.now();
+
+    if (cached && now - cached.ts < CLIENT_RANKING_FRESH_MS) {
+      setData(cached.data);
+      if (!semesterId && cached.data.semester?.id) {
+        setSelectedSemesterId(cached.data.semester.id);
+      }
+      setLoading(false);
+      return;
+    }
+
+    const hasStale = Boolean(cached && now - cached.ts < CLIENT_RANKING_STALE_MS);
+    if (hasStale && cached) {
+      setData(cached.data);
+      if (!semesterId && cached.data.semester?.id) {
+        setSelectedSemesterId(cached.data.semester.id);
+      }
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setErrorMsg('');
+
     try {
       const params = new URLSearchParams();
       if (semesterId) params.set('semester_id', semesterId);
@@ -68,15 +98,22 @@ export default function RankingBoard({
       const json = await res.json();
       if (json.success && json.data) {
         const d = json.data as RankingResponseData;
+        const ts = Date.now();
+        clientRankingCache.set(cacheKey, { ts, data: d });
+        if (d.semester?.id) {
+          clientRankingCache.set(d.semester.id, { ts, data: d });
+        }
         setData(d);
         if (!semesterId && d.semester?.id) {
           setSelectedSemesterId(d.semester.id);
         }
-      } else {
+      } else if (!hasStale) {
         setErrorMsg(json.error || 'Không thể tải dữ liệu bảng xếp hạng');
       }
     } catch {
-      setErrorMsg('Lỗi kết nối máy chủ khi tải bảng xếp hạng.');
+      if (!hasStale) {
+        setErrorMsg('Lỗi kết nối máy chủ khi tải bảng xếp hạng.');
+      }
     } finally {
       setLoading(false);
     }

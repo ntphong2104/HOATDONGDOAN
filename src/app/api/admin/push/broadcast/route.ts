@@ -3,7 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { normalizeLcdCode } from '@/lib/utils/lcd';
-import { dispatchPushToSubscriptions } from '@/lib/utils/web-push';
+import { dispatchPushToSubscriptions, recordInboxNotification } from '@/lib/utils/web-push';
 
 export const dynamic = 'force-dynamic';
 
@@ -151,6 +151,14 @@ export async function POST(req: Request) {
       body: message,
       url,
       tag: `broadcast-${Date.now()}`,
+    });
+
+    await recordInboxNotification(supabase, {
+      title,
+      body: message,
+      url,
+      target_type: targetType,
+      target_value: targetValue || null,
     });
 
     try {

@@ -156,29 +156,21 @@ export async function GET(request: Request) {
       }
     }
 
-    const isSubAdminUnit =
-      email.startsWith('lcd') ||
-      email.startsWith('clb') ||
-      email.startsWith('doi') ||
-      isEventAdmin;
-
     // If a specific target page was requested (e.g. /events/[id]/register)
     const nextTarget = searchParams.get('next') || searchParams.get('redirect');
     if (nextTarget && nextTarget.startsWith('/') && nextTarget !== '/login') {
       return NextResponse.redirect(`${origin}${nextTarget}`);
     }
 
-    // Mặc định hiển thị Tổng quan cá nhân cho mọi tài khoản sinh viên (có MSSV) sau khi đăng nhập
+    // Tài khoản sinh viên (có MSSV) mặc định vào Tổng quan cá nhân (/)
     if (studentMssv) {
       return NextResponse.redirect(`${origin}/`);
     }
 
-    // Các tài khoản đơn vị/phòng ban (không có MSSV: LCĐ, CLB, Phòng CTSV, Quản trị, Bảo vệ) vào thẳng không gian quản trị
+    // Tài khoản đơn vị / phòng ban (không có MSSV) vào thẳng Bàn làm việc tương ứng
     if (isSuperAdmin) {
       return NextResponse.redirect(`${origin}/super-admin`);
     }
-
-    // Department approvers: exact allowlist or officer registry (no substring matching)
     let departmentTier: string | null = getOfficialTierForEmail(email);
     if (!departmentTier) {
       try {
@@ -186,20 +178,16 @@ export async function GET(request: Request) {
         departmentTier = stored.find((o) => o.email.toLowerCase().trim() === email)?.role_tier || null;
       } catch {}
     }
-    if (departmentTier === 'youth_union' || departmentTier === 'ctsv' || departmentTier === 'facility') {
+    if (departmentTier === 'ctsv' || departmentTier === 'facility') {
       return NextResponse.redirect(`${origin}/admin/proposals`);
     }
     if (departmentTier === 'security') {
       return NextResponse.redirect(`${origin}/security`);
     }
-    if (isSubAdminUnit) {
-      return NextResponse.redirect(`${origin}/admin`);
-    }
-    if (isChecker) {
+    if (isChecker && !isEventAdmin) {
       return NextResponse.redirect(`${origin}/scanner`);
     }
-
-    return NextResponse.redirect(`${origin}/`);
+    return NextResponse.redirect(`${origin}/admin`);
   } catch (err) {
     console.error('Callback error:', err);
     return NextResponse.redirect(`${origin}/login?error=auth_failed`);

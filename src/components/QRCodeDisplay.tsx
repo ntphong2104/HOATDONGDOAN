@@ -144,27 +144,13 @@ export default function QRCodeDisplay({
             <button
               onClick={activateQR}
               disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '14px',
-                border: 'none',
-                background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-                color: '#ffffff',
-                fontSize: '0.95rem',
-                fontWeight: 800,
-                cursor: loading ? 'wait' : 'pointer',
-                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
+              className={styles.activateBtn}
             >
-              <QrCodeIcon size={22} color="#ffffff" />
-              {loading ? 'Đang tạo...' : 'Mã QR Của Tôi'}
+              <QrCodeIcon size={18} color="#ffffff" />
+              {loading ? 'Đang tạo...' : 'Hiện mã QR điểm danh'}
             </button>
-            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-              Bấm để hiện mã QR điểm danh
+            <span className={styles.activateHint}>
+              Mã động tự đổi mỗi 30 giây
             </span>
           </div>
         </div>

@@ -34,19 +34,31 @@ SET search_path = ''
 AS $$
 DECLARE
   v_email TEXT := LOWER(COALESCE((SELECT public.current_user_email()), ''));
+  v_raw   TEXT;
+  v_json  JSONB;
   v_found BOOLEAN := FALSE;
 BEGIN
   IF v_email = '' THEN RETURN FALSE; END IF;
   IF (SELECT public.is_super_admin()) THEN RETURN TRUE; END IF;
 
+  SELECT s.value::text INTO v_raw
+  FROM public.system_settings s
+  WHERE s.key = 'officer_roles_registry'
+  LIMIT 1;
+
+  IF v_raw IS NULL OR v_raw = '' THEN RETURN FALSE; END IF;
+  BEGIN
+    v_json := v_raw::jsonb;
+  EXCEPTION WHEN others THEN
+    RETURN FALSE;
+  END;
+
+  IF jsonb_typeof(v_json) <> 'array' THEN RETURN FALSE; END IF;
+
   SELECT EXISTS (
     SELECT 1
-    FROM public.system_settings s,
-         LATERAL jsonb_array_elements(
-           CASE WHEN jsonb_typeof(s.value) = 'array' THEN s.value ELSE '[]'::jsonb END
-         ) AS elem
-    WHERE s.key = 'officer_roles_registry'
-      AND LOWER(COALESCE(elem->>'email', '')) = v_email
+    FROM jsonb_array_elements(v_json) AS elem
+    WHERE LOWER(COALESCE(elem->>'email', '')) = v_email
       AND COALESCE(elem->>'role_tier', '') IN ('office_admin', 'super_admin')
   ) INTO v_found;
 

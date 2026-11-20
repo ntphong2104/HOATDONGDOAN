@@ -193,8 +193,14 @@ export async function POST(req: Request) {
 
     const { error: itemErr } = await supabase.from('office_borrow_items').insert(itemRows);
     if (itemErr) {
+      // Rollback orphan borrow request if inserting items fails
+      await supabase.from('office_borrow_requests').delete().eq('id', created.id);
       return NextResponse.json({ success: false, error: itemErr.message }, { status: 500 });
     }
+
+    const pendingCache = (globalThis as unknown as { __hddAdminPendingCounts?: { expiresAt: number } })
+      .__hddAdminPendingCounts;
+    if (pendingCache) pendingCache.expiresAt = 0;
 
     // Notify Office Admins & Super Admins about new borrow request (non-blocking)
     void (async () => {
@@ -204,12 +210,22 @@ export async function POST(req: Request) {
           supabase.from('super_admins').select('email'),
         ]);
         const adminEmails = [
-          ...(roles || []).filter((r: any) => r.tier === 'office_admin').map((r: any) => r.email),
+          ...(roles || [])
+            .filter((r: any) => {
+              const t = r.role_tier || r.tier;
+              return t === 'office_admin' || t === 'super_admin';
+            })
+            .map((r: any) => r.email),
           ...(supers || []).map((s: any) => s.email),
+          'n22dccn158@student.ptithcm.edu.vn',
         ];
+        const itemsPreview = validItems
+          .slice(0, 3)
+          .map((it) => `${it.item_name} (x${it.quantity})`)
+          .join(', ');
         await notifyUsersByEmail(supabase, adminEmails, {
           title: '📦 Đơn mượn dụng cụ VPĐ mới',
-          body: `${unit.unit_name} vừa gửi đơn mượn (${validItems.length} loại vật phẩm) cho "${purpose}".`,
+          body: `${unit.unit_name} gửi đơn mượn ${itemsPreview}${validItems.length > 3 ? ` và ${validItems.length - 3} món khác` : ''} cho "${purpose}".`,
           url: '/office/admin',
           tag: `office-borrow-new-${created.id}`,
         });
@@ -295,6 +311,9 @@ export async function PATCH(req: Request) {
         })
         .eq('id', id);
       if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      const pendingCache = (globalThis as unknown as { __hddAdminPendingCounts?: { expiresAt: number } })
+        .__hddAdminPendingCounts;
+      if (pendingCache) pendingCache.expiresAt = 0;
       void notifyUsersByEmail(supabase, [existing.requester_email], {
         title: '✅ Đơn mượn dụng cụ đã được duyệt',
         body: `Đơn mượn "${existing.purpose}" đã được Admin VPĐ phê duyệt. Vui lòng đến Văn phòng Đoàn nhận vật phẩm đúng lịch.`,
@@ -336,6 +355,9 @@ export async function PATCH(req: Request) {
         })
         .eq('id', id);
       if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      const pendingCache = (globalThis as unknown as { __hddAdminPendingCounts?: { expiresAt: number } })
+        .__hddAdminPendingCounts;
+      if (pendingCache) pendingCache.expiresAt = 0;
       void notifyUsersByEmail(supabase, [existing.requester_email], {
         title: '❌ Đơn mượn dụng cụ bị từ chối',
         body: `Đơn mượn "${existing.purpose}" không được duyệt. Ghi chú: ${admin_note || 'Liên hệ Văn phòng Đoàn'}.`,
@@ -369,10 +391,11 @@ export async function PATCH(req: Request) {
     if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
 
     let autoBanned = false;
+    let appliedBanDays = 30;
     if (lateDays >= 1) {
       const config = await getOfficeDutyConfig(supabase);
-      const banDays = config.ban_days_on_late_return || 30;
-      const bannedUntil = new Date(now.getTime() + banDays * 86_400_000).toISOString();
+      appliedBanDays = Math.max(1, Number(config.ban_days_on_late_return) || 30);
+      const bannedUntil = new Date(now.getTime() + appliedBanDays * 86_400_000).toISOString();
 
       await supabase.from('office_borrow_bans').insert({
         unit_code: existing.unit_code,
@@ -390,9 +413,9 @@ export async function PATCH(req: Request) {
     return NextResponse.json({
       success: true,
       message: autoBanned
-        ? `Đã xác nhận trả đồ. Do trễ ${lateDays} ngày, hệ thống đã TỰ ĐỘNG CẤM MƯỢN đơn vị "${existing.unit_name}"!`
+        ? `Đã xác nhận trả đồ. Do trễ ${lateDays} ngày, hệ thống đã TỰ ĐỘNG CẤM MƯỢN "${existing.unit_name}" trong ${appliedBanDays} ngày!`
         : 'Đã xác nhận đơn vị trả đầy đủ dụng cụ đúng hạn.',
-      data: { late_days: lateDays, auto_banned: autoBanned },
+      data: { late_days: lateDays, auto_banned: autoBanned, ban_days: autoBanned ? appliedBanDays : 0 },
     });
   } catch (err: any) {
     return NextResponse.json(

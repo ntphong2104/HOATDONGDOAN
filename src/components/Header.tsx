@@ -21,12 +21,64 @@ import {
   HistoryIcon,
   BadgeMedalIcon,
   ClockIcon,
+  UsersIcon,
+  SettingsIcon,
 } from '@/components/icons';
 import DualLogos from '@/components/DualLogos';
 import UserMenuDropdown from '@/components/UserMenuDropdown';
 import PushNotificationButton from '@/components/PushNotificationButton';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import type { SessionUser } from '@/lib/types';
 import styles from './Header.module.css';
+
+export type SuperAdminSidebarTab =
+  | 'events'
+  | 'proposals'
+  | 'officers'
+  | 'rooms'
+  | 'units'
+  | 'students'
+  | 'delegates'
+  | 'blacklist'
+  | 'ranking'
+  | 'settings';
+
+interface AdminPendingCounts {
+  pending_proposals: number;
+  pending_office_borrows: number;
+}
+
+const PENDING_CACHE_TTL_MS = 60_000;
+let pendingClientCache: { data: AdminPendingCounts; expiresAt: number } | null = null;
+let pendingClientInflight: Promise<AdminPendingCounts> | null = null;
+
+async function fetchAdminPendingCounts(force = false): Promise<AdminPendingCounts> {
+  if (!force && pendingClientCache && Date.now() < pendingClientCache.expiresAt) {
+    return pendingClientCache.data;
+  }
+  if (!force && pendingClientInflight) return pendingClientInflight;
+
+  const task = (async () => {
+    try {
+      const res = await fetch('/api/admin/pending-counts', { cache: 'no-store' });
+      const json = await res.json();
+      if (json?.success && json?.data) {
+        const data: AdminPendingCounts = {
+          pending_proposals: Number(json.data.pending_proposals) || 0,
+          pending_office_borrows: Number(json.data.pending_office_borrows) || 0,
+        };
+        pendingClientCache = { data, expiresAt: Date.now() + PENDING_CACHE_TTL_MS };
+        return data;
+      }
+    } catch {}
+    return pendingClientCache?.data || { pending_proposals: 0, pending_office_borrows: 0 };
+  })().finally(() => {
+    pendingClientInflight = null;
+  });
+
+  pendingClientInflight = task;
+  return task;
+}
 
 interface HeaderProps {
   user?: SessionUser | null;
@@ -41,6 +93,9 @@ interface HeaderProps {
   isSidebarOpen?: boolean;
   hideNavbar?: boolean;
   activeStudentTab?: 'overview' | 'registered' | 'history' | 'delegate';
+  activeSuperAdminTab?: SuperAdminSidebarTab;
+  onSelectSuperAdminTab?: (tab: SuperAdminSidebarTab) => void;
+  superAdminBadges?: Partial<Record<SuperAdminSidebarTab, number>>;
 }
 
 export default function Header({
@@ -56,16 +111,34 @@ export default function Header({
   isSidebarOpen = true,
   hideNavbar = false,
   activeStudentTab = 'overview',
+  activeSuperAdminTab,
+  onSelectSuperAdminTab,
+  superAdminBadges,
 }: HeaderProps = {}) {
   const pathname = usePathname() || '';
   const [resolvedUser, setResolvedUser] = useState<SessionUser | null>(user || null);
-  // Mặc định ẩn hoàn toàn thanh bên; rê chuột vào nút Menu (≡) hoặc mép trái để tự mở ra
   const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [desktopHovered, setDesktopHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  // Persist user's pinned sidebar preference on desktop (defaults to pinned on /super-admin)
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.innerWidth < 1024) return;
+    try {
+      const saved = localStorage.getItem('hdd_sidebar_pinned');
+      if (saved === 'true') {
+        setDesktopExpanded(true);
+      } else if (saved === 'false') {
+        setDesktopExpanded(false);
+      } else if (pathname.startsWith('/super-admin')) {
+        setDesktopExpanded(true);
+      }
+    } catch {}
+  }, [pathname]);
+
   const handleMouseEnter = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
@@ -74,6 +147,7 @@ export default function Header({
   };
 
   const handleMouseLeave = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
@@ -116,18 +190,27 @@ export default function Header({
     };
   }, [user]);
 
-  // Sync body layout padding with persistent sidebar state (chỉ thụt lề khi người dùng chủ động ghim cố định)
+  // Sync body layout padding with persistent sidebar state & mobile bottom nav
+  const hasUser = Boolean(user || resolvedUser);
   useEffect(() => {
     if (typeof document === 'undefined') return;
+    if (!hideNavbar && hasUser) {
+      document.body.dataset.hasBottomNav = 'true';
+    } else {
+      delete document.body.dataset.hasBottomNav;
+    }
     if (!usePersistentSidebar) {
       delete document.body.dataset.sidebar;
-      return;
+      return () => {
+        delete document.body.dataset.hasBottomNav;
+      };
     }
     document.body.dataset.sidebar = desktopExpanded ? 'expanded' : 'hidden';
     return () => {
       delete document.body.dataset.sidebar;
+      delete document.body.dataset.hasBottomNav;
     };
-  }, [usePersistentSidebar, desktopExpanded]);
+  }, [usePersistentSidebar, desktopExpanded, hideNavbar, hasUser]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -140,9 +223,16 @@ export default function Header({
 
   const handleToggleBuiltInSidebar = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setDesktopHovered(false);
       setMobileOpen((prev) => !prev);
     } else {
-      setDesktopExpanded((prev) => !prev);
+      setDesktopExpanded((prev) => {
+        const next = !prev;
+        try {
+          localStorage.setItem('hdd_sidebar_pinned', String(next));
+        } catch {}
+        return next;
+      });
     }
   };
 
@@ -185,6 +275,46 @@ export default function Header({
   });
   const canOfficeBorrow = Boolean(isUnit || canManageEvents || isOfficeAdmin);
   const isStudentAccount = !isUnit;
+  const needsMobileMenu = isOfficer || canOfficeDuty || !isStudentAccount;
+
+  const shouldTrackPending = Boolean(effectiveUser && (isSuperAdmin || isOfficeAdmin || canViewProposals));
+  const [adminPending, setAdminPending] = useState<AdminPendingCounts>(
+    () => pendingClientCache?.data || { pending_proposals: 0, pending_office_borrows: 0 }
+  );
+
+  useEffect(() => {
+    if (!shouldTrackPending) return;
+    let active = true;
+    const load = async (force = false) => {
+      const data = await fetchAdminPendingCounts(force);
+      if (active) setAdminPending(data);
+    };
+    load(false);
+    const onChanged = () => {
+      pendingClientCache = null;
+      load(true);
+    };
+    const onFocus = () => {
+      if (!pendingClientCache || Date.now() >= pendingClientCache.expiresAt) {
+        load(false);
+      }
+    };
+    window.addEventListener('hdd:pending-counts-changed', onChanged);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      active = false;
+      window.removeEventListener('hdd:pending-counts-changed', onChanged);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [shouldTrackPending]);
+
+  const pendingProposals = canViewProposals
+    ? typeof superAdminBadges?.proposals === 'number'
+      ? superAdminBadges.proposals
+      : adminPending.pending_proposals
+    : 0;
+  const pendingOfficeBorrows = isOfficeAdmin ? adminPending.pending_office_borrows : 0;
+  const totalAdminPending = pendingProposals + pendingOfficeBorrows;
 
   const studentLcd = effectiveUser ? resolveStudentLcd(effectiveUser.class_id, effectiveUser.mssv) : null;
   const homeHref = isStudentAccount
@@ -197,7 +327,7 @@ export default function Header({
     ? '/admin/proposals'
     : canSecurity
     ? '/security'
-    : '/events';
+    : '/admin';
 
   const handleLogout = async () => {
     if (onLogout) {
@@ -248,7 +378,7 @@ export default function Header({
               onClick={handleToggleBuiltInSidebar}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
-              className={styles.menuToggleBtn}
+              className={`${styles.menuToggleBtn} ${!needsMobileMenu ? styles.menuToggleHideMobile : ''}`}
               title={
                 desktopExpanded
                   ? 'Đang ghim thanh điều hướng (Bấm để ẩn)'
@@ -257,6 +387,12 @@ export default function Header({
               aria-label="Thanh điều hướng"
             >
               <MenuIcon size={20} />
+              {totalAdminPending > 0 && (
+                <span
+                  className={styles.menuAlertDot}
+                  aria-label={`${totalAdminPending} mục cần duyệt`}
+                />
+              )}
             </button>
           ) : null}
 
@@ -308,20 +444,21 @@ export default function Header({
             aria-label="Thanh điều hướng chính"
           >
             <nav className={styles.sidebarNav} aria-label="Điều hướng chính">
-              {isStudentAccount ? (
+              {/* ── NHÓM 1: CỔNG SINH VIÊN (Hiện với tài khoản sinh viên) ── */}
+              {isStudentAccount && (
                 <>
                   <div className={styles.sidebarSectionLabel}>Cổng Sinh Viên</div>
 
                   <Link
                     href="/?view=student"
-                    title="Tổng quan cá nhân & QR"
+                    title="Thẻ QR & Tổng quan cá nhân"
                     className={`${styles.sidebarItem} ${isOverviewActive ? styles.sidebarItemActive : ''}`}
                     onClick={closeSidebar}
                   >
                     <span className={styles.sidebarIcon}>
-                      <QrCodeIcon size={18} />
+                      <QrCodeIcon size={17} />
                     </span>
-                    <span className={styles.sidebarLabel}>Tổng quan cá nhân</span>
+                    <span className={styles.sidebarLabel}>Thẻ QR &amp; Tổng quan</span>
                   </Link>
 
                   <Link
@@ -331,7 +468,7 @@ export default function Header({
                     onClick={closeSidebar}
                   >
                     <span className={styles.sidebarIcon}>
-                      <CalendarIcon size={18} />
+                      <CalendarIcon size={17} />
                     </span>
                     <span className={styles.sidebarLabel}>Sự kiện</span>
                   </Link>
@@ -343,7 +480,7 @@ export default function Header({
                     onClick={closeSidebar}
                   >
                     <span className={styles.sidebarIcon}>
-                      <BadgeMedalIcon size={18} />
+                      <BadgeMedalIcon size={17} />
                     </span>
                     <span className={styles.sidebarLabel}>Bảng xếp hạng</span>
                   </Link>
@@ -355,7 +492,7 @@ export default function Header({
                     onClick={closeSidebar}
                   >
                     <span className={styles.sidebarIcon}>
-                      <CheckCircleIcon size={18} />
+                      <CheckCircleIcon size={17} />
                     </span>
                     <span className={styles.sidebarLabel}>Sự kiện đã đăng ký</span>
                   </Link>
@@ -367,7 +504,7 @@ export default function Header({
                     onClick={closeSidebar}
                   >
                     <span className={styles.sidebarIcon}>
-                      <HistoryIcon size={18} />
+                      <HistoryIcon size={17} />
                     </span>
                     <span className={styles.sidebarLabel}>Lịch sử minh chứng</span>
                   </Link>
@@ -375,138 +512,36 @@ export default function Header({
                   {canOfficeDuty && (
                     <Link
                       href="/office/duty"
-                      title="Trực văn phòng Đoàn (chỉ dành cho CTV trực)"
+                      title="Trực văn phòng Đoàn"
                       className={`${styles.sidebarItem} ${isOfficeDutyPage ? styles.sidebarItemActive : ''}`}
                       onClick={closeSidebar}
                     >
                       <span className={styles.sidebarIcon}>
-                        <ClockIcon size={18} />
+                        <ClockIcon size={17} />
                       </span>
                       <span className={styles.sidebarLabel}>Trực văn phòng</span>
                     </Link>
                   )}
-
-                  {isOfficer && (
-                    <>
-                      <div className={styles.sidebarDivider} />
-                      <div className={styles.sidebarSectionLabel}>Cán Bộ &amp; LCĐ</div>
-
-                      {isSuperAdmin && (
-                        <Link
-                          href="/super-admin"
-                          title="Quản Trị Toàn Trường"
-                          className={`${styles.sidebarItem} ${isSuperAdminPage ? styles.sidebarItemActive : ''}`}
-                          onClick={closeSidebar}
-                        >
-                          <span className={styles.sidebarIcon}>
-                            <ShieldCheckIcon size={18} />
-                          </span>
-                          <span className={styles.sidebarLabel}>Quản Trị Trường</span>
-                        </Link>
-                      )}
-
-                      {isOfficeAdmin && (
-                        <Link
-                          href="/office/admin"
-                          title="Quản trị Văn phòng Đoàn (Trực VP & Mượn dụng cụ)"
-                          className={`${styles.sidebarItem} ${isOfficeAdminPage ? styles.sidebarItemActive : ''}`}
-                          onClick={closeSidebar}
-                        >
-                          <span className={styles.sidebarIcon}>
-                            <ClockIcon size={18} />
-                          </span>
-                          <span className={styles.sidebarLabel}>Văn phòng Đoàn</span>
-                        </Link>
-                      )}
-
-                      {canManageEvents && (
-                        <Link
-                          href="/admin"
-                          title="Sự kiện & Quản lý LCĐ"
-                          className={`${styles.sidebarItem} ${isAdminHome ? styles.sidebarItemActive : ''}`}
-                          onClick={closeSidebar}
-                        >
-                          <span className={styles.sidebarIcon}>
-                            <BuildingIcon size={18} />
-                          </span>
-                          <span className={styles.sidebarLabel}>Sự kiện &amp; LCĐ</span>
-                        </Link>
-                      )}
-
-                      {canViewProposals && (
-                        <Link
-                          href="/admin/proposals"
-                          title="Kế hoạch trình duyệt"
-                          className={`${styles.sidebarItem} ${isProposalsPage ? styles.sidebarItemActive : ''}`}
-                          onClick={closeSidebar}
-                        >
-                          <span className={styles.sidebarIcon}>
-                            <FileTextIcon size={18} />
-                          </span>
-                          <span className={styles.sidebarLabel}>Kế hoạch duyệt</span>
-                        </Link>
-                      )}
-
-                      {canScan && (
-                        <Link
-                          href="/scanner"
-                          title="Máy quét QR Điểm danh"
-                          className={`${styles.sidebarItem} ${isScannerPage ? styles.sidebarItemActive : ''}`}
-                          onClick={closeSidebar}
-                        >
-                          <span className={styles.sidebarIcon}>
-                            <ScanCameraIcon size={18} />
-                          </span>
-                          <span className={styles.sidebarLabel}>Máy quét QR</span>
-                        </Link>
-                      )}
-
-                      {canSecurity && (
-                        <Link
-                          href="/security"
-                          title="Bàn giao chìa khóa"
-                          className={`${styles.sidebarItem} ${isSecurityPage ? styles.sidebarItemActive : ''}`}
-                          onClick={closeSidebar}
-                        >
-                          <span className={styles.sidebarIcon}>
-                            <KeyIcon size={18} />
-                          </span>
-                          <span className={styles.sidebarLabel}>Chìa khóa phòng</span>
-                        </Link>
-                      )}
-                    </>
-                  )}
                 </>
-              ) : (
-                /* ──── Tài khoản Cán bộ / LCĐ / Quản trị (Không có Cổng Sinh Viên cá nhân) ──── */
-                <>
-                  <div className={styles.sidebarSectionLabel}>Bàn Quản Trị &amp; LCĐ</div>
+              )}
 
-                  {isSuperAdmin && (
-                    <Link
-                      href="/super-admin"
-                      title="Quản Trị Toàn Trường"
-                      className={`${styles.sidebarItem} ${isSuperAdminPage ? styles.sidebarItemActive : ''}`}
-                      onClick={closeSidebar}
-                    >
-                      <span className={styles.sidebarIcon}>
-                        <ShieldCheckIcon size={18} />
-                      </span>
-                      <span className={styles.sidebarLabel}>Quản Trị Trường</span>
-                    </Link>
-                  )}
+              {/* ── NHÓM 2: NGHIỆP VỤ CÁN BỘ / LCĐ (Tự hiện thêm theo quyền) ── */}
+              {(isOfficer || !isStudentAccount) && (
+                <>
+                  {isStudentAccount && <div className={styles.sidebarDivider} />}
+                  <div className={styles.sidebarSectionLabel}>Nghiệp Vụ &amp; LCĐ</div>
 
                   {canManageEvents && (
                     <Link
                       href="/admin"
-                      title="Bàn làm việc Quản lý LCĐ & Sự kiện"
+                      title="Sự kiện & Quản lý LCĐ"
                       className={`${styles.sidebarItem} ${isAdminHome ? styles.sidebarItemActive : ''}`}
                       onClick={closeSidebar}
                     >
                       <span className={styles.sidebarIcon}>
-                        <BuildingIcon size={18} />
+                        <BuildingIcon size={17} />
                       </span>
-                      <span className={styles.sidebarLabel}>Bàn Làm Việc LCĐ</span>
+                      <span className={styles.sidebarLabel}>Sự kiện &amp; LCĐ</span>
                     </Link>
                   )}
 
@@ -518,9 +553,47 @@ export default function Header({
                       onClick={closeSidebar}
                     >
                       <span className={styles.sidebarIcon}>
-                        <FileTextIcon size={18} />
+                        <FileTextIcon size={17} />
                       </span>
                       <span className={styles.sidebarLabel}>Kế hoạch duyệt</span>
+                      {pendingProposals > 0 && (
+                        <span className={styles.sidebarBadgeRed}>
+                          {pendingProposals > 99 ? '99+' : pendingProposals}
+                        </span>
+                      )}
+                    </Link>
+                  )}
+
+                  {isOfficeAdmin && (
+                    <Link
+                      href="/office/admin"
+                      title="Quản trị Văn phòng Đoàn"
+                      className={`${styles.sidebarItem} ${isOfficeAdminPage ? styles.sidebarItemActive : ''}`}
+                      onClick={closeSidebar}
+                    >
+                      <span className={styles.sidebarIcon}>
+                        <ClockIcon size={17} />
+                      </span>
+                      <span className={styles.sidebarLabel}>Văn phòng Đoàn</span>
+                      {pendingOfficeBorrows > 0 && (
+                        <span className={styles.sidebarBadgeRed}>
+                          {pendingOfficeBorrows > 99 ? '99+' : pendingOfficeBorrows}
+                        </span>
+                      )}
+                    </Link>
+                  )}
+
+                  {canOfficeBorrow && (
+                    <Link
+                      href="/office/borrow"
+                      title="Mượn dụng cụ Văn phòng Đoàn"
+                      className={`${styles.sidebarItem} ${isOfficeBorrowPage ? styles.sidebarItemActive : ''}`}
+                      onClick={closeSidebar}
+                    >
+                      <span className={styles.sidebarIcon}>
+                        <BuildingIcon size={17} />
+                      </span>
+                      <span className={styles.sidebarLabel}>Mượn dụng cụ VPĐ</span>
                     </Link>
                   )}
 
@@ -532,7 +605,7 @@ export default function Header({
                       onClick={closeSidebar}
                     >
                       <span className={styles.sidebarIcon}>
-                        <ScanCameraIcon size={18} />
+                        <ScanCameraIcon size={17} />
                       </span>
                       <span className={styles.sidebarLabel}>Máy quét QR</span>
                     </Link>
@@ -546,66 +619,124 @@ export default function Header({
                       onClick={closeSidebar}
                     >
                       <span className={styles.sidebarIcon}>
-                        <KeyIcon size={18} />
+                        <KeyIcon size={17} />
                       </span>
                       <span className={styles.sidebarLabel}>Chìa khóa phòng</span>
                     </Link>
                   )}
 
-                  {isOfficeAdmin && (
-                    <Link
-                      href="/office/admin"
-                      title="Quản trị Văn phòng Đoàn (Trực VP & Mượn dụng cụ)"
-                      className={`${styles.sidebarItem} ${isOfficeAdminPage ? styles.sidebarItemActive : ''}`}
-                      onClick={closeSidebar}
-                    >
-                      <span className={styles.sidebarIcon}>
-                        <ClockIcon size={18} />
-                      </span>
-                      <span className={styles.sidebarLabel}>Quản trị VP Đoàn</span>
-                    </Link>
-                  )}
+                  {!isStudentAccount && (
+                    <>
+                      <Link
+                        href="/events"
+                        title="Sự kiện"
+                        className={`${styles.sidebarItem} ${isEventsActive ? styles.sidebarItemActive : ''}`}
+                        onClick={closeSidebar}
+                      >
+                        <span className={styles.sidebarIcon}>
+                          <CalendarIcon size={17} />
+                        </span>
+                        <span className={styles.sidebarLabel}>Sự kiện</span>
+                      </Link>
 
-                  {canOfficeBorrow && (
-                    <Link
-                      href="/office/borrow"
-                      title="Mượn dụng cụ Văn phòng Đoàn"
-                      className={`${styles.sidebarItem} ${isOfficeBorrowPage ? styles.sidebarItemActive : ''}`}
-                      onClick={closeSidebar}
-                    >
-                      <span className={styles.sidebarIcon}>
-                        <BuildingIcon size={18} />
-                      </span>
-                      <span className={styles.sidebarLabel}>Mượn dụng cụ VPĐ</span>
-                    </Link>
+                      <Link
+                        href="/ranking"
+                        title="Bảng xếp hạng theo học kỳ"
+                        className={`${styles.sidebarItem} ${isRankingActive ? styles.sidebarItemActive : ''}`}
+                        onClick={closeSidebar}
+                      >
+                        <span className={styles.sidebarIcon}>
+                          <BadgeMedalIcon size={17} />
+                        </span>
+                        <span className={styles.sidebarLabel}>Bảng xếp hạng</span>
+                      </Link>
+                    </>
                   )}
+                </>
+              )}
 
+              {/* ── NHÓM 3: QUẢN TRỊ TOÀN TRƯỜNG (Chỉ hiện thêm với Super Admin) ── */}
+              {isSuperAdmin && (
+                <>
                   <div className={styles.sidebarDivider} />
-                  <div className={styles.sidebarSectionLabel}>Học Viện</div>
+                  <div className={styles.sidebarSectionLabel}>Quản Trị Toàn Trường</div>
 
-                  <Link
-                    href="/events"
-                    title="Sự kiện"
-                    className={`${styles.sidebarItem} ${isEventsActive ? styles.sidebarItemActive : ''}`}
-                    onClick={closeSidebar}
-                  >
-                    <span className={styles.sidebarIcon}>
-                      <CalendarIcon size={18} />
-                    </span>
-                    <span className={styles.sidebarLabel}>Sự kiện</span>
-                  </Link>
-
-                  <Link
-                    href="/ranking"
-                    title="Bảng xếp hạng theo học kỳ"
-                    className={`${styles.sidebarItem} ${isRankingActive ? styles.sidebarItemActive : ''}`}
-                    onClick={closeSidebar}
-                  >
-                    <span className={styles.sidebarIcon}>
-                      <BadgeMedalIcon size={18} />
-                    </span>
-                    <span className={styles.sidebarLabel}>Bảng xếp hạng</span>
-                  </Link>
+                  {(
+                    [
+                      { id: 'events', label: 'Quản lý Sự kiện', icon: <CalendarIcon size={17} /> },
+                      { id: 'proposals', label: 'Duyệt Kế Hoạch', icon: <FileTextIcon size={17} /> },
+                      { id: 'officers', label: 'Cán Bộ & Phân Quyền', icon: <UsersIcon size={17} /> },
+                      { id: 'rooms', label: 'Địa Điểm & Phòng', icon: <SettingsIcon size={17} /> },
+                      { id: 'units', label: 'Đơn Vị / LCĐ', icon: <BuildingIcon size={17} /> },
+                      { id: 'students', label: 'Quản lý Sinh viên', icon: <UsersIcon size={17} /> },
+                      { id: 'delegates', label: 'BCH Chi Đoàn (ĐRL)', icon: <CheckCircleIcon size={17} /> },
+                      { id: 'blacklist', label: 'Danh Sách Đen', icon: <ShieldCheckIcon size={17} /> },
+                      { id: 'settings', label: 'Học kỳ & Hệ thống', icon: <SettingsIcon size={17} /> },
+                    ] as Array<{ id: SuperAdminSidebarTab; label: string; icon: React.ReactNode }>
+                  ).map((item) => {
+                    const isActive = isSuperAdminPage && activeSuperAdminTab === item.id;
+                    const badgeVal =
+                      item.id === 'proposals'
+                        ? pendingProposals
+                        : superAdminBadges?.[item.id];
+                    const isAlertBadge = item.id === 'proposals' || item.id === 'blacklist';
+                    if (isSuperAdminPage && onSelectSuperAdminTab) {
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`${styles.sidebarItem} ${isActive ? styles.sidebarItemActive : ''}`}
+                          style={{ width: '100%', border: 'none', background: isActive ? undefined : 'transparent', cursor: 'pointer', textAlign: 'left', justifyContent: 'space-between' }}
+                          onClick={() => {
+                            onSelectSuperAdminTab(item.id);
+                            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                              closeSidebar();
+                            }
+                          }}
+                        >
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                            <span className={styles.sidebarIcon}>{item.icon}</span>
+                            <span className={styles.sidebarLabel}>{item.label}</span>
+                          </span>
+                          {typeof badgeVal === 'number' && badgeVal > 0 && (
+                            <span
+                              className={item.id === 'proposals' ? styles.sidebarBadgeRed : undefined}
+                              style={
+                                item.id === 'proposals'
+                                  ? undefined
+                                  : {
+                                      fontSize: '0.7rem',
+                                      fontWeight: 700,
+                                      padding: '0.08rem 0.45rem',
+                                      borderRadius: '999px',
+                                      background: isAlertBadge ? '#fee2e2' : '#f1f5f9',
+                                      color: isAlertBadge ? '#b91c1c' : '#475569',
+                                    }
+                              }
+                            >
+                              {badgeVal > 99 ? '99+' : badgeVal}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    }
+                    return (
+                      <Link
+                        key={item.id}
+                        href={`/super-admin?tab=${item.id}`}
+                        className={`${styles.sidebarItem} ${isActive ? styles.sidebarItemActive : ''}`}
+                        onClick={closeSidebar}
+                      >
+                        <span className={styles.sidebarIcon}>{item.icon}</span>
+                        <span className={styles.sidebarLabel}>{item.label}</span>
+                        {item.id === 'proposals' && typeof badgeVal === 'number' && badgeVal > 0 && (
+                          <span className={styles.sidebarBadgeRed}>
+                            {badgeVal > 99 ? '99+' : badgeVal}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
                 </>
               )}
             </nav>
@@ -633,6 +764,22 @@ export default function Header({
             )}
           </aside>
         </>
+      )}
+
+      {/* Mobile Native-Style Bottom Tab Bar (≤ 768px) */}
+      {!hideNavbar && effectiveUser && (
+        <MobileBottomNav
+          pathname={pathname}
+          activeStudentTab={activeStudentTab}
+          isStudentAccount={isStudentAccount}
+          isOfficer={isOfficer}
+          isSuperAdmin={isSuperAdmin}
+          canManageEvents={canManageEvents}
+          canViewProposals={canViewProposals}
+          canSecurity={canSecurity}
+          adminBadgeCount={totalAdminPending}
+          proposalBadgeCount={pendingProposals}
+        />
       )}
     </>
   );

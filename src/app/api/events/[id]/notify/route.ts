@@ -3,7 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getRegistrationExtras } from '@/lib/constants/event-meta-store';
-import { notifyUsersByMssv } from '@/lib/utils/web-push';
+import { notifyUsersByMssv, recordInboxNotification } from '@/lib/utils/web-push';
 
 export const dynamic = 'force-dynamic';
 
@@ -199,11 +199,24 @@ export async function POST(
       );
     }
 
-    const stats = await notifyUsersByMssv(supabase, targetMssvs, {
+    const stats = await notifyUsersByMssv(
+      supabase,
+      targetMssvs,
+      {
+        title,
+        body: message,
+        url: `/events/${resolved.id}/register`,
+        tag: `event-notify-${resolved.id}-${Date.now()}`,
+      },
+      { skipInboxLog: true }
+    );
+
+    await recordInboxNotification(supabase, {
       title,
       body: message,
       url: `/events/${resolved.id}/register`,
-      tag: `event-notify-${resolved.id}-${Date.now()}`,
+      target_type: `event:${audience}`,
+      target_value: resolved.id,
     });
 
     try {

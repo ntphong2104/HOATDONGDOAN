@@ -285,47 +285,130 @@ export default function StudentDashboardClient({
 
   const isUnit = isUnitAccount({ mssv: currentUser.mssv });
   if (isUnit) {
+    const primaryHref =
+      tier === 'super_admin'
+        ? '/super-admin'
+        : tier === 'ctsv' || tier === 'facility'
+        ? '/admin/proposals'
+        : tier === 'security'
+        ? '/security'
+        : tier === 'checker'
+        ? '/scanner'
+        : '/admin';
+
+    const primaryLabel =
+      tier === 'super_admin'
+        ? 'Vào Quản Trị Toàn Trường'
+        : tier === 'ctsv' || tier === 'facility'
+        ? 'Vào Duyệt Kế Hoạch'
+        : tier === 'security'
+        ? 'Vào Chìa Khóa Phòng'
+        : tier === 'checker'
+        ? 'Mở Máy Quét QR'
+        : 'Vào Bàn Làm Việc LCĐ';
+
     return (
-      <div style={{ maxWidth: 720, margin: '3rem auto', padding: '2.5rem 2rem', background: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', textAlign: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
-        <div style={{ display: 'inline-flex', padding: '1rem', background: '#eff6ff', borderRadius: '50%', color: '#1d4ed8', marginBottom: '1.25rem' }}>
-          <BuildingIcon size={40} />
-        </div>
-        <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.65rem' }}>
-          Không Gian Cán Bộ — {currentUser.full_name || currentUser.mssv}
-        </h2>
-        <p style={{ color: '#64748b', fontSize: '0.92rem', lineHeight: 1.6, marginBottom: '2rem' }}>
-          Đây là tài khoản chức năng của Ban Chấp Hành Liên Chi Đoàn / Đơn vị. Cổng Sinh Viên cá nhân (mã QR điểm danh và tích lũy ĐRL) chỉ dành riêng cho sinh viên cá nhân. Vui lòng chuyển sang Bàn Làm Việc để quản lý đoàn viên, sự kiện và xét duyệt kế hoạch.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link
-            href="/admin"
+      <div
+        style={{
+          maxWidth: 760,
+          margin: '1.5rem auto',
+          padding: '2rem',
+          background: '#ffffff',
+          borderRadius: 14,
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1rem' }}>
+          <div
             style={{
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              color: '#ffffff',
-              padding: '0.75rem 1.5rem',
+              width: 44,
+              height: 44,
               borderRadius: 10,
-              fontSize: '0.9rem',
-              fontWeight: 800,
-              textDecoration: 'none',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              color: '#1d4ed8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
-            Vào Bàn Làm Việc LCĐ ➔
-          </Link>
+            <BuildingIcon size={22} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d4ed8' }}>
+              Tổng quan Đơn vị / Cán bộ
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '0.1rem 0 0' }}>
+              {currentUser.full_name || currentUser.mssv}
+            </h2>
+          </div>
+        </div>
+
+        <p style={{ color: '#64748b', fontSize: '0.88rem', lineHeight: 1.55, margin: '0 0 1.5rem' }}>
+          Chọn nhanh khu vực nghiệp vụ bên dưới hoặc dùng thanh điều hướng bên trái để quản lý sự kiện, duyệt kế hoạch, xem bảng xếp hạng và mượn dụng cụ Văn phòng Đoàn.
+        </p>
+
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           <Link
-            href="/admin/proposals"
+            href={primaryHref}
             style={{
-              background: '#ffffff',
-              color: '#1d4ed8',
-              border: '1.5px solid #bfdbfe',
-              padding: '0.75rem 1.25rem',
-              borderRadius: 10,
-              fontSize: '0.9rem',
+              background: '#1d4ed8',
+              color: '#ffffff',
+              padding: '0.6rem 1.15rem',
+              borderRadius: 9,
+              fontSize: '0.85rem',
               fontWeight: 700,
               textDecoration: 'none',
             }}
           >
-            Kế Hoạch Trình Duyệt
+            {primaryLabel}
+          </Link>
+          <Link
+            href="/events"
+            style={{
+              background: '#ffffff',
+              color: '#334155',
+              border: '1px solid #cbd5e1',
+              padding: '0.6rem 1.05rem',
+              borderRadius: 9,
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            Sự kiện toàn Học viện
+          </Link>
+          <Link
+            href="/ranking"
+            style={{
+              background: '#ffffff',
+              color: '#334155',
+              border: '1px solid #cbd5e1',
+              padding: '0.6rem 1.05rem',
+              borderRadius: 9,
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            Bảng xếp hạng
+          </Link>
+          <Link
+            href="/office/borrow"
+            style={{
+              background: '#ffffff',
+              color: '#334155',
+              border: '1px solid #cbd5e1',
+              padding: '0.6rem 1.05rem',
+              borderRadius: 9,
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            Mượn dụng cụ VPĐ
           </Link>
         </div>
       </div>
@@ -338,29 +421,17 @@ export default function StudentDashboardClient({
       {tier !== 'user' && (
         <div className={styles.officerBanner}>
           <div>
-            <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#1e40af', display: 'block' }}>
+            <span className={styles.officerTitle}>
               Không gian Cán bộ Đoàn — {currentUser.full_name || currentUser.mssv}
             </span>
-            <span style={{ fontSize: '0.78rem', color: '#3b82f6', fontWeight: 600 }}>
-              Bạn đang xem Cổng Sinh Viên cá nhân. Sử dụng các lối tắt bên phải để vào Bàn Quản Trị.
+            <span className={styles.officerSub}>
+              Đang xem Cổng Sinh Viên cá nhân. Chọn lối tắt bên phải để vào Bàn Quản Trị.
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <Link
-              href="/admin/proposals"
-              style={{
-                background: '#ffffff',
-                color: '#1d4ed8',
-                border: '1.5px solid #bfdbfe',
-                padding: '0.45rem 0.9rem',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                fontWeight: 800,
-                textDecoration: 'none',
-              }}
-            >
-              Trình Kế Hoạch ➔
+          <div className={styles.officerActions}>
+            <Link href="/admin/proposals" className={styles.officerBtnSecondary}>
+              Trình Kế Hoạch
             </Link>
 
             <Link
@@ -371,18 +442,9 @@ export default function StudentDashboardClient({
                   ? '/admin/proposals'
                   : '/admin'
               }
-              style={{
-                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                color: '#ffffff',
-                padding: '0.45rem 1rem',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                fontWeight: 800,
-                textDecoration: 'none',
-                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-              }}
+              className={styles.officerBtnPrimary}
             >
-              Bàn Quản Trị Sự Kiện ➔
+              Bàn Quản Trị
             </Link>
           </div>
         </div>
@@ -391,72 +453,90 @@ export default function StudentDashboardClient({
       {/* ═══ SECTION 1: TỔNG QUAN CÁ NHÂN (/?view=student) ═══ */}
       {activeSection === 'overview' && (
       <div className={styles.portalGrid}>
-        {/* ── LEFT STICKY COLUMN: LCĐ Identity + QR Card + Self Scanner ── */}
+        {/* ── LEFT STICKY COLUMN: Unified Digital Member ID Card ── */}
         <aside className={styles.leftColumn}>
-          <div className={styles.lcdIdentityCard}>
-            {myLcd ? (
-              <span
-                className={styles.lcdBadge}
-                style={{
-                  background: myLcd.bg,
-                  color: myLcd.color,
-                  border: `1px solid ${myLcd.border}`,
-                }}
-              >
-                <BuildingIcon size={14} color={myLcd.color} />
-                <span>{myLcd.name}</span>
-              </span>
-            ) : (
-              <span
-                className={styles.lcdBadge}
-                style={{
-                  background: '#f1f5f9',
-                  color: '#475569',
-                  border: '1px solid #cbd5e1',
-                }}
-              >
-                <YouthUnionIcon size={14} color="#475569" />
-                <span>Đoàn Viên PTIT HCM</span>
-              </span>
-            )}
-            {myCohort && <span className={styles.cohortBadge}>Khóa {myCohort}</span>}
-          </div>
+          <div className={styles.memberIdCard}>
+            <div className={styles.memberIdTop}>
+              <div className={styles.memberIdBadges}>
+                {myLcd ? (
+                  <span
+                    className={styles.lcdBadge}
+                    style={{
+                      background: myLcd.bg,
+                      color: myLcd.color,
+                      border: `1px solid ${myLcd.border}`,
+                    }}
+                  >
+                    <BuildingIcon size={13} color={myLcd.color} />
+                    <span>{myLcd.shortName}</span>
+                  </span>
+                ) : (
+                  <span className={styles.cohortBadge}>Đoàn Viên PTIT</span>
+                )}
+                {myCohort && <span className={styles.cohortBadge}>Khóa {myCohort}</span>}
+              </div>
 
-          <QRCodeDisplay
-            value={currentUser.mssv}
-            studentName={currentUser.full_name}
-            studentClass={currentUser.class_id}
-            studentId={currentUser.mssv}
-          />
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(true)}
+                className={styles.editProfileMiniBtn}
+                title="Chỉnh sửa SĐT / Giới tính"
+              >
+                <PencilIcon size={12} color="#475569" />
+                <span>Sửa SĐT</span>
+              </button>
+            </div>
 
-          <div className={styles.scanEventSection}>
-            <button
-              type="button"
-              onClick={() => setShowScanner(true)}
-              className={styles.scanEventButton}
-            >
-              <ScanCameraIcon size={20} color="#ffffff" />
-              <span>Quét Mã QR Sự Kiện Trên Màn Hình</span>
-            </button>
-            <p className={styles.scanHelpText}>
-              Quét mã QR động trên máy chiếu / màn hình sự kiện để tự điểm danh minh chứng ĐRL
-            </p>
+            <QRCodeDisplay
+              value={currentUser.mssv}
+              studentName={currentUser.full_name}
+              studentClass={currentUser.class_id}
+              studentId={currentUser.mssv}
+              className={styles.embeddedQrCard}
+            />
+
+            <div className={styles.memberIdMetaRow}>
+              <span>
+                SĐT:{' '}
+                <strong style={{ color: userPhone ? '#0f172a' : '#b45309' }}>
+                  {userPhone || 'Chưa cập nhật'}
+                </strong>
+              </span>
+              <span className={styles.memberIdDot}>•</span>
+              <span>
+                Giới tính: <strong>{userGender === 'Nam' ? 'Nam' : 'Nữ'}</strong>
+              </span>
+            </div>
+
+            <div className={styles.scanEventSection}>
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className={styles.scanEventButton}
+              >
+                <ScanCameraIcon size={18} color="#ffffff" />
+                <span>Quét QR Sự Kiện Trên Màn Hình</span>
+              </button>
+              <p className={styles.scanHelpText}>
+                Quét mã QR động trên màn hình sự kiện để tự điểm danh minh chứng ĐRL
+              </p>
+            </div>
           </div>
         </aside>
 
-        {/* ── RIGHT MAIN COLUMN: Alerts + KPIs + Discovery CTA + Profile + Quick Links ── */}
+        {/* ── RIGHT MAIN COLUMN: Alerts + Unified Stat Strip + Discovery + Delegate + Recent Proofs ── */}
         <div className={styles.rightColumn}>
           {/* Missing Phone Alert */}
           {isPhoneMissing && (
             <div className={styles.phoneAlert}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1, minWidth: 220 }}>
-                <AlertTriangleIcon size={20} color="#d97706" />
+                <AlertTriangleIcon size={18} color="#b45309" />
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#92400e' }}>
-                    Bạn chưa cập nhật Số Điện Thoại / Zalo
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#92400e' }}>
+                    Chưa cập nhật Số Điện Thoại / Zalo
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#78350f', fontWeight: 500 }}>
-                    SĐT là bắt buộc khi đăng ký sự kiện hoặc ứng tuyển CTV để Ban Tổ Chức liên hệ.
+                  <div style={{ fontSize: '0.76rem', color: '#78350f', fontWeight: 500 }}>
+                    Bắt buộc khi đăng ký sự kiện hoặc ứng tuyển CTV để Ban Tổ Chức liên hệ.
                   </div>
                 </div>
               </div>
@@ -470,210 +550,61 @@ export default function StudentDashboardClient({
             </div>
           )}
 
-          {/* 4 KPI Summary Cards (clickable to jump to dedicated sections) */}
+          {/* Unified Neutral 3-Stat KPI Strip (Anti-AI: tabular dark slate, no rainbow) */}
           <div className={styles.kpiGrid}>
-            <Link href="/?view=student&tab=history" className={styles.kpiCard} style={{ textDecoration: 'none' }}>
+            <Link href="/?view=student&tab=history" className={styles.kpiCard}>
               <span className={styles.kpiLabel}>Hoạt động ĐRL</span>
-              <span className={styles.kpiValue} style={{ color: '#16a34a' }}>
-                {history.length}
-              </span>
-              <span className={styles.kpiSub}>Xem lịch sử minh chứng ➔</span>
+              <span className={styles.kpiValue}>{history.length}</span>
+              <span className={styles.kpiSub}>Xem lịch sử minh chứng</span>
             </Link>
 
             <div className={styles.kpiCard}>
-              <span className={styles.kpiLabel}>CTV / BTC</span>
-              <span className={styles.kpiValue} style={{ color: '#7c3aed' }}>
-                {volunteerOrOrganizerCount}
-              </span>
-              <span className={styles.kpiSub}>Vai trò hỗ trợ &amp; điều hành</span>
+              <span className={styles.kpiLabel}>Vai trò CTV / BTC</span>
+              <span className={styles.kpiValue}>{volunteerOrOrganizerCount}</span>
+              <span className={styles.kpiSub}>Hỗ trợ &amp; điều hành</span>
             </div>
 
-            <Link href="/?view=student&tab=registered" className={styles.kpiCard} style={{ textDecoration: 'none' }}>
+            <Link href="/?view=student&tab=registered" className={styles.kpiCard}>
               <span className={styles.kpiLabel}>Chờ điểm danh</span>
-              <span className={styles.kpiValue} style={{ color: '#2563eb' }}>
-                {pendingRegistrations.length}
-              </span>
-              <span className={styles.kpiSub}>Xem sự kiện đã đăng ký ➔</span>
+              <span className={styles.kpiValue}>{pendingRegistrations.length}</span>
+              <span className={styles.kpiSub}>Xem sự kiện đã đăng ký</span>
             </Link>
-
-            <div className={styles.kpiCard}>
-              <span className={styles.kpiLabel}>Hồ sơ liên hệ</span>
-              <span
-                className={styles.kpiValue}
-                style={{ fontSize: '1.05rem', color: isPhoneMissing ? '#d97706' : '#0f766e', marginTop: '0.2rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-              >
-                {isPhoneMissing ? (
-                  <span>Thiếu SĐT</span>
-                ) : (
-                  <>
-                    <CheckCircleIcon size={16} color="#0f766e" />
-                    <span>Đã đầy đủ</span>
-                  </>
-                )}
-              </span>
-              <span className={styles.kpiSub}>
-                {isPhoneMissing ? 'Cần bổ sung' : userPhone}
-              </span>
-            </div>
           </div>
 
-          {/* Quick Discovery CTA Banner */}
+          {/* Clean Discovery CTA Bar */}
           <div className={styles.discoverCta}>
             <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#bfdbfe', letterSpacing: '0.05em' }}>
-                Khám phá hoạt động Đoàn – Hội
+              <div className={styles.discoverEyebrow}>
+                Hoạt động Đoàn – Hội đang mở
               </div>
-              <div style={{ fontSize: '1.08rem', fontWeight: 800, marginTop: '0.15rem' }}>
+              <div className={styles.discoverHeading}>
                 {myLcd
-                  ? `Xem các sự kiện đang mở dành cho ${myLcd.shortName} & Toàn Học viện`
-                  : 'Xem các sự kiện đang mở đăng ký & tuyển CTV'}
+                  ? `Chương trình dành cho ${myLcd.shortName} & Toàn Học viện`
+                  : 'Các sự kiện đang mở đăng ký & tuyển CTV'}
               </div>
             </div>
             <Link href="/events" className={styles.discoverCtaBtn}>
-              <CalendarIcon size={16} color="#1e40af" />
-              <span>Sự kiện ➔</span>
+              <CalendarIcon size={15} color="#1e3a8a" />
+              <span>Xem sự kiện</span>
             </Link>
           </div>
 
-          {/* Compact 2-Column Student Profile Card */}
-          <section className={styles.profileCard}>
-            <div className={styles.profileHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', minWidth: 0 }}>
-                <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '1.15rem',
-                    flexShrink: 0,
-                  }}
-                >
-                  {currentUser.full_name ? currentUser.full_name.trim().charAt(0).toUpperCase() : 'S'}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
-                    {currentUser.full_name || 'Đoàn Viên / Sinh Viên'}
-                  </h2>
-                  <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
-                    Hồ Sơ Đoàn Viên PTIT Cơ sở tại TP. Hồ Chí Minh
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowProfileModal(true)}
-                style={{
-                  padding: '0.5rem 0.9rem',
-                  background: '#eff6ff',
-                  color: '#2563eb',
-                  border: '1.5px solid #bfdbfe',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.82rem',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                }}
-              >
-                <PencilIcon size={14} color="#2563eb" />
-                <span>Chỉnh sửa SĐT / Giới tính</span>
-              </button>
-            </div>
-
-            <div className={styles.profileGrid}>
-              <div className={styles.profileField}>
-                <span className={styles.profileFieldLabel}>MSSV</span>
-                <span className={styles.profileFieldValue} style={{ fontFamily: 'monospace', color: '#1e40af' }}>
-                  {currentUser.mssv}
-                </span>
-              </div>
-
-              <div className={styles.profileField}>
-                <span className={styles.profileFieldLabel}>Chi Đoàn / Lớp</span>
-                <span className={styles.profileFieldValue}>{currentUser.class_id || 'PTIT-HCM'}</span>
-              </div>
-
-              <div className={styles.profileField}>
-                <span className={styles.profileFieldLabel}>Liên Chi Đoàn</span>
-                <span className={styles.profileFieldValue} style={{ color: myLcd?.color || '#475569' }}>
-                  {myLcd ? myLcd.shortName : 'Chưa xác định'}
-                </span>
-              </div>
-
-              <div className={styles.profileField}>
-                <span className={styles.profileFieldLabel}>Giới tính</span>
-                <span
-                  style={{
-                    fontWeight: 700,
-                    fontSize: '0.78rem',
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    background: userGender === 'Nam' ? '#dbeafe' : '#fce7f3',
-                    color: userGender === 'Nam' ? '#1d4ed8' : '#be185d',
-                  }}
-                >
-                  {userGender === 'Nam' ? 'Nam' : 'Nữ'}
-                </span>
-              </div>
-
-              <div className={styles.profileField} style={{ gridColumn: '1 / -1' }}>
-                <span className={styles.profileFieldLabel}>Số Điện Thoại / Zalo</span>
-                <span className={styles.profileFieldValue} style={{ color: userPhone ? '#0f172a' : '#d97706' }}>
-                  {userPhone || 'Chưa cập nhật'}
-                </span>
-              </div>
-            </div>
-          </section>
-
           {/* BCH Chi Đoàn Shortcut Card (if student is an active Class Delegate) */}
           {delegateInfo?.isDelegate && (
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
-                border: '1.5px solid #bfdbfe',
-                borderRadius: '14px',
-                padding: '1rem 1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '0.85rem',
-                flexWrap: 'wrap',
-              }}
-            >
+            <div className={styles.delegateBanner}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <ShieldCheckIcon size={20} color="#1d4ed8" />
+                <ShieldCheckIcon size={19} color="#1d4ed8" />
                 <div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e3a8a' }}>
-                    Quyền BCH Chi Đoàn {delegateInfo.class_id} (còn {delegateInfo.daysLeft} ngày)
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
+                    BCH Chi Đoàn {delegateInfo.class_id} · còn {delegateInfo.daysLeft} ngày nhiệm kỳ
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 500 }}>
                     Tra cứu minh chứng &amp; xuất Excel ĐRL cho toàn bộ đoàn viên trong lớp.
                   </div>
                 </div>
               </div>
-              <Link
-                href="/?view=student&tab=delegate"
-                style={{
-                  padding: '0.5rem 0.95rem',
-                  borderRadius: '10px',
-                  background: '#1d4ed8',
-                  color: '#ffffff',
-                  fontSize: '0.82rem',
-                  fontWeight: 800,
-                  textDecoration: 'none',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Mở Tra Cứu Lớp ➔
+              <Link href="/?view=student&tab=delegate" className={styles.delegateBtn}>
+                Mở Tra Cứu Lớp
               </Link>
             </div>
           )}
@@ -682,14 +613,14 @@ export default function StudentDashboardClient({
           <section className={styles.profileCard}>
             <div className={styles.profileHeader} style={{ marginBottom: '0.75rem', paddingBottom: '0.75rem' }}>
               <h3 className={styles.historyTitle}>
-                <CheckCircleIcon size={17} color="#16a34a" />
-                <span>Hoạt động minh chứng gần nhất</span>
+                <CheckCircleIcon size={17} color="#15803d" />
+                <span>Minh chứng gần nhất</span>
               </h3>
               <Link
                 href="/?view=student&tab=history"
-                style={{ fontSize: '0.82rem', fontWeight: 800, color: '#2563eb', textDecoration: 'none' }}
+                style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1d4ed8', textDecoration: 'none' }}
               >
-                Xem tất cả ({history.length}) ➔
+                Xem tất cả ({history.length})
               </Link>
             </div>
 

@@ -51,6 +51,9 @@ function detectDeviceType(): 'ios_pwa' | 'android' | 'desktop' | 'unknown' {
   return 'unknown';
 }
 
+const CLIENT_INBOX_TTL_MS = 60_000;
+let clientInboxCache: { notifications: InboxNotification[]; unreadCount: number; ts: number } | null = null;
+
 export default function PushNotificationButton() {
   const router = useRouter();
   const toast = useToast();
@@ -63,8 +66,12 @@ export default function PushNotificationButton() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [notifications, setNotifications] = useState<InboxNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<InboxNotification[]>(
+    () => clientInboxCache?.notifications || []
+  );
+  const [unreadCount, setUnreadCount] = useState<number>(
+    () => clientInboxCache?.unreadCount || 0
+  );
   const [loadingInbox, setLoadingInbox] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -93,14 +100,22 @@ export default function PushNotificationButton() {
     }
   }, []);
 
-  const loadInbox = useCallback(async () => {
+  const loadInbox = useCallback(async (force = false) => {
+    if (!force && clientInboxCache && Date.now() - clientInboxCache.ts < CLIENT_INBOX_TTL_MS) {
+      setNotifications(clientInboxCache.notifications);
+      setUnreadCount(clientInboxCache.unreadCount);
+      return;
+    }
     try {
       setLoadingInbox(true);
       const res = await fetch('/api/notifications', { cache: 'no-store' });
       const json = await res.json();
       if (json.success && json.data) {
-        setNotifications(Array.isArray(json.data.notifications) ? json.data.notifications : []);
-        setUnreadCount(Number(json.data.unread_count) || 0);
+        const list = Array.isArray(json.data.notifications) ? json.data.notifications : [];
+        const count = Number(json.data.unread_count) || 0;
+        clientInboxCache = { notifications: list, unreadCount: count, ts: Date.now() };
+        setNotifications(list);
+        setUnreadCount(count);
       }
     } catch {
       // ignore silently
@@ -138,10 +153,13 @@ export default function PushNotificationButton() {
 
   const handleMarkRead = async (item: InboxNotification) => {
     if (!item.is_read) {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n))
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
+      setNotifications((prev) => {
+        const next = prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n));
+        const nextCount = next.filter((n) => !n.is_read).length;
+        clientInboxCache = { notifications: next, unreadCount: nextCount, ts: Date.now() };
+        setUnreadCount(nextCount);
+        return next;
+      });
       fetch('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,7 +175,11 @@ export default function PushNotificationButton() {
   const handleMarkAllRead = async () => {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
     if (unreadIds.length === 0) return;
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setNotifications((prev) => {
+      const next = prev.map((n) => ({ ...n, is_read: true }));
+      clientInboxCache = { notifications: next, unreadCount: 0, ts: Date.now() };
+      return next;
+    });
     setUnreadCount(0);
     try {
       await fetch('/api/notifications', {
@@ -343,7 +365,7 @@ export default function PushNotificationButton() {
           setOpen(next);
           if (next) {
             checkLocalSubscription();
-            loadInbox();
+            loadInbox(true);
           }
         }}
         title={subscribedHere ? 'Thông báo đẩy đang bật' : 'Bật thông báo đẩy'}

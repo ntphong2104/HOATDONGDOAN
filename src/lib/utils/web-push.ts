@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { LcdCode } from '@/lib/utils/lcd';
+import { runSerializedByKey } from '@/lib/utils/concurrency-queue';
 
 /**
  * Zero-dependency Web Push implementation using Node.js built-in `crypto` + native `fetch`.
@@ -424,6 +425,85 @@ export async function dispatchPushToSubscriptions(
   };
 }
 
+export interface StoredInboxNotification {
+  id: string;
+  title: string;
+  body: string;
+  url: string | null;
+  target_type: string;
+  target_value: string | null;
+  created_at: string;
+}
+
+const INBOX_HISTORY_KEY = 'push_inbox_history';
+const MAX_INBOX_HISTORY = 100;
+
+/**
+ * Records a notification into `system_settings` (`push_inbox_history`) so the
+ * in-app bell inbox works reliably even if the optional `push_logs` table is absent.
+ */
+export async function recordInboxNotification(
+  supabase: any,
+  entry: {
+    id?: string;
+    title: string;
+    body: string;
+    url?: string | null;
+    target_type: string;
+    target_value?: string | null;
+  }
+): Promise<void> {
+  if (!supabase || !entry?.title) return;
+  try {
+    await runSerializedByKey(INBOX_HISTORY_KEY, async () => {
+      let existing: StoredInboxNotification[] = [];
+      try {
+        const { data } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', INBOX_HISTORY_KEY)
+          .maybeSingle();
+        if (data?.value) {
+          const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+          if (Array.isArray(parsed)) existing = parsed;
+        }
+      } catch {}
+
+      const newItem: StoredInboxNotification = {
+        id: entry.id || crypto.randomUUID(),
+        title: String(entry.title).slice(0, 140),
+        body: String(entry.body || '').slice(0, 400),
+        url: entry.url ? String(entry.url) : null,
+        target_type: String(entry.target_type || 'all'),
+        target_value: entry.target_value ? String(entry.target_value) : null,
+        created_at: new Date().toISOString(),
+      };
+
+      const next = [newItem, ...existing.filter((x) => x && x.id !== newItem.id)].slice(
+        0,
+        MAX_INBOX_HISTORY
+      );
+
+      await supabase.from('system_settings').upsert(
+        {
+          key: INBOX_HISTORY_KEY,
+          value: JSON.stringify(next),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'key' }
+      );
+
+      // Invalidate shared in-app notification feed cache immediately
+      const gNotif = globalThis as unknown as { __hddNotifFeedCache?: { expiresAt: number } };
+      if (gNotif.__hddNotifFeedCache) {
+        gNotif.__hddNotifFeedCache.expiresAt = 0;
+      }
+    });
+  } catch {
+    // Non-fatal
+  }
+}
+
 /**
  * Fire-and-forget helper: send push to specific user emails.
  */
@@ -437,6 +517,14 @@ export async function notifyUsersByEmail(
       new Set((emails || []).map((e) => String(e || '').trim().toLowerCase()).filter(Boolean))
     );
     if (!supabase || clean.length === 0) return { total: 0, delivered: 0, failed: 0 };
+
+    recordInboxNotification(supabase, {
+      title: payload.title,
+      body: payload.body,
+      url: payload.url || null,
+      target_type: 'emails',
+      target_value: clean.join(','),
+    }).catch(() => {});
 
     const { data, error } = await supabase
       .from('push_subscriptions')
@@ -457,13 +545,24 @@ export async function notifyUsersByEmail(
 export async function notifyUsersByMssv(
   supabase: any,
   mssvs: string[],
-  payload: WebPushPayload
+  payload: WebPushPayload,
+  options?: { skipInboxLog?: boolean }
 ): Promise<{ total: number; delivered: number; failed: number }> {
   try {
     const clean = Array.from(
       new Set((mssvs || []).map((m) => String(m || '').trim().toUpperCase()).filter(Boolean))
     );
     if (!supabase || clean.length === 0) return { total: 0, delivered: 0, failed: 0 };
+
+    if (!options?.skipInboxLog) {
+      recordInboxNotification(supabase, {
+        title: payload.title,
+        body: payload.body,
+        url: payload.url || null,
+        target_type: 'mssv',
+        target_value: clean.slice(0, 80).join(','),
+      }).catch(() => {});
+    }
 
     const { data, error } = await supabase
       .from('push_subscriptions')
@@ -489,13 +588,22 @@ export async function notifyStudentsByScope(
   try {
     if (!supabase) return { total: 0, delivered: 0, failed: 0 };
 
+    const isScoped = Array.isArray(allowedLcds) && allowedLcds.length > 0;
+    recordInboxNotification(supabase, {
+      title: payload.title,
+      body: payload.body,
+      url: payload.url || null,
+      target_type: isScoped ? 'lcd' : 'all',
+      target_value: isScoped ? allowedLcds.join(',') : null,
+    }).catch(() => {});
+
     let query = supabase
       .from('push_subscriptions')
       .select('id, endpoint, p256dh, auth, lcd_code, mssv')
       .eq('is_active', true)
       .not('mssv', 'is', null);
 
-    if (Array.isArray(allowedLcds) && allowedLcds.length > 0) {
+    if (isScoped) {
       query = query.in('lcd_code', allowedLcds);
     }
 

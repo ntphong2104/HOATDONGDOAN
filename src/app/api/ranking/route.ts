@@ -49,8 +49,16 @@ interface CachedSemesterRanking {
   studentRankMap: Map<string, { rank: number; count: number; full_name: string; class_id: string }>;
 }
 
-const rankingCache = new Map<string, { ts: number; data: CachedSemesterRanking }>();
-const rankingInFlight = new Map<string, Promise<CachedSemesterRanking>>();
+const gRanking = globalThis as unknown as {
+  __hddRankingCache?: Map<string, { ts: number; data: CachedSemesterRanking }>;
+  __hddRankingInFlight?: Map<string, Promise<CachedSemesterRanking>>;
+};
+const rankingCache =
+  gRanking.__hddRankingCache ||
+  (gRanking.__hddRankingCache = new Map<string, { ts: number; data: CachedSemesterRanking }>());
+const rankingInFlight =
+  gRanking.__hddRankingInFlight ||
+  (gRanking.__hddRankingInFlight = new Map<string, Promise<CachedSemesterRanking>>());
 
 const UNIT_BY_EMAIL = new Map<string, string>(
   OFFICIAL_UNITS.map((u) => [u.email.toLowerCase(), u.name])
@@ -193,34 +201,65 @@ async function computeSemesterRanking(
     }
 
     // 3. Lấy toàn bộ lượt check-in thuộc các sự kiện trong học kỳ này
-    //    Ưu tiên RPC SECURITY DEFINER (get_ranking_checkins_for_events) có phân trang .range()
-    //    để sinh viên thường vẫn thấy đủ toàn bộ >5.000 lượt toàn trường mà không bị giới hạn 1.000 dòng
-    //    hay bị RLS bảng check_ins chặn khi local chưa có SUPABASE_SERVICE_ROLE_KEY.
+    //    Ưu tiên RPC SECURITY DEFINER (get_ranking_checkins_for_events) có phân trang song song theo đợt 4 trang (4.000 dòng/wave)
+    //    để vừa vượt giới hạn 1.000 dòng của PostgREST vừa giảm số vòng chờ mạng xuống 4 lần.
     const checkinRows: Array<{ event_id: string; mssv: string }> = [];
     let loadedViaRpc = false;
     if (eventIds.length > 0) {
+      const CHUNK = 150;
+      const pageSize = 1000;
+      const WAVE_PAGES = 4;
+      const slices: string[][] = [];
+      for (let i = 0; i < eventIds.length; i += CHUNK) {
+        slices.push(eventIds.slice(i, i + CHUNK));
+      }
+
       try {
-        const CHUNK = 150;
-        const pageSize = 1000;
         const rpcRows: Array<{ event_id: string; mssv: string }> = [];
         let rpcOk = true;
-        for (let i = 0; i < eventIds.length && rpcOk; i += CHUNK) {
-          const slice = eventIds.slice(i, i + CHUNK);
-          let offset = 0;
-          while (offset < 30_000) {
-            const { data: rData, error: rErr } = await supabase
-              .rpc('get_ranking_checkins_for_events', { p_event_ids: slice })
-              .range(offset, offset + pageSize - 1);
-            if (rErr || !Array.isArray(rData)) {
-              console.warn('[ranking] RPC get_ranking_checkins_for_events fallback:', rErr?.message || 'non-array');
-              rpcOk = false;
-              break;
+
+        const sliceResults = await Promise.all(
+          slices.map(async (slice) => {
+            const rows: Array<{ event_id: string; mssv: string }> = [];
+            let offset = 0;
+            while (offset < 30_000) {
+              const offsets = Array.from({ length: WAVE_PAGES }, (_, idx) => offset + idx * pageSize).filter(
+                (o) => o < 30_000
+              );
+              const wave = await Promise.all(
+                offsets.map((o) =>
+                  supabase
+                    .rpc('get_ranking_checkins_for_events', { p_event_ids: slice })
+                    .range(o, o + pageSize - 1)
+                )
+              );
+              let reachedEnd = false;
+              for (const { data: rData, error: rErr } of wave) {
+                if (rErr || !Array.isArray(rData)) {
+                  console.warn('[ranking] RPC get_ranking_checkins_for_events fallback:', rErr?.message || 'non-array');
+                  return null;
+                }
+                rows.push(...rData);
+                if (rData.length < pageSize) {
+                  reachedEnd = true;
+                  break;
+                }
+              }
+              if (reachedEnd) break;
+              offset += WAVE_PAGES * pageSize;
             }
-            rpcRows.push(...rData);
-            if (rData.length < pageSize) break;
-            offset += pageSize;
+            return rows;
+          })
+        );
+
+        for (const res of sliceResults) {
+          if (res === null) {
+            rpcOk = false;
+            break;
           }
+          rpcRows.push(...res);
         }
+
         if (rpcOk) {
           checkinRows.push(...rpcRows);
           loadedViaRpc = true;
@@ -230,23 +269,43 @@ async function computeSemesterRanking(
       }
 
       if (!loadedViaRpc) {
-        const CHUNK = 150;
-        for (let i = 0; i < eventIds.length; i += CHUNK) {
-          const slice = eventIds.slice(i, i + CHUNK);
-          let offset = 0;
-          const pageSize = 1000;
-          while (offset < 30_000) {
-            const { data, error } = await supabase
-              .from('check_ins')
-              .select('event_id, mssv')
-              .in('event_id', slice)
-              .range(offset, offset + pageSize - 1);
-
-            if (error || !data || data.length === 0) break;
-            checkinRows.push(...data);
-            if (data.length < pageSize) break;
-            offset += pageSize;
-          }
+        const fallbackResults = await Promise.all(
+          slices.map(async (slice) => {
+            const rows: Array<{ event_id: string; mssv: string }> = [];
+            let offset = 0;
+            while (offset < 30_000) {
+              const offsets = Array.from({ length: WAVE_PAGES }, (_, idx) => offset + idx * pageSize).filter(
+                (o) => o < 30_000
+              );
+              const wave = await Promise.all(
+                offsets.map((o) =>
+                  supabase
+                    .from('check_ins')
+                    .select('event_id, mssv')
+                    .in('event_id', slice)
+                    .range(o, o + pageSize - 1)
+                )
+              );
+              let reachedEnd = false;
+              for (const { data, error } of wave) {
+                if (error || !data || data.length === 0) {
+                  reachedEnd = true;
+                  break;
+                }
+                rows.push(...data);
+                if (data.length < pageSize) {
+                  reachedEnd = true;
+                  break;
+                }
+              }
+              if (reachedEnd) break;
+              offset += WAVE_PAGES * pageSize;
+            }
+            return rows;
+          })
+        );
+        for (const rows of fallbackResults) {
+          checkinRows.push(...rows);
         }
       }
     }

@@ -1,8 +1,9 @@
 .card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 1.25rem 1.25rem 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -11,65 +12,84 @@
 
 .header {
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.9rem;
 }
 
 .name {
-  font-size: 1.25rem;
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.2rem 0;
+}
+
+.classInfo {
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--neutral-900);
-  margin: 0 0 0.25rem 0;
+  color: #64748b;
+  margin: 0;
 }
 
 .qrContainer {
-  background: white;
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid var(--neutral-200);
-  margin-bottom: 1rem;
+  background: #ffffff;
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 0.85rem;
 }
 
 .qrCode {
   width: 100%;
   height: auto;
-  max-width: 256px;
+  max-width: 224px;
+  display: block;
+}
+
+.activateBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1.2rem;
+  border-radius: 10px;
+  border: none;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(29, 78, 216, 0.25);
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.activateBtn:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.activateBtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.activateBtn:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.activateHint {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
 }
 
 .footer {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.25rem;
   text-align: center;
 }
 
 .mssv {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 1.125rem;
+  font-family: var(--font-mono);
+  font-size: 0.96rem;
   font-weight: 700;
-  color: var(--primary-600);
-  letter-spacing: 0.05em;
-}
-
-.downloadButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background-color: var(--neutral-50);
-  color: var(--neutral-900);
-  border: 1px solid var(--neutral-200);
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.downloadButton:hover {
-  background-color: var(--neutral-200);
-}
-
-.downloadButton svg {
-  width: 18px;
-  height: 18px;
+  color: #1e3a8a;
+  letter-spacing: 0.06em;
 }

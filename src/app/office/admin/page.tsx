@@ -20,6 +20,17 @@ type AdminTab = 'schedule' | 'volunteers' | 'windows_network' | 'equipment';
 
 function fmtDateVN(d?: string | null): string {
   if (!d) return '—';
+  if (d.includes('T')) {
+    const dt = new Date(d);
+    if (!isNaN(dt.getTime())) {
+      return dt.toLocaleDateString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    }
+  }
   const p = String(d).split('T')[0].split('-');
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
 }
@@ -75,6 +86,9 @@ export default function OfficeAdminPage() {
   const [items, setItems] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [bans, setBans] = useState<any[]>([]);
+  const [reqFilter, setReqFilter] = useState<'all' | 'pending' | 'active' | 'done'>('all');
+  const [reqPage, setReqPage] = useState(1);
+  const REQ_PAGE_SIZE = 10;
   const [newItemName, setNewItemName] = useState('');
   const [newItemCat, setNewItemCat] = useState('Dụng cụ sự kiện');
   const [newItemQty, setNewItemQty] = useState(1);
@@ -299,6 +313,9 @@ export default function OfficeAdminPage() {
     if (json.success) {
       showMsg('success', json.message);
       loadEquipment();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('hdd:pending-counts-changed'));
+      }
     } else showMsg('error', json.error || 'Lỗi xử lý đơn');
   };
 
@@ -377,6 +394,44 @@ export default function OfficeAdminPage() {
   }
 
   const activeBans = bans.filter((b) => b.is_active && new Date(b.banned_until).getTime() > Date.now());
+  const pendingBorrowCount = requests.filter((r) => r.status === 'pending').length;
+  const activeBorrowCount = requests.filter((r) => r.status === 'approved' || r.status === 'borrowed').length;
+  const doneBorrowCount = requests.filter((r) => r.status === 'returned' || r.status === 'rejected').length;
+
+  const STATUS_PRIORITY: Record<string, number> = {
+    pending: 0,
+    borrowed: 1,
+    approved: 2,
+    returned: 3,
+    rejected: 4,
+  };
+
+  const sortedFilteredRequests = [...requests]
+    .filter((r) => {
+      if (reqFilter === 'pending') return r.status === 'pending';
+      if (reqFilter === 'active') return r.status === 'approved' || r.status === 'borrowed';
+      if (reqFilter === 'done') return r.status === 'returned' || r.status === 'rejected';
+      return true;
+    })
+    .sort((a, b) => {
+      const pa = STATUS_PRIORITY[a.status] ?? 9;
+      const pb = STATUS_PRIORITY[b.status] ?? 9;
+      if (pa !== pb) return pa - pb;
+      // Within borrowed, overdue items come first
+      if (a.status === 'borrowed' && b.status === 'borrowed') {
+        const oa = Number(a.current_overdue_days) || 0;
+        const ob = Number(b.current_overdue_days) || 0;
+        if (oa !== ob) return ob - oa;
+      }
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
+
+  const reqTotalPages = Math.max(1, Math.ceil(sortedFilteredRequests.length / REQ_PAGE_SIZE));
+  const safeReqPage = Math.min(reqPage, reqTotalPages);
+  const paginatedRequests = sortedFilteredRequests.slice(
+    (safeReqPage - 1) * REQ_PAGE_SIZE,
+    safeReqPage * REQ_PAGE_SIZE
+  );
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
@@ -426,16 +481,17 @@ export default function OfficeAdminPage() {
         {/* Tabs */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
           {[
-            { id: 'schedule' as AdminTab, label: 'Lịch trực & Chấm công', icon: <CalendarIcon size={15} /> },
-            { id: 'volunteers' as AdminTab, label: `Danh sách CTV trực (${volunteers.length})`, icon: <UsersIcon size={15} /> },
-            { id: 'windows_network' as AdminTab, label: 'Đợt đăng ký & Mạng VPĐ', icon: <SettingsIcon size={15} /> },
-            { id: 'equipment' as AdminTab, label: `Mượn dụng cụ & Cấm mượn (${requests.length})`, icon: <BuildingIcon size={15} /> },
+            { id: 'schedule' as AdminTab, label: 'Lịch trực & Chấm công', icon: <CalendarIcon size={15} />, alertCount: 0 },
+            { id: 'volunteers' as AdminTab, label: `Danh sách CTV trực (${volunteers.length})`, icon: <UsersIcon size={15} />, alertCount: 0 },
+            { id: 'windows_network' as AdminTab, label: 'Đợt đăng ký & Mạng VPĐ', icon: <SettingsIcon size={15} />, alertCount: 0 },
+            { id: 'equipment' as AdminTab, label: 'Mượn dụng cụ & Cấm mượn', icon: <BuildingIcon size={15} />, alertCount: pendingBorrowCount },
           ].map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setActiveTab(t.id)}
               style={{
+                position: 'relative',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
@@ -450,6 +506,27 @@ export default function OfficeAdminPage() {
               }}
             >
               {t.icon} {t.label}
+              {t.alertCount > 0 && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 20,
+                    height: 20,
+                    padding: '0 6px',
+                    borderRadius: 999,
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    lineHeight: 1,
+                    boxShadow: activeTab === t.id ? '0 0 0 2px rgba(255,255,255,0.85)' : 'none',
+                  }}
+                >
+                  {t.alertCount > 99 ? '99+' : t.alertCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -728,11 +805,46 @@ export default function OfficeAdminPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
             {/* Đơn mượn từ LCĐ / CLB */}
             <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.65rem', marginBottom: '0.75rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Đơn mượn dụng cụ từ LCĐ / CLB ({requests.length})</h2>
                 <button type="button" onClick={loadEquipment} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '0.38rem 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
                   <RefreshIcon size={14} /> Làm mới
                 </button>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.85rem' }}>
+                {[
+                  { id: 'all' as const, label: `Tất cả (${requests.length})` },
+                  { id: 'pending' as const, label: `Chờ duyệt (${pendingBorrowCount})`, alert: pendingBorrowCount > 0 },
+                  { id: 'active' as const, label: `Đang mượn / Chờ giao (${activeBorrowCount})` },
+                  { id: 'done' as const, label: `Đã xong (${doneBorrowCount})` },
+                ].map((f) => {
+                  const active = reqFilter === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => { setReqFilter(f.id); setReqPage(1); }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        padding: '0.32rem 0.72rem',
+                        borderRadius: 999,
+                        border: active ? '1px solid #1d4ed8' : '1px solid #e2e8f0',
+                        background: active ? '#1d4ed8' : '#fff',
+                        color: active ? '#fff' : '#334155',
+                        fontSize: '0.77rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {f.alert && (
+                        <span style={{ width: 7, height: 7, borderRadius: 999, background: active ? '#fde047' : '#ef4444' }} />
+                      )}
+                      {f.label}
+                    </button>
+                  );
+                })}
               </div>
               <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 10 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
@@ -746,9 +858,9 @@ export default function OfficeAdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {requests.length === 0 ? (
-                      <tr><td colSpan={5} style={{ padding: '1.2rem', textAlign: 'center', color: '#64748b' }}>Chưa có đơn mượn nào.</td></tr>
-                    ) : requests.map((r) => (
+                    {paginatedRequests.length === 0 ? (
+                      <tr><td colSpan={5} style={{ padding: '1.2rem', textAlign: 'center', color: '#64748b' }}>Không có đơn mượn nào trong mục này.</td></tr>
+                    ) : paginatedRequests.map((r) => (
                       <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9', background: r.current_overdue_days > 0 && r.status === 'borrowed' ? '#fef2f2' : undefined }}>
                         <td style={{ padding: '0.68rem 0.8rem' }}>
                           <div style={{ fontWeight: 800, color: '#0f172a' }}>{r.unit_name}</div>
@@ -794,6 +906,34 @@ export default function OfficeAdminPage() {
                   </tbody>
                 </table>
               </div>
+              {reqTotalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.85rem', fontSize: '0.8rem', color: '#64748b' }}>
+                  <span>
+                    Hiển thị {(safeReqPage - 1) * REQ_PAGE_SIZE + 1}–{Math.min(safeReqPage * REQ_PAGE_SIZE, sortedFilteredRequests.length)} / {sortedFilteredRequests.length} đơn
+                  </span>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      type="button"
+                      disabled={safeReqPage <= 1}
+                      onClick={() => setReqPage((p) => Math.max(1, p - 1))}
+                      style={{ padding: '0.32rem 0.7rem', borderRadius: 7, border: '1px solid #cbd5e1', background: '#fff', color: safeReqPage <= 1 ? '#94a3b8' : '#0f172a', fontWeight: 700, cursor: safeReqPage <= 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                      ← Trước
+                    </button>
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                      Trang {safeReqPage} / {reqTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safeReqPage >= reqTotalPages}
+                      onClick={() => setReqPage((p) => Math.min(reqTotalPages, p + 1))}
+                      style={{ padding: '0.32rem 0.7rem', borderRadius: 7, border: '1px solid #cbd5e1', background: '#fff', color: safeReqPage >= reqTotalPages ? '#94a3b8' : '#0f172a', fontWeight: 700, cursor: safeReqPage >= reqTotalPages ? 'not-allowed' : 'pointer' }}
+                    >
+                      Sau →
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* Đơn vị bị cấm mượn */}

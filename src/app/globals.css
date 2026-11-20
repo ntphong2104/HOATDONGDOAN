@@ -96,6 +96,12 @@ body[data-sidebar] {
   }
 }
 
+@media (max-width: 768px) {
+  body[data-has-bottom-nav='true'] {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;
