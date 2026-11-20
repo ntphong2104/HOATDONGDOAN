@@ -331,7 +331,7 @@ export default function PushNotificationButton() {
           height: 38,
           borderRadius: '50%',
           border: '1px solid rgba(255, 255, 255, 0.25)',
-          background: subscribedHere ? 'rgba(34, 197, 94, 0.22)' : 'rgba(255, 255, 255, 0.12)',
+          background: 'rgba(255, 255, 255, 0.12)',
           color: '#ffffff',
           display: 'inline-flex',
           alignItems: 'center',
@@ -344,24 +344,11 @@ export default function PushNotificationButton() {
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
-        {unreadCount > 0 ? (
+        {unreadCount > 0 && (
           <span className={styles.bellBadge}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
-        ) : subscribedHere ? (
-          <span
-            style={{
-              position: 'absolute',
-              top: 6,
-              right: 6,
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: '#4ade80',
-              border: '1.5px solid #1e3a8a',
-            }}
-          />
-        ) : null}
+        )}
       </button>
 
       {open &&
