@@ -111,7 +111,30 @@ export default function PushNotificationButton() {
 
   useEffect(() => {
     loadInbox();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        loadInbox();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [loadInbox]);
+
+  // Sync PWA Home Screen red badge (iOS 16.4+ PWA, Android, Desktop) with unread count
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+    const nav = navigator as Navigator & {
+      setAppBadge?: (count?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (unreadCount > 0) {
+      if (typeof nav.setAppBadge === 'function') {
+        nav.setAppBadge(unreadCount).catch(() => {});
+      }
+    } else if (typeof nav.clearAppBadge === 'function') {
+      nav.clearAppBadge().catch(() => {});
+    }
+  }, [unreadCount]);
 
   const handleMarkRead = async (item: InboxNotification) => {
     if (!item.is_read) {

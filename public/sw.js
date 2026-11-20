@@ -46,7 +46,13 @@ self.addEventListener('push', (event) => {
     },
   };
 
-  event.waitUntil(self.registration.showNotification(payload.title, options));
+  const tasks = [self.registration.showNotification(payload.title, options)];
+  if (typeof self.navigator !== 'undefined' && typeof self.navigator.setAppBadge === 'function') {
+    const badgeCount = typeof payload.badgeCount === 'number' && payload.badgeCount > 0 ? payload.badgeCount : 1;
+    tasks.push(self.navigator.setAppBadge(badgeCount).catch(() => {}));
+  }
+
+  event.waitUntil(Promise.all(tasks));
 });
 
 self.addEventListener('notificationclick', (event) => {
