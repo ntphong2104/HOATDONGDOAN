@@ -7,6 +7,7 @@ import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-
 import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, getRegistrationExtras } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtra, getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { verifyPersonalQRToken } from '@/lib/utils/personal-qr';
+import { isValidMSSV } from '@/lib/utils/extract-mssv';
 import { getMasterStudentByMssv, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
 import type { CheckInRequest } from '@/lib/types';
 
@@ -114,24 +115,27 @@ export async function POST(req: Request) {
       // Use verified MSSV from token
       mssv = verification.mssv.toUpperCase().trim();
     } else if (qrParts.length >= 5 && /^[0-9a-fA-F-]{36}$/.test(qrParts[0])) {
-      // This is a dynamic EVENT QR token: EVENT_ID:MSSV:ROLE:SESSION:HASH
-      // Scanner should NOT be scanning event QR codes — those are for self-checkin
-      // But if they do, extract the MSSV portion to prevent corrupting the users table
-      const extractedMssv = qrParts[1];
-      if (extractedMssv && /^\d+$/.test(extractedMssv)) {
-        mssv = extractedMssv.toUpperCase().trim();
-      } else {
-        return NextResponse.json({
-          success: false,
-          error: 'Wrong QR Type',
-          message: '❌ Đây là mã QR sự kiện (dành cho sinh viên tự quét). Vui lòng yêu cầu sinh viên mở Cổng Sinh Viên → hiện mã QR cá nhân để quét.',
-        }, { status: 400 });
-      }
+      // Dynamic EVENT QR token: EVENT_ID:TIME_WINDOW:ROLE:SESSION:HASH
+      // qrParts[1] is the 10-second timestamp window (e.g. 179482749), NOT an MSSV!
+      // Always reject when scanned by checker scanner so timestamp numbers never pollute users/check_ins.
+      return NextResponse.json({
+        success: false,
+        error: 'Wrong QR Type',
+        message: '❌ Đây là mã QR sự kiện (dành cho sinh viên tự quét). Vui lòng yêu cầu sinh viên mở Cổng Sinh Viên → hiện mã QR cá nhân để quét.',
+      }, { status: 400 });
     }
 
     const validRoles = ['participant', 'volunteer', 'organizer'];
     if (!mssv || !event_id || !validRoles.includes(participate_role)) {
       return NextResponse.json({ success: false, error: 'Bad Request', message: 'Thông tin điểm danh hoặc MSSV không hợp lệ' }, { status: 400 });
+    }
+
+    if (!isValidMSSV(mssv)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid MSSV',
+        message: `❌ Mã "${mssv.slice(0, 30)}" không đúng định dạng MSSV PTIT (VD: N22DCCN158). Vui lòng quét đúng mã QR cá nhân của sinh viên.`,
+      }, { status: 400 });
     }
 
     const isSuperAdmin =
