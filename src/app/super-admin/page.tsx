@@ -13,6 +13,7 @@ import MaintenanceToggle from '@/components/MaintenanceToggle';
 import DataTable from '@/components/DataTable';
 import RankingBoard from '@/components/RankingBoard';
 import SemesterManagerSection from '@/components/SemesterManagerSection';
+import GraduatedCohortsManager from '@/components/GraduatedCohortsManager';
 import {
   UsersIcon,
   CalendarIcon,
@@ -6062,6 +6063,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
           <div className={styles.tabContent}>
             <section className={styles.section}>
               <SemesterManagerSection />
+              <GraduatedCohortsManager />
             </section>
 
             <section className={styles.section}>

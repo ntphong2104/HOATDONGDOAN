@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { resolveActorLcdScope } from '@/lib/utils/lcd-auth';
+import { getGraduatedCohorts, isStudentGraduated } from '@/lib/utils/graduated-cohorts';
 import {
   getLcdByCode,
   normalizeLcdCode,
@@ -213,15 +214,20 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'Không tìm thấy Liên Chi Đoàn' }, { status: 400 });
     }
 
-    const [allStudents, { data: delegatesData }] = await Promise.all([
+    const [allStudents, { data: delegatesData }, graduatedRules] = await Promise.all([
       loadAllStudentsCached(supabase),
       supabase
         .from('class_delegates')
         .select('*')
         .order('granted_at', { ascending: false }),
+      getGraduatedCohorts(supabase),
     ]);
 
-    const lcdStudents = allStudents.filter((s) => s.lcd_code === targetLcd.code);
+    const lcdAllStudents = allStudents.filter((s) => s.lcd_code === targetLcd.code);
+    // Tự động trừ sinh viên thuộc cặp (LCĐ + Khóa đã tốt nghiệp) khỏi quân số đang quản lý
+    const lcdStudents = lcdAllStudents.filter(
+      (s) => !isStudentGraduated(s.mssv, s.class_id, graduatedRules)
+    );
     const lcdMssvs = lcdStudents.map((s) => s.mssv);
 
     // Count distinct attended events per student in chunks of 150 MSSVs

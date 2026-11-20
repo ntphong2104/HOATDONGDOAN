@@ -20,6 +20,7 @@ import {
   isPlaceholderName,
 } from '@/lib/utils/student-profile';
 import { isValidMSSV, isUnitAccount, extractMSSV } from '@/lib/utils/extract-mssv';
+import { getGraduatedCohorts, isStudentGraduated } from '@/lib/utils/graduated-cohorts';
 import type {
   AcademicSemester,
   LcdRankingItem,
@@ -248,8 +249,12 @@ async function computeSemesterRanking(
       }
     }
 
-    // 4. Nạp danh bạ chuẩn Học viện để phân bổ chính xác đoàn viên theo 8 LCĐ
-    const masterDir = getMasterStudentDirectory();
+    // 4. Nạp danh bạ chuẩn Học viện để phân bổ chính xác đoàn viên đang học theo 8 LCĐ
+    //    (tự động trừ các cặp LCĐ + Khóa đã đánh dấu tốt nghiệp khỏi mẫu số)
+    const [masterDir, graduatedRules] = await Promise.all([
+      Promise.resolve(getMasterStudentDirectory()),
+      getGraduatedCohorts(supabase),
+    ]);
     const lcdTotalStudentsMap = new Map<string, number>();
     for (const lcd of LCD_DEFINITIONS) {
       lcdTotalStudentsMap.set(lcd.code, 0);
@@ -259,6 +264,7 @@ async function computeSemesterRanking(
       const mssv = String(rawMssv || '').trim().toUpperCase();
       if (!isValidMSSV(mssv)) continue;
       const classId = String(info.class_id || '').trim().toUpperCase();
+      if (isStudentGraduated(mssv, classId, graduatedRules)) continue;
       const lcd = resolveStudentLcd(classId, mssv);
       if (lcd) {
         lcdTotalStudentsMap.set(lcd.code, (lcdTotalStudentsMap.get(lcd.code) || 0) + 1);

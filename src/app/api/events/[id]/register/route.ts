@@ -7,6 +7,7 @@ import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 import { runWithConcurrency, QueueTimeoutError } from '@/lib/utils/concurrency-queue';
+import { getGraduatedCohorts, getGraduatedBlockReason } from '@/lib/utils/graduated-cohorts';
 import { getUserProfileExtraWithFallback, saveUserProfileExtraWithSync } from '@/lib/constants/user-profile-store';
 import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass, getMasterStudentByMssv } from '@/lib/utils/student-profile';
 import { checkCohortEligibility, describeCohortBlock } from '@/lib/utils/cohort';
@@ -318,6 +319,19 @@ async function handleRegisterPost(
       error: `Tài khoản của bạn (${mssv}) đang bị KHÓA ĐĂNG KÝ (Blacklist) do vắng mặt ${penalty.missed_count} lần trong các sự kiện trước đó. Vui lòng liên hệ Văn phòng Đoàn để được xem xét mở khóa.`,
       is_blacklisted: true,
     }, { status: 403 });
+  }
+
+  // 2.2. CHECK GRADUATED COHORT BY LCĐ (Khóa đã tốt nghiệp không được đăng ký chương trình mới)
+  const graduatedRules = await getGraduatedCohorts(supabase);
+  if (graduatedRules.length > 0) {
+    const graduatedReason = getGraduatedBlockReason(mssv, null, graduatedRules);
+    if (graduatedReason) {
+      return NextResponse.json({
+        success: false,
+        error: graduatedReason,
+        is_graduated: true,
+      }, { status: 403 });
+    }
   }
 
   // 2.5. CHECK COHORT RESTRICTION (Giới hạn khóa SV - Cấp Sự Kiện hoặc Cấp Ca) — áp dụng cho cả khán giả và CTV

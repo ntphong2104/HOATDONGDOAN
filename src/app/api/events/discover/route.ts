@@ -16,6 +16,7 @@ import {
   type LcdCode,
 } from '@/lib/utils/lcd';
 import { getMasterStudentByMssv, isPlaceholderClass, isPlaceholderName } from '@/lib/utils/student-profile';
+import { getGraduatedCohorts, getGraduatedBlockReason } from '@/lib/utils/graduated-cohorts';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -262,7 +263,7 @@ export async function GET() {
     const mssv = (extractMSSV(auth.email) || auth.email).toUpperCase().trim();
     const lowerEmail = auth.email.toLowerCase().trim();
 
-    const [sharedEvents, { data: userRow }, { data: myRegs }] = await Promise.all([
+    const [sharedEvents, { data: userRow }, { data: myRegs }, graduatedRules] = await Promise.all([
       loadSharedActiveEvents(supabase),
       supabase
         .from('users')
@@ -273,6 +274,7 @@ export async function GET() {
         .from('event_registrations')
         .select('event_id, role_type, attended')
         .eq('mssv', mssv),
+      getGraduatedCohorts(supabase),
     ]);
 
     const masterStudent = getMasterStudentByMssv(mssv);
@@ -287,6 +289,8 @@ export async function GET() {
 
     const myLcd = resolveStudentLcd(classId, mssv);
     const myCohort = getCohortFromMssv(mssv);
+    const graduatedReason = getGraduatedBlockReason(mssv, classId, graduatedRules);
+    const isGraduated = Boolean(graduatedReason);
 
     const myRegByEventId = new Map<string, any>();
     for (const r of myRegs || []) {
@@ -307,9 +311,15 @@ export async function GET() {
 
       return {
         ...ev,
+        registration_window: isGraduated
+          ? { isOpen: false, reason: 'Khóa đã tốt nghiệp — không mở đăng ký mới' }
+          : ev.registration_window,
+        recruitment_window: isGraduated
+          ? { isOpen: false, reason: 'Khóa đã tốt nghiệp' }
+          : ev.recruitment_window,
         lcd_eligibility: lcdEligibility,
         cohort_eligibility: cohortEligibility,
-        is_eligible_for_me: lcdEligibility.eligible && cohortEligibility.eligible,
+        is_eligible_for_me: !isGraduated && lcdEligibility.eligible && cohortEligibility.eligible,
         is_my_lcd_scoped: isMyLcdScoped,
         is_my_lcd_event: isMyLcdEvent,
         is_registered: Boolean(myReg),
