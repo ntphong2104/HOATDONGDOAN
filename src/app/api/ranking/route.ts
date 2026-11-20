@@ -33,7 +33,8 @@ import type {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const RANKING_CACHE_TTL_MS = 60_000; // 60 giây
+const RANKING_CACHE_TTL_MS = 300_000; // 5 phút fresh
+const RANKING_STALE_TTL_MS = 1_800_000; // 30 phút stale-while-revalidate (trả tức thì & làm mới ngầm)
 const MAX_RANKING_CACHE_ENTRIES = 12;
 
 interface CachedSemesterRanking {
@@ -103,8 +104,8 @@ async function computeSemesterRanking(
   supabase: any,
   selectedSemester: AcademicSemester
 ): Promise<CachedSemesterRanking> {
-    // 2. Lấy danh sách sự kiện & proposals để xác định chính xác thời gian & đơn vị tổ chức
-    const [{ data: eventsData, error: eventsError }, { data: proposalsData }] = await Promise.all([
+    // 2. Lấy danh sách sự kiện, proposals & quy tắc khóa tốt nghiệp song song
+    const [{ data: eventsData, error: eventsError }, { data: proposalsData }, graduatedRules] = await Promise.all([
       supabase
         .from('events')
         .select('event_id, event_name, event_date, created_at, created_by, semester, status'),
@@ -112,6 +113,7 @@ async function computeSemesterRanking(
         .from('event_proposals')
         .select('created_event_id, organization_unit')
         .not('created_event_id', 'is', null),
+      getGraduatedCohorts(supabase),
     ]);
 
     if (eventsError) {
@@ -251,10 +253,7 @@ async function computeSemesterRanking(
 
     // 4. Nạp danh bạ chuẩn Học viện để phân bổ chính xác đoàn viên đang học theo 8 LCĐ
     //    (tự động trừ các cặp LCĐ + Khóa đã đánh dấu tốt nghiệp khỏi mẫu số)
-    const [masterDir, graduatedRules] = await Promise.all([
-      Promise.resolve(getMasterStudentDirectory()),
-      getGraduatedCohorts(supabase),
-    ]);
+    const masterDir = getMasterStudentDirectory();
     const lcdTotalStudentsMap = new Map<string, number>();
     for (const lcd of LCD_DEFINITIONS) {
       lcdTotalStudentsMap.set(lcd.code, 0);
@@ -284,11 +283,19 @@ async function computeSemesterRanking(
     const dbUserMap = new Map<string, { full_name: string; class_id: string }>();
     if (uniqueCheckedInMssvs.size > 0) {
       const mssvArr = Array.from(uniqueCheckedInMssvs);
-      for (let i = 0; i < mssvArr.length; i += 250) {
-        const { data: uRows } = await supabase
-          .from('users')
-          .select('mssv, full_name, class_id')
-          .in('mssv', mssvArr.slice(i, i + 250));
+      const userChunks: string[][] = [];
+      for (let i = 0; i < mssvArr.length; i += 500) {
+        userChunks.push(mssvArr.slice(i, i + 500));
+      }
+      const userResults = await Promise.all(
+        userChunks.map((chunk) =>
+          supabase
+            .from('users')
+            .select('mssv, full_name, class_id')
+            .in('mssv', chunk)
+        )
+      );
+      for (const { data: uRows } of userResults) {
         for (const u of uRows || []) {
           const m = String(u.mssv || '').trim().toUpperCase();
           if (m) {
@@ -516,11 +523,39 @@ export async function GET(req: Request) {
     const allowBypass = canSelectSemester && forceRefresh;
 
     let rankedData: CachedSemesterRanking;
-    let cacheStatus: 'HIT' | 'MISS' | 'COALESCED' = 'MISS';
+    let cacheStatus: 'HIT' | 'STALE' | 'MISS' | 'COALESCED' = 'MISS';
+
+    const triggerBackgroundRefresh = () => {
+      if (rankingInFlight.has(cacheKey)) return;
+      const bg = computeSemesterRanking(supabase, selectedSemester)
+        .then((fresh) => {
+          rankingCache.set(cacheKey, { ts: Date.now(), data: fresh });
+          if (rankingCache.size > MAX_RANKING_CACHE_ENTRIES) {
+            const oldestKey = rankingCache.keys().next().value;
+            if (oldestKey) rankingCache.delete(oldestKey);
+          }
+          return fresh;
+        })
+        .catch((err) => {
+          console.error('[ranking] Background refresh failed:', err);
+          return cachedEntry!.data;
+        })
+        .finally(() => {
+          if (rankingInFlight.get(cacheKey) === bg) {
+            rankingInFlight.delete(cacheKey);
+          }
+        });
+      rankingInFlight.set(cacheKey, bg);
+    };
 
     if (!allowBypass && cachedEntry && now - cachedEntry.ts < RANKING_CACHE_TTL_MS) {
       rankedData = cachedEntry.data;
       cacheStatus = 'HIT';
+    } else if (!allowBypass && cachedEntry && now - cachedEntry.ts < RANKING_STALE_TTL_MS) {
+      // Stale-While-Revalidate: trả dữ liệu tức thì (<5ms) và tự tính lại ngầm ở nền
+      rankedData = cachedEntry.data;
+      cacheStatus = 'STALE';
+      triggerBackgroundRefresh();
     } else {
       let pending = !allowBypass ? rankingInFlight.get(cacheKey) : undefined;
       if (pending) {
