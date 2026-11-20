@@ -5,7 +5,7 @@ import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { getEventMetaBatch } from '@/lib/constants/event-meta-store';
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
-import { isEventScheduleExpired } from '@/lib/utils/event-logic';
+import { isEventScheduleExpired, getNextUpcomingSession } from '@/lib/utils/event-logic';
 import { checkCohortEligibility, getCohortFromMssv } from '@/lib/utils/cohort';
 import {
   checkLcdEligibility,
@@ -25,6 +25,10 @@ interface SharedDiscoverEvent {
   event_id: string;
   event_name: string;
   event_date: string | null;
+  event_start_date: string | null;
+  event_end_date: string | null;
+  next_session_name: string | null;
+  remaining_sessions_count: number;
   start_time: string | null;
   end_time: string | null;
   semester: string | null;
@@ -128,11 +132,8 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
         const meta = metaMap[raw.event_id] || {};
         const sessions = Array.isArray(meta.sessions) ? meta.sessions : [];
         const participantSessions = sessions.filter((s: any) => s?.session_type !== 'internal');
+        const scheduleSessions = participantSessions.length > 0 ? participantSessions : sessions;
         const mainSession = participantSessions.find((s: any) => s?.is_main) || participantSessions[0] || null;
-
-        const displayDate = mainSession?.session_date || raw.event_date || null;
-        const displayStart = mainSession?.start_time || raw.start_time || null;
-        const displayEnd = mainSession?.end_time || raw.end_time || null;
 
         const isExpired = isEventScheduleExpired({
           event_date: raw.event_date,
@@ -147,6 +148,30 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
           continue;
         }
 
+        const { nextSession, remainingCount, earliestDate, latestDate } = getNextUpcomingSession(
+          scheduleSessions,
+          raw.end_time || '22:00'
+        );
+
+        const displayDate = nextSession?.session_date || mainSession?.session_date || raw.event_date || null;
+        const displayStart = nextSession?.start_time || mainSession?.start_time || raw.start_time || null;
+        const displayEnd = nextSession?.end_time || mainSession?.end_time || raw.end_time || null;
+        const eventStartDate = earliestDate || raw.event_date || displayDate;
+        const eventEndDate = latestDate || raw.event_date || displayDate;
+        const totalSessionsCount = scheduleSessions.length || 1;
+        const remainingSessionsCount =
+          scheduleSessions.length > 0 ? Math.max(0, remainingCount) : 1;
+
+        const publicSessionsExpired =
+          participantSessions.length > 0 &&
+          isEventScheduleExpired({
+            event_date: raw.event_date,
+            start_time: raw.start_time,
+            end_time: raw.end_time,
+            status: raw.status,
+            sessions: participantSessions,
+          });
+
         const maxParticipants = Number(meta.max_participants) || 0;
         const maxVolunteers = Number(meta.max_volunteers) || 0;
         const departments = Array.isArray(meta.departments) ? meta.departments : [];
@@ -159,7 +184,12 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
           raw.is_registration_open
         );
 
-        if (raw.is_registration_open === false || raw.status !== 'active') {
+        if (publicSessionsExpired) {
+          registrationWindow = {
+            isOpen: false,
+            reason: 'Các buổi dành cho sinh viên đã kết thúc',
+          };
+        } else if (raw.is_registration_open === false || raw.status !== 'active') {
           registrationWindow = {
             isOpen: false,
             reason: 'Không mở đăng ký khán giả',
@@ -183,6 +213,11 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
               reason: meta.is_recruitment_open === false ? 'Đã đóng cổng tuyển CTV' : 'Không tuyển CTV',
             };
 
+        // Nếu cả buổi khán giả đã qua lẫn không tuyển CTV thì bỏ qua
+        if (publicSessionsExpired && !recruitmentWindow.isOpen) {
+          continue;
+        }
+
         const prop = proposalByEventId.get(raw.event_id);
         const creatorEmail = String(raw.created_by || '').toLowerCase().trim();
         const organizerUnit =
@@ -190,10 +225,15 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
           UNIT_BY_EMAIL.get(creatorEmail) ||
           'Đoàn TNCS Học Viện';
 
-        const roomFromSession =
-          mainSession?.room_name && mainSession.room_name !== 'Không mượn'
-            ? mainSession.room_name
+        const activeSessionRoom =
+          nextSession?.room_name && nextSession.room_name !== 'Không mượn'
+            ? nextSession.room_name
             : null;
+        const roomFromSession =
+          activeSessionRoom ||
+          (mainSession?.room_name && mainSession.room_name !== 'Không mượn'
+            ? mainSession.room_name
+            : null);
         const roomFromProp =
           prop?.room_name && prop.room_name !== 'Không mượn' ? prop.room_name : null;
 
@@ -204,6 +244,10 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
           event_id: raw.event_id,
           event_name: raw.event_name,
           event_date: displayDate,
+          event_start_date: eventStartDate,
+          event_end_date: eventEndDate,
+          next_session_name: nextSession?.name || null,
+          remaining_sessions_count: remainingSessionsCount,
           start_time: displayStart,
           end_time: displayEnd,
           semester: raw.semester || null,
@@ -217,7 +261,7 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
           max_volunteers: maxVolunteers,
           participant_count: participantCount,
           departments_count: departments.length,
-          sessions_count: participantSessions.length || sessions.length || 1,
+          sessions_count: totalSessionsCount,
           room_name: roomFromSession || roomFromProp || null,
           organizer_unit: organizerUnit,
           organizer_lcd_code: organizerLcdCode,
@@ -228,14 +272,18 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
         });
       }
 
-      // Sort: open registration/recruitment & non-expired first, then soonest date
+      // Sort: open registration/recruitment & non-expired first, then soonest upcoming session date & time
       items.sort((a, b) => {
         const aOpen = (a.registration_window.isOpen || a.recruitment_window.isOpen) && !a.is_expired ? 0 : 1;
         const bOpen = (b.registration_window.isOpen || b.recruitment_window.isOpen) && !b.is_expired ? 0 : 1;
         if (aOpen !== bOpen) return aOpen - bOpen;
         const dateA = a.event_date || '9999-12-31';
         const dateB = b.event_date || '9999-12-31';
-        return dateA.localeCompare(dateB);
+        const dateCmp = dateA.localeCompare(dateB);
+        if (dateCmp !== 0) return dateCmp;
+        const timeA = a.start_time || '23:59';
+        const timeB = b.start_time || '23:59';
+        return timeA.localeCompare(timeB);
       });
 
       cache.data = items;

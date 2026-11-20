@@ -27,6 +27,10 @@ interface DiscoverEventItem {
   event_id: string;
   event_name: string;
   event_date: string | null;
+  event_start_date?: string | null;
+  event_end_date?: string | null;
+  next_session_name?: string | null;
+  remaining_sessions_count?: number;
   start_time: string | null;
   end_time: string | null;
   semester: string | null;
@@ -93,6 +97,25 @@ function formatDateVN(dateStr?: string | null): string {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
   return dateStr;
+}
+
+function formatDateRangeVN(startStr?: string | null, endStr?: string | null): string {
+  if (!startStr && !endStr) return 'Đang cập nhật';
+  if (!endStr || startStr === endStr) return formatDateVN(startStr || endStr);
+  const s = (startStr || '').split('T')[0].split('-');
+  const e = endStr.split('T')[0].split('-');
+  if (s.length === 3 && e.length === 3 && s[0] === e[0]) {
+    return `${s[2]}/${s[1]} – ${e[2]}/${e[1]}/${e[0]}`;
+  }
+  return `${formatDateVN(startStr)} – ${formatDateVN(endStr)}`;
+}
+
+function getTodayVN(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
 }
 
 export default function StudentEventsDiscoverPage() {
@@ -510,15 +533,86 @@ export default function StudentEventsDiscoverPage() {
 
                   {/* Meta Schedule & Location */}
                   <div className={styles.metaList}>
-                    <div className={styles.metaItem}>
-                      <CalendarIcon size={14} color="#2563eb" />
-                      <span>{formatDateVN(ev.event_date)}</span>
-                      {ev.sessions_count > 1 && (
-                        <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>
-                          ({ev.sessions_count} ca)
-                        </span>
-                      )}
-                    </div>
+                    {(() => {
+                      const todayVN = getTodayVN();
+                      const cleanNextDate = ev.event_date ? ev.event_date.split('T')[0] : null;
+                      const isToday = Boolean(cleanNextDate && cleanNextDate === todayVN);
+                      const isMultiDay = Boolean(
+                        ev.event_start_date &&
+                          ev.event_end_date &&
+                          ev.event_start_date.split('T')[0] !== ev.event_end_date.split('T')[0]
+                      );
+                      const remCount = ev.remaining_sessions_count ?? ev.sessions_count;
+
+                      return (
+                        <>
+                          <div className={styles.metaItem}>
+                            <CalendarIcon size={14} color="#2563eb" />
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                              {isMultiDay ? (
+                                <>
+                                  <span>
+                                    Ca tiếp theo: <strong>{isToday ? 'Hôm nay' : formatDateVN(ev.event_date)}</strong>
+                                  </span>
+                                  {isToday && (
+                                    <span
+                                      style={{
+                                        fontSize: '0.68rem',
+                                        fontWeight: 800,
+                                        color: '#15803d',
+                                        background: '#dcfce7',
+                                        border: '1px solid #86efac',
+                                        borderRadius: '999px',
+                                        padding: '0.05rem 0.42rem',
+                                      }}
+                                    >
+                                      {formatDateVN(ev.event_date)}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <span>{formatDateVN(ev.event_date)}</span>
+                                  {isToday && (
+                                    <span
+                                      style={{
+                                        fontSize: '0.68rem',
+                                        fontWeight: 800,
+                                        color: '#15803d',
+                                        background: '#dcfce7',
+                                        border: '1px solid #86efac',
+                                        borderRadius: '999px',
+                                        padding: '0.05rem 0.42rem',
+                                      }}
+                                    >
+                                      Hôm nay
+                                    </span>
+                                  )}
+                                  {ev.sessions_count > 1 && (
+                                    <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>
+                                      ({ev.sessions_count} ca)
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </span>
+                          </div>
+                          {isMultiDay && (
+                            <div
+                              style={{
+                                fontSize: '0.74rem',
+                                color: '#64748b',
+                                fontWeight: 600,
+                                paddingLeft: '1.35rem',
+                                marginTop: '-0.18rem',
+                              }}
+                            >
+                              Chuỗi {formatDateRangeVN(ev.event_start_date, ev.event_end_date)} • còn {remCount}/{ev.sessions_count} ca
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                     <div className={styles.metaItem}>
                       <ClockIcon size={14} color="#2563eb" />
                       <span>

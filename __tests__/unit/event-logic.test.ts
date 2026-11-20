@@ -1,4 +1,4 @@
-import { isEventPastDeadline, getEffectiveEventStatus, getEventLifecycleState, isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, getEffectiveEventStatus, getEventLifecycleState, isEventLockedPast3Days, getNextUpcomingSession } from '@/lib/utils/event-logic';
 import { isEventRoleExpired } from '@/lib/constants/event-roles-cleanup';
 
 describe('event-logic unit tests', () => {
@@ -171,6 +171,36 @@ describe('event-logic unit tests', () => {
       // On 2026-11-14 (4 days after session 2) -> EXPIRED
       const onNov14 = new Date(2026, 10, 14, 10, 0, 0).getTime();
       expect(isEventRoleExpired(event, sessions, onNov14)).toBe(true);
+    });
+  });
+
+  describe('getNextUpcomingSession (multi-session discover display)', () => {
+    test('returns next upcoming session and remaining count when earlier sessions passed', () => {
+      const sessions = [
+        { id: 's1', name: 'Buổi 1', session_date: '2026-11-01', start_time: '08:00', end_time: '16:30' },
+        { id: 's2', name: 'Buổi 2', session_date: '2026-11-22', start_time: '08:00', end_time: '10:30' },
+        { id: 's3', name: 'Buổi 3', session_date: '2026-11-29', start_time: '08:00', end_time: '10:30' },
+      ];
+      const onNov21 = new Date(2026, 10, 21, 2, 0, 0).getTime();
+      const res = getNextUpcomingSession(sessions, '22:00', onNov21);
+
+      expect(res.nextSession?.id).toBe('s2');
+      expect(res.nextSession?.session_date).toBe('2026-11-22');
+      expect(res.remainingCount).toBe(2);
+      expect(res.earliestDate).toBe('2026-11-01');
+      expect(res.latestDate).toBe('2026-11-29');
+    });
+
+    test('returns null nextSession and 0 remaining when all sessions ended past grace period', () => {
+      const sessions = [
+        { id: 's1', session_date: '2026-11-19', start_time: '05:00', end_time: '21:30' },
+        { id: 's2', session_date: '2026-11-20', start_time: '05:00', end_time: '21:30' },
+      ];
+      const onNov21 = new Date(2026, 10, 21, 2, 0, 0).getTime();
+      const res = getNextUpcomingSession(sessions, '22:00', onNov21);
+
+      expect(res.nextSession).toBeNull();
+      expect(res.remainingCount).toBe(0);
     });
   });
 });

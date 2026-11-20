@@ -2,12 +2,23 @@
  * Utility functions for event lifecycle, scheduling, and auto-closing.
  */
 
+export interface EventSessionSchedule {
+  id?: string;
+  name?: string;
+  session_date?: string;
+  end_time?: string;
+  start_time?: string;
+  room_name?: string | null;
+  session_type?: string;
+  is_main?: boolean;
+}
+
 export interface EventScheduleInfo {
   event_date?: string | null;
   end_time?: string | null;
   start_time?: string | null;
   status?: string | null;
-  sessions?: { id?: string; session_date?: string; end_time?: string; start_time?: string }[] | null;
+  sessions?: EventSessionSchedule[] | null;
 }
 
 /**
@@ -105,6 +116,57 @@ export function getEffectiveEndDate(event: EventScheduleInfo): { date: string; e
 
   if (!fallbackDate) return null;
   return { date: fallbackDate, endTime: fallbackEndTime };
+}
+
+/**
+ * Returns the chronological next upcoming (or currently active) session from a list of sessions,
+ * plus the remaining session count and overall earliest/latest session dates.
+ * Prefers sessions whose end_time has not passed yet; falls back to the 1-hour grace window.
+ */
+export function getNextUpcomingSession<T extends EventSessionSchedule>(
+  sessions?: T[] | null,
+  fallbackEndTime: string = '22:00',
+  currentTimeMs: number = Date.now()
+): {
+  nextSession: T | null;
+  remainingCount: number;
+  earliestDate: string | null;
+  latestDate: string | null;
+} {
+  if (!Array.isArray(sessions) || sessions.length === 0) {
+    return { nextSession: null, remainingCount: 0, earliestDate: null, latestDate: null };
+  }
+
+  const parsed = sessions
+    .map((s) => {
+      if (!s?.session_date) return null;
+      const startMs = parseDateStringToTime(s.session_date, s.start_time || '00:00');
+      const endMs = parseDateStringToTime(s.session_date, s.end_time || fallbackEndTime || '23:59');
+      if (startMs === null || endMs === null) return null;
+      return { session: s, startMs, endMs };
+    })
+    .filter((x): x is { session: T; startMs: number; endMs: number } => x !== null)
+    .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
+
+  if (parsed.length === 0) {
+    return { nextSession: null, remainingCount: 0, earliestDate: null, latestDate: null };
+  }
+
+  const earliestDate = parsed[0].session.session_date || null;
+  const latestDate = parsed[parsed.length - 1].session.session_date || null;
+
+  const GRACE_MS = 60 * 60 * 1000;
+  const upcomingStrict = parsed.filter((p) => p.endMs >= currentTimeMs);
+  const upcomingWithGrace = parsed.filter((p) => p.endMs + GRACE_MS >= currentTimeMs);
+
+  const nextEntry = upcomingStrict[0] || upcomingWithGrace[0] || null;
+
+  return {
+    nextSession: nextEntry ? nextEntry.session : null,
+    remainingCount: upcomingWithGrace.length,
+    earliestDate,
+    latestDate,
+  };
 }
 
 /**
