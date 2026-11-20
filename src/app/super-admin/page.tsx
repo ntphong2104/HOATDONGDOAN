@@ -5816,7 +5816,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                 );
                               }
                               return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 0, maxWidth: '100%' }}>
                                   {items.map((item, idx) => {
                                     if (item.isPardoned) {
                                       return (
@@ -5830,10 +5830,13 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                             display: 'flex',
                                             flexDirection: 'column',
                                             gap: '0.2rem',
+                                            minWidth: 0,
+                                            maxWidth: '100%',
+                                            overflow: 'hidden',
                                           }}
                                         >
-                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', minWidth: 0, flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
                                               <span
                                                 style={{
                                                   background: '#dcfce7',
@@ -5886,10 +5889,13 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                           display: 'flex',
                                           flexDirection: 'column',
                                           gap: '0.35rem',
+                                          minWidth: 0,
+                                          maxWidth: '100%',
+                                          overflow: 'hidden',
                                         }}
                                       >
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', minWidth: 0, flexWrap: 'wrap' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
                                             <span
                                               style={{
                                                 background: '#fee2e2',
@@ -5898,16 +5904,27 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                                 fontWeight: 800,
                                                 padding: '0.15rem 0.45rem',
                                                 borderRadius: '4px',
+                                                flexShrink: 0,
                                               }}
                                             >
                                               Vắng mặt
                                             </span>
-                                            <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e293b' }}>
+                                            <span
+                                              style={{
+                                                fontWeight: 700,
+                                                fontSize: '0.82rem',
+                                                color: '#1e293b',
+                                                whiteSpace: 'normal',
+                                                overflowWrap: 'anywhere',
+                                                wordBreak: 'break-word',
+                                                minWidth: 0,
+                                              }}
+                                            >
                                               {item.eventName}
                                             </span>
                                           </div>
                                           {item.eventDate && (
-                                            <span style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                               {item.eventDate}
                                             </span>
                                           )}
