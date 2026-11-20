@@ -548,113 +548,139 @@
   }
 }
 
-/* ── Mobile Compact Student Ranking List ── */
-.studentMobileList {
-  display: none;
+/* ── Unified 2-Line Student Ranking List (Desktop & Mobile) ── */
+.studentCompactList {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
 }
 
-@media (max-width: 768px) {
-  .studentDesktopTable {
-    display: none;
+.studentCompactRow {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 1.05rem;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.12s ease;
+}
+
+.studentCompactRow:last-child {
+  border-bottom: none;
+}
+
+.studentCompactRow:hover {
+  background: #f8fafc;
+}
+
+.studentCompactRank {
+  flex-shrink: 0;
+}
+
+.studentCompactInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.studentCompactNameRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.studentCompactName {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.studentCompactMeBadge {
+  flex-shrink: 0;
+  padding: 0.1rem 0.48rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.studentCompactMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.76rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studentCompactClass {
+  font-weight: 700;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.studentCompactMssv {
+  font-family: monospace;
+  font-weight: 700;
+  color: #0369a1;
+  flex-shrink: 0;
+}
+
+.studentCompactDot {
+  color: #cbd5e1;
+  flex-shrink: 0;
+}
+
+.studentCompactLcd {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.studentCompactCount {
+  flex-shrink: 0;
+  padding: 0.28rem 0.72rem;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .studentCompactRow {
+    gap: 0.6rem;
+    padding: 0.72rem 0.75rem;
   }
 
-  .studentMobileList {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #ffffff;
+  .studentCompactName {
+    font-size: 0.9rem;
   }
 
-  .studentMobileRow {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0.72rem 0.85rem;
-    border-bottom: 1px solid #f1f5f9;
+  .studentCompactMeta {
+    font-size: 0.7rem;
+    gap: 0.28rem;
   }
 
-  .studentMobileRow:last-child {
-    border-bottom: none;
-  }
-
-  .studentMobileRank {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 30px;
-    height: 30px;
-    padding: 0 0.35rem;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 800;
-    flex-shrink: 0;
-  }
-
-  .studentMobileInfo {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.12rem;
-  }
-
-  .studentMobileNameRow {
-    display: flex;
-    align-items: center;
-    gap: 0.38rem;
-    min-width: 0;
-  }
-
-  .studentMobileName {
-    font-size: 0.88rem;
-    font-weight: 800;
-    color: #0f172a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.25;
-  }
-
-  .studentMobileMeBadge {
-    flex-shrink: 0;
-    padding: 0.08rem 0.42rem;
-    border-radius: 999px;
-    background: #dbeafe;
-    color: #1d4ed8;
-    font-size: 0.66rem;
-    font-weight: 800;
-    line-height: 1.3;
-  }
-
-  .studentMobileMssv {
-    font-family: monospace;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #0369a1;
-    line-height: 1.2;
-    white-space: nowrap;
-  }
-
-  .studentMobileClass {
-    font-size: 0.71rem;
-    font-weight: 600;
-    color: #64748b;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .studentMobileCount {
-    flex-shrink: 0;
-    padding: 0.24rem 0.58rem;
-    border-radius: 999px;
-    background: #dcfce7;
-    color: #15803d;
-    font-size: 0.76rem;
-    font-weight: 800;
-    white-space: nowrap;
+  .studentCompactCount {
+    padding: 0.22rem 0.55rem;
+    font-size: 0.74rem;
   }
 }
