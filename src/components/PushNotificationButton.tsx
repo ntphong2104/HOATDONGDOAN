@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import styles from './PushNotificationButton.module.css';
@@ -65,7 +66,32 @@ export default function PushNotificationButton() {
   const [notifications, setNotifications] = useState<InboxNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingInbox, setLoadingInbox] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   const wrapRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const updatePopoverPosition = useCallback(() => {
+    if (typeof window === 'undefined' || !wrapRef.current) return;
+    const rect = wrapRef.current.getBoundingClientRect();
+    if (window.innerWidth <= 640) {
+      setPopoverStyle({
+        position: 'fixed',
+        top: Math.max(60, rect.bottom + 8),
+        left: 12,
+        right: 12,
+        width: 'auto',
+      });
+    } else {
+      const rightOffset = Math.max(12, window.innerWidth - rect.right);
+      setPopoverStyle({
+        position: 'fixed',
+        top: rect.bottom + 10,
+        right: rightOffset,
+        left: 'auto',
+        width: 'min(370px, calc(100vw - 24px))',
+      });
+    }
+  }, []);
 
   const loadInbox = useCallback(async () => {
     try {
@@ -159,14 +185,22 @@ export default function PushNotificationButton() {
 
   useEffect(() => {
     if (!open) return;
+    updatePopoverPosition();
     const onOutside = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inWrap = wrapRef.current && wrapRef.current.contains(target);
+      const inPopover = popoverRef.current && popoverRef.current.contains(target);
+      if (!inWrap && !inPopover) {
         setOpen(false);
       }
     };
+    window.addEventListener('resize', updatePopoverPosition);
     document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
-  }, [open]);
+    return () => {
+      window.removeEventListener('resize', updatePopoverPosition);
+      document.removeEventListener('mousedown', onOutside);
+    };
+  }, [open, updatePopoverPosition]);
 
   const ensurePublicKey = async (): Promise<string | null> => {
     if (publicKey) return publicKey;
@@ -330,8 +364,10 @@ export default function PushNotificationButton() {
         ) : null}
       </button>
 
-      {open && (
-        <div className={styles.popover}>
+      {open &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div ref={popoverRef} className={styles.popover} style={popoverStyle}>
           {/* 1. In-App Notification Inbox Header */}
           <div className={styles.popoverHeader}>
             <span className={styles.popoverTitle}>
@@ -471,8 +507,9 @@ export default function PushNotificationButton() {
               </button>
             )}
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </div>
   );
 }
