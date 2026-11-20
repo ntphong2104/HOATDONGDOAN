@@ -223,8 +223,8 @@ export default function ProposalsListPage() {
     if (a.status !== 'pending' && b.status === 'pending') return 1;
 
     // Active before closed
-    const aPast = a.status === 'approved' && isEventPastDeadline({ event_date: a.start_date, end_time: a.end_time });
-    const bPast = b.status === 'approved' && isEventPastDeadline({ event_date: b.start_date, end_time: b.end_time });
+    const aPast = a.status === 'approved' && isEventPastDeadline({ event_date: a.end_date || a.start_date, end_time: a.end_time, sessions: a.sessions });
+    const bPast = b.status === 'approved' && isEventPastDeadline({ event_date: b.end_date || b.start_date, end_time: b.end_time, sessions: b.sessions });
 
     if (!aPast && bPast) return -1;
     if (aPast && !bPast) return 1;
@@ -407,7 +407,7 @@ export default function ProposalsListPage() {
 
                     <span className={`${styles.stageBadge} ${getStageBadgeClass(item.current_stage, item.status)}`}>
                       {item.status === 'approved'
-                        ? (isEventPastDeadline({ event_date: item.start_date, end_time: item.end_time })
+                        ? (isEventPastDeadline({ event_date: item.end_date || item.start_date, end_time: item.end_time, sessions: item.sessions })
                             ? 'Đã Duyệt • Đã Đóng'
                             : 'Đã Duyệt • Đang Mở')
                         : item.status === 'rejected'

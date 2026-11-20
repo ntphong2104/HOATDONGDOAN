@@ -118,6 +118,7 @@ export default function StudentDashboardClient({
             start_time: ev.start_time,
             end_time: ev.end_time,
             status: ev.status,
+            sessions: ev.sessions,
           });
         return !isClosedOrPast;
       }),
@@ -137,6 +138,7 @@ export default function StudentDashboardClient({
             start_time: ev.start_time,
             end_time: ev.end_time,
             status: ev.status,
+            sessions: ev.sessions,
           })
         );
       }),

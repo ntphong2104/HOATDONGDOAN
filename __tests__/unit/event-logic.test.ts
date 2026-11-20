@@ -1,4 +1,4 @@
-import { isEventPastDeadline, getEffectiveEventStatus, isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, getEffectiveEventStatus, getEventLifecycleState, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { isEventRoleExpired } from '@/lib/constants/event-roles-cleanup';
 
 describe('event-logic unit tests', () => {
@@ -50,6 +50,31 @@ describe('event-logic unit tests', () => {
     const at2305 = new Date(2026, 7, 14, 23, 5, 0, 0).getTime();
     expect(isEventPastDeadline(event, at2305)).toBe(true);
     expect(getEffectiveEventStatus(event, at2305)).toBe('closed');
+  });
+
+  test('multi-session event stays active on day 2 when session 1 ended yesterday', () => {
+    const event = {
+      event_date: '2026-11-19',
+      start_time: '05:00:00',
+      end_time: '21:30:00',
+      status: 'active',
+      sessions: [
+        { id: 's1', session_date: '2026-11-19', start_time: '05:00', end_time: '21:30' },
+        { id: 's2', session_date: '2026-11-20', start_time: '05:00', end_time: '21:30' },
+      ],
+    };
+
+    // Day 2 morning (20/11/2026 05:32) -> MUST stay active, NOT closed!
+    const day2Morning = new Date(2026, 10, 20, 5, 32, 0, 0).getTime();
+    expect(isEventPastDeadline(event, day2Morning)).toBe(false);
+    expect(getEffectiveEventStatus(event, day2Morning)).toBe('active');
+    expect(getEventLifecycleState(event, day2Morning)).toBe('active');
+
+    // Day 2 after session 2 + 1h grace (20/11/2026 22:31) -> Closed
+    const day2AfterGrace = new Date(2026, 10, 20, 22, 31, 0, 0).getTime();
+    expect(isEventPastDeadline(event, day2AfterGrace)).toBe(true);
+    expect(getEffectiveEventStatus(event, day2AfterGrace)).toBe('closed');
+    expect(getEventLifecycleState(event, day2AfterGrace)).toBe('closed');
   });
 
   describe('isEventLockedPast3Days', () => {

@@ -145,6 +145,7 @@ export async function GET() {
         total_sessions: totalSessions,
         session_ratio: totalSessions > 1 ? `${mySessionCount}/${totalSessions} ca` : null,
         session_names: mySessionNames,
+        sessions: Array.isArray(singleMeta.sessions) ? singleMeta.sessions : [],
       };
     });
 

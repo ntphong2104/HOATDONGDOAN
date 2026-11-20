@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './EventCard.module.css';
 import { CalendarIcon, ClockIcon, UsersIcon } from '@/components/icons';
-import { isEventPastDeadline, getEventLifecycleState } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, getEventLifecycleState, getEffectiveEndDate } from '@/lib/utils/event-logic';
 import { Event } from '@/lib/types';
 
 interface EventCardProps {
@@ -41,9 +41,21 @@ export default function EventCard({ event, onClick }: EventCardProps) {
       ? styles.rejected
       : styles.closed;
 
-  const dateStr = event.event_date
+  const sessionCount = Array.isArray(event.sessions) ? event.sessions.length : 0;
+  const effectiveEnd = sessionCount > 1 ? getEffectiveEndDate(event) : null;
+  const startDateFormatted = event.event_date
     ? new Date(event.event_date).toLocaleDateString('vi-VN')
     : 'Hôm nay';
+  const endDateFormatted = effectiveEnd?.date
+    ? new Date(effectiveEnd.date).toLocaleDateString('vi-VN')
+    : null;
+
+  const dateStr =
+    endDateFormatted && endDateFormatted !== startDateFormatted
+      ? `${startDateFormatted} – ${endDateFormatted} (${sessionCount} ca)`
+      : sessionCount > 1
+      ? `${startDateFormatted} (${sessionCount} ca)`
+      : startDateFormatted;
 
   const timeStr =
     event.start_time && event.end_time

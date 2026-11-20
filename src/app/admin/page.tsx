@@ -2,9 +2,11 @@ export const dynamic = 'force-dynamic';
 import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getEventMetaBatch } from '@/lib/constants/event-meta-store';
 import { resolveActorLcdScope } from '@/lib/utils/lcd-auth';
 import Header from '@/components/Header';
 import AdminDashboardClient from './AdminDashboardClient';
+import type { Event } from '@/lib/types';
 import styles from './page.module.css';
 
 export default async function AdminEventsPage() {
@@ -62,6 +64,15 @@ export default async function AdminEventsPage() {
     resolveActorLcdScope(supabase, auth),
   ]);
 
+  // Attach sessions from event_meta so multi-session events compute deadline & display date range accurately
+  const eventList = (events || []) as Event[];
+  const eventIds = eventList.map((ev) => ev.event_id).filter(Boolean);
+  const metaMap = eventIds.length > 0 ? await getEventMetaBatch(supabase, eventIds) : {};
+  const enrichedEvents: Event[] = eventList.map((ev) => ({
+    ...ev,
+    sessions: metaMap[ev.event_id]?.sessions || [],
+  }));
+
   return (
     <div className={styles.container}>
       <Header
@@ -71,7 +82,7 @@ export default async function AdminEventsPage() {
       />
       <main className={styles.main}>
         <AdminDashboardClient
-          initialEvents={events || []}
+          initialEvents={enrichedEvents}
           lcdScope={{
             role: lcdScope.role,
             lcdCode: lcdScope.lcd?.code || null,
