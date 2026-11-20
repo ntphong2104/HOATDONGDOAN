@@ -33,6 +33,9 @@ export const metadata: Metadata = {
   authors: [{ name: 'Đoàn Thanh Niên PTIT HCM', url: 'https://ptithcm.com' }],
   creator: 'Đoàn Thanh Niên Học Viện Cơ Sở TP.HCM',
   publisher: 'Học Viện Công Nghệ Bưu Chính Viễn Thông',
+  verification: {
+    google: 'PegklgG47LCpgOOh84fCSeYUaPr55hXOklLeZcR5ObM',
+  },
   icons: {
     icon: [
       { url: '/favicon-32x32.png?v=doan', sizes: '32x32', type: 'image/png' },
