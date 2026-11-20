@@ -343,11 +343,56 @@ export async function middleware(request: NextRequest) {
 
   // 1. FAST-PATH FOR PUBLIC ROUTES:
   // Under high concurrency (hundreds of students at once), public routes must NEVER
-  // block on Supabase Auth network calls. Return immediately!
+  // block on Supabase Auth network calls.
+  // EXCEPTION: On '/' (home page), if the user has an auth cookie whose access_token is
+  // expired (or expiring within 2 min), refresh it HERE in middleware (where cookies CAN be written)
+  // so Server Components (page.tsx) don't rotate the refresh_token and lose the new cookie!
   if (isPublicRoute) {
-    // If accessing maintenance directly, pass through
-    if (pathname === '/maintenance') {
-      return addSecurityHeaders(NextResponse.next());
+    if (pathname === '/') {
+      const homeCookies = request.cookies.getAll();
+      const homeRawToken = extractRawTokenFromCookies(homeCookies);
+      if (homeRawToken && homeRawToken.includes('.')) {
+        let needsRefresh = false;
+        try {
+          const parts = homeRawToken.split('.');
+          if (parts.length >= 2) {
+            const payload = JSON.parse(decodeBase64Safe(parts[1]));
+            const nowSec = Math.floor(Date.now() / 1000);
+            if (!payload?.exp || typeof payload.exp !== 'number' || payload.exp <= nowSec + 120) {
+              needsRefresh = true;
+            }
+          }
+        } catch {
+          needsRefresh = true;
+        }
+
+        if (needsRefresh) {
+          let homeResponse = NextResponse.next({ request });
+          try {
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+            const supabaseAnonKey =
+              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+              process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+              'placeholder-anon-key';
+            const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+              cookies: {
+                getAll() {
+                  return request.cookies.getAll();
+                },
+                setAll(cookiesToSet) {
+                  cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+                  homeResponse = NextResponse.next({ request });
+                  cookiesToSet.forEach(({ name, value, options }) =>
+                    homeResponse.cookies.set(name, value, options)
+                  );
+                },
+              },
+            });
+            await supabase.auth.getUser();
+          } catch {}
+          return addSecurityHeaders(homeResponse);
+        }
+      }
     }
     return addSecurityHeaders(NextResponse.next());
   }
