@@ -641,81 +641,124 @@ export default function RankingBoard({
                     Không có dữ liệu xếp hạng sinh viên phù hợp trong <strong>{data.semester.name}</strong>.
                   </div>
                 ) : (
-                  <div className={styles.tableWrap}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th style={{ width: 120 }}>Hạng</th>
-                          <th className={styles.cellNowrap}>MSSV</th>
-                          <th>Họ và Tên</th>
-                          <th className={styles.cellCenter}>Chi đoàn (Lớp)</th>
-                          <th>Liên Chi Đoàn</th>
-                          <th className={styles.cellRight}>Số sự kiện tham gia</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredStudents.map((st) => {
-                          const isMe = data.my_rank?.mssv === st.mssv;
-                          return (
-                            <tr
-                              key={st.mssv}
-                              className={isMe ? styles.rowHighlight : undefined}
-                            >
-                              <td className={styles.cellNowrap}>{renderRankBadge(st.rank)}</td>
-                              <td className={styles.cellNowrap} style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0369a1' }}>
-                                {st.mssv}
-                              </td>
-                              <td style={{ fontWeight: 700, color: '#0f172a' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                                  <span>{st.full_name}</span>
-                                  {isMe && (
-                                    <span
-                                      className={styles.lcdBadge}
-                                      style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '0.7rem' }}
-                                    >
-                                      Bạn
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className={styles.cellCenter}>
-                                <span
-                                  className={styles.lcdBadge}
-                                  style={{ background: '#f1f5f9', color: '#334155' }}
-                                >
-                                  {st.class_id}
-                                </span>
-                              </td>
-                              <td>
-                                {st.lcd_name ? (
+                  <>
+                    {/* Desktop Table */}
+                    <div className={`${styles.tableWrap} ${styles.studentDesktopTable}`}>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: 120 }}>Hạng</th>
+                            <th className={styles.cellNowrap}>MSSV</th>
+                            <th>Họ và Tên</th>
+                            <th className={styles.cellCenter}>Chi đoàn (Lớp)</th>
+                            <th>Liên Chi Đoàn</th>
+                            <th className={styles.cellRight}>Số sự kiện tham gia</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredStudents.map((st) => {
+                            const isMe = data.my_rank?.mssv === st.mssv;
+                            return (
+                              <tr
+                                key={st.mssv}
+                                className={isMe ? styles.rowHighlight : undefined}
+                              >
+                                <td className={styles.cellNowrap}>{renderRankBadge(st.rank)}</td>
+                                <td className={styles.cellNowrap} style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0369a1' }}>
+                                  {st.mssv}
+                                </td>
+                                <td style={{ fontWeight: 700, color: '#0f172a' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                    <span>{st.full_name}</span>
+                                    {isMe && (
+                                      <span
+                                        className={styles.lcdBadge}
+                                        style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '0.7rem' }}
+                                      >
+                                        Bạn
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className={styles.cellCenter}>
                                   <span
                                     className={styles.lcdBadge}
-                                    style={{
-                                      background: '#f8fafc',
-                                      color: st.lcd_color || '#334155',
-                                      border: `1px solid ${st.lcd_color || '#cbd5e1'}33`,
-                                    }}
+                                    style={{ background: '#f1f5f9', color: '#334155' }}
                                   >
-                                    {st.lcd_name}
+                                    {st.class_id}
                                   </span>
-                                ) : (
-                                  <span style={{ color: '#94a3b8' }}>—</span>
-                                )}
-                              </td>
-                              <td className={`${styles.cellRight} ${styles.cellNowrap}`}>
-                                <span
-                                  className={styles.lcdBadge}
-                                  style={{ background: '#dcfce7', color: '#15803d', fontSize: '0.82rem' }}
-                                >
-                                  {st.participations_count} sự kiện
+                                </td>
+                                <td>
+                                  {st.lcd_name ? (
+                                    <span
+                                      className={styles.lcdBadge}
+                                      style={{
+                                        background: '#f8fafc',
+                                        color: st.lcd_color || '#334155',
+                                        border: `1px solid ${st.lcd_color || '#cbd5e1'}33`,
+                                      }}
+                                    >
+                                      {st.lcd_name}
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#94a3b8' }}>—</span>
+                                  )}
+                                </td>
+                                <td className={`${styles.cellRight} ${styles.cellNowrap}`}>
+                                  <span
+                                    className={styles.lcdBadge}
+                                    style={{ background: '#dcfce7', color: '#15803d', fontSize: '0.82rem' }}
+                                  >
+                                    {st.participations_count} sự kiện
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Compact List: Tên 1 hàng -> MSSV -> Lớp */}
+                    <div className={styles.studentMobileList}>
+                      {filteredStudents.map((st) => {
+                        const isMe = data.my_rank?.mssv === st.mssv;
+                        const rankClass =
+                          st.rank === 1
+                            ? styles.rankGold
+                            : st.rank === 2
+                            ? styles.rankSilver
+                            : st.rank === 3
+                            ? styles.rankBronze
+                            : styles.rankNormal;
+                        return (
+                          <div
+                            key={st.mssv}
+                            className={`${styles.studentMobileRow} ${isMe ? styles.rowHighlight : ''}`}
+                          >
+                            <span className={`${styles.studentMobileRank} ${rankClass}`}>
+                              {st.rank}
+                            </span>
+                            <div className={styles.studentMobileInfo}>
+                              <div className={styles.studentMobileNameRow}>
+                                <span className={styles.studentMobileName} title={st.full_name}>
+                                  {st.full_name}
                                 </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                {isMe && (
+                                  <span className={styles.studentMobileMeBadge}>Bạn</span>
+                                )}
+                              </div>
+                              <div className={styles.studentMobileMssv}>{st.mssv}</div>
+                              <div className={styles.studentMobileClass}>{st.class_id}</div>
+                            </div>
+                            <span className={styles.studentMobileCount}>
+                              {st.participations_count} SK
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </>
             )}

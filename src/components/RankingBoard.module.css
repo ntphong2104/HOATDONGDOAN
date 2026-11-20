@@ -547,3 +547,114 @@
     font-size: 0.8rem;
   }
 }
+
+/* ── Mobile Compact Student Ranking List ── */
+.studentMobileList {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .studentDesktopTable {
+    display: none;
+  }
+
+  .studentMobileList {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ffffff;
+  }
+
+  .studentMobileRow {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.72rem 0.85rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .studentMobileRow:last-child {
+    border-bottom: none;
+  }
+
+  .studentMobileRank {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .studentMobileInfo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+  }
+
+  .studentMobileNameRow {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    min-width: 0;
+  }
+
+  .studentMobileName {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+  }
+
+  .studentMobileMeBadge {
+    flex-shrink: 0;
+    padding: 0.08rem 0.42rem;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.66rem;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  .studentMobileMssv {
+    font-family: monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #0369a1;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .studentMobileClass {
+    font-size: 0.71rem;
+    font-weight: 600;
+    color: #64748b;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .studentMobileCount {
+    flex-shrink: 0;
+    padding: 0.24rem 0.58rem;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 0.76rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+}
