@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Hoạt Động Đoàn PTIT HCM',
-    short_name: 'Đoàn PTIT',
+    name: 'Hoạt Động Đoàn',
+    short_name: 'Hoạt Động Đoàn',
     description:
       'Hệ thống điểm danh QR & quản lý hoạt động Đoàn Thanh Niên PTIT Cơ sở tại TP. Hồ Chí Minh',
     start_url: '/',
