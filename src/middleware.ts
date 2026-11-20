@@ -95,6 +95,8 @@ const PUBLIC_ROUTES = [
 
 // Routes that need exact match (not prefix)
 const PUBLIC_EXACT_ROUTES = [
+  '/privacy',
+  '/terms',
   '/api/events/public',
   '/api/rooms',
   '/api/admin/units',

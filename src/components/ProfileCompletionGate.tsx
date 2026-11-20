@@ -8,7 +8,7 @@ import styles from './ProfileCompletionGate.module.css';
 type MissingField = 'full_name' | 'class_id';
 
 // Pages where the gate must never appear
-const EXCLUDED_PREFIXES = ['/login', '/auth', '/maintenance'];
+const EXCLUDED_PREFIXES = ['/login', '/auth', '/maintenance', '/privacy', '/terms'];
 
 /**
  * Forces a logged-in student whose profile still has placeholder values
