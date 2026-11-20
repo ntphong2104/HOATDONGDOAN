@@ -665,7 +665,7 @@ export default function EventBulkImportModal({
               </div>
 
               {mode === 'checkin' && sessions && sessions.length > 0 && (
-                <div className={styles.formGroup} style={{ gridColumn: 'span 2' }}>
+                <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                   <label className={styles.label}>Ca điểm danh áp dụng</label>
                   <select
                     value={selectedSessionId}
@@ -694,7 +694,7 @@ export default function EventBulkImportModal({
               )}
 
               {role === 'volunteer' && departments && departments.length > 0 && (
-                <div className={styles.formGroup} style={{ gridColumn: 'span 2' }}>
+                <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                   <label className={styles.label}>Phân bổ vào Ban Chuyên Trách</label>
                   <select
                     value={selectedDeptId}

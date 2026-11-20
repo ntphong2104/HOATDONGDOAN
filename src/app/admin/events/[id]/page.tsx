@@ -1562,7 +1562,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 style={{
                   marginTop: '1.25rem',
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
                   gap: '1.25rem',
                 }}
               >
@@ -2870,7 +2870,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </div>
 
               {/* Sessions Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '1rem' }}>
                 {sessions.map((s, idx) => (
                   <div
                     key={s.id || idx}

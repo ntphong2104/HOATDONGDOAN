@@ -747,7 +747,7 @@ export default function LcdManagementSection({
                     </div>
                   )}
 
-                  <div className={styles.field} style={{ gridColumn: termPreset === 'custom' ? 'span 1' : 'span 2' }}>
+                  <div className={`${styles.field} ${termPreset === 'custom' ? '' : styles.fieldSpan2}`}>
                     <label className={styles.fieldLabel}>Ghi chú nhiệm kỳ (không bắt buộc)</label>
                     <input
                       type="text"

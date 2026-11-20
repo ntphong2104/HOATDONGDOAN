@@ -507,6 +507,12 @@
   }
 }
 
+@media (max-width: 600px) {
+  .roomFormGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .formGroup {
   display: flex;
   flex-direction: column;
