@@ -15,8 +15,10 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            set -e
             cd /var/www/hoatdongdoan
             git pull origin main
-            npx next build
+            rm -rf .next/cache
+            npx next build --webpack
             pm2 startOrReload ecosystem.config.cjs --update-env || pm2 restart hoatdongdoan --update-env
-            echo "✅ Deploy completed in lightning speed at $(date)"
+            echo "✅ Deploy completed at $(date)"
