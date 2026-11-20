@@ -33,10 +33,10 @@ export const metadata: Metadata = {
   authors: [{ name: 'Đoàn Thanh Niên PTIT HCM', url: 'https://ptithcm.com' }],
   creator: 'Đoàn Thanh Niên Học Viện Cơ Sở TP.HCM',
   publisher: 'Học Viện Công Nghệ Bưu Chính Viễn Thông',
-  applicationName: 'Hoạt Động Đoàn',
+  applicationName: 'Đoàn PTIT',
   appleWebApp: {
     capable: true,
-    title: 'Hoạt Động Đoàn',
+    title: 'Đoàn PTIT',
     statusBarStyle: 'default',
   },
   verification: {
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     ],
     shortcut: '/favicon-32x32.png?v=doan',
     apple: [
-      { url: '/apple-touch-icon.png?v=doan', sizes: '180x180', type: 'image/png' },
+      { url: '/apple-touch-icon.png?v=doan2', sizes: '180x180', type: 'image/png' },
     ],
   },
   openGraph: {
