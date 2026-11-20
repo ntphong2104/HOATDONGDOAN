@@ -115,7 +115,14 @@ export default function ExcelExportButton({
           formatted['Hình Thức Điểm Danh'] = row.checked_by;
         }
 
-        formatted['Trạng Thái Ghi Nhận'] = row.status || 'Hợp lệ (Đã ghi nhận ĐRL)';
+        if (row.so_su_kien_tham_gia !== undefined) {
+          formatted['Số Sự Kiện Đã Tham Gia'] = Number(row.so_su_kien_tham_gia) || 0;
+          formatted['Danh Sách Sự Kiện Đã Tham Gia'] = sanitizeForExcel(
+            row.danh_sach_su_kien || 'Chưa tham gia sự kiện nào'
+          );
+        } else {
+          formatted['Trạng Thái Ghi Nhận'] = row.status || 'Hợp lệ (Đã ghi nhận ĐRL)';
+        }
 
         if (row.rating_stars !== undefined || row.stars !== undefined) {
           const stars = row.rating_stars ?? row.stars;
@@ -134,18 +141,42 @@ export default function ExcelExportButton({
 
       const worksheet = XLSX.utils.json_to_sheet(formattedRows);
 
-      // Auto-fit column widths
+      // Auto-fit column widths (respecting multi-line cells)
       const colWidths = Object.keys(formattedRows[0] || {}).map((key) => {
         let maxLen = key.length;
         formattedRows.forEach((row) => {
           const valStr = row[key] ? String(row[key]) : '';
-          if (valStr.length > maxLen) {
-            maxLen = valStr.length;
+          for (const line of valStr.split('\n')) {
+            if (line.length > maxLen) {
+              maxLen = line.length;
+            }
           }
         });
-        return { wch: Math.min(Math.max(maxLen + 3, 10), 45) };
+        return { wch: Math.min(Math.max(maxLen + 3, 10), 58) };
       });
       worksheet['!cols'] = colWidths;
+
+      // Auto-fit row heights for multi-line bullet lists
+      const rowHeights: Array<{ hpt?: number }> = [{ hpt: 24 }];
+      let hasMultiLine = false;
+      formattedRows.forEach((row) => {
+        let maxLines = 1;
+        Object.values(row).forEach((val) => {
+          if (typeof val === 'string' && val.includes('\n')) {
+            const lines = val.split('\n').length;
+            if (lines > maxLines) maxLines = lines;
+          }
+        });
+        if (maxLines > 1) {
+          hasMultiLine = true;
+          rowHeights.push({ hpt: Math.min(maxLines * 17 + 8, 409) });
+        } else {
+          rowHeights.push({ hpt: 20 });
+        }
+      });
+      if (hasMultiLine) {
+        worksheet['!rows'] = rowHeights;
+      }
 
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh Sách');

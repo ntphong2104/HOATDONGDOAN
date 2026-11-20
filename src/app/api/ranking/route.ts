@@ -121,7 +121,7 @@ async function computeSemesterRanking(
         .from('event_proposals')
         .select('created_event_id, organization_unit')
         .not('created_event_id', 'is', null),
-      getGraduatedCohorts(supabase),
+      getGraduatedCohorts(supabase, true),
     ]);
 
     if (eventsError) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 
@@ -11,10 +11,11 @@ export async function GET(request: Request) {
     }
 
     const supabase = await createClient();
+    const adminSupabase = (await createAdminClient()) || supabase;
     const now = new Date().toISOString();
 
     // Verify active delegation
-    const { data: delegate } = await supabase
+    const { data: delegate } = await adminSupabase
       .from('class_delegates')
       .select('*')
       .or(`email.eq.${auth.email},mssv.eq.${auth.email.split('@')[0].toUpperCase()}`)
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q')?.trim();
 
-    let dbQuery = supabase
+    let dbQuery = adminSupabase
       .from('users')
       .select('mssv, full_name, class_id, email')
       .eq('class_id', delegate.class_id)
@@ -53,31 +54,49 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
     }
 
-    // Fetch check-in counts for these students in this class
-    const mssvList = (classStudents || []).map((s) => s.mssv);
-    let checkInCounts: Record<string, number> = {};
+    // Fetch check-in counts + event names for these students in this class
+    const mssvList = (classStudents || []).map((s: any) => s.mssv);
+    const attendedEventsByMssv: Record<string, Map<string, string>> = {};
 
     if (mssvList.length > 0) {
-      const { data: checkIns } = await supabase
+      const { data: checkIns } = await adminSupabase
         .from('check_ins')
-        .select('mssv')
-        .in('mssv', mssvList);
+        .select('mssv, event_id, events(event_name, event_date)')
+        .in('mssv', mssvList)
+        .limit(5000);
 
       if (checkIns) {
-        for (const ci of checkIns) {
-          checkInCounts[ci.mssv] = (checkInCounts[ci.mssv] || 0) + 1;
+        for (const ci of checkIns as any[]) {
+          const m = String(ci.mssv || '').trim().toUpperCase();
+          const evId = String(ci.event_id || '');
+          if (!m || !evId) continue;
+          if (!attendedEventsByMssv[m]) attendedEventsByMssv[m] = new Map();
+          if (!attendedEventsByMssv[m].has(evId)) {
+            const evObj = Array.isArray(ci.events) ? ci.events[0] : ci.events;
+            const evName = String(evObj?.event_name || 'Sự kiện').trim();
+            const rawDate = evObj?.event_date ? String(evObj.event_date).slice(0, 10) : '';
+            const dateParts = rawDate.split('-');
+            const dateVN = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : '';
+            attendedEventsByMssv[m].set(evId, dateVN ? `${evName} (${dateVN})` : evName);
+          }
         }
       }
     }
 
-    const results = (classStudents || []).map((s, idx) => ({
-      stt: idx + 1,
-      mssv: s.mssv,
-      full_name: s.full_name,
-      class_id: s.class_id,
-      email: s.email,
-      total_attended: checkInCounts[s.mssv] || 0,
-    }));
+    const results = (classStudents || []).map((s: any, idx: number) => {
+      const m = String(s.mssv || '').trim().toUpperCase();
+      const evMap = attendedEventsByMssv[m];
+      const eventNames = evMap ? Array.from(evMap.values()) : [];
+      return {
+        stt: idx + 1,
+        mssv: s.mssv,
+        full_name: s.full_name,
+        class_id: s.class_id,
+        email: s.email,
+        total_attended: eventNames.length,
+        attended_events_summary: eventNames.map((n) => `• ${n}`).join('\n'),
+      };
+    });
 
     return NextResponse.json({
       success: true,

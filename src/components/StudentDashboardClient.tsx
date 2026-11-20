@@ -1145,6 +1145,7 @@ export default function StudentDashboardClient({
                       class_id: s.class_id,
                       email: s.email,
                       so_su_kien_tham_gia: s.total_attended,
+                      danh_sach_su_kien: s.attended_events_summary || '',
                     }))}
                     filename={`danh-sach-drl-chidoan-${delegateInfo.class_id}.xlsx`}
                     label={`Xuất Excel ĐRL ${delegateInfo.class_id}`}

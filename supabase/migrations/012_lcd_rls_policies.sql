@@ -39,19 +39,31 @@ BEGIN
     RETURN TRUE;
   END IF;
 
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.system_settings s,
-         LATERAL jsonb_array_elements(
-           CASE WHEN jsonb_typeof(s.value) = 'array' THEN s.value ELSE '[]'::jsonb END
-         ) AS elem
+  DECLARE
+    v_raw TEXT;
+    v_json JSONB;
+  BEGIN
+    SELECT s.value::text INTO v_raw
+    FROM public.system_settings s
     WHERE s.key = 'officer_roles_registry'
-      AND LOWER(COALESCE(elem->>'email', '')) = v_email
-      AND (
-        COALESCE(elem->>'role_tier', '') IN ('super_admin', 'youth_union')
-        OR UPPER(COALESCE(elem->>'unit_code', '')) LIKE 'LCD_%'
-      )
-  ) INTO v_found;
+    LIMIT 1;
+
+    IF v_raw IS NOT NULL AND TRIM(v_raw) LIKE '[%' THEN
+      v_json := v_raw::jsonb;
+      SELECT EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(v_json) AS elem
+        WHERE LOWER(COALESCE(elem->>'email', '')) = v_email
+          AND (
+            COALESCE(elem->>'role_tier', '') IN ('super_admin', 'youth_union')
+            OR COALESCE(elem->>'tier', '') IN ('super_admin', 'youth_union')
+            OR UPPER(COALESCE(elem->>'unit_code', '')) LIKE 'LCD_%'
+          )
+      ) INTO v_found;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    v_found := FALSE;
+  END;
 
   RETURN v_found;
 END;

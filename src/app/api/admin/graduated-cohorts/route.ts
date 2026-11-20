@@ -63,6 +63,14 @@ export async function PUT(req: Request) {
       );
     }
 
+    // Xóa cache bảng xếp hạng & cache đoàn viên LCĐ để số liệu cập nhật ngay lập tức
+    const g = globalThis as unknown as {
+      __hddRankingCache?: Map<string, unknown>;
+      __hddLcdUsersCache?: { expiresAt: number };
+    };
+    if (g.__hddRankingCache) g.__hddRankingCache.clear();
+    if (g.__hddLcdUsersCache) g.__hddLcdUsersCache.expiresAt = 0;
+
     return NextResponse.json({
       success: true,
       data: {

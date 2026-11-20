@@ -220,7 +220,7 @@ export async function GET(req: Request) {
         .from('class_delegates')
         .select('*')
         .order('granted_at', { ascending: false }),
-      getGraduatedCohorts(supabase),
+      getGraduatedCohorts(supabase, true),
     ]);
 
     const lcdAllStudents = allStudents.filter((s) => s.lcd_code === targetLcd.code);
@@ -283,6 +283,7 @@ export async function GET(req: Request) {
     for (const d of delegatesData || []) {
       const dLcd = resolveStudentLcd(d.class_id, d.mssv);
       if (dLcd?.code !== targetLcd.code) continue;
+      if (isStudentGraduated(d.mssv, d.class_id, graduatedRules)) continue;
 
       const expires = new Date(d.expires_at);
       const isExpired = expires < now;
