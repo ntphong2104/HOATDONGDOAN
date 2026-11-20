@@ -1,6 +1,7 @@
 /* Fonts are self-hosted via next/font in layout.tsx — no @import needed */
 
 :root {
+  --asset-rev: 20261121;
   --primary-50: #eff6ff;
   --primary-100: #dbeafe;
   --primary-200: #bfdbfe;

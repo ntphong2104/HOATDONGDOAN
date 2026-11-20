@@ -18,7 +18,11 @@ jobs:
             set -e
             cd /var/www/hoatdongdoan
             git pull origin main
-            rm -rf .next/cache
-            npx next build --webpack
+            rm -rf .next-staging
+            NEXT_DIST_DIR=.next-staging npx next build --webpack
+            rm -rf .next-old
+            [ -d .next ] && mv .next .next-old
+            mv .next-staging .next
             pm2 startOrReload ecosystem.config.cjs --update-env || pm2 restart hoatdongdoan --update-env
-            echo "✅ Deploy completed at $(date)"
+            rm -rf .next-old
+            echo "✅ Zero-downtime deploy completed at $(date)"
