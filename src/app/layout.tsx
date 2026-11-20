@@ -35,13 +35,13 @@ export const metadata: Metadata = {
   publisher: 'Học Viện Công Nghệ Bưu Chính Viễn Thông',
   icons: {
     icon: [
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/logos/logo-ptit.png', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon-32x32.png?v=doan', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16.png?v=doan', sizes: '16x16', type: 'image/png' },
+      { url: '/logos/logo-doan.png', sizes: '192x192', type: 'image/png' },
     ],
-    shortcut: '/favicon-32x32.png',
+    shortcut: '/favicon-32x32.png?v=doan',
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/apple-touch-icon.png?v=doan', sizes: '180x180', type: 'image/png' },
     ],
   },
   openGraph: {
