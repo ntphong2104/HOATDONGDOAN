@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
+import { useToast } from '@/components/ToastProvider';
 import {
   BuildingIcon,
   AlertTriangleIcon,
@@ -39,7 +40,7 @@ export default function OfficeBorrowPage() {
   const [borrowDate, setBorrowDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const toast = useToast();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -62,11 +63,11 @@ export default function OfficeBorrowPage() {
         setActiveBan(rJson.data.my_active_ban || null);
       }
     } catch {
-      setToast({ type: 'error', text: 'Lỗi kết nối máy chủ.' });
+      toast.error('Lỗi kết nối máy chủ.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     loadData();
@@ -83,12 +84,11 @@ export default function OfficeBorrowPage() {
       }));
 
     if (chosenItems.length === 0) {
-      setToast({ type: 'error', text: 'Vui lòng chọn số lượng cho ít nhất 1 vật phẩm cần mượn.' });
+      toast.error('Vui lòng chọn số lượng cho ít nhất 1 vật phẩm cần mượn.');
       return;
     }
 
     setSubmitting(true);
-    setToast(null);
     try {
       const res = await fetch('/api/office/equipment/requests', {
         method: 'POST',
@@ -104,15 +104,15 @@ export default function OfficeBorrowPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setToast({ type: 'success', text: json.message });
+        toast.success(json.message);
         setSelectedQty({});
         setPurpose('');
         await loadData();
       } else {
-        setToast({ type: 'error', text: json.error || 'Không thể gửi đơn mượn.' });
+        toast.error(json.error || 'Không thể gửi đơn mượn.');
       }
     } catch {
-      setToast({ type: 'error', text: 'Lỗi kết nối máy chủ.' });
+      toast.error('Lỗi kết nối máy chủ.');
     } finally {
       setSubmitting(false);
     }
@@ -182,22 +182,6 @@ export default function OfficeBorrowPage() {
                 Lý do: {activeBan.reason}. Vui lòng liên hệ trực tiếp Văn phòng Đoàn để giải quyết.
               </div>
             </div>
-          </div>
-        )}
-
-        {toast && (
-          <div
-            style={{
-              padding: '0.8rem 1rem',
-              borderRadius: 12,
-              fontWeight: 600,
-              fontSize: '0.87rem',
-              background: toast.type === 'success' ? '#f0fdf4' : '#fef2f2',
-              border: `1px solid ${toast.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-              color: toast.type === 'success' ? '#15803d' : '#b91c1c',
-            }}
-          >
-            {toast.text}
           </div>
         )}
 

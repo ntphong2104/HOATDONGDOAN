@@ -32,6 +32,24 @@ import type {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+const RANKING_CACHE_TTL_MS = 60_000; // 60 giây
+const MAX_RANKING_CACHE_ENTRIES = 12;
+
+interface CachedSemesterRanking {
+  lcd_rankings: LcdRankingItem[];
+  unit_rankings: UnitRankingItem[];
+  top_students: StudentRankingItem[];
+  total_events_in_semester: number;
+  total_participations_in_semester: number;
+  total_students_participated: number;
+  top50Threshold: number;
+  totalRankedStudents: number;
+  studentRankMap: Map<string, { rank: number; count: number; full_name: string; class_id: string }>;
+}
+
+const rankingCache = new Map<string, { ts: number; data: CachedSemesterRanking }>();
+const rankingInFlight = new Map<string, Promise<CachedSemesterRanking>>();
+
 const UNIT_BY_EMAIL = new Map<string, string>(
   OFFICIAL_UNITS.map((u) => [u.email.toLowerCase(), u.name])
 );
@@ -80,39 +98,10 @@ function resolveUnitDisplayName(
   };
 }
 
-export async function GET(req: Request) {
-  try {
-    const auth = await getAuthContext();
-    const { searchParams } = new URL(req.url);
-    const requestedSemesterId = searchParams.get('semester_id');
-
-    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
-    const supabase = (await getSupabase()) || (await createClient());
-
-    // Chỉ Super Admin, Đoàn Trường, Phòng ban, LCĐ/CLB hoặc Admin sự kiện mới được chọn xem các kỳ khác;
-    // Sinh viên bình thường chỉ xem được học kỳ hiện tại (đang kích hoạt).
-    const canSelectSemester = Boolean(
-      auth &&
-        (auth.isSuperAdmin ||
-          auth.tier === 'super_admin' ||
-          auth.tier === 'youth_union' ||
-          auth.tier === 'event_admin' ||
-          auth.tier === 'ctsv' ||
-          auth.tier === 'facility' ||
-          auth.isEventAdmin ||
-          isUnitAccount({ email: auth.email }))
-    );
-
-    // 1. Lấy danh sách cấu hình học kỳ do Super Admin gán thời gian
-    const allSemesters = await getAcademicSemesters(supabase);
-    const activeSemester = getActiveSemester(allSemesters);
-
-    let selectedSemester: AcademicSemester = activeSemester;
-    if (canSelectSemester && requestedSemesterId) {
-      const found = allSemesters.find((s) => s.id === requestedSemesterId);
-      if (found) selectedSemester = found;
-    }
-
+async function computeSemesterRanking(
+  supabase: any,
+  selectedSemester: AcademicSemester
+): Promise<CachedSemesterRanking> {
     // 2. Lấy danh sách sự kiện & proposals để xác định chính xác thời gian & đơn vị tổ chức
     const [{ data: eventsData, error: eventsError }, { data: proposalsData }] = await Promise.all([
       supabase
@@ -454,28 +443,124 @@ export async function GET(req: Request) {
         };
       });
 
-    // Tính thứ hạng hiện tại của chính sinh viên đang đăng nhập để có động lực phấn đấu
+    const studentRankMap = new Map<string, { rank: number; count: number; full_name: string; class_id: string }>();
+    for (let i = 0; i < allSortedStudents.length; i++) {
+      const [mssv, count] = allSortedStudents[i];
+      const stInfo = resolveStudentInfo(mssv);
+      studentRankMap.set(mssv, {
+        rank: i + 1,
+        count,
+        full_name: stInfo.full_name,
+        class_id: stInfo.class_id,
+      });
+    }
+
+    return {
+      lcd_rankings: lcdRankings,
+      unit_rankings: unitRankings,
+      top_students: topStudents,
+      total_events_in_semester: semesterEvents.length,
+      total_participations_in_semester: distinctEventStudentSet.size,
+      total_students_participated: studentParticipationMap.size,
+      top50Threshold,
+      totalRankedStudents: allSortedStudents.length,
+      studentRankMap,
+    };
+}
+
+export async function GET(req: Request) {
+  try {
+    const auth = await getAuthContext();
+    const { searchParams } = new URL(req.url);
+    const requestedSemesterId = searchParams.get('semester_id');
+    const forceRefresh = searchParams.get('refresh') === '1';
+
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
+
+    // Chỉ Super Admin, Đoàn Trường, Phòng ban, LCĐ/CLB hoặc Admin sự kiện mới được chọn xem các kỳ khác;
+    // Sinh viên bình thường chỉ xem được học kỳ hiện tại (đang kích hoạt).
+    const canSelectSemester = Boolean(
+      auth &&
+        (auth.isSuperAdmin ||
+          auth.tier === 'super_admin' ||
+          auth.tier === 'youth_union' ||
+          auth.tier === 'event_admin' ||
+          auth.tier === 'ctsv' ||
+          auth.tier === 'facility' ||
+          auth.isEventAdmin ||
+          isUnitAccount({ email: auth.email }))
+    );
+
+    // 1. Lấy danh sách cấu hình học kỳ do Super Admin gán thời gian
+    const allSemesters = await getAcademicSemesters(supabase);
+    const activeSemester = getActiveSemester(allSemesters);
+
+    let selectedSemester: AcademicSemester = activeSemester;
+    if (canSelectSemester && requestedSemesterId) {
+      const found = allSemesters.find((s) => s.id === requestedSemesterId);
+      if (found) selectedSemester = found;
+    }
+
+    const cacheKey = `${selectedSemester.id}_${selectedSemester.start_date}_${selectedSemester.end_date}`;
+    const now = Date.now();
+    const cachedEntry = rankingCache.get(cacheKey);
+    const allowBypass = canSelectSemester && forceRefresh;
+
+    let rankedData: CachedSemesterRanking;
+    let cacheStatus: 'HIT' | 'MISS' | 'COALESCED' = 'MISS';
+
+    if (!allowBypass && cachedEntry && now - cachedEntry.ts < RANKING_CACHE_TTL_MS) {
+      rankedData = cachedEntry.data;
+      cacheStatus = 'HIT';
+    } else {
+      let pending = !allowBypass ? rankingInFlight.get(cacheKey) : undefined;
+      if (pending) {
+        cacheStatus = 'COALESCED';
+        rankedData = await pending;
+      } else {
+        pending = computeSemesterRanking(supabase, selectedSemester);
+        rankingInFlight.set(cacheKey, pending);
+        try {
+          rankedData = await pending;
+          rankingCache.set(cacheKey, { ts: Date.now(), data: rankedData });
+          if (rankingCache.size > MAX_RANKING_CACHE_ENTRIES) {
+            const oldestKey = rankingCache.keys().next().value;
+            if (oldestKey) rankingCache.delete(oldestKey);
+          }
+        } finally {
+          if (rankingInFlight.get(cacheKey) === pending) {
+            rankingInFlight.delete(cacheKey);
+          }
+        }
+      }
+    }
+
+    // Tính thứ hạng hiện tại của chính sinh viên đang đăng nhập (O(1) từ cache)
     let myRank: MyRankingSummary | null = null;
     if (auth && !isUnitAccount({ email: auth.email })) {
       const myMssv = (extractMSSV(auth.email || '') || '').trim().toUpperCase();
 
       if (myMssv && isValidMSSV(myMssv)) {
-        const myIdx = allSortedStudents.findIndex(([m]) => m === myMssv);
-        const myCount = myIdx >= 0 ? allSortedStudents[myIdx][1] : 0;
-        const stInfo = resolveStudentInfo(myMssv);
-        const lcd = resolveStudentLcd(stInfo.class_id, myMssv);
+        const rankedEntry = rankedData.studentRankMap.get(myMssv);
+        const master = rankedEntry ? null : getMasterStudentByMssv(myMssv);
+        const fullName = rankedEntry?.full_name || master?.full_name || myMssv;
+        const classId = rankedEntry?.class_id || master?.class_id || 'PTIT-HCM';
+        const myCount = rankedEntry?.count || 0;
+        const myRankNum = rankedEntry?.rank || 0;
+        const lcd = resolveStudentLcd(classId, myMssv);
         myRank = {
-          rank: myIdx >= 0 ? myIdx + 1 : 0,
+          rank: myRankNum,
           mssv: myMssv,
-          full_name: stInfo.full_name,
-          class_id: stInfo.class_id,
+          full_name: fullName,
+          class_id: classId,
           lcd_code: lcd?.code || null,
           lcd_name: lcd?.name || null,
           lcd_color: lcd?.color || null,
           participations_count: myCount,
-          total_ranked_students: allSortedStudents.length,
+          total_ranked_students: rankedData.totalRankedStudents,
           gap_to_top50:
-            myIdx >= 0 && myIdx < 50 ? 0 : Math.max(1, top50Threshold - myCount),
+            myRankNum > 0 && myRankNum <= 50 ? 0 : Math.max(1, rankedData.top50Threshold - myCount),
         };
       }
     }
@@ -485,18 +570,25 @@ export async function GET(req: Request) {
       all_semesters: canSelectSemester ? allSemesters : [selectedSemester],
       can_select_semester: canSelectSemester,
       my_rank: myRank,
-      lcd_rankings: lcdRankings,
-      unit_rankings: unitRankings,
-      top_students: topStudents,
-      total_events_in_semester: semesterEvents.length,
-      total_participations_in_semester: distinctEventStudentSet.size,
-      total_students_participated: studentParticipationMap.size,
+      lcd_rankings: rankedData.lcd_rankings,
+      unit_rankings: rankedData.unit_rankings,
+      top_students: rankedData.top_students,
+      total_events_in_semester: rankedData.total_events_in_semester,
+      total_participations_in_semester: rankedData.total_participations_in_semester,
+      total_students_participated: rankedData.total_students_participated,
     };
 
-    return NextResponse.json({
-      success: true,
-      data: responseData,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: responseData,
+      },
+      {
+        headers: {
+          'X-Cache': cacheStatus,
+        },
+      }
+    );
   } catch (err: any) {
     console.error('GET /api/ranking error:', err);
     return NextResponse.json(

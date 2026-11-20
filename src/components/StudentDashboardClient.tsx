@@ -531,7 +531,7 @@ export default function StudentDashboardClient({
             </div>
             <Link href="/events" className={styles.discoverCtaBtn}>
               <CalendarIcon size={16} color="#1e40af" />
-              <span>Tổng Quan Sự Kiện ➔</span>
+              <span>Sự kiện ➔</span>
             </Link>
           </div>
 
@@ -774,7 +774,7 @@ export default function StudentDashboardClient({
                   textDecoration: 'none',
                 }}
               >
-                Tổng quan Sự kiện ➔
+                Sự kiện ➔
               </Link>
             </div>
           </div>

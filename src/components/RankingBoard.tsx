@@ -56,11 +56,14 @@ export default function RankingBoard({
   const [studentSearch, setStudentSearch] = useState('');
   const [studentLcdFilter, setStudentLcdFilter] = useState('ALL');
 
-  const fetchRanking = useCallback(async (semesterId?: string) => {
+  const fetchRanking = useCallback(async (semesterId?: string, forceRefresh = false) => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const qs = semesterId ? `?semester_id=${encodeURIComponent(semesterId)}` : '';
+      const params = new URLSearchParams();
+      if (semesterId) params.set('semester_id', semesterId);
+      if (forceRefresh) params.set('refresh', '1');
+      const qs = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`/api/ranking${qs}`, { cache: 'no-store' });
       const json = await res.json();
       if (json.success && json.data) {
@@ -234,7 +237,7 @@ export default function RankingBoard({
           <button
             type="button"
             className={styles.heroActionBtn}
-            onClick={() => fetchRanking(canSwitchSemester ? selectedSemesterId || undefined : undefined)}
+            onClick={() => fetchRanking(canSwitchSemester ? selectedSemesterId || undefined : undefined, true)}
             title="Làm mới bảng xếp hạng"
           >
             <RefreshIcon size={15} />

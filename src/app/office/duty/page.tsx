@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import DutyMatrixTable from '@/components/DutyMatrixTable';
+import { useToast } from '@/components/ToastProvider';
 import {
   CalendarIcon,
   ClockIcon,
@@ -39,7 +40,7 @@ export default function OfficeDutyPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const toast = useToast();
 
   const loadAll = useCallback(async (anchor?: string) => {
     setLoading(true);
@@ -61,7 +62,7 @@ export default function OfficeDutyPage() {
           setWeekAnchor(sJson.data.workdays[0]);
         }
       } else {
-        setToast({ type: 'error', text: sJson.error || 'Không thể tải lịch trực.' });
+        toast.error(sJson.error || 'Không thể tải lịch trực.');
       }
       if (aRes.ok) {
         const aJson = await aRes.json();
@@ -70,11 +71,11 @@ export default function OfficeDutyPage() {
         }
       }
     } catch {
-      setToast({ type: 'error', text: 'Lỗi kết nối máy chủ.' });
+      toast.error('Lỗi kết nối máy chủ.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     loadAll();
@@ -90,7 +91,6 @@ export default function OfficeDutyPage() {
   const handleRegister = async (dutyDate: string, shift: 'morning' | 'afternoon') => {
     const key = `${dutyDate}_${shift}`;
     setBusyKey(key);
-    setToast(null);
     try {
       const res = await fetch('/api/office/duty/schedule', {
         method: 'POST',
@@ -99,13 +99,13 @@ export default function OfficeDutyPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setToast({ type: 'success', text: json.message || 'Đăng ký ca thành công!' });
+        toast.success(json.message || 'Đăng ký ca thành công!');
         await loadAll(weekAnchor || undefined);
       } else {
-        setToast({ type: 'error', text: json.error || 'Không thể đăng ký ca.' });
+        toast.error(json.error || 'Không thể đăng ký ca.');
       }
     } catch {
-      setToast({ type: 'error', text: 'Lỗi kết nối máy chủ.' });
+      toast.error('Lỗi kết nối máy chủ.');
     } finally {
       setBusyKey(null);
     }
@@ -114,20 +114,19 @@ export default function OfficeDutyPage() {
   const handleCancel = async (regId: string) => {
     if (!window.confirm('Xác nhận hủy đăng ký ca trực này?')) return;
     setBusyKey(regId);
-    setToast(null);
     try {
       const res = await fetch(`/api/office/duty/schedule?id=${encodeURIComponent(regId)}`, {
         method: 'DELETE',
       });
       const json = await res.json();
       if (json.success) {
-        setToast({ type: 'success', text: json.message || 'Đã hủy ca trực.' });
+        toast.success(json.message || 'Đã hủy ca trực.');
         await loadAll(weekAnchor || undefined);
       } else {
-        setToast({ type: 'error', text: json.error || 'Không thể hủy ca.' });
+        toast.error(json.error || 'Không thể hủy ca.');
       }
     } catch {
-      setToast({ type: 'error', text: 'Lỗi kết nối máy chủ.' });
+      toast.error('Lỗi kết nối máy chủ.');
     } finally {
       setBusyKey(null);
     }
@@ -135,7 +134,6 @@ export default function OfficeDutyPage() {
 
   const handleAttendance = async (registrationId: string, action: 'check_in' | 'check_out') => {
     setBusyKey(`${registrationId}_${action}`);
-    setToast(null);
     try {
       const res = await fetch('/api/office/duty/attendance', {
         method: 'POST',
@@ -144,13 +142,13 @@ export default function OfficeDutyPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setToast({ type: 'success', text: json.message });
+        toast.success(json.message);
         await loadAll(weekAnchor || undefined);
       } else {
-        setToast({ type: 'error', text: json.error || 'Chấm công thất bại.' });
+        toast.error(json.error || 'Chấm công thất bại.');
       }
     } catch {
-      setToast({ type: 'error', text: 'Lỗi kết nối máy chủ.' });
+      toast.error('Lỗi kết nối máy chủ.');
     } finally {
       setBusyKey(null);
     }
@@ -225,22 +223,6 @@ export default function OfficeDutyPage() {
             </div>
           )}
         </section>
-
-        {toast && (
-          <div
-            style={{
-              padding: '0.8rem 1rem',
-              borderRadius: 12,
-              fontWeight: 600,
-              fontSize: '0.87rem',
-              background: toast.type === 'success' ? '#f0fdf4' : '#fef2f2',
-              border: `1px solid ${toast.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-              color: toast.type === 'success' ? '#15803d' : '#b91c1c',
-            }}
-          >
-            {toast.text}
-          </div>
-        )}
 
         {/* Chấm công hôm nay */}
         <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.2rem' }}>

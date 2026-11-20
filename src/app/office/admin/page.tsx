@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import Header from '@/components/Header';
 import DutyMatrixTable from '@/components/DutyMatrixTable';
+import { useToast } from '@/components/ToastProvider';
 import {
   CalendarIcon,
   UsersIcon,
@@ -42,9 +43,9 @@ function addDays(dateStr: string, delta: number): string {
 }
 
 export default function OfficeAdminPage() {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<AdminTab>('schedule');
   const [forbidden, setForbidden] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Schedule & Attendance
   const [weekAnchor, setWeekAnchor] = useState('');
@@ -79,7 +80,10 @@ export default function OfficeAdminPage() {
   const [newItemQty, setNewItemQty] = useState(1);
   const [newItemUnit, setNewItemUnit] = useState('Cái');
 
-  const showMsg = (type: 'success' | 'error', text: string) => setToast({ type, text });
+  const showMsg = useCallback((type: 'success' | 'error', text: string) => {
+    if (type === 'success') toast.success(text);
+    else toast.error(text);
+  }, [toast]);
 
   const loadSchedule = useCallback(async (anchor?: string) => {
     const qs = anchor ? `?week_of=${encodeURIComponent(anchor)}` : '';
@@ -449,22 +453,6 @@ export default function OfficeAdminPage() {
             </button>
           ))}
         </div>
-
-        {toast && (
-          <div
-            style={{
-              padding: '0.78rem 1rem',
-              borderRadius: 10,
-              fontWeight: 600,
-              fontSize: '0.86rem',
-              background: toast.type === 'success' ? '#f0fdf4' : '#fef2f2',
-              border: `1px solid ${toast.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-              color: toast.type === 'success' ? '#15803d' : '#b91c1c',
-            }}
-          >
-            {toast.text}
-          </div>
-        )}
 
         {/* TAB 1: Lịch trực & Chấm công */}
         {activeTab === 'schedule' && (

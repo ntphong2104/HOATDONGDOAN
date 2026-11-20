@@ -197,7 +197,7 @@ export default function StudentEventsDiscoverPage() {
         <section className={styles.heroBanner}>
           <div className={styles.heroLeft}>
             <span className={styles.heroEyebrow}>Cổng Khám Phá & Đăng Ký Sự Kiện PTIT HCM</span>
-            <h1 className={styles.heroTitle}>Tổng Quan Sự Kiện</h1>
+            <h1 className={styles.heroTitle}>Sự kiện</h1>
             <p className={styles.heroSubtitle}>
               Hệ thống tự động phân loại các chương trình toàn Học viện và chương trình theo Liên Chi Đoàn để đăng ký nhanh chóng, đúng đối tượng.
             </p>
