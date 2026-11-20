@@ -1,19 +1,30 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import { useToast } from '@/components/ToastProvider';
 import {
   BuildingIcon,
   AlertTriangleIcon,
-  CheckCircleIcon,
   RefreshIcon,
+  SearchIcon,
 } from '@/components/icons';
+import styles from './page.module.css';
 
 function fmtDateVN(d?: string | null): string {
   if (!d) return '—';
   const p = String(d).split('T')[0].split('-');
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+}
+
+function normalizeVN(val: string): string {
+  return String(val || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .trim();
 }
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
@@ -31,6 +42,10 @@ export default function OfficeBorrowPage() {
   const [activeBan, setActiveBan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
+
+  // Catalog filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
 
   // Form state
   const [selectedQty, setSelectedQty] = useState<Record<string, number>>({});
@@ -73,18 +88,64 @@ export default function OfficeBorrowPage() {
     loadData();
   }, [loadData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const chosenItems = items
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const it of items) {
+      if (it.category) set.add(String(it.category).trim());
+    }
+    return Array.from(set);
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = normalizeVN(searchQuery);
+    return items.filter((it) => {
+      if (selectedCategory !== 'ALL' && String(it.category || '').trim() !== selectedCategory) {
+        return false;
+      }
+      if (q) {
+        const hay = normalizeVN(`${it.name || ''} ${it.category || ''} ${it.condition_note || ''}`);
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [items, searchQuery, selectedCategory]);
+
+  const chosenItems = useMemo(() => {
+    return items
       .filter((it) => (selectedQty[it.id] || 0) > 0)
       .map((it) => ({
         item_id: it.id,
         item_name: it.name,
+        unit: it.unit || 'Cái',
         quantity: selectedQty[it.id],
       }));
+  }, [items, selectedQty]);
 
+  const totalSelectedUnits = useMemo(
+    () => chosenItems.reduce((sum, it) => sum + it.quantity, 0),
+    [chosenItems]
+  );
+
+  const adjustQty = (itemId: string, maxQty: number, delta: number) => {
+    setSelectedQty((prev) => {
+      const next = Math.max(0, Math.min(maxQty, (prev[itemId] || 0) + delta));
+      if (next === 0) {
+        const copy = { ...prev };
+        delete copy[itemId];
+        return copy;
+      }
+      return { ...prev, [itemId]: next };
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (chosenItems.length === 0) {
-      toast.error('Vui lòng chọn số lượng cho ít nhất 1 vật phẩm cần mượn.');
+      toast.error('Vui lòng chọn ít nhất 1 vật phẩm cần mượn từ danh sách bên trái.');
+      return;
+    }
+    if (dueDate < borrowDate) {
+      toast.error('Ngày hẹn trả không thể trước ngày mượn.');
       return;
     }
 
@@ -99,7 +160,11 @@ export default function OfficeBorrowPage() {
           requester_phone: requesterPhone,
           borrow_date: borrowDate,
           due_date: dueDate,
-          items: chosenItems,
+          items: chosenItems.map(({ item_id, item_name, quantity }) => ({
+            item_id,
+            item_name,
+            quantity,
+          })),
         }),
       });
       const json = await res.json();
@@ -120,14 +185,14 @@ export default function OfficeBorrowPage() {
 
   if (forbidden) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+      <div className={styles.page}>
         <Header title="MƯỢN DỤNG CỤ VĂN PHÒNG ĐOÀN" />
         <main style={{ maxWidth: 720, margin: '3rem auto', padding: '0 1.25rem' }}>
-          <div style={{ background: '#fff', border: '1px solid #fecaca', borderRadius: 16, padding: '2rem', textAlign: 'center' }}>
-            <AlertTriangleIcon size={36} color="#dc2626" />
-            <h2 style={{ marginTop: '0.75rem', color: '#0f172a' }}>Chỉ dành cho tài khoản Đơn vị (LCĐ / CLB / Đội)</h2>
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '2rem', textAlign: 'center' }}>
+            <AlertTriangleIcon size={36} color="#f59e0b" />
+            <h2 style={{ marginTop: '0.75rem', fontSize: '1.2rem' }}>Chức năng dành cho Đơn vị trực thuộc</h2>
             <p style={{ color: '#64748b', fontSize: '0.92rem' }}>
-              Vui lòng đăng nhập bằng tài khoản Liên Chi Đoàn hoặc CLB/Đội trực thuộc để tạo đơn mượn vật phẩm từ Văn phòng Đoàn.
+              Vui lòng đăng nhập bằng tài khoản Liên Chi Đoàn (LCĐ), Câu lạc bộ / Đội / Nhóm hoặc Ban tổ chức để gửi đơn mượn vật phẩm tại Văn phòng Đoàn.
             </p>
           </div>
         </main>
@@ -136,159 +201,309 @@ export default function OfficeBorrowPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div className={styles.page}>
       <Header title="MƯỢN DỤNG CỤ VĂN PHÒNG ĐOÀN" />
-      <main style={{ maxWidth: 1120, margin: '0 auto', padding: '1.5rem 1.25rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <main className={styles.main}>
         {/* Hero */}
-        <section
-          style={{
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-            borderRadius: 18,
-            padding: '1.4rem 1.6rem',
-            color: '#fff',
-          }}
-        >
-          <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bfdbfe' }}>
+        <section className={styles.hero}>
+          <div className={styles.heroEyebrow}>
             Văn phòng Đoàn • {unit?.unit_name || 'Đơn vị trực thuộc'}
           </div>
-          <h1 style={{ margin: '0.25rem 0', fontSize: '1.45rem', fontWeight: 800 }}>
-            Tạo Đơn Mượn Vật Phẩm &amp; Dụng Cụ
-          </h1>
-          <p style={{ margin: 0, fontSize: '0.86rem', color: '#dbeafe' }}>
-            Sau khi trả vật phẩm, Admin Văn phòng Đoàn sẽ xác nhận trên hệ thống. Lưu ý: <strong>Trả trễ từ 1 ngày trở lên sẽ tự động bị đánh dấu CẤM MƯỢN</strong>.
+          <h1 className={styles.heroTitle}>Mượn Vật Phẩm &amp; Dụng Cụ</h1>
+          <p className={styles.heroSub}>
+            Chọn vật phẩm từ kho bên trái, kiểm tra phiếu mượn bên phải và gửi đơn. Lưu ý:{' '}
+            <strong>Trả trễ từ 1 ngày trở lên sẽ tự động bị CẤM MƯỢN</strong>.
           </p>
         </section>
 
         {/* Cảnh báo cấm mượn */}
         {activeBan && (
-          <div
-            style={{
-              background: '#fef2f2',
-              border: '1.5px solid #ef4444',
-              borderRadius: 14,
-              padding: '1rem 1.2rem',
-              color: '#991b1b',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '0.75rem',
-            }}
-          >
+          <div className={styles.banBanner}>
             <AlertTriangleIcon size={22} color="#dc2626" />
             <div>
-              <div style={{ fontWeight: 800, fontSize: '0.96rem' }}>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>
                 Đơn vị đang bị CẤM MƯỢN dụng cụ đến ngày {fmtDateVN(activeBan.banned_until)}
               </div>
-              <div style={{ fontSize: '0.85rem', marginTop: 4 }}>
+              <div style={{ fontSize: '0.84rem', marginTop: 4 }}>
                 Lý do: {activeBan.reason}. Vui lòng liên hệ trực tiếp Văn phòng Đoàn để giải quyết.
               </div>
             </div>
           </div>
         )}
 
-        {/* Form tạo đơn mượn */}
-        <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem' }}>
-          <h2 style={{ margin: '0 0 1rem', fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <BuildingIcon size={18} color="#1d4ed8" /> Chọn vật phẩm &amp; thông tin mượn
-          </h2>
+        {/* Bố cục 2 cột: Trái = Kho vật phẩm, Phải = Phiếu mượn */}
+        <div className={styles.borrowGrid}>
+          {/* CỘT TRÁI: KHO VẬT PHẨM */}
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>
+                <BuildingIcon size={18} color="#1d4ed8" />
+                <span>Kho vật phẩm Văn phòng Đoàn</span>
+              </h2>
+              <span className={styles.countPill}>
+                {filteredItems.length}/{items.length} món
+              </span>
+            </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
-              {items.map((it) => {
-                const qty = selectedQty[it.id] || 0;
-                return (
-                  <div
-                    key={it.id}
-                    style={{
-                      border: qty > 0 ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
-                      background: qty > 0 ? '#eff6ff' : '#f8fafc',
-                      borderRadius: 12,
-                      padding: '0.8rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      gap: '0.5rem',
-                    }}
+            <div className={styles.filterBar}>
+              <div className={styles.searchWrap}>
+                <span className={styles.searchIcon}>
+                  <SearchIcon size={15} />
+                </span>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm nhanh vật phẩm (VD: loa, micro, áo dài, standee...)"
+                  className={styles.searchInput}
+                />
+              </div>
+
+              {categories.length > 1 && (
+                <div className={styles.chipRow}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('ALL')}
+                    className={`${styles.chip} ${selectedCategory === 'ALL' ? styles.chipActive : ''}`}
                   >
-                    <div>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{it.category}</div>
-                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', marginTop: 2 }}>{it.name}</div>
-                      <div style={{ fontSize: '0.77rem', color: '#475569', marginTop: 2 }}>
-                        Còn sẵn: <strong>{it.available_qty}/{it.total_qty}</strong> {it.unit}
+                    Tất cả
+                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`${styles.chip} ${selectedCategory === cat ? styles.chipActive : ''}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {loading ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', fontSize: '0.88rem' }}>
+                Đang tải danh sách kho...
+              </div>
+            ) : filteredItems.length === 0 ? (
+              <div style={{ padding: '1.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.86rem', background: '#f8fafc', borderRadius: 10 }}>
+                Không tìm thấy vật phẩm phù hợp.
+              </div>
+            ) : (
+              <div className={styles.itemList}>
+                {filteredItems.map((it) => {
+                  const qty = selectedQty[it.id] || 0;
+                  const outOfStock = (it.available_qty || 0) <= 0;
+                  const disabled = Boolean(activeBan) || outOfStock;
+
+                  return (
+                    <div
+                      key={it.id}
+                      className={`${styles.itemRow} ${qty > 0 ? styles.itemRowSelected : ''} ${outOfStock ? styles.itemRowOut : ''}`}
+                    >
+                      <div className={styles.itemInfo}>
+                        <div className={styles.itemNameRow}>
+                          <span className={styles.itemName}>{it.name}</span>
+                          {it.category && <span className={styles.itemCat}>{it.category}</span>}
+                        </div>
+                        <div className={styles.itemMeta}>
+                          {outOfStock ? (
+                            <span className={styles.stockLow}>Hết hàng (0/{it.total_qty} {it.unit})</span>
+                          ) : (
+                            <>
+                              Còn sẵn: <strong>{it.available_qty}/{it.total_qty}</strong> {it.unit}
+                              {it.condition_note ? ` • ${it.condition_note}` : ''}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={styles.stepper}>
+                        <button
+                          type="button"
+                          className={styles.stepperBtn}
+                          disabled={disabled || qty <= 0}
+                          onClick={() => adjustQty(it.id, it.available_qty, -1)}
+                          aria-label={`Giảm số lượng ${it.name}`}
+                        >
+                          −
+                        </button>
+                        <span className={styles.stepperVal}>{qty}</span>
+                        <button
+                          type="button"
+                          className={styles.stepperBtn}
+                          disabled={disabled || qty >= it.available_qty}
+                          onClick={() => adjustQty(it.id, it.available_qty, 1)}
+                          aria-label={`Tăng số lượng ${it.name}`}
+                        >
+                          +
+                        </button>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>SL mượn:</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={it.available_qty}
-                        value={qty}
-                        disabled={Boolean(activeBan) || it.available_qty <= 0}
-                        onChange={(e) =>
-                          setSelectedQty((prev) => ({
-                            ...prev,
-                            [it.id]: Math.max(0, Math.min(it.available_qty, Number(e.target.value) || 0)),
-                          }))
-                        }
-                        style={{ width: 68, height: 32, padding: '0 0.5rem', borderRadius: 7, border: '1px solid #cbd5e1', fontWeight: 700, background: '#fff' }}
-                      />
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* CỘT PHẢI: PHIẾU MƯỢN STICKY */}
+          <section className={`${styles.card} ${styles.stickyCard}`}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Phiếu mượn vật phẩm</h2>
+              {chosenItems.length > 0 && (
+                <span className={styles.countPill}>
+                  {chosenItems.length} loại • {totalSelectedUnits} món
+                </span>
+              )}
+            </div>
+
+            {/* Tóm tắt danh sách đã chọn */}
+            <div className={styles.selectedBox}>
+              <div className={styles.selectedHeader}>
+                <span className={styles.selectedLabel}>Vật phẩm đã chọn</span>
+                {chosenItems.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.clearBtn}
+                    onClick={() => setSelectedQty({})}
+                  >
+                    Xóa tất cả
+                  </button>
+                )}
+              </div>
+
+              {chosenItems.length === 0 ? (
+                <div className={styles.emptyCart}>
+                  Chưa chọn vật phẩm nào. Bấm dấu <strong>+</strong> ở kho bên trái để thêm.
+                </div>
+              ) : (
+                <div className={styles.selectedList}>
+                  {chosenItems.map((it) => (
+                    <div key={it.item_id} className={styles.selectedItem}>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                        {it.item_name}{' '}
+                        <strong style={{ color: '#1d4ed8' }}>
+                          (x{it.quantity} {it.unit})
+                        </strong>
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.removeChipBtn}
+                        onClick={() => adjustQty(it.item_id, 0, -it.quantity)}
+                        title="Bỏ vật phẩm này"
+                      >
+                        ×
+                      </button>
                     </div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.8rem' }}>
+            <form onSubmit={handleSubmit} className={styles.formStack}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Mục đích / Tên sự kiện *</label>
-                <input type="text" required value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="VD: Hội thảo khoa CNTT" style={{ width: '100%', height: 38, padding: '0 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1' }} />
+                <label className={styles.fieldLabel}>Mục đích / Tên sự kiện *</label>
+                <input
+                  type="text"
+                  required
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
+                  placeholder="VD: Hội thảo khoa CNTT"
+                  className={styles.fieldInput}
+                />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Người đại diện nhận đồ *</label>
-                <input type="text" required value={requesterName} onChange={(e) => setRequesterName(e.target.value)} placeholder="Họ tên sinh viên phụ trách" style={{ width: '100%', height: 38, padding: '0 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>SĐT / Zalo liên hệ *</label>
-                <input type="text" required value={requesterPhone} onChange={(e) => setRequesterPhone(e.target.value)} placeholder="09xxxxxxxx" style={{ width: '100%', height: 38, padding: '0 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Ngày mượn *</label>
-                <input type="date" required value={borrowDate} onChange={(e) => setBorrowDate(e.target.value)} style={{ width: '100%', height: 38, padding: '0 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Ngày hẹn trả *</label>
-                <input type="date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ width: '100%', height: 38, padding: '0 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1' }} />
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div className={styles.twoCol}>
+                <div>
+                  <label className={styles.fieldLabel}>Người đại diện nhận đồ *</label>
+                  <input
+                    type="text"
+                    required
+                    value={requesterName}
+                    onChange={(e) => setRequesterName(e.target.value)}
+                    placeholder="Họ tên SV phụ trách"
+                    className={styles.fieldInput}
+                  />
+                </div>
+                <div>
+                  <label className={styles.fieldLabel}>SĐT / Zalo liên hệ *</label>
+                  <input
+                    type="text"
+                    required
+                    value={requesterPhone}
+                    onChange={(e) => setRequesterPhone(e.target.value)}
+                    placeholder="09xxxxxxxx"
+                    className={styles.fieldInput}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.twoCol}>
+                <div>
+                  <label className={styles.fieldLabel}>Ngày mượn *</label>
+                  <input
+                    type="date"
+                    required
+                    value={borrowDate}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setBorrowDate(next);
+                      if (dueDate < next) setDueDate(next);
+                    }}
+                    className={styles.fieldInput}
+                  />
+                </div>
+                <div>
+                  <label className={styles.fieldLabel}>Ngày hẹn trả *</label>
+                  <input
+                    type="date"
+                    required
+                    min={borrowDate}
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className={styles.fieldInput}
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
-                disabled={submitting || Boolean(activeBan)}
-                style={{
-                  padding: '0.62rem 1.35rem',
-                  borderRadius: 10,
-                  border: 'none',
-                  background: activeBan ? '#94a3b8' : '#1d4ed8',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  cursor: activeBan ? 'not-allowed' : 'pointer',
-                }}
+                disabled={submitting || Boolean(activeBan) || chosenItems.length === 0}
+                className={styles.submitBtn}
               >
-                {submitting ? 'Đang gửi đơn...' : 'Gửi đơn mượn vật phẩm'}
+                {submitting
+                  ? 'Đang gửi đơn...'
+                  : chosenItems.length > 0
+                  ? `Gửi đơn mượn (${chosenItems.length} loại • ${totalSelectedUnits} món)`
+                  : 'Chọn ít nhất 1 vật phẩm để gửi đơn'}
               </button>
-            </div>
-          </form>
-        </section>
+            </form>
+          </section>
+        </div>
 
         {/* Danh sách đơn mượn của đơn vị */}
-        <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 800, color: '#0f172a' }}>
-              Đơn mượn dụng cụ của đơn vị ({requests.length})
+        <section className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>
+              Lịch sử đơn mượn của đơn vị ({requests.length})
             </h2>
-            <button type="button" onClick={loadData} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '0.38rem 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
+            <button
+              type="button"
+              onClick={loadData}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '0.38rem 0.75rem',
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                background: '#f8fafc',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
               <RefreshIcon size={14} /> Làm mới
             </button>
           </div>

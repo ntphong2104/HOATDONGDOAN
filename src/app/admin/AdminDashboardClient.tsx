@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import EventCard from '@/components/EventCard';
 import LcdManagementSection from './LcdManagementSection';
 import RankingBoard from '@/components/RankingBoard';
+import { getEffectiveEventStatus } from '@/lib/utils/event-logic';
 import {
   CalendarIcon,
   ScanCameraIcon,
@@ -14,6 +15,7 @@ import {
   UsersIcon,
   ShieldCheckIcon,
   BadgeMedalIcon,
+  SearchIcon,
 } from '@/components/icons';
 import type { Event } from '@/lib/types';
 import type { LcdCode } from '@/lib/utils/lcd';
@@ -35,6 +37,8 @@ export default function AdminDashboardClient({
 }: AdminDashboardClientProps) {
   const [activeTab, setActiveTab] = useState<'events' | 'lcd_members' | 'lcd_delegates' | 'ranking'>('events');
   const [events, setEvents] = useState<Event[]>(initialEvents);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'closed'>('all');
+  const [eventSearch, setEventSearch] = useState('');
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [eventName, setEventName] = useState('');
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
@@ -44,6 +48,28 @@ export default function AdminDashboardClient({
 
   const canManageLcd = lcdScope?.role === 'lcd' || lcdScope?.role === 'all';
   const defaultLcdCode: LcdCode = lcdScope?.lcdCode || 'LCD_CNTT';
+
+  const { activeCount, closedCount, filteredEvents } = useMemo(() => {
+    let active = 0;
+    let closed = 0;
+    const q = eventSearch.trim().toLowerCase();
+
+    for (const ev of events) {
+      const eff = getEffectiveEventStatus(ev);
+      if (eff === 'active') active++;
+      else closed++;
+    }
+
+    const filtered = events.filter((ev) => {
+      const eff = getEffectiveEventStatus(ev);
+      if (statusFilter === 'active' && eff !== 'active') return false;
+      if (statusFilter === 'closed' && eff !== 'closed') return false;
+      if (q && !(ev.event_name || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+
+    return { activeCount: active, closedCount: closed, filteredEvents: filtered };
+  }, [events, statusFilter, eventSearch]);
 
   const fetchEvents = async () => {
     try {
@@ -93,57 +119,63 @@ export default function AdminDashboardClient({
 
   return (
     <>
-      <div className={styles.tabs}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('events')}
-          className={activeTab === 'events' ? styles.tabActive : styles.tabInactive}
-        >
-          <CalendarIcon size={16} />
-          <span>Sự kiện phụ trách</span>
-        </button>
+      <div className={styles.toolbarRow}>
+        <div className={styles.tabs}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('events')}
+            className={activeTab === 'events' ? styles.tabActive : styles.tabInactive}
+          >
+            <CalendarIcon size={15} />
+            <span>Sự kiện phụ trách</span>
+          </button>
 
-        {canManageLcd && (
-          <>
-            <button
-              type="button"
-              onClick={() => setActiveTab('lcd_members')}
-              className={activeTab === 'lcd_members' ? styles.tabActive : styles.tabInactive}
-            >
-              <UsersIcon size={16} />
-              <span>Đoàn viên &amp; Chi đoàn</span>
-            </button>
+          {canManageLcd && (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab('lcd_members')}
+                className={activeTab === 'lcd_members' ? styles.tabActive : styles.tabInactive}
+              >
+                <UsersIcon size={15} />
+                <span>Đoàn viên &amp; Chi đoàn</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('lcd_delegates')}
-              className={activeTab === 'lcd_delegates' ? styles.tabActive : styles.tabInactive}
-            >
-              <ShieldCheckIcon size={16} />
-              <span>BCH Chi đoàn</span>
-            </button>
-          </>
-        )}
+              <button
+                type="button"
+                onClick={() => setActiveTab('lcd_delegates')}
+                className={activeTab === 'lcd_delegates' ? styles.tabActive : styles.tabInactive}
+              >
+                <ShieldCheckIcon size={15} />
+                <span>BCH Chi đoàn</span>
+              </button>
+            </>
+          )}
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('ranking')}
-          className={activeTab === 'ranking' ? styles.tabActive : styles.tabInactive}
-        >
-          <BadgeMedalIcon size={16} />
-          <span>Bảng xếp hạng</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ranking')}
+            className={activeTab === 'ranking' ? styles.tabActive : styles.tabInactive}
+          >
+            <BadgeMedalIcon size={15} />
+            <span>Bảng xếp hạng</span>
+          </button>
+        </div>
 
-        <Link href="/office/borrow" className={styles.tabInactive} style={{ color: '#0369a1', border: '1px solid #bae6fd', background: '#f0f9ff' }}>
-          <FileTextIcon size={16} /> Mượn dụng cụ VPĐ
-        </Link>
-        <Link href="/admin/proposals" className={styles.tabInactive} style={{ color: '#c2410c', border: '1px solid #fed7aa', background: '#fff7ed' }}>
-          <FileTextIcon size={16} /> Kế hoạch trình duyệt
-        </Link>
-        <Link href="/scanner" className={styles.tabInactive}>
-          <ScanCameraIcon size={16} />
-          Máy quét QR
-        </Link>
+        <div className={styles.quickActions}>
+          <Link href="/admin/proposals" className={styles.quickLink}>
+            <FileTextIcon size={15} />
+            <span>Kế hoạch trình duyệt</span>
+          </Link>
+          <Link href="/office/borrow" className={styles.quickLink}>
+            <FileTextIcon size={15} />
+            <span>Mượn dụng cụ</span>
+          </Link>
+          <Link href="/scanner" className={styles.quickLink}>
+            <ScanCameraIcon size={15} />
+            <span>Máy quét QR</span>
+          </Link>
+        </div>
       </div>
 
       {activeTab === 'ranking' ? (
@@ -244,14 +276,60 @@ export default function AdminDashboardClient({
         </div>
       )}
 
+      {/* Bộ lọc trạng thái & tìm kiếm nhanh */}
+      {events.length > 0 && (
+        <div className={styles.filterRow}>
+          <div className={styles.filterPills}>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`${styles.filterPill} ${statusFilter === 'all' ? styles.filterPillActive : ''}`}
+            >
+              Tất cả ({events.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('active')}
+              className={`${styles.filterPill} ${statusFilter === 'active' ? styles.filterPillActive : ''}`}
+            >
+              Đang mở ({activeCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('closed')}
+              className={`${styles.filterPill} ${statusFilter === 'closed' ? styles.filterPillActive : ''}`}
+            >
+              Đã đóng ({closedCount})
+            </button>
+          </div>
+
+          <div className={styles.searchWrap}>
+            <span className={styles.searchIcon}>
+              <SearchIcon size={15} />
+            </span>
+            <input
+              type="text"
+              value={eventSearch}
+              onChange={(e) => setEventSearch(e.target.value)}
+              placeholder="Tìm tên sự kiện..."
+              className={styles.searchInput}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Grid danh sách sự kiện */}
       <div className={styles.eventGrid}>
         {!events || events.length === 0 ? (
           <div className={styles.empty}>
             Bạn chưa có sự kiện nào. Hãy bấm <strong>&ldquo;Trình Kế Hoạch Sự Kiện Mới&rdquo;</strong> ở phía trên để gửi yêu cầu tới Super Admin Đoàn trường!
           </div>
+        ) : filteredEvents.length === 0 ? (
+          <div className={styles.empty}>
+            Không tìm thấy sự kiện nào khớp với bộ lọc hiện tại.
+          </div>
         ) : (
-          events.map((event) => {
+          filteredEvents.map((event) => {
             const isApproved = event.status === 'active' || event.status === 'closed';
             if (isApproved) {
               return (
