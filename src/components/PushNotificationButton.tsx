@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import styles from './PushNotificationButton.module.css';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -239,21 +240,7 @@ export default function PushNotificationButton() {
       </button>
 
       {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 10px)',
-            right: 0,
-            width: 'min(320px, calc(100vw - 24px))',
-            background: '#ffffff',
-            color: '#0f172a',
-            borderRadius: 14,
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 12px 32px rgba(15, 23, 42, 0.18)',
-            padding: '1rem',
-            zIndex: 1200,
-          }}
-        >
+        <div className={styles.popover}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>Thông báo đẩy</strong>
             <span
