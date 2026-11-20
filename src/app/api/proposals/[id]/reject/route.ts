@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
+import { notifyUsersByEmail } from '@/lib/utils/web-push';
 import type { ProposalStage } from '@/lib/types';
 
 export async function POST(
@@ -83,6 +84,13 @@ export async function POST(
   if (updateErr) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
   }
+
+  void notifyUsersByEmail(supabase, [proposal.created_by], {
+    title: '❌ Kế hoạch bị từ chối',
+    body: `"${proposal.title}" bị từ chối tại ${getStageLabel(currentStage)}. Lý do: ${reason}`,
+    url: `/admin/proposals/${proposal.id}`,
+    tag: `proposal-rejected-${proposal.id}`,
+  }).catch(() => {});
 
   return NextResponse.json({
     success: true,

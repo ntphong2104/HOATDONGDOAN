@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { saveRegistrationExtra, getEventMeta } from '@/lib/constants/event-meta-store';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { notifyUsersByMssv } from '@/lib/utils/web-push';
 
 export async function POST(
   req: Request,
@@ -144,6 +145,21 @@ export async function POST(
         : review_status === 'rejected'
         ? 'Từ chối'
         : 'Chờ duyệt';
+
+    if (review_status === 'accepted' || review_status === 'rejected') {
+      void notifyUsersByMssv(supabase, targetMssvs, {
+        title:
+          review_status === 'accepted'
+            ? '🎉 Chúc mừng bạn đã trúng tuyển CTV!'
+            : '📋 Kết quả ứng tuyển CTV',
+        body:
+          review_status === 'accepted'
+            ? `Đơn đăng ký CTV sự kiện "${event.event_name || 'sự kiện'}" của bạn đã được Ban tổ chức phê duyệt.`
+            : `Đơn đăng ký CTV sự kiện "${event.event_name || 'sự kiện'}" chưa phù hợp đợt này. Hẹn bạn ở chương trình tiếp theo!`,
+        url: '/?view=student&tab=registered',
+        tag: `ctv-review-${resolvedParams.id}`,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

@@ -24,6 +24,7 @@ import {
 } from '@/components/icons';
 import DualLogos from '@/components/DualLogos';
 import UserMenuDropdown from '@/components/UserMenuDropdown';
+import PushNotificationButton from '@/components/PushNotificationButton';
 import type { SessionUser } from '@/lib/types';
 import styles from './Header.module.css';
 
@@ -274,6 +275,7 @@ export default function Header({
         </div>
 
         <div className={styles.right}>
+          {effectiveUser && <PushNotificationButton />}
           <UserMenuDropdown user={effectiveUser} userName={userName} avatarUrl={avatarUrl} onLogout={handleLogout} />
         </div>
       </header>

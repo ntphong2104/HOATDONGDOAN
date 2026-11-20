@@ -5,6 +5,7 @@ import { getNextStage, getStageLabel } from '@/lib/utils/proposal-logic';
 import { getStoredProposalById, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
 import { saveEventMeta, getProposalMeta, saveProposalMeta } from '@/lib/constants/event-meta-store';
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
+import { notifyUsersByEmail, notifyStudentsByScope } from '@/lib/utils/web-push';
 import type { ProposalStage, EventProposal } from '@/lib/types';
 
 export async function POST(
@@ -308,6 +309,31 @@ export async function POST(
       updated_at: new Date().toISOString(),
     });
 
+    // Non-blocking Web Push notifications to unit organizer & target students
+    void (async () => {
+      try {
+        const unitEmails = [proposal.created_by];
+        if (proposal.organization_unit) {
+          const matched = OFFICIAL_UNITS.find((u) => u.name === proposal.organization_unit);
+          if (matched?.email) unitEmails.push(matched.email);
+        }
+        await notifyUsersByEmail(supabase, unitEmails, {
+          title: '🎉 Kế hoạch đã được phê duyệt!',
+          body: `Chương trình "${proposal.title}" đã được duyệt chung cuộc và mở sự kiện trên hệ thống.`,
+          url: `/admin/events/${newEventId}`,
+          tag: `proposal-approved-${proposal.id}`,
+        });
+        const propMetaForPush = await getProposalMeta(supabase, proposal.id);
+        const allowedLcds = Array.isArray(propMetaForPush?.allowed_lcds) ? propMetaForPush.allowed_lcds : [];
+        await notifyStudentsByScope(supabase, allowedLcds, {
+          title: `📅 Sự kiện mới: ${proposal.title}`,
+          body: `Chương trình do ${proposal.organization_unit || 'Đoàn Học Viện'} tổ chức vừa mở trên hệ thống. Bấm để xem & đăng ký!`,
+          url: `/events/${newEventId}/register`,
+          tag: `event-new-${newEventId}`,
+        });
+      } catch {}
+    })();
+
     return NextResponse.json({
       success: true,
       data: updatedProposal,
@@ -351,6 +377,14 @@ export async function POST(
     current_stage: nextStage,
     updated_at: new Date().toISOString(),
   });
+
+  // Notify organizer of stage advancement (non-blocking)
+  void notifyUsersByEmail(supabase, [proposal.created_by], {
+    title: '✅ Cập nhật tiến trình duyệt kế hoạch',
+    body: `"${proposal.title}" đã qua ${getStageLabel(currentStage)}, chuyển sang ${getStageLabel(nextStage)}.`,
+    url: `/admin/proposals/${proposal.id}`,
+    tag: `proposal-stage-${proposal.id}`,
+  }).catch(() => {});
 
   return NextResponse.json({
     success: true,

@@ -14,6 +14,7 @@ import DataTable from '@/components/DataTable';
 import RankingBoard from '@/components/RankingBoard';
 import SemesterManagerSection from '@/components/SemesterManagerSection';
 import GraduatedCohortsManager from '@/components/GraduatedCohortsManager';
+import PushBroadcastManager from '@/components/PushBroadcastManager';
 import {
   UsersIcon,
   CalendarIcon,
@@ -6081,6 +6082,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             <section className={styles.section}>
               <SemesterManagerSection />
               <GraduatedCohortsManager />
+              <PushBroadcastManager />
             </section>
 
             <section className={styles.section}>

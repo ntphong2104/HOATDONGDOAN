@@ -10,6 +10,8 @@ import {
   computeBorrowLateDays,
   getOfficeDutyConfig,
 } from '@/lib/utils/office-duty';
+import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
+import { notifyUsersByEmail } from '@/lib/utils/web-push';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -194,6 +196,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: itemErr.message }, { status: 500 });
     }
 
+    // Notify Office Admins & Super Admins about new borrow request (non-blocking)
+    void (async () => {
+      try {
+        const [roles, { data: supers }] = await Promise.all([
+          getStoredOfficerRoles(supabase),
+          supabase.from('super_admins').select('email'),
+        ]);
+        const adminEmails = [
+          ...(roles || []).filter((r: any) => r.tier === 'office_admin').map((r: any) => r.email),
+          ...(supers || []).map((s: any) => s.email),
+        ];
+        await notifyUsersByEmail(supabase, adminEmails, {
+          title: '📦 Đơn mượn dụng cụ VPĐ mới',
+          body: `${unit.unit_name} vừa gửi đơn mượn (${validItems.length} loại vật phẩm) cho "${purpose}".`,
+          url: '/office/admin',
+          tag: `office-borrow-new-${created.id}`,
+        });
+      } catch {}
+    })();
+
     return NextResponse.json({
       success: true,
       message: `Đã gửi đơn mượn dụng cụ cho ${unit.unit_name}. Vui lòng chờ Admin Văn phòng Đoàn phê duyệt.`,
@@ -273,6 +295,12 @@ export async function PATCH(req: Request) {
         })
         .eq('id', id);
       if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      void notifyUsersByEmail(supabase, [existing.requester_email], {
+        title: '✅ Đơn mượn dụng cụ đã được duyệt',
+        body: `Đơn mượn "${existing.purpose}" đã được Admin VPĐ phê duyệt. Vui lòng đến Văn phòng Đoàn nhận vật phẩm đúng lịch.`,
+        url: '/office/borrow',
+        tag: `office-borrow-${id}`,
+      }).catch(() => {});
       return NextResponse.json({ success: true, message: 'Đã duyệt đơn mượn dụng cụ.' });
     }
 
@@ -308,6 +336,12 @@ export async function PATCH(req: Request) {
         })
         .eq('id', id);
       if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      void notifyUsersByEmail(supabase, [existing.requester_email], {
+        title: '❌ Đơn mượn dụng cụ bị từ chối',
+        body: `Đơn mượn "${existing.purpose}" không được duyệt. Ghi chú: ${admin_note || 'Liên hệ Văn phòng Đoàn'}.`,
+        url: '/office/borrow',
+        tag: `office-borrow-${id}`,
+      }).catch(() => {});
       return NextResponse.json({ success: true, message: 'Đã từ chối đơn mượn.' });
     }
 
