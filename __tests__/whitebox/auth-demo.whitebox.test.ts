@@ -26,7 +26,8 @@ jest.spyOn(NextResponse, 'json').mockImplementation((...args: any[]) => {
   return resp;
 });
 
-import { POST, DELETE, DEMO_PROFILES } from '@/app/api/auth/demo/route';
+import { POST, DELETE } from '@/app/api/auth/demo/route';
+import { DEMO_PROFILES } from '@/lib/auth/demo-cookie';
 
 describe('Auth Demo API — POST login', () => {
   test('logs in as user tier → redirects to /', async () => {

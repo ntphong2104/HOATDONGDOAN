@@ -6,6 +6,7 @@ import { extractMSSV, isValidMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
+import { runWithConcurrency, QueueTimeoutError } from '@/lib/utils/concurrency-queue';
 import { getUserProfileExtraWithFallback, saveUserProfileExtraWithSync } from '@/lib/constants/user-profile-store';
 import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass, getMasterStudentByMssv } from '@/lib/utils/student-profile';
 import { checkCohortEligibility, describeCohortBlock } from '@/lib/utils/cohort';
@@ -220,6 +221,20 @@ function getRecruitmentWindow(rawEvent: any, meta: any): { isOpen: boolean; reas
 }
 
 export async function POST(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    return await runWithConcurrency('event_register', 35, () => handleRegisterPost(req, context), 20_000);
+  } catch (err: any) {
+    if (err instanceof QueueTimeoutError) {
+      return NextResponse.json({ success: false, error: err.message }, { status: 503 });
+    }
+    return NextResponse.json({ success: false, error: err?.message || 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
+  }
+}
+
+async function handleRegisterPost(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {

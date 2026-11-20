@@ -568,7 +568,7 @@ export async function PATCH(req: Request) {
           gender: gender || demoUser.gender || 'Nam',
           phone: phone !== undefined ? phone : demoUser.phone || '',
         };
-        const { signCookie } = await import('@/app/api/auth/demo/route');
+        const { signCookie } = await import('@/lib/auth/demo-cookie');
         cookieStore.set('demo_session', signCookie(JSON.stringify(updated)), {
           path: '/',
           httpOnly: true,

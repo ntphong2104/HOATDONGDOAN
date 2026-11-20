@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { runSerializedByKey } from '@/lib/utils/concurrency-queue';
 
 export interface DepartmentConfig {
   id: string;
@@ -359,37 +360,39 @@ export async function saveRegistrationExtra(
   mssv: string,
   extra: Partial<RegistrationExtra>
 ): Promise<RegistrationExtra> {
-  const currentEventRegs = await getRegistrationExtras(supabase, eventId);
-  const normalizedMssv = mssv.toUpperCase().trim();
-  const existing = currentEventRegs[normalizedMssv] || { event_id: eventId, mssv: normalizedMssv };
+  return runSerializedByKey(`event_regs_${eventId}`, async () => {
+    const currentEventRegs = await getRegistrationExtras(supabase, eventId);
+    const normalizedMssv = mssv.toUpperCase().trim();
+    const existing = currentEventRegs[normalizedMssv] || { event_id: eventId, mssv: normalizedMssv };
 
-  const updated: RegistrationExtra = {
-    ...existing,
-    ...extra,
-    event_id: eventId,
-    mssv: normalizedMssv,
-  };
+    const updated: RegistrationExtra = {
+      ...existing,
+      ...extra,
+      event_id: eventId,
+      mssv: normalizedMssv,
+    };
 
-  currentEventRegs[normalizedMssv] = updated;
-  inMemoryRegExtras[eventId] = currentEventRegs;
-  inMemoryRegExtrasExpiry[eventId] = Date.now() + REG_EXTRAS_CACHE_TTL_MS;
-  evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
+    currentEventRegs[normalizedMssv] = updated;
+    inMemoryRegExtras[eventId] = currentEventRegs;
+    inMemoryRegExtrasExpiry[eventId] = Date.now() + REG_EXTRAS_CACHE_TTL_MS;
+    evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
 
-  // Debounced non-blocking file write (never call fs.readFileSync on hot path)
-  scheduleSaveRegToFile(inMemoryRegExtras);
+    // Debounced non-blocking file write (never call fs.readFileSync on hot path)
+    scheduleSaveRegToFile(inMemoryRegExtras);
 
-  const regKey = `event_regs_${eventId}`;
-  if (supabase) {
-    try {
-      await supabase.from('system_settings').upsert({
-        key: regKey,
-        value: JSON.stringify(currentEventRegs),
-        updated_at: new Date().toISOString(),
-      });
-    } catch {}
-  }
+    const regKey = `event_regs_${eventId}`;
+    if (supabase) {
+      try {
+        await supabase.from('system_settings').upsert({
+          key: regKey,
+          value: JSON.stringify(currentEventRegs),
+          updated_at: new Date().toISOString(),
+        });
+      } catch {}
+    }
 
-  return updated;
+    return updated;
+  });
 }
 
 export async function saveRegistrationExtrasBulk(
@@ -397,37 +400,39 @@ export async function saveRegistrationExtrasBulk(
   eventId: string,
   extrasMap: Record<string, Partial<RegistrationExtra>>
 ): Promise<Record<string, RegistrationExtra>> {
-  const currentEventRegs = await getRegistrationExtras(supabase, eventId);
+  return runSerializedByKey(`event_regs_${eventId}`, async () => {
+    const currentEventRegs = await getRegistrationExtras(supabase, eventId);
 
-  for (const [mssv, extra] of Object.entries(extrasMap)) {
-    const normalizedMssv = mssv.toUpperCase().trim();
-    const existing = currentEventRegs[normalizedMssv] || { event_id: eventId, mssv: normalizedMssv };
-    currentEventRegs[normalizedMssv] = {
-      ...existing,
-      ...extra,
-      event_id: eventId,
-      mssv: normalizedMssv,
-    };
-  }
+    for (const [mssv, extra] of Object.entries(extrasMap)) {
+      const normalizedMssv = mssv.toUpperCase().trim();
+      const existing = currentEventRegs[normalizedMssv] || { event_id: eventId, mssv: normalizedMssv };
+      currentEventRegs[normalizedMssv] = {
+        ...existing,
+        ...extra,
+        event_id: eventId,
+        mssv: normalizedMssv,
+      };
+    }
 
-  inMemoryRegExtras[eventId] = currentEventRegs;
-  inMemoryRegExtrasExpiry[eventId] = Date.now() + REG_EXTRAS_CACHE_TTL_MS;
-  evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
+    inMemoryRegExtras[eventId] = currentEventRegs;
+    inMemoryRegExtrasExpiry[eventId] = Date.now() + REG_EXTRAS_CACHE_TTL_MS;
+    evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
 
-  scheduleSaveRegToFile(inMemoryRegExtras);
+    scheduleSaveRegToFile(inMemoryRegExtras);
 
-  const regKey = `event_regs_${eventId}`;
-  if (supabase) {
-    try {
-      await supabase.from('system_settings').upsert({
-        key: regKey,
-        value: JSON.stringify(currentEventRegs),
-        updated_at: new Date().toISOString(),
-      });
-    } catch {}
-  }
+    const regKey = `event_regs_${eventId}`;
+    if (supabase) {
+      try {
+        await supabase.from('system_settings').upsert({
+          key: regKey,
+          value: JSON.stringify(currentEventRegs),
+          updated_at: new Date().toISOString(),
+        });
+      } catch {}
+    }
 
-  return currentEventRegs;
+    return currentEventRegs;
+  });
 }
 
 export async function saveEventMeta(
@@ -620,24 +625,26 @@ export async function saveSessionCheckIn(supabase: any, checkIn: SessionCheckIn)
     }
   }
 
-  // Fallback: old JSON method
-  const current = await getSessionCheckIns(supabase, eventId);
-  const exists = current.some(
-    (c) => c.session_id === checkIn.session_id && c.mssv.toUpperCase() === checkIn.mssv.toUpperCase()
-  );
-  if (exists) return current;
+  // Fallback: old JSON method (serialized per event to prevent lost-update overwrites)
+  return runSerializedByKey(`event_session_checkins_${eventId}`, async () => {
+    const current = await getSessionCheckIns(supabase, eventId);
+    const exists = current.some(
+      (c) => c.session_id === checkIn.session_id && c.mssv.toUpperCase() === checkIn.mssv.toUpperCase()
+    );
+    if (exists) return current;
 
-  const updated = [checkIn, ...current];
-  const sessionKey = `event_session_checkins_${eventId}`;
-  try {
-    await supabase.from('system_settings').upsert({
-      key: sessionKey,
-      value: JSON.stringify(updated),
-      updated_at: new Date().toISOString(),
-    });
-  } catch {}
+    const updated = [checkIn, ...current];
+    const sessionKey = `event_session_checkins_${eventId}`;
+    try {
+      await supabase.from('system_settings').upsert({
+        key: sessionKey,
+        value: JSON.stringify(updated),
+        updated_at: new Date().toISOString(),
+      });
+    } catch {}
 
-  return updated;
+    return updated;
+  });
 }
 
 /**

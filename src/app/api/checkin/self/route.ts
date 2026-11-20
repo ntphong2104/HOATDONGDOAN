@@ -8,6 +8,7 @@ import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime 
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, type EventSession } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
+import { runWithConcurrency, QueueTimeoutError } from '@/lib/utils/concurrency-queue';
 
 // In-memory cache for event metadata during high-concurrency check-in spikes (TTL: 5 seconds, bounded)
 const MAX_SELF_CHECKIN_CACHE = 200;
@@ -17,6 +18,17 @@ const eventCheckinCache = new Map<string, { event: any; meta: any; expiresAt: nu
 let selfCheckinMaintenanceCache = { enabled: false, timestamp: 0 };
 
 export async function POST(req: Request) {
+  try {
+    return await runWithConcurrency('self_checkin', 35, () => handleSelfCheckinPost(req), 20_000);
+  } catch (err: any) {
+    if (err instanceof QueueTimeoutError) {
+      return NextResponse.json({ success: false, error: err.message }, { status: 503 });
+    }
+    return NextResponse.json({ success: false, error: err?.message || 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
+  }
+}
+
+async function handleSelfCheckinPost(req: Request) {
   try {
     const auth = await getAuthContext();
     const email = auth?.email || null;
