@@ -1,8 +1,33 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import styles from './PushNotificationButton.module.css';
+
+interface InboxNotification {
+  id: string;
+  title: string;
+  body: string;
+  url: string | null;
+  target_type: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+function formatRelativeTimeVN(iso: string): string {
+  const ts = new Date(iso).getTime();
+  if (isNaN(ts)) return '';
+  const diffSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (diffSec < 60) return 'Vừa xong';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} giờ trước`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay} ngày trước`;
+  return new Date(ts).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+}
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -26,6 +51,7 @@ function detectDeviceType(): 'ios_pwa' | 'android' | 'desktop' | 'unknown' {
 }
 
 export default function PushNotificationButton() {
+  const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [isIos, setIsIos] = useState(false);
@@ -36,7 +62,64 @@ export default function PushNotificationButton() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [notifications, setNotifications] = useState<InboxNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingInbox, setLoadingInbox] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  const loadInbox = useCallback(async () => {
+    try {
+      setLoadingInbox(true);
+      const res = await fetch('/api/notifications', { cache: 'no-store' });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setNotifications(Array.isArray(json.data.notifications) ? json.data.notifications : []);
+        setUnreadCount(Number(json.data.unread_count) || 0);
+      }
+    } catch {
+      // ignore silently
+    } finally {
+      setLoadingInbox(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInbox();
+  }, [loadInbox]);
+
+  const handleMarkRead = async (item: InboxNotification) => {
+    if (!item.is_read) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+      fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id }),
+      }).catch(() => {});
+    }
+    if (item.url && item.url.startsWith('/')) {
+      setOpen(false);
+      router.push(item.url);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
+    if (unreadIds.length === 0) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    try {
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: unreadIds }),
+      });
+    } catch {
+      // ignore
+    }
+  };
 
   const checkLocalSubscription = useCallback(async () => {
     if (typeof window === 'undefined') return;
@@ -199,8 +282,12 @@ export default function PushNotificationButton() {
       <button
         type="button"
         onClick={() => {
-          setOpen((v) => !v);
-          checkLocalSubscription();
+          const next = !open;
+          setOpen(next);
+          if (next) {
+            checkLocalSubscription();
+            loadInbox();
+          }
         }}
         title={subscribedHere ? 'Thông báo đẩy đang bật' : 'Bật thông báo đẩy'}
         aria-label="Cài đặt thông báo đẩy"
@@ -223,7 +310,11 @@ export default function PushNotificationButton() {
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
-        {subscribedHere && (
+        {unreadCount > 0 ? (
+          <span className={styles.bellBadge}>
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        ) : subscribedHere ? (
           <span
             style={{
               position: 'absolute',
@@ -236,117 +327,150 @@ export default function PushNotificationButton() {
               border: '1.5px solid #1e3a8a',
             }}
           />
-        )}
+        ) : null}
       </button>
 
       {open && (
         <div className={styles.popover}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>Thông báo đẩy</strong>
-            <span
-              style={{
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                padding: '2px 8px',
-                borderRadius: 999,
-                background: subscribedHere ? '#dcfce7' : '#f1f5f9',
-                color: subscribedHere ? '#15803d' : '#64748b',
-              }}
-            >
-              {subscribedHere ? 'Đang bật' : 'Đang tắt'}
+          {/* 1. In-App Notification Inbox Header */}
+          <div className={styles.popoverHeader}>
+            <span className={styles.popoverTitle}>
+              <span>Thông báo</span>
+              {unreadCount > 0 && (
+                <span className={styles.unreadPill}>{unreadCount} mới</span>
+              )}
             </span>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                className={styles.markAllBtn}
+                onClick={handleMarkAllRead}
+              >
+                Đánh dấu đã đọc
+              </button>
+            )}
           </div>
 
-          {isIos && !isStandalone ? (
-            <div style={{ fontSize: '0.82rem', color: '#334155', lineHeight: 1.5 }}>
-              <p style={{ margin: '0 0 0.5rem' }}>
-                Để nhận thông báo trên <strong>iPhone / iPad</strong>, Apple yêu cầu mở ứng dụng từ Màn hình chính:
-              </p>
-              <ol style={{ margin: 0, paddingLeft: '1.15rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <li>
-                  Bấm nút <strong>Chia sẻ (Share)</strong> ở Safari → chọn <strong>Add to Home Screen</strong>.
-                </li>
-                <li>
-                  Mở biểu tượng <strong>Hoạt Động Đoàn</strong> ngoài Màn hình chính rồi bấm lại chuông này để bật thông báo!
-                </li>
-              </ol>
+          {/* 2. Recent Notifications List */}
+          <div className={styles.notifList}>
+            {loadingInbox && notifications.length === 0 ? (
+              <div className={styles.emptyInbox}>Đang tải thông báo...</div>
+            ) : notifications.length === 0 ? (
+              <div className={styles.emptyInbox}>
+                Chưa có thông báo mới nào gần đây.
+              </div>
+            ) : (
+              notifications.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`${styles.notifItem} ${!item.is_read ? styles.notifItemUnread : ''}`}
+                  onClick={() => handleMarkRead(item)}
+                >
+                  <span className={!item.is_read ? styles.unreadDot : styles.readDot} />
+                  <div className={styles.notifContent}>
+                    <span className={styles.notifTitle}>{item.title}</span>
+                    {item.body && <span className={styles.notifBody}>{item.body}</span>}
+                    <span className={styles.notifTime}>
+                      {formatRelativeTimeVN(item.created_at)}
+                    </span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+
+          {/* 3. Compact Web Push Toggle Footer */}
+          <div className={styles.pushFooter}>
+            <div className={styles.pushFooterRow}>
+              <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>
+                Thông báo đẩy thiết bị
+              </span>
+              <span
+                style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  padding: '2px 7px',
+                  borderRadius: 999,
+                  background: subscribedHere ? '#dcfce7' : '#e2e8f0',
+                  color: subscribedHere ? '#15803d' : '#475569',
+                }}
+              >
+                {subscribedHere ? 'Đang bật' : 'Đang tắt'}
+              </span>
             </div>
-          ) : !supported ? (
-            <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b', lineHeight: 1.5 }}>
-              Trình duyệt hiện tại chưa hỗ trợ Web Push. Hãy mở bằng <strong>Chrome</strong> (Android / Máy tính) hoặc cài ra <strong>Màn hình chính</strong> (iPhone iOS 16.4+).
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.45 }}>
-                Nhận thông báo ngay khi có sự kiện mới, kết quả duyệt CTV, phê duyệt kế hoạch hoặc đơn mượn dụng cụ VPĐ.
-              </p>
 
-              {permission === 'denied' && (
-                <div style={{ fontSize: '0.78rem', color: '#b91c1c', background: '#fef2f2', padding: '0.5rem 0.65rem', borderRadius: 8 }}>
-                  Quyền thông báo đang bị chặn trên trình duyệt. Hãy bật lại trong Cài đặt ứng dụng / trình duyệt.
-                </div>
-              )}
-
-              {subscribedHere ? (
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    disabled={testing}
-                    onClick={handleSendTest}
-                    style={{
-                      flex: 1,
-                      padding: '0.5rem 0.7rem',
-                      borderRadius: 9,
-                      border: '1px solid #bfdbfe',
-                      background: '#eff6ff',
-                      color: '#1d4ed8',
-                      fontWeight: 700,
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {testing ? 'Đang gửi...' : 'Gửi thử thông báo'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={handleDisable}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: 9,
-                      border: '1px solid #fecaca',
-                      background: '#fef2f2',
-                      color: '#b91c1c',
-                      fontWeight: 700,
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Tắt
-                  </button>
-                </div>
-              ) : (
+            {isIos && !isStandalone ? (
+              <div style={{ fontSize: '0.74rem', color: '#475569', lineHeight: 1.4 }}>
+                Trên iPhone/iPad: bấm <strong>Chia sẻ → Add to Home Screen</strong> rồi mở app ngoài Màn hình chính để bật thông báo đẩy.
+              </div>
+            ) : !supported ? (
+              <div style={{ fontSize: '0.74rem', color: '#64748b', lineHeight: 1.4 }}>
+                Trình duyệt chưa hỗ trợ đẩy nền — bạn vẫn xem đầy đủ thông báo ở danh sách phía trên.
+              </div>
+            ) : permission === 'denied' ? (
+              <div style={{ fontSize: '0.73rem', color: '#b91c1c', background: '#fef2f2', padding: '0.4rem 0.55rem', borderRadius: 8 }}>
+                Trình duyệt đang chặn quyền thông báo đẩy. Hãy bật lại trong Cài đặt trang web nếu muốn nhận pop-up nền.
+              </div>
+            ) : subscribedHere ? (
+              <div style={{ display: 'flex', gap: '0.45rem' }}>
+                <button
+                  type="button"
+                  disabled={testing}
+                  onClick={handleSendTest}
+                  style={{
+                    flex: 1,
+                    padding: '0.42rem 0.65rem',
+                    borderRadius: 8,
+                    border: '1px solid #bfdbfe',
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {testing ? 'Đang gửi...' : 'Gửi thử thông báo'}
+                </button>
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={handleEnable}
+                  onClick={handleDisable}
                   style={{
-                    width: '100%',
-                    padding: '0.58rem 0.85rem',
-                    borderRadius: 9,
-                    border: 'none',
-                    background: '#1d4ed8',
-                    color: '#ffffff',
-                    fontWeight: 800,
-                    fontSize: '0.84rem',
-                    cursor: busy ? 'not-allowed' : 'pointer',
+                    padding: '0.42rem 0.7rem',
+                    borderRadius: 8,
+                    border: '1px solid #fecaca',
+                    background: '#fef2f2',
+                    color: '#b91c1c',
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
                   }}
                 >
-                  {busy ? 'Đang kích hoạt...' : 'Bật thông báo trên thiết bị này'}
+                  Tắt
                 </button>
-              )}
-            </div>
-          )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={handleEnable}
+                style={{
+                  width: '100%',
+                  padding: '0.48rem 0.75rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#1d4ed8',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.78rem',
+                  cursor: busy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {busy ? 'Đang kích hoạt...' : 'Bật thông báo đẩy trên thiết bị này'}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
