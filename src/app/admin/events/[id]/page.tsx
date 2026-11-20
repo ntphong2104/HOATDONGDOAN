@@ -10,6 +10,7 @@ import ExcelExportButton from '@/components/ExcelExportButton';
 import DataTable from '@/components/DataTable';
 import DynamicEventQRModal from '@/components/DynamicEventQRModal';
 import EventBulkImportModal from '@/components/EventBulkImportModal';
+import EventPushNotifyButton from '@/components/EventPushNotifyButton';
 import {
   UsersIcon,
   CheckCircleIcon,
@@ -1246,6 +1247,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><LockIcon size={14} /> Đã tự động đóng (Liên hệ Đoàn TN để mở lại)</span>
               </span>
             )}
+            <EventPushNotifyButton eventId={event.event_id} eventName={event.event_name} />
           </div>
 
           {isLockedPast3Days && (
