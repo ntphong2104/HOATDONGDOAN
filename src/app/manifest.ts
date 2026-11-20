@@ -13,19 +13,19 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     icons: [
       {
-        src: '/icon-192.png?v=doan2',
+        src: '/icon-192.png?v=doan3',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icon-512.png?v=doan2',
+        src: '/icon-512.png?v=doan3',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/apple-touch-icon.png?v=doan2',
+        src: '/apple-touch-icon.png?v=doan3',
         sizes: '180x180',
         type: 'image/png',
       },
