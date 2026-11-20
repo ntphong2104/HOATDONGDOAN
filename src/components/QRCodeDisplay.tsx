@@ -68,12 +68,12 @@ export default function QRCodeDisplay({
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/me/qr-token');
-      const data = await res.json();
-      if (data.success && data.clientKey) {
+      const res = await fetch('/api/me/qr-token', { cache: 'no-store' });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success && data?.clientKey) {
         setClientKey(data.clientKey);
-        setActivated(true);
       }
+      setActivated(true);
     } catch {
       // Fallback: show static QR
       setActivated(true);
@@ -97,21 +97,23 @@ export default function QRCodeDisplay({
     }
   }, [value, clientKey]);
 
-  // Rotate every second when activated
+  // Rotate cleanly based on wall-clock 30s window when activated
   useEffect(() => {
     if (!activated || !clientKey) return;
 
-    refreshToken();
-    const interval = setInterval(() => {
-      setExpiresIn((prev) => {
-        if (prev <= 1) {
-          refreshToken();
-          return WINDOW_SECONDS;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    let lastWindow = -1;
+    const syncToken = () => {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const currentWindow = Math.floor(nowSec / WINDOW_SECONDS);
+      setExpiresIn(WINDOW_SECONDS - (nowSec % WINDOW_SECONDS));
+      if (currentWindow !== lastWindow) {
+        lastWindow = currentWindow;
+        refreshToken();
+      }
+    };
 
+    syncToken();
+    const interval = setInterval(syncToken, 1000);
     return () => clearInterval(interval);
   }, [activated, clientKey, refreshToken]);
 
