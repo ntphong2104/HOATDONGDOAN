@@ -33,6 +33,12 @@ export const metadata: Metadata = {
   authors: [{ name: 'Đoàn Thanh Niên PTIT HCM', url: 'https://ptithcm.com' }],
   creator: 'Đoàn Thanh Niên Học Viện Cơ Sở TP.HCM',
   publisher: 'Học Viện Công Nghệ Bưu Chính Viễn Thông',
+  applicationName: 'Hoạt Động Đoàn',
+  appleWebApp: {
+    capable: true,
+    title: 'Hoạt Động Đoàn',
+    statusBarStyle: 'default',
+  },
   verification: {
     google: 'PegklgG47LCpgOOh84fCSeYUaPr55hXOklLeZcR5ObM',
   },
