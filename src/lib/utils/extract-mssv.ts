@@ -133,8 +133,9 @@ export function isValidMSSV(mssv: string): boolean {
   const MSSV_REGEX = /^[A-Z]\d{2}[A-Z]{2,6}\d{1,5}(-[A-Z0-9]{1,3})?$/;
   if (!MSSV_REGEX.test(s)) return false;
 
-  // Reject class IDs (niên chế format): D24CQCN01-N, D25CQAT01-N, E22CQVT02-N
-  // Class IDs have "CQ" after the year digits; real MSSVs use DC/DE/DM department codes
+  // Reject class IDs & mistyped D-prefix MSSVs (D24CQCN01-N, D26DCCN102, etc.)
+  // PTIT student MSSVs start with N / B / E, never D (D is reserved for class codes)
+  if (/^D\d{2}/i.test(s)) return false;
   if (/^[A-Z]\d{2}CQ/i.test(s)) return false;
 
   // Reject if it looks like 2 MSSVs concatenated

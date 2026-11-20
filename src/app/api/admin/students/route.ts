@@ -4,6 +4,30 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
+import { getMasterStudentByMssv, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
+
+function normalizeStudentRow(u: any) {
+  const mssv = String(u.mssv || '').trim().toUpperCase();
+  const master = mssv ? getMasterStudentByMssv(mssv) : null;
+  const rawName = String(u.full_name || '').trim();
+  const rawClass = String(u.class_id || '').trim();
+
+  const resolvedName =
+    rawName && !isPlaceholderName(rawName, mssv)
+      ? rawName
+      : master?.full_name || '';
+
+  const resolvedClass =
+    rawClass && !isPlaceholderClass(rawClass)
+      ? rawClass
+      : master?.class_id || '';
+
+  return {
+    ...u,
+    full_name: resolvedName,
+    class_id: resolvedClass,
+  };
+}
 
 export async function GET(req: Request) {
   try {
@@ -56,7 +80,7 @@ export async function GET(req: Request) {
         return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
       }
 
-      const filtered = (searchResults || []).filter((u) => !isUnitAccount(u));
+      const filtered = (searchResults || []).filter((u) => !isUnitAccount(u)).map(normalizeStudentRow);
       return NextResponse.json({ success: true, data: filtered });
     }
 
@@ -93,7 +117,7 @@ export async function GET(req: Request) {
       }
     }
 
-    const studentsOnly = allUsers.filter((u) => !isUnitAccount(u));
+    const studentsOnly = allUsers.filter((u) => !isUnitAccount(u)).map(normalizeStudentRow);
     return NextResponse.json({ success: true, data: studentsOnly });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });

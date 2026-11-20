@@ -287,8 +287,8 @@ export async function POST(req: Request) {
       if (isSuperOrEventAdmin || masterStudent) {
         finalStudent = {
           mssv,
-          full_name: masterStudent?.full_name || mssv,
-          class_id: masterStudent?.class_id || 'PTIT-HCM',
+          full_name: masterStudent?.full_name || '',
+          class_id: masterStudent?.class_id || '',
           email: `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
         };
         try {
