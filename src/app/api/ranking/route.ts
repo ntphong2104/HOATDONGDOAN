@@ -265,23 +265,24 @@ async function computeSemesterRanking(
       }
     }
 
-    // Thu thập các MSSV check-in không có trong Data.xlsx để tra cứu bổ sung trong bảng users
-    const missingFromMaster = new Set<string>();
+    // Nạp thông tin lớp & họ tên mới nhất từ bảng users cho các MSSV có check-in
+    // (ưu tiên users.class_id trong DB để phản ánh ngay khi SV năm 4 chuyển lớp chuyên ngành)
+    const uniqueCheckedInMssvs = new Set<string>();
     for (const row of checkinRows) {
       const mssv = String(row.mssv || '').trim().toUpperCase();
-      if (mssv && isValidMSSV(mssv) && !getMasterStudentByMssv(mssv)) {
-        missingFromMaster.add(mssv);
+      if (mssv && isValidMSSV(mssv)) {
+        uniqueCheckedInMssvs.add(mssv);
       }
     }
 
     const dbUserMap = new Map<string, { full_name: string; class_id: string }>();
-    if (missingFromMaster.size > 0) {
-      const missingArr = Array.from(missingFromMaster);
-      for (let i = 0; i < missingArr.length; i += 200) {
+    if (uniqueCheckedInMssvs.size > 0) {
+      const mssvArr = Array.from(uniqueCheckedInMssvs);
+      for (let i = 0; i < mssvArr.length; i += 250) {
         const { data: uRows } = await supabase
           .from('users')
           .select('mssv, full_name, class_id')
-          .in('mssv', missingArr.slice(i, i + 200));
+          .in('mssv', mssvArr.slice(i, i + 250));
         for (const u of uRows || []) {
           const m = String(u.mssv || '').trim().toUpperCase();
           if (m) {
@@ -298,12 +299,13 @@ async function computeSemesterRanking(
       const master = getMasterStudentByMssv(mssv);
       const db = dbUserMap.get(mssv);
       const full_name =
-        master?.full_name ||
         (db?.full_name && !isPlaceholderName(db.full_name, mssv) ? db.full_name : '') ||
+        master?.full_name ||
         mssv;
+      // Luôn ưu tiên class_id trong DB (users) trước Data.xlsx để tự cập nhật khi năm 4 đổi mã lớp
       const class_id =
-        master?.class_id ||
         (db?.class_id && !isPlaceholderClass(db.class_id) ? db.class_id : '') ||
+        master?.class_id ||
         'PTIT-HCM';
       return { full_name, class_id };
     };

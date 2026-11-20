@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
+import { getMasterStudentByMssv, isPlaceholderClass } from '@/lib/utils/student-profile';
 import * as XLSX from 'xlsx';
 
 function normalizeKey(str: string): string {
@@ -208,7 +209,15 @@ export async function POST(request: Request) {
           email = `${mssv.toLowerCase()}@student.ptithcm.edu.vn`;
         }
 
-        if (!mssv || !fullName) {
+        // Cho phép file chỉ có 2 cột (MSSV + Mã lớp mới khi chia chuyên ngành năm 4) bằng cách tự điền Họ tên từ Data.xlsx
+        if (mssv && !fullName && classId) {
+          const master = getMasterStudentByMssv(mssv);
+          if (master?.full_name) {
+            fullName = master.full_name;
+          }
+        }
+
+        if (!mssv || (!fullName && !classId)) {
           const hasContent = row.some((c) => String(c ?? '').trim() !== '');
           if (hasContent) {
             errors.push({
@@ -244,10 +253,57 @@ export async function POST(request: Request) {
     for (const rec of rawRecords) {
       uniqueMap.set(rec.mssv, rec);
     }
-    const finalRecords = Array.from(uniqueMap.values());
+
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
+
+    // Fetch existing users for these MSSVs so we can:
+    // 1. Preserve existing full_name if file only had (MSSV + Mã lớp mới)
+    // 2. Detect Year 4 class transfers (old_class_id -> new_class_id) to auto-revoke stale BCH Chi đoàn roles
+    const allMssvs = Array.from(uniqueMap.keys());
+    const existingUserMap = new Map<string, { full_name?: string | null; class_id?: string | null }>();
+    for (let i = 0; i < allMssvs.length; i += 300) {
+      const { data: exRows } = await supabase
+        .from('users')
+        .select('mssv, full_name, class_id')
+        .in('mssv', allMssvs.slice(i, i + 300));
+      for (const ex of exRows || []) {
+        const m = String(ex.mssv || '').trim().toUpperCase();
+        if (m) existingUserMap.set(m, ex);
+      }
+    }
+
+    const changedClassByMssv = new Map<string, { oldClass: string; newClass: string }>();
+    const affectedOldClasses = new Set<string>();
+    const finalRecords: Array<{ mssv: string; email: string; full_name: string; class_id: string }> = [];
+
+    for (const rec of uniqueMap.values()) {
+      const existing = existingUserMap.get(rec.mssv);
+      const resolvedName = rec.full_name || String(existing?.full_name || '').trim() || rec.mssv;
+      const newClass = String(rec.class_id || '').trim().toUpperCase();
+      const oldClass = String(existing?.class_id || '').trim().toUpperCase();
+
+      if (
+        oldClass &&
+        newClass &&
+        oldClass !== newClass &&
+        !isPlaceholderClass(oldClass) &&
+        !isPlaceholderClass(newClass)
+      ) {
+        changedClassByMssv.set(rec.mssv, { oldClass, newClass });
+        affectedOldClasses.add(oldClass);
+      }
+
+      const normalizedRec = {
+        ...rec,
+        full_name: resolvedName,
+        class_id: newClass || 'Chưa phân lớp',
+      };
+      uniqueMap.set(rec.mssv, normalizedRec);
+      finalRecords.push(normalizedRec);
+    }
 
     // Batch upsert in chunks of 500
-    const supabase = await createClient();
     let inserted = 0;
     const chunkSize = 500;
     for (let i = 0; i < finalRecords.length; i += chunkSize) {
@@ -273,6 +329,64 @@ export async function POST(request: Request) {
         },
         { status: 400 }
       );
+    }
+
+    // Tự động thu hồi quyền BCH Chi đoàn lớp cũ khi SV chuyển lớp chuyên ngành (năm 4)
+    let delegatesRevokedCount = 0;
+    if (changedClassByMssv.size > 0) {
+      try {
+        const changedMssvList = Array.from(changedClassByMssv.keys());
+        const oldClassesList = Array.from(affectedOldClasses);
+
+        // 1. Thu hồi BCH nếu chính bạn BCH vừa chuyển sang lớp mới khác với lớp đang được cấp quyền
+        const { data: activeDelegatesByMssv } = await supabase
+          .from('class_delegates')
+          .select('id, mssv, class_id')
+          .eq('is_active', true)
+          .in('mssv', changedMssvList);
+
+        const revokeIds = new Set<string>();
+        for (const d of activeDelegatesByMssv || []) {
+          const m = String(d.mssv || '').trim().toUpperCase();
+          const change = changedClassByMssv.get(m);
+          const delClass = String(d.class_id || '').trim().toUpperCase();
+          if (change && delClass && delClass !== change.newClass) {
+            revokeIds.add(String(d.id));
+          }
+        }
+
+        // 2. Nếu lớp cũ không còn sinh viên nào trong bảng users (đã giải thể / chia hết sang lớp mới) -> thu hồi hết BCH lớp cũ đó
+        for (const oldCls of oldClassesList) {
+          const { count } = await supabase
+            .from('users')
+            .select('mssv', { count: 'exact', head: true })
+            .eq('class_id', oldCls);
+
+          if ((count ?? 0) === 0) {
+            const { data: oldClsDelegates } = await supabase
+              .from('class_delegates')
+              .select('id')
+              .eq('is_active', true)
+              .eq('class_id', oldCls);
+            for (const d of oldClsDelegates || []) {
+              revokeIds.add(String(d.id));
+            }
+          }
+        }
+
+        if (revokeIds.size > 0) {
+          const idsArr = Array.from(revokeIds);
+          const { error: revErr } = await supabase
+            .from('class_delegates')
+            .update({ is_active: false })
+            .in('id', idsArr);
+          if (!revErr) {
+            delegatesRevokedCount = idsArr.length;
+          }
+        }
+      } catch (revCatch) {
+        console.warn('[upload-users] Auto-revoke stale delegates skipped:', revCatch);
+      }
     }
 
     // Sync updated student names and classes to any matching records in user_penalties
@@ -301,12 +415,21 @@ export async function POST(request: Request) {
       }
     } catch {}
 
+    const classChangeSummary =
+      changedClassByMssv.size > 0
+        ? ` (${changedClassByMssv.size} SV chuyển sang lớp mới${
+            delegatesRevokedCount > 0 ? `, tự động thu hồi ${delegatesRevokedCount} quyền BCH lớp cũ` : ''
+          })`
+        : '';
+
     return NextResponse.json({
       success: true,
-      message: `Đã nạp thành công ${inserted} sinh viên vào hệ thống!`,
+      message: `Đã nạp thành công ${inserted} sinh viên vào hệ thống!${classChangeSummary}`,
       data: {
         total_rows: totalRowsCounted,
         inserted,
+        class_changed_count: changedClassByMssv.size,
+        delegates_revoked_count: delegatesRevokedCount,
         skipped: errors.length,
         errors: errors.slice(0, 10),
       },
