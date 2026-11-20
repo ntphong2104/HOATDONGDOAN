@@ -276,10 +276,10 @@ export async function getVerifiedUserFromCookies(
     return existingInflight;
   }
 
-  // 4. CACHE-MISS: Verify token cryptographic signature with Supabase Auth
+  // 4. CACHE-MISS: Verify session with Supabase Auth (auto-refreshes expired 1h access_token via refresh_token)
   const verifyPromise = (async (): Promise<{ email: string; id: string } | null> => {
     try {
-      const { data, error } = await supabase.auth.getUser(rawToken);
+      const { data, error } = await supabase.auth.getUser();
       if (!error && data?.user?.email) {
         const email = data.user.email.toLowerCase().trim();
         const id = data.user.id || '';
@@ -295,13 +295,15 @@ export async function getVerifiedUserFromCookies(
           }
         } catch {}
 
-        const ttlSec = Math.min(Math.max(exp - nowSec, 5), VERIFIED_TOKEN_MAX_TTL_SEC);
-        setBoundedVerifiedToken(tokenHash, {
-          email,
-          id,
-          exp: nowSec + ttlSec,
-          verifiedAt: Date.now(),
-        });
+        if (exp > nowSec + 5) {
+          const ttlSec = Math.min(exp - nowSec, VERIFIED_TOKEN_MAX_TTL_SEC);
+          setBoundedVerifiedToken(tokenHash, {
+            email,
+            id,
+            exp: nowSec + ttlSec,
+            verifiedAt: Date.now(),
+          });
+        }
 
         return { email, id };
       }

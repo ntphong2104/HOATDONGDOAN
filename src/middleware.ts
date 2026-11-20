@@ -437,19 +437,19 @@ export async function middleware(request: NextRequest) {
 
         const verifyTask = (async (): Promise<{ email: string; id: string } | null> => {
           try {
-            const { data, error } = rawToken
-              ? await supabase.auth.getUser(rawToken)
-              : await supabase.auth.getUser();
+            // IMPORTANT: Call getUser() WITHOUT passing rawToken so @supabase/ssr
+            // can automatically refresh expired 1-hour access_tokens using the refresh_token cookie!
+            const { data, error } = await supabase.auth.getUser();
 
             if (!error && data?.user?.email) {
               const email = data.user.email.toLowerCase().trim();
               const id = data.user.id || '';
 
-              if (tokenHash) {
+              if (tokenHash && rawToken) {
                 const nowSec = Math.floor(Date.now() / 1000);
                 let exp = nowSec + MIDDLEWARE_TOKEN_MAX_TTL_SEC;
                 try {
-                  const parts = rawToken!.split('.');
+                  const parts = rawToken.split('.');
                   if (parts.length >= 2) {
                     const payload = JSON.parse(decodeBase64Safe(parts[1]));
                     if (payload?.exp && typeof payload.exp === 'number') {
@@ -458,13 +458,16 @@ export async function middleware(request: NextRequest) {
                   }
                 } catch {}
 
-                const ttlSec = Math.min(Math.max(exp - nowSec, 5), MIDDLEWARE_TOKEN_MAX_TTL_SEC);
-                setBoundedMiddlewareToken(tokenHash, {
-                  email,
-                  id,
-                  exp: nowSec + ttlSec,
-                  verifiedAt: Date.now(),
-                });
+                // Only cache if the incoming token itself is still unexpired
+                if (exp > nowSec + 5) {
+                  const ttlSec = Math.min(exp - nowSec, MIDDLEWARE_TOKEN_MAX_TTL_SEC);
+                  setBoundedMiddlewareToken(tokenHash, {
+                    email,
+                    id,
+                    exp: nowSec + ttlSec,
+                    verifiedAt: Date.now(),
+                  });
+                }
               }
 
               return { email, id };
