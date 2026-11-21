@@ -65,7 +65,6 @@ export default function PushNotificationButton() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [testing, setTesting] = useState(false);
   const [notifications, setNotifications] = useState<InboxNotification[]>(
     () => clientInboxCache?.notifications || []
   );
@@ -338,24 +337,6 @@ export default function PushNotificationButton() {
     }
   };
 
-  const handleSendTest = async () => {
-    if (testing) return;
-    setTesting(true);
-    try {
-      const res = await fetch('/api/push/test', { method: 'POST' });
-      const json = await res.json();
-      if (json.success) {
-        toast.success(json.message);
-      } else {
-        toast.error(json.error || 'Không gửi được thông báo thử.');
-      }
-    } catch {
-      toast.error('Lỗi kết nối máy chủ.');
-    } finally {
-      setTesting(false);
-    }
-  };
-
   return (
     <div ref={wrapRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
       <button
@@ -481,43 +462,24 @@ export default function PushNotificationButton() {
                 Trình duyệt đang chặn quyền thông báo đẩy. Hãy bật lại trong Cài đặt trang web nếu muốn nhận pop-up nền.
               </div>
             ) : subscribedHere ? (
-              <div style={{ display: 'flex', gap: '0.45rem' }}>
-                <button
-                  type="button"
-                  disabled={testing}
-                  onClick={handleSendTest}
-                  style={{
-                    flex: 1,
-                    padding: '0.42rem 0.65rem',
-                    borderRadius: 8,
-                    border: '1px solid #bfdbfe',
-                    background: '#eff6ff',
-                    color: '#1d4ed8',
-                    fontWeight: 700,
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {testing ? 'Đang gửi...' : 'Gửi thử thông báo'}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={handleDisable}
-                  style={{
-                    padding: '0.42rem 0.7rem',
-                    borderRadius: 8,
-                    border: '1px solid #fecaca',
-                    background: '#fef2f2',
-                    color: '#b91c1c',
-                    fontWeight: 700,
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Tắt
-                </button>
-              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={handleDisable}
+                style={{
+                  width: '100%',
+                  padding: '0.45rem 0.75rem',
+                  borderRadius: 8,
+                  border: '1px solid #fecaca',
+                  background: '#fef2f2',
+                  color: '#b91c1c',
+                  fontWeight: 700,
+                  fontSize: '0.76rem',
+                  cursor: busy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {busy ? 'Đang tắt...' : 'Tắt thông báo đẩy trên thiết bị này'}
+              </button>
             ) : (
               <button
                 type="button"

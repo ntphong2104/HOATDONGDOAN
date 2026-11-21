@@ -20,6 +20,7 @@ import {
 import type { Event, EventRegistration, UserPenalty, SessionUser } from '@/lib/types';
 import { checkCohortEligibility, describeCohortBlock, type CohortEligibility } from '@/lib/utils/cohort';
 import { describeLcdBlock, formatLcdsLabel, type LcdEligibility } from '@/lib/utils/lcd';
+import { checkCancellationEligibility } from '@/lib/utils/event-logic';
 import styles from './page.module.css';
 
 export default function EventRegisterPage({
@@ -495,7 +496,9 @@ export default function EventRegisterPage({
           )}
 
           {/* 3. ALREADY REGISTERED SUCCESS VIEW */}
-          {myRegistration && !isBlacklisted && (
+          {myRegistration && !isBlacklisted && (() => {
+            const cancelEligibility = checkCancellationEligibility(event, (event as any).cancellation_policy);
+            return (
             <div className={styles.successCard}>
               <span className={styles.registeredBadge}>
                 <CheckCircleIcon size={16} color="#ffffff" />
@@ -508,7 +511,7 @@ export default function EventRegisterPage({
                 Vai trò đăng ký: <strong>{myRegistration.role_type === 'volunteer' ? 'Cộng tác viên' : 'Người tham gia'}</strong> • MSSV: <strong>{myRegistration.mssv}</strong>
               </p>
 
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link
                   href="/"
                   style={{
@@ -528,18 +531,32 @@ export default function EventRegisterPage({
                   <span>Xem Mã QR Điểm Danh Cá Nhân</span>
                 </Link>
 
-                <button
-                  type="button"
-                  onClick={handleCancelRegistration}
-                  disabled={submitting}
-                  className={styles.cancelBtn}
-                  style={{ width: 'auto', padding: '0 1rem' }}
-                >
-                  Hủy Đăng Ký
-                </button>
+                {cancelEligibility.canCancel && (
+                  <button
+                    type="button"
+                    onClick={handleCancelRegistration}
+                    disabled={submitting}
+                    className={styles.cancelBtn}
+                    style={{ width: 'auto', padding: '0 1rem' }}
+                  >
+                    Hủy Đăng Ký
+                  </button>
+                )}
               </div>
+
+              <p
+                style={{
+                  margin: '0.85rem 0 0 0',
+                  fontSize: '0.78rem',
+                  color: cancelEligibility.canCancel ? '#15803d' : '#b45309',
+                  fontWeight: cancelEligibility.canCancel ? 500 : 600,
+                }}
+              >
+                {cancelEligibility.reason}
+              </p>
             </div>
-          )}
+            );
+          })()}
 
           {/* 3. REGISTRATION FORM (If not registered & not blacklisted & registration window is open) */}
           {!myRegistration && !isBlacklisted && registrationWindow?.isOpen && (
@@ -753,6 +770,24 @@ export default function EventRegisterPage({
                           fontSize: '0.85rem',
                         }}
                       />
+                    </div>
+                  )}
+
+                  {(event as any).cancellation_policy === 'disabled' && (
+                    <div
+                      style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: '#b45309',
+                        background: '#fffbeb',
+                        border: '1px solid #fde68a',
+                        borderRadius: '10px',
+                        padding: '0.6rem 0.85rem',
+                        marginBottom: '0.75rem',
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      Lưu ý: Sự kiện này không cho phép sinh viên tự hủy sau khi đăng ký. Vui lòng cân nhắc kỹ trước khi xác nhận.
                     </div>
                   )}
 

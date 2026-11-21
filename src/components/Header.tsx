@@ -273,9 +273,9 @@ export default function Header({
     email: effectiveUser?.email,
     mssv: effectiveUser?.mssv,
   });
-  const canOfficeBorrow = Boolean(isUnit || canManageEvents || isOfficeAdmin);
+  const canOfficeBorrow = Boolean(effectiveUser);
   const isStudentAccount = !isUnit;
-  const needsMobileMenu = isOfficer || canOfficeDuty || !isStudentAccount;
+  const needsMobileMenu = isOfficer || canOfficeDuty || canOfficeBorrow || !isStudentAccount;
 
   const shouldTrackPending = Boolean(effectiveUser && (isSuperAdmin || isOfficeAdmin || canViewProposals));
   const [adminPending, setAdminPending] = useState<AdminPendingCounts>(
@@ -522,6 +522,20 @@ export default function Header({
                       <span className={styles.sidebarLabel}>Trực văn phòng</span>
                     </Link>
                   )}
+
+                  {canOfficeBorrow && (
+                    <Link
+                      href="/office/borrow"
+                      title="Mượn dụng cụ Văn phòng Đoàn"
+                      className={`${styles.sidebarItem} ${isOfficeBorrowPage ? styles.sidebarItemActive : ''}`}
+                      onClick={closeSidebar}
+                    >
+                      <span className={styles.sidebarIcon}>
+                        <BuildingIcon size={17} />
+                      </span>
+                      <span className={styles.sidebarLabel}>Mượn dụng cụ VPĐ</span>
+                    </Link>
+                  )}
                 </>
               )}
 
@@ -583,7 +597,7 @@ export default function Header({
                     </Link>
                   )}
 
-                  {canOfficeBorrow && (
+                  {canOfficeBorrow && !isStudentAccount && (
                     <Link
                       href="/office/borrow"
                       title="Mượn dụng cụ Văn phòng Đoàn"

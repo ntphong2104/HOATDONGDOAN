@@ -5,6 +5,7 @@ import Link from 'next/link';
 import EventCard from '@/components/EventCard';
 import LcdManagementSection from './LcdManagementSection';
 import RankingBoard from '@/components/RankingBoard';
+import SupportEventCreator from '@/components/SupportEventCreator';
 import { getEffectiveEventStatus } from '@/lib/utils/event-logic';
 import {
   CalendarIcon,
@@ -23,6 +24,7 @@ import styles from './AdminDashboardClient.module.css';
 
 interface AdminDashboardClientProps {
   initialEvents: Event[];
+  canCreateSupportEvent?: boolean;
   lcdScope?: {
     role: 'all' | 'lcd' | 'none';
     lcdCode: LcdCode | null;
@@ -33,6 +35,7 @@ interface AdminDashboardClientProps {
 
 export default function AdminDashboardClient({
   initialEvents,
+  canCreateSupportEvent = false,
   lcdScope,
 }: AdminDashboardClientProps) {
   const [activeTab, setActiveTab] = useState<'events' | 'lcd_members' | 'lcd_delegates' | 'ranking'>('events');
@@ -40,6 +43,7 @@ export default function AdminDashboardClient({
   const [statusFilter, setStatusFilter] = useState<'active' | 'closed' | 'all'>('active');
   const [eventSearch, setEventSearch] = useState('');
   const [showProposeForm, setShowProposeForm] = useState(false);
+  const [showSupportCreator, setShowSupportCreator] = useState(false);
   const [eventName, setEventName] = useState('');
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState('07:30');
@@ -203,6 +207,21 @@ export default function AdminDashboardClient({
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {canCreateSupportEvent && (
+            <button
+              type="button"
+              onClick={() => setShowSupportCreator((v) => !v)}
+              className={styles.proposeButton}
+              style={{
+                background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <PlusIcon size={18} />
+              <span>{showSupportCreator ? 'Đóng Tạo Sự Kiện Hỗ Trợ' : 'Tạo Sự Kiện Hỗ Trợ (Mở ngay)'}</span>
+            </button>
+          )}
           <Link
             href="/admin/proposals/new"
             className={styles.proposeButton}
@@ -213,6 +232,17 @@ export default function AdminDashboardClient({
           </Link>
         </div>
       </div>
+
+      {canCreateSupportEvent && showSupportCreator && (
+        <div style={{ marginBottom: '1.25rem' }}>
+          <SupportEventCreator
+            onCreated={() => {
+              fetchEvents();
+            }}
+            onCancel={() => setShowSupportCreator(false)}
+          />
+        </div>
+      )}
 
       {/* Biểu mẫu đề xuất chương trình mới */}
       {showProposeForm && (

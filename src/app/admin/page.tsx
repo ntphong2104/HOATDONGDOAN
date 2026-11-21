@@ -18,12 +18,21 @@ export default async function AdminEventsPage() {
   if (
     !auth.isSuperAdmin &&
     !auth.isEventAdmin &&
+    !auth.isOfficeAdmin &&
+    auth.tier !== 'office_admin' &&
     auth.tier !== 'youth_union' &&
     auth.tier !== 'ctsv' &&
     auth.tier !== 'facility'
   ) {
     redirect('/');
   }
+
+  const canCreateSupportEvent = Boolean(
+    auth.isSuperAdmin ||
+      auth.isOfficeAdmin ||
+      auth.tier === 'office_admin' ||
+      auth.tier === 'youth_union'
+  );
 
   const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
 
@@ -83,6 +92,7 @@ export default async function AdminEventsPage() {
       <main className={styles.main}>
         <AdminDashboardClient
           initialEvents={enrichedEvents}
+          canCreateSupportEvent={canCreateSupportEvent}
           lcdScope={{
             role: lcdScope.role,
             lcdCode: lcdScope.lcd?.code || null,

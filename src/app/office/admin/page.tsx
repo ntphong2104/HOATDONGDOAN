@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import Header from '@/components/Header';
 import DutyMatrixTable from '@/components/DutyMatrixTable';
+import SupportEventCreator from '@/components/SupportEventCreator';
 import { useToast } from '@/components/ToastProvider';
 import {
   CalendarIcon,
@@ -14,9 +16,10 @@ import {
   TrashIcon,
   AlertTriangleIcon,
   RefreshIcon,
+  PlusIcon,
 } from '@/components/icons';
 
-type AdminTab = 'schedule' | 'volunteers' | 'windows_network' | 'equipment';
+type AdminTab = 'schedule' | 'volunteers' | 'windows_network' | 'equipment' | 'support_events';
 
 function fmtDateVN(d?: string | null): string {
   if (!d) return '—';
@@ -94,6 +97,10 @@ export default function OfficeAdminPage() {
   const [newItemQty, setNewItemQty] = useState(1);
   const [newItemUnit, setNewItemUnit] = useState('Cái');
 
+  // Support Events (VPĐ tạo nhanh không mượn phòng & miễn duyệt CTSV)
+  const [supportEvents, setSupportEvents] = useState<any[]>([]);
+  const [loadingSupportEvents, setLoadingSupportEvents] = useState(false);
+
   const showMsg = useCallback((type: 'success' | 'error', text: string) => {
     if (type === 'success') toast.success(text);
     else toast.error(text);
@@ -161,12 +168,40 @@ export default function OfficeAdminPage() {
     if (bJson.success && Array.isArray(bJson.data)) setBans(bJson.data);
   }, []);
 
+  const loadSupportEvents = useCallback(async () => {
+    setLoadingSupportEvents(true);
+    try {
+      const res = await fetch('/api/office/events', { cache: 'no-store' });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setSupportEvents(json.data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingSupportEvents(false);
+    }
+  }, []);
+
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const tabParam = new URLSearchParams(window.location.search).get('tab');
+      if (
+        tabParam === 'schedule' ||
+        tabParam === 'volunteers' ||
+        tabParam === 'windows_network' ||
+        tabParam === 'equipment' ||
+        tabParam === 'support_events'
+      ) {
+        setActiveTab(tabParam);
+      }
+    }
     loadSchedule();
     loadVolunteers();
     loadWindowsAndConfig();
     loadEquipment();
-  }, [loadSchedule, loadVolunteers, loadWindowsAndConfig, loadEquipment]);
+    loadSupportEvents();
+  }, [loadSchedule, loadVolunteers, loadWindowsAndConfig, loadEquipment, loadSupportEvents]);
 
   // Handlers
   const handleMatrixRegister = async (mssv: string, dutyDate: string, shift: 'morning' | 'afternoon') => {
@@ -485,6 +520,7 @@ export default function OfficeAdminPage() {
             { id: 'volunteers' as AdminTab, label: `Danh sách CTV trực (${volunteers.length})`, icon: <UsersIcon size={15} />, alertCount: 0 },
             { id: 'windows_network' as AdminTab, label: 'Đợt đăng ký & Mạng VPĐ', icon: <SettingsIcon size={15} />, alertCount: 0 },
             { id: 'equipment' as AdminTab, label: 'Mượn dụng cụ & Cấm mượn', icon: <BuildingIcon size={15} />, alertCount: pendingBorrowCount },
+            { id: 'support_events' as AdminTab, label: `Sự kiện hỗ trợ (${supportEvents.length})`, icon: <PlusIcon size={15} />, alertCount: 0 },
           ].map((t) => (
             <button
               key={t.id}
@@ -983,6 +1019,132 @@ export default function OfficeAdminPage() {
                   </div>
                 ))}
               </div>
+            </section>
+          </div>
+        )}
+
+        {/* TAB 5: Sự kiện hỗ trợ nhanh (Không mượn phòng • Không qua CTSV) */}
+        {activeTab === 'support_events' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+            <SupportEventCreator onCreated={() => loadSupportEvents()} />
+
+            <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>
+                  Danh sách Sự kiện hỗ trợ đã tạo ({supportEvents.length})
+                </h2>
+                <button
+                  type="button"
+                  onClick={loadSupportEvents}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <RefreshIcon size={14} /> Làm mới
+                </button>
+              </div>
+
+              {loadingSupportEvents && supportEvents.length === 0 ? (
+                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Đang tải danh sách sự kiện hỗ trợ...</div>
+              ) : supportEvents.length === 0 ? (
+                <div style={{ fontSize: '0.85rem', color: '#64748b', padding: '1rem', background: '#f8fafc', borderRadius: 10 }}>
+                  Chưa có sự kiện hỗ trợ nào được tạo. Hãy điền biểu mẫu phía trên để mở nhanh sự kiện không mượn phòng &amp; miễn duyệt CTSV.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '0.8rem' }}>
+                  {supportEvents.map((ev) => {
+                    const isClosed = ev.status === 'closed' || ev.is_past_deadline;
+                    return (
+                      <div
+                        key={ev.event_id}
+                        style={{
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 12,
+                          padding: '0.9rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: '0.65rem',
+                          background: '#ffffff',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                            <span
+                              style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: 999,
+                                background: isClosed ? '#f1f5f9' : '#dcfce7',
+                                color: isClosed ? '#475569' : '#15803d',
+                              }}
+                            >
+                              {isClosed ? 'Đã kết thúc' : 'Đang mở'}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                              {ev.semester || 'Chưa xếp kỳ'}
+                            </span>
+                          </div>
+                          <div style={{ fontWeight: 800, fontSize: '0.94rem', color: '#0f172a', marginBottom: 4 }}>
+                            {ev.event_name}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span>Ngày: <strong>{fmtDateVN(ev.event_date)}</strong> ({String(ev.start_time || '').slice(0, 5)} – {String(ev.end_time || '').slice(0, 5)})</span>
+                            <span>Đơn vị: {ev.organization_unit || 'Văn phòng Đoàn Học Viện'}</span>
+                            <span>
+                              Chỉ tiêu: <strong>{ev.max_participants || 0} SV</strong> • <strong>{ev.max_volunteers || 0} CTV</strong> • Không mượn phòng
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <Link
+                            href={`/admin/events/${ev.event_id}`}
+                            style={{
+                              flex: 1,
+                              textAlign: 'center',
+                              padding: '0.45rem 0.7rem',
+                              borderRadius: 8,
+                              background: '#1d4ed8',
+                              color: '#fff',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              textDecoration: 'none',
+                            }}
+                          >
+                            Quản lý &amp; QR ➔
+                          </Link>
+                          <Link
+                            href={`/events/${ev.event_id}/register`}
+                            style={{
+                              padding: '0.45rem 0.7rem',
+                              borderRadius: 8,
+                              border: '1px solid #cbd5e1',
+                              background: '#f8fafc',
+                              color: '#334155',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              textDecoration: 'none',
+                            }}
+                          >
+                            Trang ĐK
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           </div>
         )}

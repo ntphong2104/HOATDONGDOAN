@@ -465,12 +465,12 @@ export async function getAuthContext(): Promise<AuthContext | null> {
             return data;
           } catch { return null; }
         })(),
-        // Check dynamic officer_roles via persistent store
+        // Check dynamic officer_roles via persistent store (a user may hold multiple roles, e.g. office_admin + youth_union)
         (async () => {
           try {
             const roles = await getStoredOfficerRoles(adminClient);
-            return roles.find((r) => r.email.toLowerCase() === lowerEmail) || null;
-          } catch { return null; }
+            return roles.filter((r) => r.email.toLowerCase() === lowerEmail);
+          } catch { return []; }
         })(),
         // Check event_roles table (use B-tree index idx_event_roles_email via .eq)
         (async () => {
@@ -500,35 +500,38 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       // SECURITY: exact-match allowlist only (no substring matching on email)
       const officialTier = getOfficialTierForEmail(lowerEmail);
 
+      const hasOfficerTier = (t: UserTier) =>
+        Array.isArray(assignedOfficerRole) && assignedOfficerRole.some((r) => r.role_tier === t);
+
       const isSuperAdmin =
         lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
         !!superAdmin ||
-        assignedOfficerRole?.role_tier === 'super_admin' ||
+        hasOfficerTier('super_admin') ||
         explicitTier === 'super_admin';
 
       const isYouthUnion =
         officialTier === 'youth_union' ||
-        assignedOfficerRole?.role_tier === 'youth_union' ||
+        hasOfficerTier('youth_union') ||
         explicitTier === 'youth_union';
 
       const isCtsv =
         officialTier === 'ctsv' ||
-        assignedOfficerRole?.role_tier === 'ctsv' ||
+        hasOfficerTier('ctsv') ||
         explicitTier === 'ctsv';
 
       const isFacility =
         officialTier === 'facility' ||
-        assignedOfficerRole?.role_tier === 'facility' ||
+        hasOfficerTier('facility') ||
         explicitTier === 'facility';
 
       const isSecurity =
         officialTier === 'security' ||
-        assignedOfficerRole?.role_tier === 'security' ||
+        hasOfficerTier('security') ||
         explicitTier === 'security';
 
       const isOfficeAdmin =
         isSuperAdmin ||
-        assignedOfficerRole?.role_tier === 'office_admin' ||
+        hasOfficerTier('office_admin') ||
         explicitTier === 'office_admin';
 
       const isEventAdmin =
@@ -538,14 +541,14 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         isFacility ||
         isSubAdminUnit ||
         hasCreatedEvents ||
-        assignedOfficerRole?.role_tier === 'event_admin' ||
+        hasOfficerTier('event_admin') ||
         (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
         explicitTier === 'event_admin';
 
       const isChecker =
         isSuperAdmin ||
         isSecurity ||
-        assignedOfficerRole?.role_tier === 'checker' ||
+        hasOfficerTier('checker') ||
         (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) ||
         explicitTier === 'checker';
 

@@ -20,6 +20,7 @@ import {
 import type { Event, EventRegistration, UserPenalty, SessionUser } from '@/lib/types';
 import { describeCohortBlock, type CohortEligibility } from '@/lib/utils/cohort';
 import { describeLcdBlock, formatLcdsLabel, type LcdEligibility } from '@/lib/utils/lcd';
+import { checkCancellationEligibility } from '@/lib/utils/event-logic';
 import styles from '../register/page.module.css';
 
 export default function EventRecruitmentPage({
@@ -408,32 +409,51 @@ export default function EventRecruitmentPage({
                 MSSV: <strong>{myRegistration.mssv}</strong> • Ban: <strong>{myRegistration.department_name || 'Cộng tác viên'}</strong>
               </p>
 
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-                <Link
-                  href="/"
-                  style={{
-                    padding: '0.65rem 1.25rem',
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: '0.875rem',
-                    borderRadius: '10px',
-                    textDecoration: 'none',
-                  }}
-                >
-                  Về Trang Cá Nhân
-                </Link>
+              {(() => {
+                const cancelEligibility = checkCancellationEligibility(event, (event as any).cancellation_policy);
+                return (
+                  <>
+                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <Link
+                        href="/"
+                        style={{
+                          padding: '0.65rem 1.25rem',
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: '0.875rem',
+                          borderRadius: '10px',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        Về Trang Cá Nhân
+                      </Link>
 
-                <button
-                  type="button"
-                  onClick={handleCancelRegistration}
-                  disabled={submitting}
-                  className={styles.cancelBtn}
-                  style={{ width: 'auto', padding: '0 1rem' }}
-                >
-                  Rút Đơn
-                </button>
-              </div>
+                      {cancelEligibility.canCancel && (
+                        <button
+                          type="button"
+                          onClick={handleCancelRegistration}
+                          disabled={submitting}
+                          className={styles.cancelBtn}
+                          style={{ width: 'auto', padding: '0 1rem' }}
+                        >
+                          Rút Đơn
+                        </button>
+                      )}
+                    </div>
+                    <p
+                      style={{
+                        margin: '0.85rem 0 0 0',
+                        fontSize: '0.78rem',
+                        color: cancelEligibility.canCancel ? '#475569' : '#b45309',
+                        fontWeight: cancelEligibility.canCancel ? 500 : 600,
+                      }}
+                    >
+                      {cancelEligibility.reason}
+                    </p>
+                  </>
+                );
+              })()}
             </div>
           )}
 

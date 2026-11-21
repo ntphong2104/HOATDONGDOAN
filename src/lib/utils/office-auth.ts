@@ -1,7 +1,7 @@
 import type { AuthContext } from '@/lib/supabase/auth-helper';
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
 import { getLcdByCode, normalizeLcdCode } from '@/lib/utils/lcd';
-import { isUnitAccount } from '@/lib/utils/extract-mssv';
+import { extractMSSV, isUnitAccount } from '@/lib/utils/extract-mssv';
 
 export function isOfficeAdminAuth(auth: AuthContext | null): boolean {
   if (!auth) return false;
@@ -32,21 +32,11 @@ export async function getDutyVolunteerRecord(
 }
 
 /**
- * Kiểm tra tài khoản có quyền tạo đơn mượn dụng cụ VPĐ (LCĐ, CLB, Đội, hoặc Admin).
+ * Kiểm tra tài khoản có quyền tạo đơn mượn dụng cụ VPĐ.
+ * Mở cho tất cả tài khoản đã đăng nhập (Sinh viên, LCĐ, CLB, Đội, Cán bộ) — mọi đơn đều phải nêu rõ cơ sở và chờ VPĐ duyệt.
  */
 export function canCreateBorrowRequest(auth: AuthContext | null): boolean {
-  if (!auth) return false;
-  if (isOfficeAdminAuth(auth)) return true;
-  if (
-    auth.tier === 'event_admin' ||
-    auth.tier === 'youth_union' ||
-    auth.tier === 'ctsv' ||
-    auth.tier === 'facility' ||
-    auth.isEventAdmin
-  ) {
-    return true;
-  }
-  return isUnitAccount({ email: auth.email });
+  return Boolean(auth && auth.email);
 }
 
 export function resolveBorrowerUnit(auth: AuthContext): { unit_code: string; unit_name: string } {
@@ -59,6 +49,13 @@ export function resolveBorrowerUnit(auth: AuthContext): { unit_code: string; uni
   if (lcdCode) {
     const lcd = getLcdByCode(lcdCode);
     if (lcd) return { unit_code: lcd.code, unit_name: lcd.name };
+  }
+  const mssv = extractMSSV(emailLower);
+  if (mssv && !isUnitAccount({ email: emailLower })) {
+    return {
+      unit_code: mssv,
+      unit_name: `Sinh viên (${mssv})`,
+    };
   }
   const username = emailLower.split('@')[0] || 'DON_VI';
   return {

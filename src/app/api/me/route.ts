@@ -233,10 +233,10 @@ export async function GET() {
         } catch { return null; }
       })(),
 
-      // 3. Officer roles
+      // 3. Officer roles (support multiple roles per user, e.g. office_admin + youth_union)
       getStoredOfficerRoles(adminClient)
-        .then(roles => roles.find((r) => r.email.toLowerCase() === lowerEmail) || null)
-        .catch(() => null),
+        .then(roles => roles.filter((r) => r.email.toLowerCase() === lowerEmail))
+        .catch(() => []),
 
       // 4. Event roles
       (async () => {
@@ -267,7 +267,9 @@ export async function GET() {
 
     const user = userResult;
     const superAdmin = superAdminResult;
-    const assignedOfficerRole = officerRolesResult;
+    const assignedOfficerRoles = Array.isArray(officerRolesResult) ? officerRolesResult : [];
+    const assignedOfficerRole = assignedOfficerRoles[0] || null;
+    const hasOfficerTier = (t: UserTier) => assignedOfficerRoles.some((r) => r.role_tier === t);
     const eventRoles = eventRolesResult;
     const createdEvents = createdEventsResult;
 
@@ -281,28 +283,28 @@ export async function GET() {
     const isSuperAdmin =
       lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
       !!superAdmin ||
-      assignedOfficerRole?.role_tier === 'super_admin';
+      hasOfficerTier('super_admin');
 
     const isYouthUnion =
       officialTier === 'youth_union' ||
-      assignedOfficerRole?.role_tier === 'youth_union';
+      hasOfficerTier('youth_union');
 
     const isCtsv =
       officialTier === 'ctsv' ||
-      assignedOfficerRole?.role_tier === 'ctsv';
+      hasOfficerTier('ctsv');
 
     const isFacility =
       officialTier === 'facility' ||
-      assignedOfficerRole?.role_tier === 'facility';
+      hasOfficerTier('facility');
 
     const isSecurity =
       officialTier === 'security' ||
-      assignedOfficerRole?.role_tier === 'security';
+      hasOfficerTier('security');
 
     // Admin Văn phòng Đoàn (dưới Super Admin): quản lý trực văn phòng & mượn dụng cụ
     const isOfficeAdmin =
       isSuperAdmin ||
-      assignedOfficerRole?.role_tier === 'office_admin';
+      hasOfficerTier('office_admin');
 
     // Students who only have event_roles but are not officers/sub-admin units
     // should NOT be promoted to event_admin tier — they stay as 'user' with managed_events
@@ -312,7 +314,7 @@ export async function GET() {
       isCtsv ||
       isFacility ||
       isSubAdminUnit ||
-      assignedOfficerRole?.role_tier === 'event_admin';
+      hasOfficerTier('event_admin');
 
     const hasEventRolesOnly =
       !isOfficerLevelAdmin &&
@@ -324,7 +326,7 @@ export async function GET() {
     const isChecker =
       isSuperAdmin ||
       isSecurity ||
-      assignedOfficerRole?.role_tier === 'checker' ||
+      hasOfficerTier('checker') ||
       (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false);
 
     let tier: UserTier = 'user';

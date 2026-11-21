@@ -24,13 +24,30 @@ export async function GET() {
     const isAdmin = isOfficeAdminAuth(auth);
     if (!isAdmin && !canCreateBorrowRequest(auth)) {
       return NextResponse.json(
-        { success: false, error: 'Chỉ tài khoản đơn vị (LCĐ / CLB / Đội) hoặc Admin VPĐ mới truy cập được.' },
+        { success: false, error: 'Vui lòng đăng nhập để sử dụng tính năng mượn dụng cụ VPĐ.' },
         { status: 403 }
       );
     }
 
     const supabase = (await createAdminClient()) || (await createClient());
     const unit = resolveBorrowerUnit(auth);
+    let defaultRequesterName = '';
+
+    // Enrich student borrower display with full_name + class_id if available
+    if (unit.unit_name.startsWith('Sinh viên (')) {
+      try {
+        const { data: uRow } = await supabase
+          .from('users')
+          .select('full_name, class_id')
+          .ilike('email', auth.email)
+          .maybeSingle();
+        if (uRow?.full_name) {
+          defaultRequesterName = String(uRow.full_name).trim();
+          const cls = uRow.class_id ? ` - ${uRow.class_id}` : '';
+          unit.unit_name = `SV ${defaultRequesterName} (${unit.unit_code}${cls})`;
+        }
+      } catch {}
+    }
 
     let reqQuery = supabase
       .from('office_borrow_requests')
@@ -77,6 +94,7 @@ export async function GET() {
       data: {
         requests: enriched,
         unit,
+        default_requester_name: defaultRequesterName,
         my_active_ban: myActiveBan,
         is_admin: isAdmin,
       },
@@ -94,13 +112,26 @@ export async function POST(req: Request) {
     const auth = await getAuthContext();
     if (!canCreateBorrowRequest(auth)) {
       return NextResponse.json(
-        { success: false, error: 'Chỉ tài khoản đơn vị (LCĐ / CLB / Đội) mới được tạo đơn mượn dụng cụ.' },
-        { status: 403 }
+        { success: false, error: 'Vui lòng đăng nhập để tạo đơn mượn dụng cụ.' },
+        { status: 401 }
       );
     }
 
     const supabase = (await createAdminClient()) || (await createClient());
     const unit = resolveBorrowerUnit(auth!);
+    if (unit.unit_name.startsWith('Sinh viên (')) {
+      try {
+        const { data: uRow } = await supabase
+          .from('users')
+          .select('full_name, class_id')
+          .ilike('email', auth!.email)
+          .maybeSingle();
+        if (uRow?.full_name) {
+          const cls = uRow.class_id ? ` - ${uRow.class_id}` : '';
+          unit.unit_name = `SV ${String(uRow.full_name).trim()} (${unit.unit_code}${cls})`;
+        }
+      } catch {}
+    }
     const body = await req.json();
 
     // 1. Kiểm tra đơn vị có đang bị CẤM MƯỢN không
@@ -124,7 +155,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const purpose = String(body?.purpose || '').trim();
+    const rawPurpose = String(body?.purpose || '').trim();
+    const basis = String(body?.basis || '').trim();
+    const purpose = basis ? `[Cơ sở: ${basis}] ${rawPurpose}` : rawPurpose;
     const borrow_date = String(body?.borrow_date || '').trim();
     const due_date = String(body?.due_date || '').trim();
     const requester_name = String(body?.requester_name || unit.unit_name).trim();
@@ -133,9 +166,21 @@ export async function POST(req: Request) {
       ? body.items
       : [];
 
-    if (!purpose || !borrow_date || !due_date) {
+    if (!rawPurpose || !borrow_date || !due_date) {
       return NextResponse.json(
-        { success: false, error: 'Vui lòng điền mục đích, ngày mượn và ngày hẹn trả.' },
+        { success: false, error: 'Vui lòng điền đầy đủ mục đích, cơ sở mượn, ngày mượn và ngày hẹn trả.' },
+        { status: 400 }
+      );
+    }
+    if (!basis && rawPurpose.length < 10) {
+      return NextResponse.json(
+        { success: false, error: 'Vui lòng nêu rõ cơ sở và mục đích mượn dụng cụ (tối thiểu 10 ký tự) để Văn phòng Đoàn xem xét duyệt.' },
+        { status: 400 }
+      );
+    }
+    if (!requester_phone) {
+      return NextResponse.json(
+        { success: false, error: 'Vui lòng nhập SĐT / Zalo liên hệ để Văn phòng Đoàn xác nhận.' },
         { status: 400 }
       );
     }

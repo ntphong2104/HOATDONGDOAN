@@ -179,6 +179,76 @@ export function getEventStartDateTime(event: EventScheduleInfo): Date | null {
   return new Date(timeMs);
 }
 
+export type CancellationPolicy = 'before_2h' | 'disabled';
+
+export function normalizeCancellationPolicy(policy?: unknown): CancellationPolicy {
+  return policy === 'disabled' ? 'disabled' : 'before_2h';
+}
+
+/**
+ * Evaluates whether a student can self-cancel their registration for an event.
+ * - 'disabled': Never allowed (must contact BTC/Admin).
+ * - 'before_2h': Allowed only if at least 2 hours (120 minutes) remain before the earliest start time.
+ */
+export function checkCancellationEligibility(
+  event: EventScheduleInfo,
+  policy?: unknown,
+  currentTimeMs: number = Date.now()
+): { canCancel: boolean; policy: CancellationPolicy; reason: string; deadlineMs: number | null } {
+  const normalized = normalizeCancellationPolicy(policy);
+  if (normalized === 'disabled') {
+    return {
+      canCancel: false,
+      policy: 'disabled',
+      reason: 'Ban tổ chức không cho phép tự hủy tham gia đối với sự kiện này. Vui lòng liên hệ BTC nếu có việc đột xuất.',
+      deadlineMs: null,
+    };
+  }
+
+  let earliestStartMs: number | null = null;
+  if (Array.isArray(event.sessions) && event.sessions.length > 0) {
+    for (const s of event.sessions) {
+      if (!s?.session_date) continue;
+      const ms = parseDateStringToTime(s.session_date, s.start_time || event.start_time || '07:00');
+      if (ms !== null && (earliestStartMs === null || ms < earliestStartMs)) {
+        earliestStartMs = ms;
+      }
+    }
+  }
+  if (earliestStartMs === null) {
+    const startDt = getEventStartDateTime(event);
+    earliestStartMs = startDt ? startDt.getTime() : null;
+  }
+
+  if (earliestStartMs === null) {
+    return {
+      canCancel: true,
+      policy: 'before_2h',
+      reason: 'Bạn có thể hủy tham gia trước giờ diễn ra sự kiện ít nhất 2 tiếng.',
+      deadlineMs: null,
+    };
+  }
+
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const deadlineMs = earliestStartMs - TWO_HOURS_MS;
+
+  if (currentTimeMs >= deadlineMs) {
+    return {
+      canCancel: false,
+      policy: 'before_2h',
+      reason: 'Đã quá hạn tự hủy tham gia (chỉ được hủy trước giờ diễn ra sự kiện ít nhất 2 tiếng).',
+      deadlineMs,
+    };
+  }
+
+  return {
+    canCancel: true,
+    policy: 'before_2h',
+    reason: 'Bạn có thể hủy tham gia trước giờ diễn ra sự kiện ít nhất 2 tiếng.',
+    deadlineMs,
+  };
+}
+
 /**
  * Checks whether an event is too early for check-in.
  * By default, check-in is allowed 15 minutes before start_time.

@@ -1947,6 +1947,24 @@ function SuperAdminContent() {
                     </button>
                   )}
                   <Link
+                    href="/office/admin?tab=support_events"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      padding: '0.5rem 1rem',
+                      background: '#16a34a',
+                      color: '#ffffff',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <PlusIcon size={16} />
+                    <span>Tạo Sự Kiện Hỗ Trợ</span>
+                  </Link>
+                  <Link
                     href="/admin/proposals/new"
                     style={{
                       display: 'inline-flex',
@@ -2511,6 +2529,24 @@ function SuperAdminContent() {
                       Bỏ lọc đơn vị
                     </button>
                   )}
+                  <Link
+                    href="/office/admin?tab=support_events"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      padding: '0.5rem 1rem',
+                      background: '#16a34a',
+                      color: '#ffffff',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <PlusIcon size={16} />
+                    <span>Tạo Sự Kiện Hỗ Trợ</span>
+                  </Link>
                   <Link
                     href="/admin/proposals/new"
                     style={{

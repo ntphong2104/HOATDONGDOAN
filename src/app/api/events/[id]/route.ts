@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { isEventLockedPast3Days, normalizeCancellationPolicy } from '@/lib/utils/event-logic';
 import { normalizeAllowedLcds } from '@/lib/utils/lcd';
 import {
   getEventMeta,
@@ -72,6 +72,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     allowed_lcds: meta.allowed_lcds || [],
     max_participants: meta.max_participants || 0,
     max_volunteers: meta.max_volunteers || 0,
+    cancellation_policy: normalizeCancellationPolicy(meta.cancellation_policy),
     is_locked_past_3_days: isEventLockedPast3Days({ ...data, sessions: meta.sessions || [] }),
   };
 
@@ -143,6 +144,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     max_volunteers,
     allowed_cohorts,
     allowed_lcds,
+    cancellation_policy,
   } = body;
 
 
@@ -183,6 +185,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (allowed_lcds !== undefined) metaUpdates.allowed_lcds = normalizeAllowedLcds(allowed_lcds);
   if (is_recruitment_open !== undefined) metaUpdates.is_recruitment_open = is_recruitment_open;
   if (require_registration !== undefined) metaUpdates.require_registration = require_registration;
+  if (cancellation_policy !== undefined) metaUpdates.cancellation_policy = normalizeCancellationPolicy(cancellation_policy);
   if (max_participants !== undefined && isSuperAdmin) metaUpdates.max_participants = Math.max(0, Number(max_participants));
   if (max_volunteers !== undefined && isSuperAdmin) metaUpdates.max_volunteers = Math.max(0, Number(max_volunteers));
 
@@ -229,6 +232,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     allowed_lcds: latestMeta.allowed_lcds || [],
     max_participants: latestMeta.max_participants || 0,
     max_volunteers: latestMeta.max_volunteers || 0,
+    cancellation_policy: normalizeCancellationPolicy(latestMeta.cancellation_policy),
   };
 
   invalidateEventCache(resolvedParams.id);

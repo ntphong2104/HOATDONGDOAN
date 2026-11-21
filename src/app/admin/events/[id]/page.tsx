@@ -113,6 +113,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
   const [supplementing, setSupplementing] = useState(false);
   const [supplementResult, setSupplementResult] = useState<any>(null);
   const [requireRegistration, setRequireRegistration] = useState<boolean>(true);
+  const [cancellationPolicy, setCancellationPolicy] = useState<'before_2h' | 'disabled'>('before_2h');
+  const [savingCancelPolicy, setSavingCancelPolicy] = useState(false);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedRecruitment, setCopiedRecruitment] = useState(false);
@@ -199,9 +201,10 @@ export default function EventDetailPage({ params }: { params?: any }) {
         setSessions(eventData.data.sessions);
       }
 
-      // Load require_registration setting
+      // Load require_registration & cancellation_policy settings
       if (eventData.success && eventData.data) {
         setRequireRegistration(eventData.data.require_registration !== false);
+        setCancellationPolicy(eventData.data.cancellation_policy === 'disabled' ? 'disabled' : 'before_2h');
       }
     } catch (err) {
       console.error('Failed to fetch event data:', err);
@@ -1338,6 +1341,90 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   : '(SV quét mã QR điểm danh trực tiếp, không cần đăng ký trước)'
                 }
               </span>
+            </div>
+          )}
+
+          {/* Chế độ sinh viên tự hủy tham gia */}
+          {(!isLockedPast3Days || isSuperAdmin) && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.75rem',
+              marginTop: '0.75rem',
+              padding: '0.65rem 1rem',
+              background: cancellationPolicy === 'disabled' ? '#fef2f2' : '#f0fdf4',
+              border: `1.5px solid ${cancellationPolicy === 'disabled' ? '#fecaca' : '#bbf7d0'}`,
+              borderRadius: '10px',
+              flexWrap: 'wrap',
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: cancellationPolicy === 'disabled' ? '#b91c1c' : '#15803d' }}>
+                  Chế độ sinh viên tự hủy tham gia
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  {cancellationPolicy === 'disabled'
+                    ? 'Sinh viên không thể tự hủy sau khi đăng ký (phải liên hệ BTC để xóa).'
+                    : 'Sinh viên được tự hủy đăng ký trước giờ diễn ra sự kiện ít nhất 2 tiếng.'}
+                </span>
+              </div>
+              <div style={{ display: 'inline-flex', gap: '0.35rem', background: '#ffffff', padding: '0.25rem', borderRadius: '9px', border: '1px solid #e2e8f0' }}>
+                {([
+                  { value: 'before_2h' as const, label: 'Hủy trước 2 tiếng' },
+                  { value: 'disabled' as const, label: 'Không thể hủy' },
+                ]).map((opt) => {
+                  const active = cancellationPolicy === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={savingCancelPolicy}
+                      onClick={async () => {
+                        if (active || savingCancelPolicy) return;
+                        const prev = cancellationPolicy;
+                        setCancellationPolicy(opt.value);
+                        setSavingCancelPolicy(true);
+                        try {
+                          const res = await fetch(`/api/events/${resolvedParams.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ cancellation_policy: opt.value }),
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (res.ok && data.success) {
+                            notifyEventSync(resolvedParams.id);
+                          } else {
+                            alert(data.error || 'Lỗi cập nhật chế độ hủy tham gia');
+                            setCancellationPolicy(prev);
+                          }
+                        } catch {
+                          alert('Lỗi kết nối');
+                          setCancellationPolicy(prev);
+                        } finally {
+                          setSavingCancelPolicy(false);
+                        }
+                      }}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '7px',
+                        border: 'none',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: savingCancelPolicy ? 'not-allowed' : 'pointer',
+                        background: active
+                          ? opt.value === 'disabled'
+                            ? '#dc2626'
+                            : '#16a34a'
+                          : 'transparent',
+                        color: active ? '#ffffff' : '#475569',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 

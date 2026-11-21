@@ -1,4 +1,4 @@
-import { isEventPastDeadline, getEffectiveEventStatus, getEventLifecycleState, isEventLockedPast3Days, getNextUpcomingSession } from '@/lib/utils/event-logic';
+import { isEventPastDeadline, getEffectiveEventStatus, getEventLifecycleState, isEventLockedPast3Days, getNextUpcomingSession, checkCancellationEligibility } from '@/lib/utils/event-logic';
 import { isEventRoleExpired } from '@/lib/constants/event-roles-cleanup';
 
 describe('event-logic unit tests', () => {
@@ -201,6 +201,52 @@ describe('event-logic unit tests', () => {
 
       expect(res.nextSession).toBeNull();
       expect(res.remainingCount).toBe(0);
+    });
+  });
+
+  describe('checkCancellationEligibility', () => {
+    const sampleEvent = {
+      event_date: '2026-11-25',
+      start_time: '08:00',
+      end_time: '11:30',
+      status: 'active',
+    };
+
+    test('blocks self-cancellation when policy is disabled', () => {
+      const wellBefore = new Date(2026, 10, 24, 10, 0, 0).getTime();
+      const res = checkCancellationEligibility(sampleEvent, 'disabled', wellBefore);
+      expect(res.canCancel).toBe(false);
+      expect(res.policy).toBe('disabled');
+    });
+
+    test('allows self-cancellation more than 2 hours before start when policy is before_2h', () => {
+      // Event starts 08:00 -> 05:30 is 2.5h before
+      const twoAndHalfHoursBefore = new Date(2026, 10, 25, 5, 30, 0).getTime();
+      const res = checkCancellationEligibility(sampleEvent, 'before_2h', twoAndHalfHoursBefore);
+      expect(res.canCancel).toBe(true);
+      expect(res.policy).toBe('before_2h');
+    });
+
+    test('blocks self-cancellation within 2 hours of start when policy is before_2h', () => {
+      // Event starts 08:00 -> 06:01 is 1h59m before
+      const withinTwoHours = new Date(2026, 10, 25, 6, 1, 0).getTime();
+      const res = checkCancellationEligibility(sampleEvent, 'before_2h', withinTwoHours);
+      expect(res.canCancel).toBe(false);
+      expect(res.policy).toBe('before_2h');
+    });
+
+    test('uses earliest session start_time for multi-session events', () => {
+      const multiEvent = {
+        event_date: '2026-11-26',
+        start_time: '14:00',
+        sessions: [
+          { id: 's1', session_date: '2026-11-25', start_time: '09:00', end_time: '11:00' },
+          { id: 's2', session_date: '2026-11-26', start_time: '14:00', end_time: '17:00' },
+        ],
+      };
+      // 07:30 on Nov 25 is 1.5h before earliest session (09:00) -> blocked
+      const res = checkCancellationEligibility(multiEvent, 'before_2h', new Date(2026, 10, 25, 7, 30, 0).getTime());
+      expect(res.canCancel).toBe(false);
     });
   });
 });

@@ -47,6 +47,12 @@ export interface EventMeta {
   sessions?: EventSession[];
   max_participants?: number;
   max_volunteers?: number;
+  /** Sự kiện hỗ trợ tạo nhanh bởi VPĐ/Đoàn HVCS (không mượn phòng, không qua CTSV) */
+  is_support_event?: boolean;
+  organization_unit?: string;
+  description?: string;
+  /** Chế độ sinh viên tự hủy tham gia: 'before_2h' (trước 2 tiếng) | 'disabled' (không thể hủy) */
+  cancellation_policy?: 'before_2h' | 'disabled';
 }
 
 const META_DIR = path.join(process.cwd(), 'data');

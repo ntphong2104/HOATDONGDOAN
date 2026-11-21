@@ -4,7 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV, isValidMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
-import { isEventLockedPast3Days, isEventScheduleExpired } from '@/lib/utils/event-logic';
+import { isEventLockedPast3Days, isEventScheduleExpired, checkCancellationEligibility } from '@/lib/utils/event-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
 import { runWithConcurrency, QueueTimeoutError } from '@/lib/utils/concurrency-queue';
 import { getGraduatedCohorts, getGraduatedBlockReason } from '@/lib/utils/graduated-cohorts';
@@ -602,7 +602,7 @@ export async function DELETE(
     const [{ data: event }, meta] = await Promise.all([
       supabase
         .from('events')
-        .select('event_id, event_date, end_time, status, created_by')
+        .select('event_id, event_date, start_time, end_time, status, created_by')
         .eq('event_id', resolvedParams.id)
         .maybeSingle(),
       getEventMeta(supabase, resolvedParams.id),
@@ -665,9 +665,22 @@ export async function DELETE(
     }
 
     // 3. Single delete
+    const isAdminDeletingSpecificStudent = Boolean(body.mssv && canManage);
     let targetMssv = extractMSSV(auth.email) || auth.email;
-    if (body.mssv && canManage) {
+    if (isAdminDeletingSpecificStudent) {
       targetMssv = String(body.mssv).trim().toUpperCase();
+    } else if (eventRecord) {
+      // Sinh viên tự hủy tham gia -> kiểm tra chế độ hủy do Admin cấu hình
+      const cancelCheck = checkCancellationEligibility(
+        { ...eventRecord, sessions: eventMeta?.sessions || [] },
+        eventMeta?.cancellation_policy
+      );
+      if (!cancelCheck.canCancel) {
+        return NextResponse.json(
+          { success: false, error: cancelCheck.reason },
+          { status: 403 }
+        );
+      }
     }
 
     const { error } = await supabase

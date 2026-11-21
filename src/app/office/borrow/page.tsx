@@ -60,6 +60,7 @@ export default function OfficeBorrowPage() {
 
   // Form state
   const [selectedQty, setSelectedQty] = useState<Record<string, number>>({});
+  const [basis, setBasis] = useState('');
   const [purpose, setPurpose] = useState('');
   const [requesterName, setRequesterName] = useState('');
   const [requesterPhone, setRequesterPhone] = useState('');
@@ -87,6 +88,9 @@ export default function OfficeBorrowPage() {
         setRequests(rJson.data.requests || []);
         setUnit(rJson.data.unit || null);
         setActiveBan(rJson.data.my_active_ban || null);
+        if (rJson.data.default_requester_name) {
+          setRequesterName((prev) => prev || rJson.data.default_requester_name);
+        }
       }
     } catch {
       toast.error('Lỗi kết nối máy chủ.');
@@ -166,7 +170,8 @@ export default function OfficeBorrowPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          purpose,
+          basis: basis.trim(),
+          purpose: purpose.trim(),
           requester_name: requesterName || unit?.unit_name,
           requester_phone: requesterPhone,
           borrow_date: borrowDate,
@@ -182,6 +187,7 @@ export default function OfficeBorrowPage() {
       if (json.success) {
         toast.success(json.message);
         setSelectedQty({});
+        setBasis('');
         setPurpose('');
         await loadData();
       } else {
@@ -218,11 +224,11 @@ export default function OfficeBorrowPage() {
         {/* Hero */}
         <section className={styles.hero}>
           <div className={styles.heroEyebrow}>
-            Văn phòng Đoàn • {unit?.unit_name || 'Đơn vị trực thuộc'}
+            Văn phòng Đoàn • {unit?.unit_name || 'Sinh viên & Đơn vị'}
           </div>
           <h1 className={styles.heroTitle}>Mượn Vật Phẩm &amp; Dụng Cụ</h1>
           <p className={styles.heroSub}>
-            Chọn vật phẩm từ kho bên trái, kiểm tra phiếu mượn bên phải và gửi đơn. Lưu ý:{' '}
+            Mở cho toàn thể Sinh viên &amp; Đơn vị trực thuộc — vui lòng nêu rõ <strong>cơ sở mượn</strong> và chờ <strong>Văn phòng Đoàn phê duyệt</strong>. Lưu ý:{' '}
             <strong>Trả trễ từ 1 ngày trở lên sẽ tự động bị CẤM MƯỢN</strong>.
           </p>
         </section>
@@ -414,13 +420,25 @@ export default function OfficeBorrowPage() {
 
             <form onSubmit={handleSubmit} className={styles.formStack}>
               <div>
-                <label className={styles.fieldLabel}>Mục đích / Tên sự kiện *</label>
+                <label className={styles.fieldLabel}>Cơ sở mượn (Lớp / Hoạt động / Đơn vị xác nhận) *</label>
+                <input
+                  type="text"
+                  required
+                  value={basis}
+                  onChange={(e) => setBasis(e.target.value)}
+                  placeholder="VD: Lớp D23CQCN01-N, Đồ án môn học / Sự kiện CLB / Có BCH xác nhận"
+                  className={styles.fieldInput}
+                />
+              </div>
+
+              <div>
+                <label className={styles.fieldLabel}>Mục đích / Tên chương trình *</label>
                 <input
                   type="text"
                   required
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
-                  placeholder="VD: Hội thảo khoa CNTT"
+                  placeholder="VD: Thuyết trình báo cáo, tổ chức giao lưu, hỗ trợ sự kiện..."
                   className={styles.fieldInput}
                 />
               </div>
@@ -497,7 +515,7 @@ export default function OfficeBorrowPage() {
         <section className={styles.card}>
           <div className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>
-              Lịch sử đơn mượn của đơn vị ({requests.length})
+              Lịch sử đơn mượn của bạn ({requests.length})
             </h2>
             <button
               type="button"
