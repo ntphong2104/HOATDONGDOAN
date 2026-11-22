@@ -71,6 +71,15 @@
   box-sizing: border-box;
 }
 
+select, input, textarea {
+  max-width: 100%;
+}
+
+select {
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
 html, body {
   margin: 0;
   padding: 0;

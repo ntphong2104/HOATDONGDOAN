@@ -2480,8 +2480,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
                     Vai trò
                   </label>
@@ -2490,6 +2490,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     onChange={(e) => setSupplementRole(e.target.value as any)}
                     style={{
                       width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
                       padding: '0.5rem',
                       borderRadius: '8px',
                       border: '1.5px solid #c4b5fd',
@@ -2501,7 +2503,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   </select>
                 </div>
 
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
                     Ca / Buổi điểm danh
                   </label>
@@ -2510,10 +2512,13 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     onChange={(e) => setSupplementSessionId(e.target.value)}
                     style={{
                       width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
                       padding: '0.5rem',
                       borderRadius: '8px',
                       border: '1.5px solid #c4b5fd',
                       fontSize: '0.85rem',
+                      textOverflow: 'ellipsis',
                     }}
                   >
                     <option value="main">Buổi chính</option>

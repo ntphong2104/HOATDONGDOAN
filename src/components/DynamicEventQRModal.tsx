@@ -193,12 +193,14 @@ export default function DynamicEventQRModal({
               marginBottom: '1rem',
               width: '100%',
               maxWidth: '440px',
+              minWidth: 0,
+              overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.4rem',
+              gap: '0.45rem',
               textAlign: 'left',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: 0 }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   <MapPinIcon size={14} /> Chọn Buổi / Ca Điểm Danh:
                 </label>
@@ -206,7 +208,10 @@ export default function DynamicEventQRModal({
                   value={selectedSessionId}
                   onChange={(e) => setSelectedSessionId(e.target.value)}
                   style={{
-                    padding: '0.35rem 0.65rem',
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    padding: '0.42rem 0.65rem',
                     borderRadius: '8px',
                     border: '1.5px solid #cbd5e1',
                     fontSize: '0.825rem',
@@ -214,6 +219,9 @@ export default function DynamicEventQRModal({
                     background: '#ffffff',
                     color: '#0f172a',
                     cursor: 'pointer',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {sessions.map((s) => (

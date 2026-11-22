@@ -64,12 +64,34 @@ const UNIT_BY_EMAIL = new Map<string, string>(
   OFFICIAL_UNITS.map((u) => [u.email.toLowerCase(), u.name])
 );
 
+const OFFICIAL_CLUBS = OFFICIAL_UNITS.filter(
+  (u) => !u.code.startsWith('LCD_') && !u.type.includes('LCĐ') && !u.type.includes('Khoa')
+);
+
 function resolveUnitDisplayName(
   proposalUnit?: string | null,
   creatorEmail?: string | null
 ): { unitName: string; unitType: 'lcd' | 'clb' | 'school'; lcdCode: string | null; lcdColor: string | null } {
   const emailLower = String(creatorEmail || '').toLowerCase().trim();
   const rawName = String(proposalUnit || '').trim() || UNIT_BY_EMAIL.get(emailLower) || '';
+  const rawLower = rawName.toLowerCase();
+
+  // Nhận diện CLB / Đội / Nhóm TRƯỚC khi kiểm tra LCĐ (tránh "CLB An toàn Thông tin" bị gộp nhầm sang "LCĐ An toàn Thông tin")
+  const isExplicitClub =
+    rawLower.startsWith('clb') ||
+    rawLower.startsWith('câu lạc bộ') ||
+    rawLower.startsWith('đội ') ||
+    emailLower.startsWith('clb') ||
+    emailLower.startsWith('doi');
+
+  if (isExplicitClub && rawName) {
+    return {
+      unitName: rawName,
+      unitType: 'clb',
+      lcdCode: null,
+      lcdColor: '#7c3aed',
+    };
+  }
 
   const lcdCode = normalizeLcdCode(rawName) || normalizeLcdCode(emailLower);
   if (lcdCode) {
@@ -85,13 +107,13 @@ function resolveUnitDisplayName(
   }
 
   if (rawName) {
-    const lower = rawName.toLowerCase();
     const isSchool =
-      lower.includes('đoàn học viện') ||
-      lower.includes('đoàn trường') ||
-      lower.includes('đoàn tncs') ||
-      lower.includes('phòng ') ||
-      lower.includes('ban chấp hành đoàn');
+      rawLower.includes('đoàn học viện') ||
+      rawLower.includes('đoàn trường') ||
+      rawLower.includes('đoàn tncs') ||
+      rawLower.includes('phòng ') ||
+      rawLower.includes('khoa ') ||
+      rawLower.includes('ban chấp hành đoàn');
     return {
       unitName: rawName,
       unitType: isSchool ? 'school' : 'clb',
@@ -168,6 +190,19 @@ async function computeSemesterRanking(
       uniqueParticipants: Set<string>;
     }
     const unitAggMap = new Map<string, UnitAgg>();
+
+    // Khởi tạo sẵn đủ 16 CLB / Đội / Nhóm chính thức (tương tự 8 LCĐ) để luôn hiển thị đầy đủ kể cả CLB chưa có sự kiện trong kỳ
+    for (const club of OFFICIAL_CLUBS) {
+      unitAggMap.set(club.name, {
+        unitName: club.name,
+        unitType: 'clb',
+        lcdCode: null,
+        lcdColor: '#7c3aed',
+        eventsCount: 0,
+        totalParticipants: 0,
+        uniqueParticipants: new Set<string>(),
+      });
+    }
 
     for (const ev of semesterEvents) {
       const evId = String(ev.event_id);
