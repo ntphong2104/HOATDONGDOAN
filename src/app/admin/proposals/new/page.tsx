@@ -255,7 +255,11 @@ export default function NewProposalPage() {
     room_id: isMultiSession ? (sessionsList[0]?.room_id || null) : (selectedRoomId || null),
     room_name: isMultiSession ? (sessionsList[0]?.room_name || 'Không mượn') : (selectedRoomName || 'Không mượn'),
     sessions: isMultiSession
-      ? sessionsList.map((s) => ({ ...s, room_name: s.room_name || 'Không mượn' }))
+      ? sessionsList.map((s) => ({
+          ...s,
+          room_name: s.room_name || 'Không mượn',
+          participant_count: Number(participantCount) || 0,
+        }))
       : [
           {
             id: 'session_1',

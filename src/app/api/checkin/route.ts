@@ -249,6 +249,7 @@ export async function POST(req: Request) {
       if (event) {
         checkinEventCache.set(event_id, { data: event, meta, ts: Date.now() });
         trimCache(checkinEventCache);
+        trimCache(checkinEventCache);
       }
     }
 

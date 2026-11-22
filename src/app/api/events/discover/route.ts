@@ -58,7 +58,7 @@ interface DiscoverCacheState {
   inflight: Promise<SharedDiscoverEvent[]> | null;
 }
 
-const DISCOVER_CACHE_TTL_MS = 10_000; // 10s shared cache across all concurrent students
+const DISCOVER_CACHE_TTL_MS = 20_000; // 20s shared cache across all concurrent students
 
 function getCacheState(): DiscoverCacheState {
   const g = globalThis as unknown as { __hddDiscoverCache?: DiscoverCacheState };

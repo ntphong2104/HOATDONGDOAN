@@ -9,8 +9,8 @@
  * QR format: MSSV:window:signature
  */
 
-const WINDOW_SECONDS = 30;
-const TOLERANCE_WINDOWS = 2; // Valid for current + 2 previous windows (~90s max)
+const WINDOW_SECONDS = 10;
+const TOLERANCE_WINDOWS = 3; // Valid for current + 3 previous windows (~30-40s max)
 
 function getSecret(): string {
   const secret =
