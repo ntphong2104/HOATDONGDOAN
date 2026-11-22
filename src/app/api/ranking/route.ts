@@ -467,8 +467,9 @@ async function computeSemesterRanking(
       item.rank = index + 1;
     });
 
-    // 7. Xây dựng Bảng Xếp Hạng Đơn vị tổ chức (LCĐ / CLB / Đội thu hút nhiều người tham gia nhất)
+    // 7. Xây dựng Bảng Xếp Hạng CLB / Đội / Nhóm (chỉ so sánh các CLB/Đội/Nhóm, tách riêng với 8 LCĐ và cấp Học viện)
     const unitRankings: UnitRankingItem[] = Array.from(unitAggMap.values())
+      .filter((agg) => agg.unitType === 'clb')
       .map((agg) => ({
         rank: 0,
         unit_name: agg.unitName,

@@ -170,15 +170,14 @@ export default function RankingBoard({
 
     const unitSheetRows = data.unit_rankings.map((u) => ({
       'Hạng': u.rank,
-      'Đơn vị tổ chức': u.unit_name,
-      'Phân loại': u.unit_type === 'lcd' ? 'Liên Chi Đoàn' : u.unit_type === 'school' ? 'Cấp Học viện' : 'CLB / Đội / Nhóm',
+      'CLB / Đội / Nhóm': u.unit_name,
       'Số sự kiện tổ chức': u.events_count,
       'Tổng lượt người tham gia': u.total_participants,
       'Người tham gia duy nhất': u.unique_participants,
       'Trung bình lượt / sự kiện': u.avg_participants_per_event,
     }));
     const wsUnits = XLSX.utils.json_to_sheet(unitSheetRows);
-    XLSX.utils.book_append_sheet(wb, wsUnits, 'DonVi_ToChuc');
+    XLSX.utils.book_append_sheet(wb, wsUnits, 'XepHang_CLB');
 
     const studentSheetRows = data.top_students.map((s) => ({
       'Hạng': s.rank,
@@ -411,7 +410,7 @@ export default function RankingBoard({
                   onClick={() => setActiveTab('units')}
                 >
                   <CalendarIcon size={15} />
-                  <span>Đơn vị tổ chức ({data.unit_rankings.length})</span>
+                  <span>Xếp hạng CLB / Đội / Nhóm ({data.unit_rankings.length})</span>
                 </button>
 
                 <button
@@ -508,11 +507,11 @@ export default function RankingBoard({
               </div>
             )}
 
-            {/* TAB 2: Xếp hạng Đơn vị tổ chức */}
+            {/* TAB 2: Xếp hạng CLB / Đội / Nhóm */}
             {activeTab === 'units' && (
               data.unit_rankings.length === 0 ? (
                 <div className={styles.emptyState}>
-                  Chưa có sự kiện nào được tổ chức trong <strong>{data.semester.name}</strong>.
+                  Chưa có sự kiện nào của CLB / Đội / Nhóm trong <strong>{data.semester.name}</strong>.
                 </div>
               ) : (
                 <div className={styles.tableWrap}>
@@ -520,8 +519,7 @@ export default function RankingBoard({
                     <thead>
                       <tr>
                         <th style={{ width: 120 }}>Hạng</th>
-                        <th style={{ minWidth: 230 }}>Đơn vị tổ chức (LCĐ / CLB / Ban)</th>
-                        <th className={styles.cellCenter}>Phân loại</th>
+                        <th style={{ minWidth: 230 }}>CLB / Đội / Nhóm</th>
                         <th style={{ width: 250 }}>Tổng lượt người tham gia</th>
                         <th className={styles.cellRight}>Số sự kiện</th>
                         <th className={styles.cellRight}>TB lượt / SK</th>
@@ -537,34 +535,9 @@ export default function RankingBoard({
                           <tr key={unit.unit_name}>
                             <td className={styles.cellNowrap}>{renderRankBadge(unit.rank)}</td>
                             <td>
-                              <strong style={{ color: unit.lcd_color || '#0f172a' }}>
+                              <strong style={{ color: unit.lcd_color || '#6d28d9' }}>
                                 {unit.unit_name}
                               </strong>
-                            </td>
-                            <td className={styles.cellCenter}>
-                              <span
-                                className={styles.lcdBadge}
-                                style={{
-                                  background:
-                                    unit.unit_type === 'lcd'
-                                      ? '#eff6ff'
-                                      : unit.unit_type === 'school'
-                                      ? '#fef3c7'
-                                      : '#f5f3ff',
-                                  color:
-                                    unit.unit_type === 'lcd'
-                                      ? '#1d4ed8'
-                                      : unit.unit_type === 'school'
-                                      ? '#b45309'
-                                      : '#6d28d9',
-                                }}
-                              >
-                                {unit.unit_type === 'lcd'
-                                  ? 'Liên Chi Đoàn'
-                                  : unit.unit_type === 'school'
-                                  ? 'Cấp Học viện'
-                                  : 'CLB / Đội / Nhóm'}
-                              </span>
                             </td>
                             <td>
                               <div style={{ fontWeight: 800, color: '#0f172a' }}>
@@ -575,7 +548,7 @@ export default function RankingBoard({
                                   className={styles.barFill}
                                   style={{
                                     width: `${pctWidth}%`,
-                                    background: unit.lcd_color || '#2563eb',
+                                    background: unit.lcd_color || '#7c3aed',
                                   }}
                                 />
                               </div>
