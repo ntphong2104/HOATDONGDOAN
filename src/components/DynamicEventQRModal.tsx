@@ -113,20 +113,33 @@ export default function DynamicEventQRModal({
   useEffect(() => {
     if (!isOpen || !eventId) return;
 
-    let intervalId: NodeJS.Timeout;
     let isSubscribed = true;
+    let isFetching = false;
+    let nextRefreshAt = 0;
 
     const fetchToken = async () => {
+      if (isFetching || !isSubscribed) return;
+      isFetching = true;
       try {
-        const res = await fetch(`/api/events/${eventId}/dynamic-qr?role=${targetRole}&session_id=${selectedSessionId}`);
+        const res = await fetch(
+          `/api/events/${eventId}/dynamic-qr?role=${targetRole}&session_id=${selectedSessionId}`,
+          { cache: 'no-store' }
+        );
         const data = await res.json();
         if (data.success && isSubscribed) {
+          const expSec = Math.max(1, Number(data.data.expiresInSeconds) || 10);
           setToken(data.data.token);
-          setSecondsLeft(data.data.expiresInSeconds || 10);
+          // Add 150ms buffer so the next fetch always lands squarely inside the new 10s server window
+          nextRefreshAt = Date.now() + expSec * 1000 + 150;
+          setSecondsLeft(expSec);
           setLoading(false);
         }
       } catch (err) {
         console.error('Failed to fetch dynamic QR token', err);
+        // Retry cleanly in 2s if network hiccupped
+        nextRefreshAt = Date.now() + 2000;
+      } finally {
+        isFetching = false;
       }
     };
 
@@ -134,16 +147,17 @@ export default function DynamicEventQRModal({
     setLoading(true);
     fetchToken();
 
-    // 1-second countdown ticker
-    intervalId = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          fetchToken();
-          return 10;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    // Sync countdown directly to wall-clock target (250ms tick = zero drift, exact QR flip)
+    const intervalId = setInterval(() => {
+      if (!isSubscribed || !nextRefreshAt) return;
+      const remainingMs = nextRefreshAt - Date.now();
+      if (remainingMs <= 0) {
+        setSecondsLeft(1);
+        fetchToken();
+      } else {
+        setSecondsLeft(Math.min(10, Math.max(1, Math.ceil(remainingMs / 1000))));
+      }
+    }, 250);
 
     return () => {
       isSubscribed = false;
