@@ -140,12 +140,12 @@ describe('Comprehensive Security & Business Logic Audit Suite', () => {
       };
 
       // 10:45 AM (45 mins after end) -> Still within 1h grace
-      const timeAt1045 = new Date(2026, 7, 14, 10, 45, 0).getTime();
+      const timeAt1045 = new Date('2026-08-14T10:45:00+07:00').getTime();
       expect(isEventPastDeadline(event, timeAt1045)).toBe(false);
       expect(getEffectiveEventStatus(event, timeAt1045)).toBe('active');
 
       // 11:05 AM (65 mins after end) -> Past 1h deadline -> Closed!
-      const timeAt1105 = new Date(2026, 7, 14, 11, 5, 0).getTime();
+      const timeAt1105 = new Date('2026-08-14T11:05:00+07:00').getTime();
       expect(isEventPastDeadline(event, timeAt1105)).toBe(true);
       expect(getEffectiveEventStatus(event, timeAt1105)).toBe('closed');
     });

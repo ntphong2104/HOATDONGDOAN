@@ -2,6 +2,11 @@ import { isEventPastDeadline, getEffectiveEventStatus, getEventLifecycleState, i
 import { isEventRoleExpired } from '@/lib/constants/event-roles-cleanup';
 
 describe('event-logic unit tests', () => {
+  const vnMs = (isoDate: string, hhmm: string = '00:00:00') => {
+    const time = hhmm.split(':').length === 2 ? `${hhmm}:00` : hhmm;
+    return new Date(`${isoDate}T${time}+07:00`).getTime();
+  };
+
   test('returns true if event is already marked as closed', () => {
     expect(isEventPastDeadline({ status: 'closed' })).toBe(true);
     expect(getEffectiveEventStatus({ status: 'closed' })).toBe('closed');
@@ -21,17 +26,17 @@ describe('event-logic unit tests', () => {
     };
 
     // Exactly at 11:30 -> Not past deadline (still in 1-hour grace period)
-    const at1130 = new Date(2026, 7, 14, 11, 30, 0, 0).getTime();
+    const at1130 = vnMs('2026-08-14', '11:30');
     expect(isEventPastDeadline(event, at1130)).toBe(false);
     expect(getEffectiveEventStatus(event, at1130)).toBe('active');
 
     // At 12:29 (59 mins after 11:30) -> Still within 1-hour grace period
-    const at1229 = new Date(2026, 7, 14, 12, 29, 0, 0).getTime();
+    const at1229 = vnMs('2026-08-14', '12:29');
     expect(isEventPastDeadline(event, at1229)).toBe(false);
     expect(getEffectiveEventStatus(event, at1229)).toBe('active');
 
     // At 12:31 (61 mins after 11:30) -> Past deadline, automatically closed!
-    const at1231 = new Date(2026, 7, 14, 12, 31, 0, 0).getTime();
+    const at1231 = vnMs('2026-08-14', '12:31');
     expect(isEventPastDeadline(event, at1231)).toBe(true);
     expect(getEffectiveEventStatus(event, at1231)).toBe('closed');
   });
@@ -43,11 +48,11 @@ describe('event-logic unit tests', () => {
     };
 
     // At 22:30 -> Not past deadline (within 1h after 22:00)
-    const at2230 = new Date(2026, 7, 14, 22, 30, 0, 0).getTime();
+    const at2230 = vnMs('2026-08-14', '22:30');
     expect(isEventPastDeadline(event, at2230)).toBe(false);
 
     // At 23:05 (past 23:00) -> Auto-closed!
-    const at2305 = new Date(2026, 7, 14, 23, 5, 0, 0).getTime();
+    const at2305 = vnMs('2026-08-14', '23:05');
     expect(isEventPastDeadline(event, at2305)).toBe(true);
     expect(getEffectiveEventStatus(event, at2305)).toBe('closed');
   });
@@ -65,13 +70,13 @@ describe('event-logic unit tests', () => {
     };
 
     // Day 2 morning (20/11/2026 05:32) -> MUST stay active, NOT closed!
-    const day2Morning = new Date(2026, 10, 20, 5, 32, 0, 0).getTime();
+    const day2Morning = vnMs('2026-11-20', '05:32');
     expect(isEventPastDeadline(event, day2Morning)).toBe(false);
     expect(getEffectiveEventStatus(event, day2Morning)).toBe('active');
     expect(getEventLifecycleState(event, day2Morning)).toBe('active');
 
     // Day 2 after session 2 + 1h grace (20/11/2026 22:31) -> Closed
-    const day2AfterGrace = new Date(2026, 10, 20, 22, 31, 0, 0).getTime();
+    const day2AfterGrace = vnMs('2026-11-20', '22:31');
     expect(isEventPastDeadline(event, day2AfterGrace)).toBe(true);
     expect(getEffectiveEventStatus(event, day2AfterGrace)).toBe('closed');
     expect(getEventLifecycleState(event, day2AfterGrace)).toBe('closed');
@@ -85,7 +90,7 @@ describe('event-logic unit tests', () => {
         status: 'active',
       };
       // Current time is 1 month later
-      const currentTime = new Date(2026, 9, 8, 12, 0, 0).getTime();
+      const currentTime = vnMs('2026-10-08', '12:00');
       expect(isEventLockedPast3Days(event, currentTime)).toBe(false);
     });
 
@@ -101,11 +106,11 @@ describe('event-logic unit tests', () => {
       };
 
       // Exactly 17 hours after session 2 ended (2026-10-08 16:00) -> NOT locked past 3 days (72h)
-      const now17HoursLater = new Date(2026, 9, 8, 16, 0, 0).getTime();
+      const now17HoursLater = vnMs('2026-10-08', '16:00');
       expect(isEventLockedPast3Days(event, now17HoursLater)).toBe(false);
 
       // 4 days after session 2 ended (2026-10-12) -> LOCKED past 3 days
-      const now4DaysLater = new Date(2026, 9, 12, 10, 0, 0).getTime();
+      const now4DaysLater = vnMs('2026-10-12', '10:00');
       expect(isEventLockedPast3Days(event, now4DaysLater)).toBe(true);
     });
 
@@ -121,7 +126,7 @@ describe('event-logic unit tests', () => {
       };
 
       // On 2026-10-08, session on 07-10 is only 1 day old, NOT locked
-      const now = new Date(2026, 9, 8, 16, 0, 0).getTime();
+      const now = vnMs('2026-10-08', '16:00');
       expect(isEventLockedPast3Days(event, now)).toBe(false);
     });
   });
@@ -134,7 +139,7 @@ describe('event-logic unit tests', () => {
         status: 'active', // BTC did not manually close
       };
       // 5 days later (2026-11-15 12:00)
-      const now5DaysLater = new Date(2026, 10, 15, 12, 0, 0).getTime();
+      const now5DaysLater = vnMs('2026-11-15', '12:00');
       expect(isEventRoleExpired(event, null, now5DaysLater)).toBe(true);
     });
 
@@ -145,11 +150,11 @@ describe('event-logic unit tests', () => {
         status: 'active',
       };
       // 1 day later (2026-11-19 12:00) -> Still within 3-day wrap-up window
-      const now1DayLater = new Date(2026, 10, 19, 12, 0, 0).getTime();
+      const now1DayLater = vnMs('2026-11-19', '12:00');
       expect(isEventRoleExpired(event, null, now1DayLater)).toBe(false);
 
       // Exactly 2 days later -> Still retained
-      const now2DaysLater = new Date(2026, 10, 20, 12, 0, 0).getTime();
+      const now2DaysLater = vnMs('2026-11-20', '12:00');
       expect(isEventRoleExpired(event, null, now2DaysLater)).toBe(false);
     });
 
@@ -165,11 +170,11 @@ describe('event-logic unit tests', () => {
       ];
 
       // On 2026-11-12 (2 days after session 2) -> NOT expired
-      const onNov12 = new Date(2026, 10, 12, 10, 0, 0).getTime();
+      const onNov12 = vnMs('2026-11-12', '10:00');
       expect(isEventRoleExpired(event, sessions, onNov12)).toBe(false);
 
       // On 2026-11-14 (4 days after session 2) -> EXPIRED
-      const onNov14 = new Date(2026, 10, 14, 10, 0, 0).getTime();
+      const onNov14 = vnMs('2026-11-14', '10:00');
       expect(isEventRoleExpired(event, sessions, onNov14)).toBe(true);
     });
   });
@@ -181,7 +186,7 @@ describe('event-logic unit tests', () => {
         { id: 's2', name: 'Buổi 2', session_date: '2026-11-22', start_time: '08:00', end_time: '10:30' },
         { id: 's3', name: 'Buổi 3', session_date: '2026-11-29', start_time: '08:00', end_time: '10:30' },
       ];
-      const onNov21 = new Date(2026, 10, 21, 2, 0, 0).getTime();
+      const onNov21 = vnMs('2026-11-21', '02:00');
       const res = getNextUpcomingSession(sessions, '22:00', onNov21);
 
       expect(res.nextSession?.id).toBe('s2');
@@ -196,7 +201,7 @@ describe('event-logic unit tests', () => {
         { id: 's1', session_date: '2026-11-19', start_time: '05:00', end_time: '21:30' },
         { id: 's2', session_date: '2026-11-20', start_time: '05:00', end_time: '21:30' },
       ];
-      const onNov21 = new Date(2026, 10, 21, 2, 0, 0).getTime();
+      const onNov21 = vnMs('2026-11-21', '02:00');
       const res = getNextUpcomingSession(sessions, '22:00', onNov21);
 
       expect(res.nextSession).toBeNull();
@@ -213,7 +218,7 @@ describe('event-logic unit tests', () => {
     };
 
     test('blocks self-cancellation when policy is disabled', () => {
-      const wellBefore = new Date(2026, 10, 24, 10, 0, 0).getTime();
+      const wellBefore = vnMs('2026-11-24', '10:00');
       const res = checkCancellationEligibility(sampleEvent, 'disabled', wellBefore);
       expect(res.canCancel).toBe(false);
       expect(res.policy).toBe('disabled');
@@ -221,7 +226,7 @@ describe('event-logic unit tests', () => {
 
     test('allows self-cancellation more than 2 hours before start when policy is before_2h', () => {
       // Event starts 08:00 -> 05:30 is 2.5h before
-      const twoAndHalfHoursBefore = new Date(2026, 10, 25, 5, 30, 0).getTime();
+      const twoAndHalfHoursBefore = vnMs('2026-11-25', '05:30');
       const res = checkCancellationEligibility(sampleEvent, 'before_2h', twoAndHalfHoursBefore);
       expect(res.canCancel).toBe(true);
       expect(res.policy).toBe('before_2h');
@@ -229,7 +234,7 @@ describe('event-logic unit tests', () => {
 
     test('blocks self-cancellation within 2 hours of start when policy is before_2h', () => {
       // Event starts 08:00 -> 06:01 is 1h59m before
-      const withinTwoHours = new Date(2026, 10, 25, 6, 1, 0).getTime();
+      const withinTwoHours = vnMs('2026-11-25', '06:01');
       const res = checkCancellationEligibility(sampleEvent, 'before_2h', withinTwoHours);
       expect(res.canCancel).toBe(false);
       expect(res.policy).toBe('before_2h');
@@ -245,7 +250,7 @@ describe('event-logic unit tests', () => {
         ],
       };
       // 07:30 on Nov 25 is 1.5h before earliest session (09:00) -> blocked
-      const res = checkCancellationEligibility(multiEvent, 'before_2h', new Date(2026, 10, 25, 7, 30, 0).getTime());
+      const res = checkCancellationEligibility(multiEvent, 'before_2h', vnMs('2026-11-25', '07:30'));
       expect(res.canCancel).toBe(false);
     });
   });

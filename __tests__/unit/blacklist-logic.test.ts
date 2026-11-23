@@ -79,47 +79,53 @@ describe('Blacklist & No-Show Business Logic', () => {
   });
 
   describe('isRegistrationWindowOpen (Registration window & organizer manual toggle)', () => {
+    const formatVnDateTime = (offsetMs: number) => {
+      const vn = new Date(Date.now() + offsetMs + 7 * 60 * 60 * 1000);
+      const y = vn.getUTCFullYear();
+      const m = String(vn.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(vn.getUTCDate()).padStart(2, '0');
+      const hh = String(vn.getUTCHours()).padStart(2, '0');
+      const mm = String(vn.getUTCMinutes()).padStart(2, '0');
+      return { date: `${y}-${m}-${d}`, time: `${hh}:${mm}:00` };
+    };
+
     test('open when event is in the future before start time', () => {
-      const futureDate = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const futureDate = formatVnDateTime(48 * 60 * 60 * 1000).date;
       const res = isRegistrationWindowOpen(futureDate, '08:00:00', 'active', true);
       expect(res.isOpen).toBe(true);
     });
 
     test('closed when organizer manually toggles registration off', () => {
-      const futureDate = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const futureDate = formatVnDateTime(48 * 60 * 60 * 1000).date;
       const res = isRegistrationWindowOpen(futureDate, '08:00:00', 'active', false);
       expect(res.isOpen).toBe(false);
       expect(res.reason).toContain('Ban tổ chức đã chủ động đóng');
     });
 
     test('closed when event is explicitly closed or rejected', () => {
-      const futureDate = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const futureDate = formatVnDateTime(48 * 60 * 60 * 1000).date;
       const res = isRegistrationWindowOpen(futureDate, '08:00:00', 'closed', true);
       expect(res.isOpen).toBe(false);
       expect(res.reason).toContain('đã kết thúc hoặc đã đóng');
     });
 
     test('closed when event start time has already passed', () => {
-      const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const pastDate = formatVnDateTime(-24 * 60 * 60 * 1000).date;
       const res = isRegistrationWindowOpen(pastDate, '08:00:00', 'active', undefined);
       expect(res.isOpen).toBe(false);
       expect(res.reason).toContain('đã bắt đầu');
     });
 
     test('auto-closed when event is within 12h before start time by default', () => {
-      const soon = new Date(Date.now() + 2 * 60 * 60 * 1000);
-      const soonDate = `${soon.getFullYear()}-${String(soon.getMonth() + 1).padStart(2, '0')}-${String(soon.getDate()).padStart(2, '0')}`;
-      const soonTime = `${String(soon.getHours()).padStart(2, '0')}:${String(soon.getMinutes()).padStart(2, '0')}:00`;
-      const res = isRegistrationWindowOpen(soonDate, soonTime, 'active', undefined);
+      const soon = formatVnDateTime(2 * 60 * 60 * 1000);
+      const res = isRegistrationWindowOpen(soon.date, soon.time, 'active', undefined);
       expect(res.isOpen).toBe(false);
       expect(res.reason).toContain('12 tiếng');
     });
 
     test('re-opened when organizer explicitly opens registration within 12h', () => {
-      const soon = new Date(Date.now() + 2 * 60 * 60 * 1000);
-      const soonDate = `${soon.getFullYear()}-${String(soon.getMonth() + 1).padStart(2, '0')}-${String(soon.getDate()).padStart(2, '0')}`;
-      const soonTime = `${String(soon.getHours()).padStart(2, '0')}:${String(soon.getMinutes()).padStart(2, '0')}:00`;
-      const res = isRegistrationWindowOpen(soonDate, soonTime, 'active', true);
+      const soon = formatVnDateTime(2 * 60 * 60 * 1000);
+      const res = isRegistrationWindowOpen(soon.date, soon.time, 'active', true);
       expect(res.isOpen).toBe(true);
     });
   });
