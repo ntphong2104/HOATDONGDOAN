@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
 import { getMasterStudentByMssv, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
+import { getGraduatedCohortsConfig, isStudentInDeletedCohort } from '@/lib/utils/graduated-cohorts';
 
 function normalizeStudentRow(u: any) {
   const mssv = String(u.mssv || '').trim().toUpperCase();
@@ -40,7 +41,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    const supabase = await createClient();
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
+    const { deleted_cohorts } = await getGraduatedCohortsConfig(supabase);
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q')?.trim();
 
@@ -80,7 +82,9 @@ export async function GET(req: Request) {
         return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
       }
 
-      const filtered = (searchResults || []).filter((u) => !isUnitAccount(u)).map(normalizeStudentRow);
+      const filtered = (searchResults || [])
+        .filter((u) => !isUnitAccount(u) && !isStudentInDeletedCohort(u.mssv, u.class_id, deleted_cohorts))
+        .map(normalizeStudentRow);
       return NextResponse.json({ success: true, data: filtered });
     }
 
@@ -117,7 +121,9 @@ export async function GET(req: Request) {
       }
     }
 
-    const studentsOnly = allUsers.filter((u) => !isUnitAccount(u)).map(normalizeStudentRow);
+    const studentsOnly = allUsers
+      .filter((u) => !isUnitAccount(u) && !isStudentInDeletedCohort(u.mssv, u.class_id, deleted_cohorts))
+      .map(normalizeStudentRow);
     return NextResponse.json({ success: true, data: studentsOnly });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });

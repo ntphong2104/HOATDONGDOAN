@@ -9,12 +9,27 @@ export interface GraduatedCohortRule {
   cohort: string; // e.g. 'D20', 'D21', 'D22'
 }
 
+export interface GraduatedCohortsConfig {
+  rules: GraduatedCohortRule[];
+  deleted_cohorts: string[];
+}
+
 const gGrad = globalThis as unknown as {
-  __hddGraduatedCache?: { rules: GraduatedCohortRule[]; expiresAt: number };
+  __hddGraduatedCache?: { rules: GraduatedCohortRule[]; deleted_cohorts: string[]; expiresAt: number };
 };
 
 export function invalidateGraduatedCohortsCache(): void {
   gGrad.__hddGraduatedCache = undefined;
+}
+
+export function normalizeDeletedCohorts(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const set = new Set<string>();
+  for (const item of raw) {
+    const norm = normalizeCohort(String(item || ''));
+    if (norm) set.add(norm);
+  }
+  return Array.from(set).sort();
 }
 
 export function normalizeGraduatedRules(raw: unknown): GraduatedCohortRule[] {
@@ -41,16 +56,19 @@ export function normalizeGraduatedRules(raw: unknown): GraduatedCohortRule[] {
   });
 }
 
-export async function getGraduatedCohorts(
+export async function getGraduatedCohortsConfig(
   supabase: any,
   forceRefresh = false
-): Promise<GraduatedCohortRule[]> {
+): Promise<GraduatedCohortsConfig> {
   const now = Date.now();
   if (!forceRefresh && gGrad.__hddGraduatedCache && gGrad.__hddGraduatedCache.expiresAt > now) {
-    return gGrad.__hddGraduatedCache.rules;
+    return {
+      rules: gGrad.__hddGraduatedCache.rules,
+      deleted_cohorts: gGrad.__hddGraduatedCache.deleted_cohorts,
+    };
   }
 
-  if (!supabase) return [];
+  if (!supabase) return { rules: [], deleted_cohorts: [] };
 
   try {
     const { data, error } = await supabase
@@ -62,40 +80,68 @@ export async function getGraduatedCohorts(
     if (!error && data?.value) {
       const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       const rules = normalizeGraduatedRules(parsed?.rules ?? parsed);
-      gGrad.__hddGraduatedCache = { rules, expiresAt: now + CACHE_TTL_MS };
-      return rules;
+      const deleted_cohorts = normalizeDeletedCohorts(parsed?.deleted_cohorts);
+      gGrad.__hddGraduatedCache = { rules, deleted_cohorts, expiresAt: now + CACHE_TTL_MS };
+      return { rules, deleted_cohorts };
     }
   } catch {
     // Fallback to empty
   }
 
-  gGrad.__hddGraduatedCache = { rules: [], expiresAt: now + CACHE_TTL_MS };
-  return [];
+  gGrad.__hddGraduatedCache = { rules: [], deleted_cohorts: [], expiresAt: now + CACHE_TTL_MS };
+  return { rules: [], deleted_cohorts: [] };
+}
+
+export async function getGraduatedCohorts(
+  supabase: any,
+  forceRefresh = false
+): Promise<GraduatedCohortRule[]> {
+  const cfg = await getGraduatedCohortsConfig(supabase, forceRefresh);
+  return cfg.rules;
 }
 
 export async function saveGraduatedCohorts(
   supabase: any,
-  rules: GraduatedCohortRule[]
-): Promise<{ success: boolean; rules: GraduatedCohortRule[]; error?: string }> {
-  const normalized = normalizeGraduatedRules(rules);
+  rules: GraduatedCohortRule[],
+  deletedCohorts?: string[]
+): Promise<{ success: boolean; rules: GraduatedCohortRule[]; deleted_cohorts: string[]; error?: string }> {
+  const existing = deletedCohorts === undefined ? await getGraduatedCohortsConfig(supabase, true) : null;
+  const finalDeleted = normalizeDeletedCohorts(deletedCohorts ?? existing?.deleted_cohorts ?? []);
+
+  // Ensure any deleted cohort stays marked as graduated across all 8 LCĐs
+  const mergedRules = [...rules];
+  for (const dc of finalDeleted) {
+    for (const lcd of LCD_DEFINITIONS) {
+      mergedRules.push({ lcd_code: lcd.code, cohort: dc });
+    }
+  }
+  const normalized = normalizeGraduatedRules(mergedRules);
 
   const { error } = await supabase
     .from('system_settings')
     .upsert(
       {
         key: GRADUATED_COHORTS_SETTING_KEY,
-        value: JSON.stringify({ rules: normalized, updated_at: new Date().toISOString() }),
+        value: JSON.stringify({
+          rules: normalized,
+          deleted_cohorts: finalDeleted,
+          updated_at: new Date().toISOString(),
+        }),
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'key' }
     );
 
   if (error) {
-    return { success: false, rules: normalized, error: error.message };
+    return { success: false, rules: normalized, deleted_cohorts: finalDeleted, error: error.message };
   }
 
-  gGrad.__hddGraduatedCache = { rules: normalized, expiresAt: Date.now() + CACHE_TTL_MS };
-  return { success: true, rules: normalized };
+  gGrad.__hddGraduatedCache = {
+    rules: normalized,
+    deleted_cohorts: finalDeleted,
+    expiresAt: Date.now() + CACHE_TTL_MS,
+  };
+  return { success: true, rules: normalized, deleted_cohorts: finalDeleted };
 }
 
 /**
@@ -145,14 +191,27 @@ export function getGraduatedBlockReason(
   return `Tài khoản thuộc khóa ${cohort} (${lcd.shortName}) đã được đánh dấu tốt nghiệp, không thể đăng ký tham gia chương trình mới. Bạn vẫn có thể xem lại lịch sử tham gia trước đây.`;
 }
 
+export function isStudentInDeletedCohort(
+  mssv: string | null | undefined,
+  classId: string | null | undefined,
+  deletedCohorts: string[]
+): boolean {
+  if (!deletedCohorts || deletedCohorts.length === 0) return false;
+  const cohort = resolveStudentCohort(mssv, classId);
+  if (!cohort) return false;
+  return deletedCohorts.includes(cohort);
+}
+
 /**
  * Returns default list of cohorts to show in the Super Admin graduation matrix
- * (e.g., D19 through latest cohort).
+ * (e.g., D19 through latest cohort), excluding cohorts deleted from the system.
  */
 export function getGraduationMatrixCohorts(
   existingRules: GraduatedCohortRule[] = [],
-  now: Date = new Date()
+  now: Date = new Date(),
+  deletedCohorts: string[] = []
 ): string[] {
+  const deletedSet = new Set(deletedCohorts);
   const vn = new Date(now.getTime() + 7 * 60 * 60 * 1000);
   const year = vn.getUTCFullYear();
   const month = vn.getUTCMonth() + 1;
@@ -164,7 +223,9 @@ export function getGraduationMatrixCohorts(
   for (const r of existingRules) {
     if (r.cohort) set.add(r.cohort);
   }
-  return Array.from(set).sort();
+  return Array.from(set)
+    .filter((c) => !deletedSet.has(c))
+    .sort();
 }
 
 export { LCD_DEFINITIONS };

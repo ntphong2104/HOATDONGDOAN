@@ -1,14 +1,26 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { normalizeCohort } from '@/lib/utils/cohort';
+import { isUnitAccount } from '@/lib/utils/extract-mssv';
 import {
-  getGraduatedCohorts,
+  getGraduatedCohortsConfig,
   saveGraduatedCohorts,
   getGraduationMatrixCohorts,
   normalizeGraduatedRules,
+  resolveStudentCohort,
 } from '@/lib/utils/graduated-cohorts';
 
 export const dynamic = 'force-dynamic';
+
+function clearRelatedCaches() {
+  const g = globalThis as unknown as {
+    __hddRankingCache?: Map<string, unknown>;
+    __hddLcdUsersCache?: { expiresAt: number };
+  };
+  if (g.__hddRankingCache) g.__hddRankingCache.clear();
+  if (g.__hddLcdUsersCache) g.__hddLcdUsersCache.expiresAt = 0;
+}
 
 export async function GET() {
   try {
@@ -20,14 +32,15 @@ export async function GET() {
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
 
-    const rules = await getGraduatedCohorts(supabase, true);
-    const cohorts = getGraduationMatrixCohorts(rules);
+    const { rules, deleted_cohorts } = await getGraduatedCohortsConfig(supabase, true);
+    const cohorts = getGraduationMatrixCohorts(rules, new Date(), deleted_cohorts);
 
     return NextResponse.json({
       success: true,
       data: {
         rules,
         cohorts,
+        deleted_cohorts,
       },
     });
   } catch (err: any) {
@@ -63,24 +76,139 @@ export async function PUT(req: Request) {
       );
     }
 
-    // Xóa cache bảng xếp hạng & cache đoàn viên LCĐ để số liệu cập nhật ngay lập tức
-    const g = globalThis as unknown as {
-      __hddRankingCache?: Map<string, unknown>;
-      __hddLcdUsersCache?: { expiresAt: number };
-    };
-    if (g.__hddRankingCache) g.__hddRankingCache.clear();
-    if (g.__hddLcdUsersCache) g.__hddLcdUsersCache.expiresAt = 0;
+    clearRelatedCaches();
 
     return NextResponse.json({
       success: true,
       data: {
         rules: saved.rules,
-        cohorts: getGraduationMatrixCohorts(saved.rules),
+        cohorts: getGraduationMatrixCohorts(saved.rules, new Date(), saved.deleted_cohorts),
+        deleted_cohorts: saved.deleted_cohorts,
       },
       message: `Đã lưu cấu hình tốt nghiệp (${saved.rules.length} nhóm LCĐ + Khóa). Hệ thống đã tự động trừ khỏi quân số quản lý và chặn đăng ký chương trình mới.`,
     });
   } catch (err: any) {
     console.error('PUT /api/admin/graduated-cohorts error:', err);
     return NextResponse.json({ success: false, error: 'Lỗi lưu cấu hình khóa tốt nghiệp' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const auth = await getAuthContext();
+    if (!auth) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!auth.isSuperAdmin && auth.tier !== 'super_admin') {
+      return NextResponse.json(
+        { success: false, error: 'Chỉ Super Admin mới có quyền xóa khóa sinh viên khỏi danh sách hệ thống' },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    let rawCohort = searchParams.get('cohort');
+    if (!rawCohort) {
+      const body = await req.json().catch(() => ({}));
+      rawCohort = body?.cohort;
+    }
+    const cohort = normalizeCohort(rawCohort);
+    if (!cohort) {
+      return NextResponse.json({ success: false, error: 'Mã khóa không hợp lệ (VD: D19, D20)' }, { status: 400 });
+    }
+
+    const yy = cohort.slice(1); // '19', '20', ...
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
+
+    // 1. Collect all users belonging to this cohort in public.users
+    const matchedMssvs: string[] = [];
+    let offset = 0;
+    const pageSize = 1000;
+    while (offset < 20_000) {
+      const { data: rows, error } = await supabase
+        .from('users')
+        .select('mssv, class_id, email')
+        .or(`mssv.ilike.N${yy}%,class_id.ilike.D${yy}%,class_id.ilike.E${yy}%`)
+        .range(offset, offset + pageSize - 1);
+      if (error || !rows || rows.length === 0) break;
+      for (const u of rows) {
+        if (isUnitAccount({ mssv: u.mssv, email: u.email })) continue;
+        if (resolveStudentCohort(u.mssv, u.class_id) === cohort && u.mssv) {
+          matchedMssvs.push(String(u.mssv).trim().toUpperCase());
+        }
+      }
+      if (rows.length < pageSize) break;
+      offset += pageSize;
+    }
+
+    const uniqueMssvs = Array.from(new Set(matchedMssvs));
+    let deletedDbCount = 0;
+    let preservedHistoryCount = 0;
+
+    if (uniqueMssvs.length > 0) {
+      // 2. Find which MSSVs have historical check_ins / registrations / penalties (preserve those rows so old event stats stay intact)
+      const protectedSet = new Set<string>();
+      const CHUNK = 400;
+      for (let i = 0; i < uniqueMssvs.length; i += CHUNK) {
+        const chunk = uniqueMssvs.slice(i, i + CHUNK);
+        const [ciRes, regRes, penRes] = await Promise.all([
+          supabase.from('check_ins').select('mssv').in('mssv', chunk),
+          supabase.from('event_registrations').select('mssv').in('mssv', chunk),
+          supabase.from('user_penalties').select('mssv').in('mssv', chunk),
+        ]);
+        for (const r of ciRes.data || []) if (r.mssv) protectedSet.add(String(r.mssv).trim().toUpperCase());
+        for (const r of regRes.data || []) if (r.mssv) protectedSet.add(String(r.mssv).trim().toUpperCase());
+        for (const r of penRes.data || []) if (r.mssv) protectedSet.add(String(r.mssv).trim().toUpperCase());
+
+        // Clean up active delegates & push subscriptions for this graduated cohort
+        await Promise.allSettled([
+          supabase.from('class_delegates').delete().in('mssv', chunk),
+          supabase.from('push_subscriptions').delete().in('mssv', chunk),
+        ]);
+      }
+
+      const deletableMssvs = uniqueMssvs.filter((m) => !protectedSet.has(m));
+      preservedHistoryCount = uniqueMssvs.length - deletableMssvs.length;
+
+      for (let i = 0; i < deletableMssvs.length; i += CHUNK) {
+        const chunk = deletableMssvs.slice(i, i + CHUNK);
+        const { error: delErr } = await supabase.from('users').delete().in('mssv', chunk);
+        if (!delErr) {
+          deletedDbCount += chunk.length;
+        }
+      }
+    }
+
+    // 3. Persist cohort in deleted_cohorts (hides preserved-history rows from Student List & KPI stats, and removes column from matrix)
+    const currentCfg = await getGraduatedCohortsConfig(supabase, true);
+    const nextDeleted = Array.from(new Set([...currentCfg.deleted_cohorts, cohort])).sort();
+    const saved = await saveGraduatedCohorts(supabase, currentCfg.rules, nextDeleted);
+    if (!saved.success) {
+      return NextResponse.json(
+        { success: false, error: saved.error || 'Không thể cập nhật trạng thái xóa khóa' },
+        { status: 500 }
+      );
+    }
+
+    clearRelatedCaches();
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        rules: saved.rules,
+        cohorts: getGraduationMatrixCohorts(saved.rules, new Date(), saved.deleted_cohorts),
+        deleted_cohorts: saved.deleted_cohorts,
+        deleted_db_count: deletedDbCount,
+        preserved_history_count: preservedHistoryCount,
+      },
+      message:
+        uniqueMssvs.length > 0
+          ? `Đã xóa khóa ${cohort} khỏi Danh sách Sinh viên hệ thống (dọn ${deletedDbCount} hồ sơ trống, ẩn & bảo lưu ${preservedHistoryCount} hồ sơ có lịch sử sự kiện cũ).`
+          : `Đã xóa khóa ${cohort} khỏi danh sách quản lý hệ thống.`,
+    });
+  } catch (err: any) {
+    console.error('DELETE /api/admin/graduated-cohorts error:', err);
+    return NextResponse.json({ success: false, error: 'Lỗi xóa khóa sinh viên' }, { status: 500 });
   }
 }

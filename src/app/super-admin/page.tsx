@@ -5777,7 +5777,12 @@ Phạm Cao Huyền Trinh N24DCQT083`}
           <div className={styles.tabContent}>
             <section className={styles.section}>
               <SemesterManagerSection />
-              <GraduatedCohortsManager />
+              <GraduatedCohortsManager
+                onCohortChanged={() => {
+                  fetchStats();
+                  fetchStudents();
+                }}
+              />
               <PushBroadcastManager />
             </section>
 
