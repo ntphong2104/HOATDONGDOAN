@@ -1,23 +1,34 @@
 interface RateLimitRecord {
   timestamps: number[];
+  windowMs: number;
 }
 
 const MAX_RATE_LIMIT_KEYS = 10000;
-const rateLimitMap = new Map<string, RateLimitRecord>();
 
-// Cleanup stale rate limit records every 60 seconds (unref so it never blocks Node/Jest exit)
-const cleanupTimer = setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of rateLimitMap.entries()) {
-    record.timestamps = record.timestamps.filter((ts) => now - ts < 60000);
-    if (record.timestamps.length === 0) {
-      rateLimitMap.delete(key);
+const gRateLimit = globalThis as unknown as {
+  __hddRateLimitMap?: Map<string, RateLimitRecord>;
+  __hddRateLimitCleanupStarted?: boolean;
+};
+
+const rateLimitMap = gRateLimit.__hddRateLimitMap || (gRateLimit.__hddRateLimitMap = new Map<string, RateLimitRecord>());
+
+// Cleanup stale rate limit records every 60 seconds (singleton across bundles, unref so it never blocks Node/Jest exit)
+if (!gRateLimit.__hddRateLimitCleanupStarted) {
+  gRateLimit.__hddRateLimitCleanupStarted = true;
+  const cleanupTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of rateLimitMap.entries()) {
+      const retainMs = Math.max(record.windowMs || 60000, 60000);
+      record.timestamps = record.timestamps.filter((ts) => now - ts < retainMs);
+      if (record.timestamps.length === 0) {
+        rateLimitMap.delete(key);
+      }
     }
-  }
-}, 60000);
+  }, 60000);
 
-if (typeof cleanupTimer === 'object' && cleanupTimer !== null && 'unref' in cleanupTimer && typeof cleanupTimer.unref === 'function') {
-  cleanupTimer.unref();
+  if (typeof cleanupTimer === 'object' && cleanupTimer !== null && 'unref' in cleanupTimer && typeof cleanupTimer.unref === 'function') {
+    cleanupTimer.unref();
+  }
 }
 
 export interface RateLimitResult {
@@ -39,7 +50,7 @@ export function checkRateLimit(
   windowMs = 10000
 ): RateLimitResult {
   const now = Date.now();
-  const record = rateLimitMap.get(identifier) || { timestamps: [] };
+  const record = rateLimitMap.get(identifier) || { timestamps: [], windowMs };
 
   // Remove timestamps outside current window
   const validTimestamps = record.timestamps.filter((ts) => now - ts < windowMs);
@@ -48,7 +59,7 @@ export function checkRateLimit(
   const resetInSeconds = Math.ceil((oldestTimestamp + windowMs - now) / 1000);
 
   if (validTimestamps.length >= maxRequests) {
-    rateLimitMap.set(identifier, { timestamps: validTimestamps });
+    rateLimitMap.set(identifier, { timestamps: validTimestamps, windowMs });
     return {
       allowed: false,
       limit: maxRequests,
@@ -62,7 +73,7 @@ export function checkRateLimit(
     const oldestKey = rateLimitMap.keys().next().value;
     if (oldestKey !== undefined) rateLimitMap.delete(oldestKey);
   }
-  rateLimitMap.set(identifier, { timestamps: validTimestamps });
+  rateLimitMap.set(identifier, { timestamps: validTimestamps, windowMs });
 
   return {
     allowed: true,

@@ -1,13 +1,15 @@
 import { POST } from '@/app/api/checkin/route';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 
 // Mock Supabase Server Client & Auth
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase/auth-helper', () => ({
+  ...jest.requireActual('@/lib/supabase/auth-helper'),
   getAuthContext: jest.fn(),
 }));
 
@@ -38,6 +40,7 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
           }
         : null
     );
+    (createAdminClient as jest.Mock).mockImplementation(() => (createClient as jest.Mock)());
     mockSupabase = {
       auth: {
         getSession: jest.fn().mockResolvedValue({
@@ -57,9 +60,20 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
-            maybeSingle: jest.fn().mockResolvedValue({ data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' }, error: null }),
-            single: jest.fn().mockResolvedValue({ data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' }, error: null }),
+            maybeSingle: jest.fn().mockResolvedValue({ data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N', phone: '0987654321' }, error: null }),
+            single: jest.fn().mockResolvedValue({ data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N', phone: '0987654321' }, error: null }),
             upsert: jest.fn().mockResolvedValue({ error: null }),
+          };
+        }
+        if (table === 'event_roles') {
+          const email = (sessionUser?.email || '').toLowerCase();
+          const roleType = email === 'event_admin@ptit.edu.vn' ? 'event_admin' : email === 'checker@ptit.edu.vn' ? 'checker' : null;
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: roleType ? { role_type: roleType } : null, error: null }),
+            single: jest.fn().mockResolvedValue({ data: roleType ? { role_type: roleType } : null, error: null }),
           };
         }
         if (table === 'event_registrations') {
@@ -85,6 +99,7 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
           maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
           single: jest.fn().mockResolvedValue({ data: null, error: null }),
           upsert: jest.fn().mockResolvedValue({ error: null }),
@@ -145,9 +160,18 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
           single: jest.fn().mockResolvedValue({ data: { status: 'closed' }, error: null }),
         };
       }
+      if (table === 'event_roles') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: { role_type: 'checker' }, error: null }),
+        };
+      }
       return {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        ilike: jest.fn().mockReturnThis(),
         maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
       };
@@ -181,6 +205,14 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
           single: jest.fn().mockResolvedValue({ data: { status: 'active', is_active: true }, error: null }),
         };
       }
+      if (table === 'event_roles') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: { role_type: 'checker' }, error: null }),
+        };
+      }
       if (table === 'users') {
         return {
           select: jest.fn().mockReturnThis(),
@@ -192,6 +224,7 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
       return {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        ilike: jest.fn().mockReturnThis(),
         maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
       };
@@ -200,7 +233,7 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
     const req = new Request('http://localhost:3000/api/checkin', {
       method: 'POST',
       body: JSON.stringify({
-        mssv: 'UNKNOWN999',
+        mssv: 'N99DCCN999',
         event_id: 'event-uuid-active',
         participate_role: 'participant',
       }),
@@ -227,16 +260,24 @@ describe('Whitebox Tests: POST /api/checkin (Branch & Path Coverage)', () => {
           single: jest.fn().mockResolvedValue({ data: { status: 'active', is_active: true }, error: null }),
         };
       }
+      if (table === 'event_roles') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: { role_type: 'checker' }, error: null }),
+        };
+      }
       if (table === 'users') {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           maybeSingle: jest.fn().mockResolvedValue({
-            data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' },
+            data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N', phone: '0987654321' },
             error: null,
           }),
           single: jest.fn().mockResolvedValue({
-            data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N' },
+            data: { mssv: 'N22DCCN001', full_name: 'Nguyễn Văn An', class_id: 'D22CQCN01-N', phone: '0987654321' },
             error: null,
           }),
         };

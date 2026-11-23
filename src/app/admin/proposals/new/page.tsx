@@ -34,10 +34,12 @@ import {
 } from '@/lib/utils/room-booking';
 import { getSelectableCohorts } from '@/lib/utils/cohort';
 import { LCD_DEFINITIONS, normalizeLcdCode, formatLcdsLabel } from '@/lib/utils/lcd';
+import { vnWallClockToUtcMs } from '@/lib/utils/vn-date';
 import styles from './page.module.css';
 
 // Giá trị của lựa chọn "Không mượn phòng" trong ô chọn (khác '' = chưa chọn)
 const NO_ROOM_VALUE = '__no_room__';
+const currentEpochMs = () => Date.now();
 
 export default function NewProposalPage() {
   const router = useRouter();
@@ -183,7 +185,7 @@ export default function NewProposalPage() {
       return;
     }
     const newSessions: ProposalSessionItem[] = [];
-    let cur = new Date(startObj);
+    const cur = new Date(startObj);
     let day = 1;
     while (cur <= endObj && day <= 90) {
       const dateStr = cur.toISOString().split('T')[0];
@@ -290,16 +292,25 @@ export default function NewProposalPage() {
 
   // Real-time per-session conflict checker
   useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
     if (!isBorrowingAnyRoom || !startDate || !endDate || !startTime || !endTime) {
-      setRoomConflicts([]);
-      setConflictChecked(false);
-      setCheckingConflict(false);
-      return;
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setRoomConflicts([]);
+        setConflictChecked(false);
+        setCheckingConflict(false);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
-    setCheckingConflict(true);
-    const timer = setTimeout(async () => {
+    queueMicrotask(() => {
+      if (!cancelled) setCheckingConflict(true);
+    });
+    timer = setTimeout(async () => {
       try {
         const res = await fetch('/api/proposals/check-conflict', {
           method: 'POST',
@@ -313,12 +324,21 @@ export default function NewProposalPage() {
           }),
         });
         const data = await res.json();
-        if (!cancelled && data.success) {
-          setRoomConflicts(Array.isArray(data.conflicts) ? data.conflicts : []);
-          setConflictChecked(true);
+        if (!cancelled) {
+          if (data.success) {
+            setRoomConflicts(Array.isArray(data.conflicts) ? data.conflicts : []);
+            setConflictChecked(true);
+          } else {
+            setRoomConflicts([]);
+            setConflictChecked(false);
+          }
         }
       } catch (err) {
         console.error('Error checking room conflict', err);
+        if (!cancelled) {
+          setRoomConflicts([]);
+          setConflictChecked(false);
+        }
       } finally {
         if (!cancelled) setCheckingConflict(false);
       }
@@ -326,7 +346,7 @@ export default function NewProposalPage() {
 
     return () => {
       cancelled = true;
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBorrowingAnyRoom, isMultiSession, sessionsList, selectedRoomId, selectedRoomName, startDate, startTime, endDate, endTime]);
@@ -413,13 +433,12 @@ export default function NewProposalPage() {
       return;
     }
 
-    const startDatetime = new Date(`${startDate}T${startTime}`);
+    const startMs = vnWallClockToUtcMs(startDate, startTime);
 
     // Reject past date events (allow 5 min buffer for clock precision)
-    const now = new Date();
-    const minAllowedTime = new Date(now.getTime() - 5 * 60 * 1000);
+    const minAllowedMs = currentEpochMs() - 5 * 60 * 1000;
 
-    if (startDatetime < minAllowedTime) {
+    if (startMs !== null && startMs < minAllowedMs) {
       setErrorMessage('Thời gian bắt đầu sự kiện không thể ở trong quá khứ! Vui lòng chọn ngày và giờ hiện tại hoặc tương lai.');
       return;
     }
@@ -1527,7 +1546,7 @@ export default function NewProposalPage() {
                 >
                   <span style={{ fontSize: '1rem', lineHeight: 1, display: 'flex' }}><LightbulbIcon size={14} /></span>
                   <span>
-                    <strong>Mẹo:</strong> Hãy dán đường link chia sẻ từ Google Drive ở chế độ <i>"Bất kỳ ai có liên kết đều có thể xem"</i>. Hệ thống chỉ lưu đường dẫn URL, giúp bạn linh hoạt cập nhật nội dung file trên Drive bất kỳ lúc nào mà không cần nộp lại đơn.
+                    <strong>Mẹo:</strong> Hãy dán đường link chia sẻ từ Google Drive ở chế độ <i>&quot;Bất kỳ ai có liên kết đều có thể xem&quot;</i>. Hệ thống chỉ lưu đường dẫn URL, giúp bạn linh hoạt cập nhật nội dung file trên Drive bất kỳ lúc nào mà không cần nộp lại đơn.
                   </span>
                 </div>
               </div>

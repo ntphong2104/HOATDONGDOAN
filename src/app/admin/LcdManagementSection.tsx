@@ -499,6 +499,12 @@ export default function LcdManagementSection({
                   ? `Xuất Excel Chi đoàn ${classFilter}`
                   : `Xuất Excel toàn ${currentLcdShort}`
               }
+              reportTitle={`BẢNG TỔNG HỢP HOẠT ĐỘNG ĐOÀN — ${selectedLcd.toUpperCase()}`}
+              reportSubtitle={
+                classFilter !== 'ALL' ? `Chi đoàn: ${classFilter}` : `Đơn vị: ${currentLcdShort}`
+              }
+              unitTitle={`BCH ${currentLcdShort.toUpperCase()}`}
+              sheetName={`DRL_${currentLcdShort.replace(/\s+/g, '_')}`}
             />
           </div>
 

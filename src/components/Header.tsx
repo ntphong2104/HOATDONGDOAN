@@ -32,6 +32,7 @@ import type { SessionUser } from '@/lib/types';
 import styles from './Header.module.css';
 
 export type SuperAdminSidebarTab =
+  | 'overview'
   | 'events'
   | 'proposals'
   | 'officers'
@@ -125,16 +126,23 @@ export default function Header({
   // Persist user's pinned sidebar preference on desktop (defaults to pinned on /super-admin)
   useEffect(() => {
     if (typeof window === 'undefined' || window.innerWidth < 1024) return;
-    try {
-      const saved = localStorage.getItem('hdd_sidebar_pinned');
-      if (saved === 'true') {
-        setDesktopExpanded(true);
-      } else if (saved === 'false') {
-        setDesktopExpanded(false);
-      } else if (pathname.startsWith('/super-admin')) {
-        setDesktopExpanded(true);
-      }
-    } catch {}
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        const saved = localStorage.getItem('hdd_sidebar_pinned');
+        if (saved === 'true') {
+          setDesktopExpanded(true);
+        } else if (saved === 'false') {
+          setDesktopExpanded(false);
+        } else if (pathname.startsWith('/super-admin')) {
+          setDesktopExpanded(true);
+        }
+      } catch {}
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
 
   const handleMouseEnter = () => {
@@ -317,10 +325,10 @@ export default function Header({
   const totalAdminPending = pendingProposals + pendingOfficeBorrows;
 
   const studentLcd = effectiveUser ? resolveStudentLcd(effectiveUser.class_id, effectiveUser.mssv) : null;
-  const homeHref = isStudentAccount
-    ? '/'
-    : isSuperAdmin
+  const homeHref = isSuperAdmin
     ? '/super-admin'
+    : isStudentAccount
+    ? '/'
     : canManageEvents
     ? '/admin'
     : canViewProposals
@@ -677,6 +685,7 @@ export default function Header({
 
                   {(
                     [
+                      { id: 'overview', label: 'Tổng quan Điều hành', icon: <BadgeMedalIcon size={17} /> },
                       { id: 'events', label: 'Quản lý Sự kiện', icon: <CalendarIcon size={17} /> },
                       { id: 'proposals', label: 'Duyệt Kế Hoạch', icon: <FileTextIcon size={17} /> },
                       { id: 'officers', label: 'Cán Bộ & Phân Quyền', icon: <UsersIcon size={17} /> },
@@ -685,6 +694,7 @@ export default function Header({
                       { id: 'students', label: 'Quản lý Sinh viên', icon: <UsersIcon size={17} /> },
                       { id: 'delegates', label: 'BCH Chi Đoàn (ĐRL)', icon: <CheckCircleIcon size={17} /> },
                       { id: 'blacklist', label: 'Danh Sách Đen', icon: <ShieldCheckIcon size={17} /> },
+                      { id: 'ranking', label: 'Bảng Xếp Hạng', icon: <BadgeMedalIcon size={17} /> },
                       { id: 'settings', label: 'Học kỳ & Hệ thống', icon: <SettingsIcon size={17} /> },
                     ] as Array<{ id: SuperAdminSidebarTab; label: string; icon: React.ReactNode }>
                   ).map((item) => {

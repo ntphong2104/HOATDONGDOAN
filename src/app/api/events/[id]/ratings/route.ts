@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { summarizeUnitRatings } from '@/lib/utils/rating-logic';
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const resolvedParams = await params;
-  const supabase = await createClient();
+  const auth = await getAuthContext();
+  if (!auth) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
   const { data: eventRatings, error } = await supabase
     .from('unit_ratings')
@@ -17,12 +22,17 @@ export async function GET(
     .order('created_at', { ascending: false });
 
   if (error) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
+
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
+  const sanitizedRatings = (eventRatings || []).map((r: any) =>
+    isSuperAdmin ? r : { ...r, rater_email: undefined }
+  );
 
   return NextResponse.json({
     success: true,
-    data: eventRatings || [],
+    data: sanitizedRatings,
   });
 }
 
@@ -39,10 +49,14 @@ export async function POST(
   // Only the 4 approver tiers can submit official ratings
   const allowedTiers = ['youth_union', 'ctsv', 'facility', 'super_admin'];
   if (!allowedTiers.includes(auth.tier) && !auth.isSuperAdmin) {
-    return NextResponse.json({
-      success: false,
-      error: 'Chỉ các cấp Ban ngành (Đoàn, CTSV, Phòng. TC-HC-QT, Super Admin) mới có quyền đánh giá chất lượng sự kiện.',
-    }, { status: 403 });
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          'Chỉ các cấp Ban ngành (Đoàn, CTSV, Phòng. TC-HC-QT, Super Admin) mới có quyền đánh giá chất lượng sự kiện.',
+      },
+      { status: 403 }
+    );
   }
 
   const raterTier = auth.isSuperAdmin ? 'super_admin' : auth.tier;
@@ -55,30 +69,31 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Số sao đánh giá phải từ 1 đến 5 sao' }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
-  // Find event and proposal info if not provided
-  let orgUnit = organization_unit;
-  let propId = proposal_id;
+  // Always derive authoritative organization_unit from proposal / event before falling back to client body
+  let orgUnit = '';
+  let propId = proposal_id || null;
+
+  const { data: prop } = await supabase
+    .from('event_proposals')
+    .select('id, organization_unit')
+    .eq('created_event_id', resolvedParams.id)
+    .maybeSingle();
+
+  if (prop) {
+    orgUnit = prop.organization_unit || '';
+    propId = prop.id;
+  }
 
   if (!orgUnit) {
-    const { data: prop } = await supabase
-      .from('event_proposals')
-      .select('id, organization_unit')
-      .eq('created_event_id', resolvedParams.id)
-      .single();
-
-    if (prop) {
-      orgUnit = prop.organization_unit;
-      propId = prop.id;
-    } else {
-      const { data: ev } = await supabase
-        .from('events')
-        .select('created_by')
-        .eq('event_id', resolvedParams.id)
-        .single();
-      orgUnit = ev?.created_by || 'Đơn vị tổ chức';
-    }
+    const { data: ev } = await supabase
+      .from('events')
+      .select('created_by')
+      .eq('event_id', resolvedParams.id)
+      .maybeSingle();
+    orgUnit = ev?.created_by || organization_unit || 'Đơn vị tổ chức';
   }
 
   const { data: rating, error: ratingErr } = await supabase
@@ -91,7 +106,7 @@ export async function POST(
         rater_email: auth.email,
         rater_tier: raterTier,
         stars: numStars,
-        feedback: feedback.trim(),
+        feedback: String(feedback || '').trim(),
         created_at: new Date().toISOString(),
       },
       { onConflict: 'event_id,rater_tier' }
@@ -100,7 +115,7 @@ export async function POST(
     .single();
 
   if (ratingErr) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 
   return NextResponse.json({

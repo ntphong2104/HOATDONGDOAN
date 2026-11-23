@@ -53,10 +53,38 @@ export async function POST(
     }, { status: 403 });
   }
 
-  const body = await req.json();
-  const { reason = 'Chưa đạt yêu cầu' } = body;
+  const body = await req.json().catch(() => ({}));
+  const rawReason = typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim() : 'Chưa đạt yêu cầu';
+  const reason = rawReason.slice(0, 1000);
 
   const actorName = auth.email;
+
+  // Optimistically lock proposal transition BEFORE inserting rejection log
+  const { data: updatedRows, error: updateErr } = await supabase
+    .from('event_proposals')
+    .update({
+      status: 'rejected',
+      current_stage: 'rejected',
+      rejection_reason: reason,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', proposal.id)
+    .eq('current_stage', currentStage)
+    .neq('status', 'approved')
+    .neq('status', 'rejected')
+    .select();
+
+  if (updateErr) {
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
+  }
+
+  const updatedProposal = Array.isArray(updatedRows) ? updatedRows[0] : updatedRows;
+  if (!updatedProposal) {
+    return NextResponse.json(
+      { success: false, error: 'Kế hoạch đã được xử lý ở thao tác khác. Vui lòng tải lại trang.' },
+      { status: 409 }
+    );
+  }
 
   // Insert rejection log
   await supabase.from('proposal_logs').insert({
@@ -67,23 +95,6 @@ export async function POST(
     actor_name: actorName,
     notes: `Đã từ chối tại ${getStageLabel(currentStage)}. Lý do: ${reason}`,
   });
-
-  // Update proposal status
-  const { data: updatedProposal, error: updateErr } = await supabase
-    .from('event_proposals')
-    .update({
-      status: 'rejected',
-      current_stage: 'rejected',
-      rejection_reason: reason,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', proposal.id)
-    .select()
-    .single();
-
-  if (updateErr) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
-  }
 
   void notifyUsersByEmail(supabase, [proposal.created_by], {
     title: '❌ Kế hoạch bị từ chối',

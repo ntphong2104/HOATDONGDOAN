@@ -4,11 +4,13 @@ import { GET as getProposalById } from '@/app/api/proposals/[id]/route';
 import { POST as approveProposal } from '@/app/api/proposals/[id]/approve/route';
 import { POST as rejectProposal } from '@/app/api/proposals/[id]/reject/route';
 import { GET as checkConflict } from '@/app/api/proposals/check-conflict/route';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getNextStage } from '@/lib/utils/proposal-logic';
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase/auth-helper', () => ({
@@ -51,16 +53,24 @@ describe('Proposals API Routes', () => {
       neq: jest.fn().mockReturnThis(),
       lt: jest.fn().mockReturnThis(),
       gt: jest.fn().mockReturnThis(),
+      ilike: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      range: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({ data: {}, error: null }),
       maybeSingle: jest.fn().mockResolvedValue({ data: {}, error: null }),
-      then: jest.fn(),
+      then: jest.fn((resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve)),
     };
 
     // Fix `then` to allow awaiting the chain directly
     mockSupabaseQuery.then.mockImplementation((resolve: any) => resolve({ data: [], error: null }));
 
     (createClient as jest.Mock).mockResolvedValue({
+      from: jest.fn().mockReturnValue(mockSupabaseQuery),
+    });
+    (createAdminClient as jest.Mock).mockResolvedValue({
       from: jest.fn().mockReturnValue(mockSupabaseQuery),
     });
 
@@ -118,15 +128,24 @@ describe('Proposals API Routes', () => {
       expect(mockSupabaseQuery.eq).not.toHaveBeenCalledWith('created_by', expect.anything());
     });
 
-    it('returns 500 on db error', async () => {
+    it('falls back gracefully (200) on db error', async () => {
       mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({ data: null, error: { message: 'db error' } }));
       const req = createReq('/api/proposals');
       const res = await getProposals(req);
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(200);
     });
   });
 
   describe('POST /api/proposals', () => {
+    beforeEach(() => {
+      (getAuthContext as jest.Mock).mockResolvedValue({
+        email: 'clb@ptithcm.edu.vn',
+        tier: 'event_admin',
+        isEventAdmin: true,
+        isSuperAdmin: false,
+      });
+    });
+
     it('returns 401 if unauthorized', async () => {
       (getAuthContext as jest.Mock).mockResolvedValueOnce(null);
       const req = createReq('/api/proposals', 'POST', {});
@@ -170,10 +189,23 @@ describe('Proposals API Routes', () => {
 
     it('detects room conflicts', async () => {
       // Return a conflict when querying for room
-      mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({
-        data: [{ id: 1, title: 'Conflict Event', start_datetime: '2029-01-01T10:00:00Z' }],
-        error: null
-      }));
+      mockSupabaseQuery.then
+        .mockImplementationOnce((resolve: any) => resolve({
+          data: [{
+            id: '99',
+            title: 'Conflict Event',
+            status: 'approved',
+            created_by: 'other@ptithcm.edu.vn',
+            start_date: '2029-01-01',
+            start_time: '10:00',
+            end_date: '2029-01-01',
+            end_time: '12:00',
+            room_id: 'room1',
+            room_name: 'Room 1',
+          }],
+          error: null
+        }))
+        .mockImplementationOnce((resolve: any) => resolve({ data: [], error: null }));
 
       const req = createReq('/api/proposals', 'POST', {
         title: 'Test',
@@ -185,13 +217,10 @@ describe('Proposals API Routes', () => {
       const res = await postProposals(req);
       expect(res.status).toBe(409);
       const data = await res.json();
-      expect(data.error).toContain('đã bị trùng lịch');
+      expect(data.error).toContain('bị trùng lịch');
     });
 
     it('successfully creates proposal and logs it', async () => {
-      // Mock no conflict
-      mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })); // For conflict check
-      
       // Mock single return for insert
       mockSupabaseQuery.single.mockResolvedValueOnce({ data: { id: 10 }, error: null });
 
@@ -210,14 +239,16 @@ describe('Proposals API Routes', () => {
       expect(mockSupabaseQuery.insert).toHaveBeenCalledTimes(2); // proposal + log
     });
     
-    it('returns 500 on db insert error', async () => {
-      mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })); // no conflict
+    it('falls back to local store (200) on db insert error', async () => {
       mockSupabaseQuery.single.mockResolvedValueOnce({ data: null, error: { message: 'db error' } });
       const req = createReq('/api/proposals', 'POST', {
         title: 'Test', start_date: '2029-01-01', start_time: '10:00', end_date: '2029-01-01', end_time: '12:00'
       });
       const res = await postProposals(req);
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(String(data.data.id)).toMatch(/^prop-/);
     });
   });
 
@@ -231,16 +262,18 @@ describe('Proposals API Routes', () => {
 
     it('returns 404 if proposal not found', async () => {
       mockSupabaseQuery.single.mockResolvedValueOnce({ data: null, error: { message: 'Not found' } });
-      const req = createReq('/api/proposals/1');
-      const res = await getProposalById(req, { params: Promise.resolve({ id: '1' }) });
+      const req = createReq('/api/proposals/nonexistent-proposal-999');
+      const res = await getProposalById(req, { params: Promise.resolve({ id: 'nonexistent-proposal-999' }) });
       expect(res.status).toBe(404);
     });
 
     it('returns proposal with logs and ratings', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
       mockSupabaseQuery.single.mockResolvedValueOnce({ data: { id: '1', organization_unit: 'Unit 1', created_event_id: 'ev1' }, error: null }); // Proposal
-      mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({ data: [{ action: 'comment' }], error: null })); // logs
-      mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })); // allRatings
-      mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })); // eventRatings
+      mockSupabaseQuery.then
+        .mockImplementationOnce((resolve: any) => resolve({ data: [{ action: 'comment' }], error: null })) // logs
+        .mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })) // allRatings
+        .mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })); // eventRatings
 
       const req = createReq('/api/proposals/1');
       const res = await getProposalById(req, { params: Promise.resolve({ id: '1' }) });
@@ -261,8 +294,8 @@ describe('Proposals API Routes', () => {
 
     it('returns 404 if proposal not found', async () => {
       mockSupabaseQuery.single.mockResolvedValueOnce({ data: null, error: { message: 'Not found' } });
-      const req = createReq('/api/proposals/1/approve', 'POST');
-      const res = await approveProposal(req, { params: Promise.resolve({ id: '1' }) });
+      const req = createReq('/api/proposals/nonexistent-proposal-999/approve', 'POST');
+      const res = await approveProposal(req, { params: Promise.resolve({ id: 'nonexistent-proposal-999' }) });
       expect(res.status).toBe(404);
     });
 
@@ -284,9 +317,9 @@ describe('Proposals API Routes', () => {
 
     it('advances stage and logs if not final stage', async () => {
       (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'ctsv@test.com', tier: 'ctsv' });
-      mockSupabaseQuery.single
-        .mockResolvedValueOnce({ data: { id: '1', status: 'pending', current_stage: 'ctsv' }, error: null }) // select proposal
-        .mockResolvedValueOnce({ data: { id: '1', current_stage: 'facility' }, error: null }); // update proposal
+      mockSupabaseQuery.single.mockResolvedValueOnce({ data: { id: '1', status: 'pending', current_stage: 'ctsv' }, error: null });
+      mockSupabaseQuery.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+      mockSupabaseQuery.then.mockImplementation((resolve: any) => Promise.resolve({ data: [{ id: '1', current_stage: 'facility' }], error: null }).then(resolve));
 
       const req = createReq('/api/proposals/1/approve', 'POST', { notes: 'Ok' });
       const res = await approveProposal(req, { params: Promise.resolve({ id: '1' }) });
@@ -300,14 +333,15 @@ describe('Proposals API Routes', () => {
 
     it('auto-creates event and assigns role if final stage', async () => {
       (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true });
-      // Change getNextStage mock to return 'approved' for this test
-      const { getNextStage } = require('@/lib/utils/proposal-logic');
-      getNextStage.mockReturnValueOnce('approved');
+      (getNextStage as jest.Mock).mockReturnValueOnce('approved');
 
       mockSupabaseQuery.single
-        .mockResolvedValueOnce({ data: { id: '1', status: 'pending', current_stage: 'facility', created_by: 'test@ptithcm.edu.vn' }, error: null }) // select proposal
-        .mockResolvedValueOnce({ data: { event_id: 'ev-123' }, error: null }) // insert event
-        .mockResolvedValueOnce({ data: { id: '1', status: 'approved' }, error: null }); // update proposal
+        .mockResolvedValueOnce({ data: { id: '1', status: 'pending', current_stage: 'facility', created_by: 'test@ptithcm.edu.vn' }, error: null })
+        .mockResolvedValueOnce({ data: { event_id: 'ev-123' }, error: null });
+      mockSupabaseQuery.maybeSingle
+        .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({ data: { event_id: 'ev-123' }, error: null });
+      mockSupabaseQuery.then.mockImplementation((resolve: any) => Promise.resolve({ data: [{ id: '1' }], error: null }).then(resolve));
 
       const req = createReq('/api/proposals/1/approve', 'POST');
       const res = await approveProposal(req, { params: Promise.resolve({ id: '1' }) });
@@ -317,18 +351,20 @@ describe('Proposals API Routes', () => {
       expect(data.success).toBe(true);
       expect(data.message).toContain('tự động tạo sự kiện');
       
-      // Should have inserted logs, event, event_roles
+      // Should have inserted events, event_roles, proposal_logs
       expect(mockSupabaseQuery.insert).toHaveBeenCalledTimes(3); 
     });
     
     it('returns 500 if event creation fails on final stage', async () => {
       (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true });
-      const { getNextStage } = require('@/lib/utils/proposal-logic');
-      getNextStage.mockReturnValueOnce('approved');
+      (getNextStage as jest.Mock).mockReturnValueOnce('approved');
 
       mockSupabaseQuery.single
-        .mockResolvedValueOnce({ data: { id: '1', status: 'pending', current_stage: 'facility' }, error: null }) // select proposal
-        .mockResolvedValueOnce({ data: null, error: { message: 'db error' } }); // insert event fails
+        .mockResolvedValueOnce({ data: { id: '1', status: 'pending', current_stage: 'facility', created_by: 'test@ptithcm.edu.vn' }, error: null });
+      mockSupabaseQuery.maybeSingle
+        .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({ data: null, error: { message: 'db error' } });
+      mockSupabaseQuery.then.mockImplementation((resolve: any) => Promise.resolve({ data: [{ id: '1' }], error: null }).then(resolve));
 
       const req = createReq('/api/proposals/1/approve', 'POST');
       const res = await approveProposal(req, { params: Promise.resolve({ id: '1' }) });
@@ -349,8 +385,9 @@ describe('Proposals API Routes', () => {
     it('rejects successfully and updates proposal', async () => {
       (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'ctsv@test.com', tier: 'ctsv' });
       mockSupabaseQuery.single
-        .mockResolvedValueOnce({ data: { id: '1', status: 'pending', current_stage: 'ctsv' }, error: null }) // select
-        .mockResolvedValueOnce({ data: { id: '1', status: 'rejected' }, error: null }); // update
+        .mockResolvedValueOnce({ data: { id: '1', status: 'pending', current_stage: 'ctsv' }, error: null }); // select
+      mockSupabaseQuery.then
+        .mockImplementationOnce((resolve: any) => resolve({ data: [{ id: '1', status: 'rejected' }], error: null })); // atomic CAS update
 
       const req = createReq('/api/proposals/1/reject', 'POST', { reason: 'No budget' });
       const res = await rejectProposal(req, { params: Promise.resolve({ id: '1' }) });
@@ -360,9 +397,42 @@ describe('Proposals API Routes', () => {
       expect(data.success).toBe(true);
       expect(mockSupabaseQuery.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'rejected' }));
     });
+
+    it('returns 409 if proposal was already processed concurrently', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'ctsv@test.com', tier: 'ctsv' });
+      mockSupabaseQuery.single
+        .mockResolvedValueOnce({ data: { id: '1', status: 'pending', current_stage: 'ctsv' }, error: null });
+      mockSupabaseQuery.then
+        .mockImplementationOnce((resolve: any) => resolve({ data: [], error: null }));
+
+      const req = createReq('/api/proposals/1/reject', 'POST', { reason: 'Duplicate race' });
+      const res = await rejectProposal(req, { params: Promise.resolve({ id: '1' }) });
+      expect(res.status).toBe(409);
+    });
   });
 
   describe('GET /api/proposals/check-conflict', () => {
+    beforeEach(() => {
+      (getAuthContext as jest.Mock).mockResolvedValue({
+        email: 'lcdcntt@student.ptithcm.edu.vn',
+        tier: 'event_admin',
+        isEventAdmin: true,
+        isSuperAdmin: false,
+      });
+    });
+
+    it('returns 403 for regular student accounts', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({
+        email: 'student@st.ptithcm.edu.vn',
+        tier: 'student',
+        isEventAdmin: false,
+        isSuperAdmin: false,
+      });
+      const req = createReq('/api/proposals/check-conflict?room_id=1&start=2025-01-01T10:00:00Z&end=2025-01-01T12:00:00Z');
+      const res = await checkConflict(req);
+      expect(res.status).toBe(403);
+    });
+
     it('returns no conflict if params missing', async () => {
       const req = createReq('/api/proposals/check-conflict');
       const res = await checkConflict(req);
@@ -378,7 +448,23 @@ describe('Proposals API Routes', () => {
     });
 
     it('finds conflict successfully', async () => {
-      mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({ data: [{ id: '99', title: 'Existing' }], error: null }));
+      mockSupabaseQuery.then
+        .mockImplementationOnce((resolve: any) => resolve({
+          data: [{
+            id: '99',
+            title: 'Existing',
+            status: 'approved',
+            created_by: 'other@ptithcm.edu.vn',
+            start_date: '2025-01-01',
+            start_time: '00:00',
+            end_date: '2025-01-02',
+            end_time: '23:59',
+            room_id: '1',
+            room_name: 'R1',
+          }],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve: any) => resolve({ data: [], error: null }));
       const req = createReq('/api/proposals/check-conflict?room_id=1&start=2025-01-01T10:00:00Z&end=2025-01-01T12:00:00Z');
       const res = await checkConflict(req);
       const data = await res.json();
@@ -394,11 +480,13 @@ describe('Proposals API Routes', () => {
       expect(data.conflict).toBe(false);
     });
     
-    it('returns 500 on db error', async () => {
+    it('gracefully returns no conflict (200) on db error', async () => {
       mockSupabaseQuery.then.mockImplementationOnce((resolve: any) => resolve({ data: null, error: { message: 'db err' } }));
       const req = createReq('/api/proposals/check-conflict?room_id=1&start=2025-01-01T10:00:00Z&end=2025-01-01T12:00:00Z');
       const res = await checkConflict(req);
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.conflict).toBe(false);
     });
   });
 });

@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 import { getNextStage, getStageLabel } from '@/lib/utils/proposal-logic';
 import { getStoredProposalById, saveProposalToStore, addStoredProposalLog } from '@/lib/constants/proposals-store';
 import { saveEventMeta, getProposalMeta, saveProposalMeta } from '@/lib/constants/event-meta-store';
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
 import { notifyUsersByEmail, notifyStudentsByScope } from '@/lib/utils/web-push';
+import { getVietnamDateString, vnWallClockToUtcMs } from '@/lib/utils/vn-date';
 import type { ProposalStage, EventProposal } from '@/lib/types';
 
 export async function POST(
@@ -133,8 +134,35 @@ export async function POST(
     });
   };
 
-  // If Final Stage reached (Auto-create Event)
+  // If Final Stage reached (Optimistically lock transition BEFORE creating event)
   if (nextStage === 'approved') {
+    if (workingSessions.length > 0 && workingSessions.every((s: any) => s.status === 'rejected')) {
+      return NextResponse.json({
+        success: false,
+        error: 'Không thể phê duyệt cuối cùng khi tất cả các ca/buổi đều đã bị từ chối. Vui lòng từ chối kế hoạch hoặc duyệt ít nhất 1 ca.',
+      }, { status: 400 });
+    }
+
+    const { data: lockRows, error: lockErr } = await supabase
+      .from('event_proposals')
+      .update({
+        status: 'approved',
+        current_stage: 'approved',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', proposal.id)
+      .eq('current_stage', currentStage)
+      .neq('status', 'approved')
+      .neq('status', 'rejected')
+      .select('id');
+
+    if (lockErr || !lockRows || lockRows.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Kế hoạch đã được phê duyệt hoặc thay đổi bởi thao tác khác. Vui lòng tải lại trang.',
+      }, { status: 409 });
+    }
+
     let newEventId: string | null = null;
     let createFailureReason = '';
     try {
@@ -180,10 +208,9 @@ export async function POST(
         }
         await saveProposalMeta(supabase, proposal.id, { sessions: availableSessions }).catch(() => {});
 
-        // Auto-generate or filter sessions for event
+        // Auto-generate or filter sessions for event (preserving session_type, is_main, allowed_cohorts)
         let finalSessions: any[] = [];
         if (availableSessions && availableSessions.length > 0) {
-          // Use only non-rejected sessions
           finalSessions = availableSessions
             .filter((s: any) => s.status !== 'rejected')
             .map((s: any, idx: number) => ({
@@ -194,6 +221,11 @@ export async function POST(
               end_time: s.end_time,
               room_id: s.room_id || null,
               room_name: s.room_name || null,
+              ...(s.session_type ? { session_type: s.session_type } : {}),
+              ...(s.is_main !== undefined ? { is_main: Boolean(s.is_main) } : {}),
+              ...(Array.isArray(s.allowed_cohorts) && s.allowed_cohorts.length > 0
+                ? { allowed_cohorts: s.allowed_cohorts }
+                : {}),
               created_at: new Date().toISOString(),
             }));
         }
@@ -203,32 +235,32 @@ export async function POST(
             ? (proposal as any).room_name : null;
           const propRoomId = propRoomName ? ((proposal as any).room_id || null) : null;
           if (proposal.start_date && proposal.end_date && proposal.start_date !== proposal.end_date) {
-            const startDateObj = new Date(proposal.start_date);
-            const endDateObj = new Date(proposal.end_date);
-            let currentDay = new Date(startDateObj);
-            let dayIndex = 1;
-
-            while (currentDay <= endDateObj && dayIndex <= 30) {
-              const dateStr = currentDay.toISOString().split('T')[0];
-              const vnDateFormatted = currentDay.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-              finalSessions.push({
-                id: `session_day_${dayIndex}`,
-                name: `Buổi ${dayIndex} (${vnDateFormatted})`,
-                session_date: dateStr,
-                start_time: proposal.start_time || '08:00',
-                end_time: proposal.end_time || '11:30',
-                room_id: propRoomId,
-                room_name: propRoomName,
-                created_at: new Date().toISOString(),
-              });
-              currentDay.setDate(currentDay.getDate() + 1);
-              dayIndex++;
+            const startMs = vnWallClockToUtcMs(proposal.start_date, '00:00');
+            const endMs = vnWallClockToUtcMs(proposal.end_date, '00:00');
+            if (startMs !== null && endMs !== null) {
+              let dayIndex = 1;
+              for (let offset = 0; startMs + offset * 86_400_000 <= endMs && dayIndex <= 30; offset++) {
+                const dateStr = getVietnamDateString(offset, startMs);
+                const [, mm, dd] = dateStr.split('-');
+                finalSessions.push({
+                  id: `session_day_${dayIndex}`,
+                  name: `Buổi ${dayIndex} (${dd}/${mm})`,
+                  session_date: dateStr,
+                  start_time: proposal.start_time || '08:00',
+                  end_time: proposal.end_time || '11:30',
+                  room_id: propRoomId,
+                  room_name: propRoomName,
+                  created_at: new Date().toISOString(),
+                });
+                dayIndex++;
+              }
             }
-          } else {
+          }
+          if (finalSessions.length === 0) {
             finalSessions.push({
               id: 'session_1',
               name: 'Buổi 1 (Buổi chính)',
-              session_date: proposal.start_date || new Date().toISOString().split('T')[0],
+              session_date: proposal.start_date || getVietnamDateString(0),
               start_time: proposal.start_time || '08:00',
               end_time: proposal.end_time || '11:30',
               room_id: propRoomId,
@@ -254,6 +286,9 @@ export async function POST(
           email: proposal.created_by,
           role_type: 'event_admin',
         });
+        if (typeof invalidateAuthContextCache === 'function') {
+          invalidateAuthContextCache(proposal.created_by);
+        }
 
         // Also assign the managing unit (LCĐ/CLB) as event_admin so they can see the event
         if (proposal.organization_unit) {
@@ -266,14 +301,36 @@ export async function POST(
               email: matchedUnit.email,
               role_type: 'event_admin',
             });
+            if (typeof invalidateAuthContextCache === 'function') {
+              invalidateAuthContextCache(matchedUnit.email);
+            }
           }
         }
       }
-    } catch (createErr) {
+    } catch (createErr: any) {
       console.error('Error auto-creating event from proposal:', createErr);
+      createFailureReason = createErr?.message || 'Lỗi khi cấu hình sự kiện mới';
+      if (newEventId) {
+        try {
+          await supabase.from('events').delete().eq('event_id', newEventId);
+        } catch {}
+        newEventId = null;
+      }
     }
 
     if (!newEventId) {
+      // Roll back optimistic approval claim so approver can retry cleanly
+      try {
+        await supabase
+          .from('event_proposals')
+          .update({
+            status: proposal.status || 'pending',
+            current_stage: currentStage,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', proposal.id);
+      } catch {}
+
       return NextResponse.json({
         success: false,
         error: `Không thể tạo sự kiện từ kế hoạch nên chưa ghi nhận phê duyệt. ${createFailureReason}`.trim(),

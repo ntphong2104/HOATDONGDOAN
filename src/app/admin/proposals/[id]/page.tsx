@@ -27,6 +27,7 @@ import {
 import { getStageLabel, isKhoaUnit } from '@/lib/utils/proposal-logic';
 import { getRatingDepartmentLabel } from '@/lib/utils/rating-logic';
 import { formatLcdsLabel } from '@/lib/utils/lcd';
+import { isSafeExternalUrl } from '@/lib/security/redirect';
 import type { EventProposal, ProposalLog, ProposalStage, SessionUser, UnitRating } from '@/lib/types';
 import {
   deriveBookingSchedule,
@@ -102,8 +103,13 @@ export default function ProposalDetailPage({
   };
 
   useEffect(() => {
-    fetchUser();
-    fetchProposal();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      fetchUser();
+      fetchProposal();
+    })();
 
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) {
@@ -112,7 +118,10 @@ export default function ProposalDetailPage({
       }
     };
     window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('pageshow', handlePageShow);
+    };
   }, [resolvedParams.id]);
 
   const handleConfirmApprove = async () => {
@@ -501,7 +510,7 @@ export default function ProposalDetailPage({
                           <span>{r.stars} / 5 sao</span>
                         </span>
                         <strong style={{ color: '#0f172a' }}>[{getRatingDepartmentLabel(r.rater_tier)}]:</strong>
-                        <span>"{r.feedback || 'Không có nhận xét chi tiết'}"</span>
+                        <span>&quot;{r.feedback || 'Không có nhận xét chi tiết'}&quot;</span>
                         <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: 'auto' }}>
                           {new Date(r.created_at).toLocaleDateString('vi-VN')}
                         </span>
@@ -544,8 +553,10 @@ export default function ProposalDetailPage({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.25rem' }}>
                       <span style={{ fontWeight: 800, fontSize: '0.925rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         <BuildingIcon size={14} color="#166534" />
-                        <span>{getStageDepartmentName(log.stage, log.actor_email)}</span>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>({log.actor_email})</span>
+                        <span>{getStageDepartmentName(log.stage, log.actor_email || '')}</span>
+                        {log.actor_email && (
+                          <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>({log.actor_email})</span>
+                        )}
                       </span>
                       <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
                         {new Date(log.created_at).toLocaleString('vi-VN')}
@@ -553,7 +564,7 @@ export default function ProposalDetailPage({
                     </div>
 
                     <div style={{ fontSize: '1rem', color: '#0f172a', lineHeight: 1.5, fontWeight: 600, background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
-                      "{log.notes}"
+                      &quot;{log.notes}&quot;
                     </div>
                   </div>
                 ))}
@@ -1276,9 +1287,9 @@ export default function ProposalDetailPage({
                 </h3>
               </div>
 
-              {proposal.plan_url && (
+              {isSafeExternalUrl(proposal.plan_url) && (
                 <a
-                  href={proposal.plan_url}
+                  href={proposal.plan_url!}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -1554,7 +1565,8 @@ export default function ProposalDetailPage({
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b' }}>
                         <span>
-                          <strong style={{ color: '#0f172a' }}>{log.actor_name || log.actor_email}</strong> ({log.actor_email})
+                          <strong style={{ color: '#0f172a' }}>{log.actor_name || log.actor_email || 'Hội đồng xét duyệt'}</strong>
+                          {log.actor_email ? ` (${log.actor_email})` : ''}
                         </span>
                         <span>{new Date(log.created_at).toLocaleString('vi-VN')}</span>
                       </div>

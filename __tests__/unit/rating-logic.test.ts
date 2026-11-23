@@ -80,7 +80,7 @@ describe('Unit Rating & Low-Rating Warning Business Logic', () => {
   test('correctly maps Vietnamese department labels', () => {
     expect(getRatingDepartmentLabel('youth_union')).toBe('Đoàn Học Viện');
     expect(getRatingDepartmentLabel('ctsv')).toBe('Phòng Công Tác Sinh Viên (CTSV)');
-    expect(getRatingDepartmentLabel('facility')).toBe('Phòng Quản Trị CSVC & Tổ Chức');
+    expect(getRatingDepartmentLabel('facility')).toBe('Phòng. TC-HC-QT');
     expect(getRatingDepartmentLabel('super_admin')).toBe('Super Admin Đoàn Trường');
   });
 });

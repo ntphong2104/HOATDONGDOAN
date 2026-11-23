@@ -1,20 +1,40 @@
 import type { SessionUser } from '@/lib/types';
 import crypto from 'crypto';
 
-const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
+function getDemoCookieSecret(): string | null {
+  const envSecret = process.env.DEMO_COOKIE_SECRET;
+  if (envSecret && envSecret.length >= 32) return envSecret;
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+  return envSecret || 'dev-cookie-secret';
+}
 
 export function signCookie(payload: string): string {
+  const secret = getDemoCookieSecret();
+  if (!secret) {
+    throw new Error('DEMO_COOKIE_SECRET (>= 32 chars) is required in production when ENABLE_DEMO_MODE=true');
+  }
   const enc = encodeURIComponent(payload);
-  const hmac = crypto.createHmac('sha256', COOKIE_SECRET).update(enc).digest('hex');
+  const hmac = crypto.createHmac('sha256', secret).update(enc).digest('hex');
   return `${enc}.${hmac}`;
 }
 
 export function verifyCookie(signed: string): string | null {
+  const isAllowed =
+    process.env.ENABLE_DEMO_MODE === 'true' ||
+    process.env.NODE_ENV === 'development' ||
+    process.env.NODE_ENV === 'test';
+  if (!isAllowed) return null;
+
+  const secret = getDemoCookieSecret();
+  if (!secret) return null;
+
   const lastDot = signed.lastIndexOf('.');
   if (lastDot === -1) return null;
   const enc = signed.slice(0, lastDot);
   const signature = signed.slice(lastDot + 1);
-  const expectedSignature = crypto.createHmac('sha256', COOKIE_SECRET).update(enc).digest('hex');
+  const expectedSignature = crypto.createHmac('sha256', secret).update(enc).digest('hex');
   try {
     const sigBuf = Buffer.from(signature, 'hex');
     const expBuf = Buffer.from(expectedSignature, 'hex');

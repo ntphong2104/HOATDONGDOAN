@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import styles from './ExcelExportButton.module.css';
 import { SpinnerIcon, DownloadIcon } from '@/components/icons';
+import type { StyledColumnSpec } from '@/lib/utils/styled-excel';
 
 interface ExcelExportButtonProps {
   fetchUrl?: string;
@@ -10,6 +11,10 @@ interface ExcelExportButtonProps {
   filename: string;
   label?: string;
   disabled?: boolean;
+  reportTitle?: string;
+  reportSubtitle?: string;
+  unitTitle?: string;
+  sheetName?: string;
 }
 
 export default function ExcelExportButton({
@@ -18,6 +23,10 @@ export default function ExcelExportButton({
   filename,
   label = 'Tải Excel',
   disabled = false,
+  reportTitle,
+  reportSubtitle,
+  unitTitle,
+  sheetName,
 }: ExcelExportButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -25,13 +34,29 @@ export default function ExcelExportButton({
     if (!val) return '';
     const d = new Date(val);
     if (isNaN(d.getTime())) return String(val);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const seconds = String(d.getSeconds()).padStart(2, '0');
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    try {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).formatToParts(d);
+      const get = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+      return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}:${get('second')}`;
+    } catch {
+      const vn = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+      const day = String(vn.getUTCDate()).padStart(2, '0');
+      const month = String(vn.getUTCMonth() + 1).padStart(2, '0');
+      const year = vn.getUTCFullYear();
+      const hours = String(vn.getUTCHours()).padStart(2, '0');
+      const minutes = String(vn.getUTCMinutes()).padStart(2, '0');
+      const seconds = String(vn.getUTCSeconds()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    }
   };
 
   // Prevent Excel Formula Injection (CWE-1236)
@@ -76,7 +101,65 @@ export default function ExcelExportButton({
 
       exportData = cleanData;
 
-      // Format records into full, readable Vietnamese structure
+      const inferDefaultTitle = (): string => {
+        if (reportTitle) return reportTitle;
+        const f = filename.toLowerCase();
+        if (f.includes('drl')) {
+          return 'BẢNG TỔNG HỢP MINH CHỨNG & ĐIỂM RÈN LUYỆN ĐOÀN VIÊN';
+        }
+        if (f.includes('don-vi')) {
+          return 'DANH BẠ ĐƠN VỊ ĐOÀN – HỘI & CÂU LẠC BỘ TRỰC THUỘC';
+        }
+        if (f.includes('sinh-vien')) {
+          return 'DANH SÁCH ĐOÀN VIÊN – SINH VIÊN HỆ THỐNG';
+        }
+        return 'DANH SÁCH ĐIỂM DANH & MINH CHỨNG HOẠT ĐỘNG ĐOÀN';
+      };
+
+      const isUnitDirectory =
+        exportData.length > 0 && exportData[0]?.code !== undefined && !exportData[0]?.mssv;
+
+      if (isUnitDirectory) {
+        const unitRows = exportData.map((u: any, index: number) => ({
+          stt: u.stt || index + 1,
+          code: u.code || '',
+          name: sanitizeForExcel(u.name || ''),
+          type:
+            u.type === 'lcd'
+              ? 'Liên Chi Đoàn (LCĐ)'
+              : u.type === 'clb'
+              ? 'CLB / Đội / Nhóm'
+              : u.type === 'doan_truong' || u.type === 'school'
+              ? 'Đoàn Trường'
+              : sanitizeForExcel(String(u.type || 'Đơn vị trực thuộc')),
+          email: u.email || '',
+        }));
+
+        const columns: StyledColumnSpec[] = [
+          { key: 'stt', label: 'STT', align: 'center', width: 7, numFmt: 'rawInt' },
+          { key: 'code', label: 'Mã Đơn Vị', align: 'center', width: 16, tone: 'code' },
+          { key: 'name', label: 'Tên Đơn Vị / Tổ Chức', align: 'left', width: 38, tone: 'bold' },
+          { key: 'type', label: 'Phân Loại', align: 'center', width: 22 },
+          { key: 'email', label: 'Email Đơn Vị', align: 'left', width: 34 },
+        ];
+
+        const finalFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+        const { downloadStyledSheet } = await import('@/lib/utils/styled-excel');
+        downloadStyledSheet({
+          filename: finalFilename,
+          sheetName: sheetName || 'DanhBa_DonVi',
+          reportTitle: inferDefaultTitle(),
+          reportSubtitle: reportSubtitle
+            ? `${reportSubtitle}  •  Tổng số: ${unitRows.length} đơn vị`
+            : `Tổng số: ${unitRows.length} đơn vị trực thuộc`,
+          unitTitle,
+          columns,
+          rows: unitRows,
+        });
+        return;
+      }
+
+      // Format student / check-in records into full, readable Vietnamese structure
       const formattedRows = exportData.map((row: any, index: number) => {
         const formatted: Record<string, any> = {
           'STT': row.stt || index + 1,
@@ -84,6 +167,10 @@ export default function ExcelExportButton({
           'Họ Và Tên': sanitizeForExcel(row.full_name || row.name || ''),
           'Lớp Niên Chế': sanitizeForExcel(row.class_id || row.class || ''),
         };
+
+        if (row.khoa !== undefined) {
+          formatted['Khóa'] = sanitizeForExcel(row.khoa || '');
+        }
 
         if (row.email || row.mssv) {
           formatted['Email Sinh Viên'] = row.email || `${String(row.mssv).toLowerCase()}@student.ptithcm.edu.vn`;
@@ -120,13 +207,16 @@ export default function ExcelExportButton({
           formatted['Danh Sách Sự Kiện Đã Tham Gia'] = sanitizeForExcel(
             row.danh_sach_su_kien || 'Chưa tham gia sự kiện nào'
           );
+        } else if (row.so_su_kien_drl !== undefined) {
+          formatted['Số SK Tham Gia'] = Number(row.so_su_kien_drl) || 0;
+          formatted['Chức Vụ Chi Đoàn'] = sanitizeForExcel(row.bch_chi_doan || '—');
         } else {
           formatted['Trạng Thái Ghi Nhận'] = row.status || 'Hợp lệ (Đã ghi nhận ĐRL)';
         }
 
         if (row.rating_stars !== undefined || row.stars !== undefined) {
           const stars = row.rating_stars ?? row.stars;
-          formatted['Đánh Giá (Sao)'] = stars ? `${stars}/5 ⭐` : 'Chưa đánh giá';
+          formatted['Đánh Giá (Sao)'] = stars ? `${stars}/5 ★` : 'Chưa đánh giá';
         }
 
         if (row.feedback_note || row.comment || row.notes) {
@@ -136,53 +226,18 @@ export default function ExcelExportButton({
         return formatted;
       });
 
-      // Dynamically import xlsx
-      const XLSX = await import('xlsx');
-
-      const worksheet = XLSX.utils.json_to_sheet(formattedRows);
-
-      // Auto-fit column widths (respecting multi-line cells)
-      const colWidths = Object.keys(formattedRows[0] || {}).map((key) => {
-        let maxLen = key.length;
-        formattedRows.forEach((row) => {
-          const valStr = row[key] ? String(row[key]) : '';
-          for (const line of valStr.split('\n')) {
-            if (line.length > maxLen) {
-              maxLen = line.length;
-            }
-          }
-        });
-        return { wch: Math.min(Math.max(maxLen + 3, 10), 58) };
-      });
-      worksheet['!cols'] = colWidths;
-
-      // Auto-fit row heights for multi-line bullet lists
-      const rowHeights: Array<{ hpt?: number }> = [{ hpt: 24 }];
-      let hasMultiLine = false;
-      formattedRows.forEach((row) => {
-        let maxLines = 1;
-        Object.values(row).forEach((val) => {
-          if (typeof val === 'string' && val.includes('\n')) {
-            const lines = val.split('\n').length;
-            if (lines > maxLines) maxLines = lines;
-          }
-        });
-        if (maxLines > 1) {
-          hasMultiLine = true;
-          rowHeights.push({ hpt: Math.min(maxLines * 17 + 8, 409) });
-        } else {
-          rowHeights.push({ hpt: 20 });
-        }
-      });
-      if (hasMultiLine) {
-        worksheet['!rows'] = rowHeights;
-      }
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh Sách');
-
       const finalFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
-      XLSX.writeFile(workbook, finalFilename);
+      const { downloadStyledSheet } = await import('@/lib/utils/styled-excel');
+      downloadStyledSheet({
+        filename: finalFilename,
+        sheetName: sheetName || 'DanhSach',
+        reportTitle: inferDefaultTitle(),
+        reportSubtitle: reportSubtitle
+          ? `${reportSubtitle}  •  Tổng số: ${formattedRows.length} bản ghi hợp lệ`
+          : `Tổng số: ${formattedRows.length} bản ghi hợp lệ`,
+        unitTitle,
+        rows: formattedRows,
+      });
     } catch (error) {
       console.error('Export failed:', error);
       alert('Đã xảy ra lỗi khi xuất file Excel');
@@ -193,6 +248,7 @@ export default function ExcelExportButton({
 
   return (
     <button
+      type="button"
       className={styles.button}
       onClick={handleExport}
       disabled={disabled || isLoading}

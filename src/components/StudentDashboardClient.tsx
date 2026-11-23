@@ -2,10 +2,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import QRCodeDisplay from '@/components/QRCodeDisplay';
 import RoleBadge from '@/components/RoleBadge';
-import StudentSelfScannerModal from '@/components/StudentSelfScannerModal';
 import DataTable from '@/components/DataTable';
+
+const StudentSelfScannerModal = dynamic(() => import('@/components/StudentSelfScannerModal'), { ssr: false });
+const EMPTY_REGISTRATIONS: any[] = [];
 import ExcelExportButton from '@/components/ExcelExportButton';
 import { useToast } from '@/components/ToastProvider';
 import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
@@ -43,6 +46,7 @@ interface StudentDashboardClientProps {
   initialHistory: HistoryItem[];
   initialRegistrations?: any[];
   activeSection?: 'overview' | 'registered' | 'history' | 'delegate';
+  isDutyVolunteer?: boolean;
 }
 
 function normalizeVN(val: string): string {
@@ -59,8 +63,9 @@ export default function StudentDashboardClient({
   user,
   tier,
   initialHistory,
-  initialRegistrations = [],
+  initialRegistrations = EMPTY_REGISTRATIONS,
   activeSection = 'overview',
+  isDutyVolunteer = false,
 }: StudentDashboardClientProps) {
   const toast = useToast();
   const [currentUser, setCurrentUser] = useState(user);
@@ -609,6 +614,26 @@ export default function StudentDashboardClient({
             </div>
           )}
 
+          {/* CTV Trực Văn Phòng Đoàn Shortcut Card */}
+          {isDutyVolunteer && (
+            <div className={styles.delegateBanner}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <ClockIcon size={19} color="#1d4ed8" />
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
+                    CTV Trực Văn Phòng Đoàn
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 500 }}>
+                    Đăng ký lịch trực tuần (Thứ 2 – Thứ 6) &amp; chấm công qua WiFi Văn phòng Đoàn.
+                  </div>
+                </div>
+              </div>
+              <Link href="/office/duty" className={styles.delegateBtn}>
+                Vào Trực Văn Phòng
+              </Link>
+            </div>
+          )}
+
           {/* Compact Recent 3 Attendance Proofs Preview */}
           <section className={styles.profileCard}>
             <div className={styles.profileHeader} style={{ marginBottom: '0.75rem', paddingBottom: '0.75rem' }}>
@@ -1149,6 +1174,9 @@ export default function StudentDashboardClient({
                     }))}
                     filename={`danh-sach-drl-chidoan-${delegateInfo.class_id}.xlsx`}
                     label={`Xuất Excel ĐRL ${delegateInfo.class_id}`}
+                    reportTitle={`BẢNG TỔNG HỢP HOẠT ĐỘNG ĐOÀN — CHI ĐOÀN ${delegateInfo.class_id}`}
+                    reportSubtitle="Tổng hợp minh chứng Điểm Rèn Luyện theo Chi đoàn"
+                    sheetName={`DRL_${delegateInfo.class_id}`}
                   />
                 </div>
 
@@ -1632,12 +1660,14 @@ export default function StudentDashboardClient({
         </div>
       )}
 
-      {/* Modal Scanner */}
-      <StudentSelfScannerModal
-        isOpen={showScanner}
-        onClose={() => setShowScanner(false)}
-        onSuccess={fetchHistory}
-      />
+      {/* Modal Scanner (lazy-loaded only when opened) */}
+      {showScanner && (
+        <StudentSelfScannerModal
+          isOpen={showScanner}
+          onClose={() => setShowScanner(false)}
+          onSuccess={fetchHistory}
+        />
+      )}
     </>
   );
 }

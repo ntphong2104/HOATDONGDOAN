@@ -42,10 +42,17 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
   }, []);
 
   useEffect(() => {
-    loadSemesters();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await loadSemesters();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadSemesters]);
 
-  const persistSemesters = async (updatedList: AcademicSemester[], successText: string) => {
+  const persistSemesters = async (updatedList: AcademicSemester[], successText: string): Promise<boolean> => {
     setSaving(true);
     setStatusMsg(null);
     try {
@@ -59,11 +66,14 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
         setSemesters(json.data);
         setStatusMsg({ type: 'success', text: successText });
         onSaved?.(json.data);
+        return true;
       } else {
         setStatusMsg({ type: 'error', text: json.error || 'Lỗi lưu cấu hình học kỳ.' });
+        return false;
       }
     } catch {
       setStatusMsg({ type: 'error', text: 'Lỗi kết nối máy chủ khi lưu học kỳ.' });
+      return false;
     } finally {
       setSaving(false);
     }
@@ -143,11 +153,13 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
     };
 
     const updated = [newItem, ...semesters];
-    await persistSemesters(updated, `Đã thêm học kỳ "${trimmedName}" (${newStart} → ${newEnd}).`);
-    setNewName('');
-    setNewStart('');
-    setNewEnd('');
-    setNewNotes('');
+    const ok = await persistSemesters(updated, `Đã thêm học kỳ "${trimmedName}" (${newStart} → ${newEnd}).`);
+    if (ok) {
+      setNewName('');
+      setNewStart('');
+      setNewEnd('');
+      setNewNotes('');
+    }
   };
 
   return (

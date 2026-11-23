@@ -1,6 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
+import { getAuthContext, invalidateAuthContextCache, canManageEvent } from '@/lib/supabase/auth-helper';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta } from '@/lib/constants/event-meta-store';
 import { invalidateMeResponseCache } from '@/lib/constants/user-profile-store';
@@ -38,15 +38,19 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       );
     }
 
-    // Authorization: only super_admin, youth_union, event_admin, or event creator
-    const isSuperOrPrivileged = isSuperAdmin || auth.tier === 'youth_union';
-    const isEventAdmin = auth.isEventAdmin || auth.tier === 'event_admin';
-
-    if (!isSuperOrPrivileged && !isEventAdmin) {
-      if (eventData?.created_by !== auth.email) {
-        return NextResponse.json({ success: false, error: 'Bạn không có quyền xóa vai trò này' }, { status: 403 });
-      }
+    // Authorization: only super_admin, youth_union, or THIS event's event_admin/creator
+    const allowed = await canManageEvent(auth, id, eventData?.created_by ?? null, supabase);
+    if (!allowed) {
+      return NextResponse.json({ success: false, error: 'Bạn không có quyền xóa vai trò này' }, { status: 403 });
     }
+
+    // Fetch target email first so we only invalidate that user's auth cache
+    const { data: targetRole } = await supabase
+      .from('event_roles')
+      .select('email')
+      .eq('id', roleId)
+      .eq('event_id', id)
+      .maybeSingle();
 
     // Support both UUID and integer role IDs
     const { error, count } = await supabase
@@ -64,8 +68,13 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, error: 'Không tìm thấy vai trò này (có thể đã bị xóa trước đó)' }, { status: 404 });
     }
 
-    invalidateAuthContextCache();
-    invalidateMeResponseCache();
+    if (targetRole?.email) {
+      invalidateAuthContextCache(targetRole.email);
+      invalidateMeResponseCache(targetRole.email);
+    } else {
+      invalidateAuthContextCache();
+      invalidateMeResponseCache();
+    }
     return NextResponse.json({ success: true, data: { deleted: true } });
   } catch (err: any) {
     console.error('Delete role catch:', err);

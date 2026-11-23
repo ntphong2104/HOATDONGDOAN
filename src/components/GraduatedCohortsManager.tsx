@@ -45,7 +45,14 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
   }, [applyResponseData, toast]);
 
   useEffect(() => {
-    loadConfig();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await loadConfig();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadConfig]);
 
   const toggleCell = (lcdCode: LcdCode, cohort: string) => {

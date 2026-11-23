@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { getEventMetaBatch } from '@/lib/constants/event-meta-store';
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
@@ -84,33 +85,55 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
 
   const task = (async (): Promise<SharedDiscoverEvent[]> => {
     try {
-      const { data: rawEvents, error } = await supabase
-        .from('events')
-        .select('event_id, event_name, event_date, start_time, end_time, semester, status, is_active, is_registration_open, created_by, allowed_cohorts')
-        .eq('status', 'active')
-        .order('event_date', { ascending: true })
-        .order('start_time', { ascending: true })
-        .limit(120);
+      const { data: rawEvents, error } = await fetchAllRows<any>(() =>
+        supabase
+          .from('events')
+          .select('event_id, event_name, event_date, start_time, end_time, semester, status, is_active, is_registration_open, created_by, allowed_cohorts')
+          .eq('status', 'active')
+          .order('event_date', { ascending: false })
+          .order('event_id', { ascending: false })
+      );
 
       if (error || !rawEvents || rawEvents.length === 0) {
-        cache.data = [];
-        cache.expiresAt = Date.now() + DISCOVER_CACHE_TTL_MS;
+        if (!error) {
+          cache.data = [];
+          cache.expiresAt = Date.now() + DISCOVER_CACHE_TTL_MS;
+        }
         return [];
       }
 
       const eventIds = rawEvents.map((e: any) => e.event_id);
 
-      const [metaMap, { data: proposals }, { data: regRows }] = await Promise.all([
+      const proposalChunks: any[] = [];
+      const regChunks: any[] = [];
+      const idChunks: string[][] = [];
+      for (let i = 0; i < eventIds.length; i += 100) {
+        idChunks.push(eventIds.slice(i, i + 100));
+      }
+
+      const [metaMap] = await Promise.all([
         getEventMetaBatch(supabase, eventIds),
-        supabase
-          .from('event_proposals')
-          .select('created_event_id, organization_unit, room_name, description')
-          .in('created_event_id', eventIds),
-        supabase
-          .from('event_registrations')
-          .select('event_id, role_type')
-          .in('event_id', eventIds),
+        Promise.all(
+          idChunks.map(async (idChunk) => {
+            const [{ data: propRows }, { data: regPart }] = await Promise.all([
+              supabase
+                .from('event_proposals')
+                .select('created_event_id, organization_unit, room_name, description')
+                .in('created_event_id', idChunk),
+              fetchAllRows<any>(() =>
+                supabase
+                  .from('event_registrations')
+                  .select('event_id, role_type')
+                  .in('event_id', idChunk)
+              ),
+            ]);
+            if (propRows) proposalChunks.push(...propRows);
+            if (regPart) regChunks.push(...regPart);
+          })
+        ),
       ]);
+      const proposals = proposalChunks;
+      const regRows = regChunks;
 
       const proposalByEventId = new Map<string, any>();
       for (const p of proposals || []) {

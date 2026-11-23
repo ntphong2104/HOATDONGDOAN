@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 
 export async function POST(req: Request) {
@@ -13,28 +13,40 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Thiếu MSSV' }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const cleanMssv = mssv.trim().toUpperCase();
-  const cleanEmail = email ? email.trim().toLowerCase() : `${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn`;
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
+  const cleanMssv = String(mssv).trim().toUpperCase();
+  const cleanEmail = email ? String(email).trim().toLowerCase() : `${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn`;
 
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('full_name, class_id')
-    .eq('mssv', cleanMssv)
-    .single();
+  const [{ data: userProfile }, { data: existing }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('full_name, class_id')
+      .eq('mssv', cleanMssv)
+      .maybeSingle(),
+    supabase
+      .from('user_penalties')
+      .select('*')
+      .eq('mssv', cleanMssv)
+      .maybeSingle(),
+  ]);
+
+  const banNote = `Khóa thủ công bởi ${auth.email}. Lý do: ${String(reason || 'Vi phạm kỷ luật').trim()}`;
+  const updatedNotes = existing?.notes ? `${existing.notes}; ${banNote}` : banNote;
+  const preservedMissed = Math.max(Number(existing?.missed_count) || 0, 3);
 
   const { data, error } = await supabase
     .from('user_penalties')
     .upsert(
       {
         mssv: cleanMssv,
-        email: cleanEmail,
-        full_name: userProfile?.full_name || cleanMssv,
-        class_id: userProfile?.class_id || 'PTIT-HCM',
-        missed_count: 3,
+        email: cleanEmail || existing?.email,
+        full_name: userProfile?.full_name || existing?.full_name || cleanMssv,
+        class_id: userProfile?.class_id || existing?.class_id || 'PTIT-HCM',
+        missed_count: preservedMissed,
         is_blacklisted: true,
-        blacklisted_at: new Date().toISOString(),
-        notes: `Khóa thủ công bởi ${auth.email}. Lý do: ${reason}`,
+        blacklisted_at: existing?.blacklisted_at || new Date().toISOString(),
+        notes: updatedNotes,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'mssv' }

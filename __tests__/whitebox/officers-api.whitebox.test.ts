@@ -1,13 +1,15 @@
 import { GET, POST, DELETE } from '@/app/api/admin/officers/route';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 jest.mock('@/lib/supabase/auth-helper', () => ({
   getAuthContext: jest.fn(),
+  invalidateAuthContextCache: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }));
 
 describe('Whitebox Tests: /api/admin/officers (Role Management & Security Rules)', () => {
@@ -59,12 +61,21 @@ describe('Whitebox Tests: /api/admin/officers (Role Management & Security Rules)
         }
         if (table === 'users') {
           return {
-            select: jest.fn().mockResolvedValue({
-              data: [
-                { email: 'n22dccn158@student.ptithcm.edu.vn', full_name: 'Nguyễn Thanh Phong', mssv: 'N22DCCN158', class_id: 'D22CQCN01-N' },
-              ],
-              error: null,
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            update: jest.fn().mockReturnValue({
+              ilike: jest.fn().mockResolvedValue({ data: null, error: null }),
+              eq: jest.fn().mockResolvedValue({ data: null, error: null }),
             }),
+            then: jest.fn((resolve: any) =>
+              resolve({
+                data: [
+                  { email: 'n22dccn158@student.ptithcm.edu.vn', full_name: 'Nguyễn Thanh Phong', mssv: 'N22DCCN158', class_id: 'D22CQCN01-N' },
+                ],
+                error: null,
+              })
+            ),
           };
         }
         if (table === 'system_settings') {
@@ -90,6 +101,7 @@ describe('Whitebox Tests: /api/admin/officers (Role Management & Security Rules)
     };
 
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
   });
 
   test('Security Rule 1: Non-Super-Admin is rejected with 403', async () => {

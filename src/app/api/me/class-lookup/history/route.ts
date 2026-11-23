@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
+import { getMasterStudentByMssv, isPlaceholderClass } from '@/lib/utils/student-profile';
 
 export async function GET(request: Request) {
   try {
@@ -10,18 +12,26 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createClient();
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
     const now = new Date().toISOString();
 
-    const isElevated = auth.isSuperAdmin || (auth.tier && auth.tier !== 'user');
+    const isElevated = Boolean(
+      auth.isSuperAdmin ||
+        auth.tier === 'super_admin' ||
+        auth.tier === 'youth_union' ||
+        auth.tier === 'ctsv'
+    );
     let delegateClassId: string | null = null;
 
     if (!isElevated) {
+      const safeEmail = sanitizePostgrestValue(auth.email.toLowerCase().trim(), 120);
+      const safeUser = sanitizePostgrestValue(auth.email.split('@')[0].toUpperCase(), 40);
       // Verify active delegation for student delegates
       const { data: delegate } = await supabase
         .from('class_delegates')
         .select('*')
-        .or(`email.eq.${auth.email},mssv.eq.${auth.email.split('@')[0].toUpperCase()}`)
+        .or(`email.eq.${safeEmail},mssv.eq.${safeUser}`)
         .eq('is_active', true)
         .gt('expires_at', now)
         .order('expires_at', { ascending: false })
@@ -48,7 +58,7 @@ export async function GET(request: Request) {
 
     // Fetch target student profile and check-in records in parallel
     const [
-      { data: targetStudent, error: studentErr },
+      { data: targetStudent },
       { data: checkIns, error: checkInErr }
     ] = await Promise.all([
       supabase
@@ -78,9 +88,14 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: false })
     ]);
 
-    // Class boundary check for class delegates
-    if (delegateClassId && targetStudent?.class_id) {
-      if (targetStudent.class_id.trim().toUpperCase() !== delegateClassId.trim().toUpperCase()) {
+    // Fail-closed class boundary check for class delegates
+    if (delegateClassId) {
+      const master = getMasterStudentByMssv(cleanMssv);
+      const targetClassId =
+        targetStudent?.class_id && !isPlaceholderClass(targetStudent.class_id)
+          ? targetStudent.class_id
+          : master?.class_id || targetStudent?.class_id || '';
+      if (!targetClassId || targetClassId.trim().toUpperCase() !== delegateClassId.trim().toUpperCase()) {
         return NextResponse.json(
           { success: false, error: `Bạn chỉ có quyền tra cứu sinh viên trong lớp ${delegateClassId}` },
           { status: 403 }

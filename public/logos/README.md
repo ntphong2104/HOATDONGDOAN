@@ -17,6 +17,6 @@ Thư mục này dùng để chứa hình ảnh Logo Đoàn Thanh Niên và Logo 
 ---
 
 ### 💡 Hướng dẫn thay hình mới:
-- Chỉ cần chép (copy) file hình logo của bạn vào thư mục này: `/Users/mac/Dev/HOATDONGDOAN/public/logos/`
+- Chỉ cần chép (copy) file hình logo của bạn vào thư mục `public/logos/` trong dự án.
 - Đổi tên thành: `logo-doan.png` và `logo-ptit.png` (hoặc file `.svg`).
 - Website sẽ tự động tải logo mới của bạn ngay lập tức!

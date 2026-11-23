@@ -72,17 +72,21 @@ export async function runWithConcurrency<T>(
       }
       state.queue.push(waiter);
     });
+    // Slot was transferred directly by the completing task (state.active already accounts for us)
+  } else {
+    state.active++;
   }
 
-  state.active++;
   try {
     return await fn();
   } finally {
-    state.active--;
     const next = state.queue.shift();
     if (next) {
       if (next.timer) clearTimeout(next.timer);
+      // Transfer active slot directly to the next queued caller to prevent barging above limit
       next.resolve();
+    } else {
+      state.active = Math.max(0, state.active - 1);
     }
   }
 }

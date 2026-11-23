@@ -3,6 +3,16 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { deriveBookingSchedule, describeConflict, NO_ROOM } from '@/lib/utils/room-booking';
 import { checkRoomConflicts } from '@/lib/utils/room-booking-server';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
+
+function canCheckProposalConflict(auth: { isSuperAdmin?: boolean; isEventAdmin?: boolean; tier?: string } | null): boolean {
+  if (!auth) return false;
+  return Boolean(
+    auth.isSuperAdmin ||
+      auth.isEventAdmin ||
+      ['super_admin', 'youth_union', 'ctsv', 'facility', 'event_admin'].includes(auth.tier || '')
+  );
+}
 
 /**
  * Per-session room conflict check.
@@ -15,6 +25,9 @@ export async function POST(req: Request) {
   const auth = await getAuthContext();
   if (!auth) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!canCheckProposalConflict(auth)) {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -59,6 +72,9 @@ export async function GET(req: Request) {
   if (!auth) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
+  if (!canCheckProposalConflict(auth)) {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const roomId = searchParams.get('room_id');
@@ -85,8 +101,8 @@ export async function GET(req: Request) {
         label: 'Buổi chính',
         room_id: roomId,
         room_name: '',
-        date: startDate.toISOString().slice(0, 10),
-        end_date: endDate.toISOString().slice(0, 10),
+        date: getVietnamDateString(0, startDate.getTime()),
+        end_date: getVietnamDateString(0, endDate.getTime()),
         start_time: '',
         end_time: '',
         startMs: startDate.getTime(),

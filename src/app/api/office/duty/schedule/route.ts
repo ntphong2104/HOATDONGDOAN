@@ -42,6 +42,9 @@ export async function GET(req: Request) {
     const toDate = workdays[workdays.length - 1];
     const todayVN = getTodayVN();
 
+    const cleanEmail = auth.email.trim().toLowerCase();
+    const todayFilter = volunteer?.mssv ? `email.ilike.${cleanEmail},mssv.eq.${volunteer.mssv}` : null;
+
     const [config, { data: windows }, { data: weekRegs }, { data: todayRegs }, { data: todayAtt }, { data: allVolunteers }] =
       await Promise.all([
         getOfficeDutyConfig(supabase),
@@ -56,16 +59,28 @@ export async function GET(req: Request) {
           .gte('duty_date', fromDate)
           .lte('duty_date', toDate)
           .order('created_at', { ascending: true }),
-        supabase
-          .from('office_duty_registrations')
-          .select('*')
-          .eq('duty_date', todayVN)
-          .ilike('email', auth.email),
-        supabase
-          .from('office_duty_attendance')
-          .select('*')
-          .eq('duty_date', todayVN)
-          .ilike('email', auth.email),
+        todayFilter
+          ? supabase
+              .from('office_duty_registrations')
+              .select('*')
+              .eq('duty_date', todayVN)
+              .or(todayFilter)
+          : supabase
+              .from('office_duty_registrations')
+              .select('*')
+              .eq('duty_date', todayVN)
+              .ilike('email', auth.email),
+        todayFilter
+          ? supabase
+              .from('office_duty_attendance')
+              .select('*')
+              .eq('duty_date', todayVN)
+              .or(todayFilter)
+          : supabase
+              .from('office_duty_attendance')
+              .select('*')
+              .eq('duty_date', todayVN)
+              .ilike('email', auth.email),
         supabase
           .from('office_duty_volunteers')
           .select('mssv, email, full_name, class_id')
@@ -101,7 +116,7 @@ export async function GET(req: Request) {
       data: {
         workdays,
         today_vn: todayVN,
-        config,
+        config: isAdmin ? config : { ...config, allowed_ips: [] },
         is_admin: isAdmin,
         volunteer,
         volunteers: allVolunteers || [],
@@ -285,7 +300,12 @@ export async function DELETE(req: Request) {
     }
 
     if (!isAdmin) {
-      if (String(reg.email || '').toLowerCase() !== auth.email.toLowerCase()) {
+      const selfVol = await getDutyVolunteerRecord(supabase, auth.email);
+      const isOwnerByEmail = String(reg.email || '').toLowerCase() === auth.email.toLowerCase();
+      const isOwnerByMssv = Boolean(
+        selfVol?.mssv && String(reg.mssv || '').trim().toUpperCase() === selfVol.mssv.trim().toUpperCase()
+      );
+      if (!isOwnerByEmail && !isOwnerByMssv) {
         return NextResponse.json({ success: false, error: 'Bạn chỉ có thể hủy ca của chính mình.' }, { status: 403 });
       }
       // Chỉ cho CTV hủy khi đợt đăng ký cho ngày đó vẫn đang mở

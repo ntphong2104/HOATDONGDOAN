@@ -4,6 +4,9 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { resolveStudentLcd } from '@/lib/utils/lcd';
 import { getMasterStudentByMssv, isPlaceholderClass } from '@/lib/utils/student-profile';
+import { runSerializedByKey } from '@/lib/utils/concurrency-queue';
+import { sanitizeRedirectPath } from '@/lib/security/redirect';
+import { getRegistrationExtras } from '@/lib/constants/event-meta-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,12 +70,18 @@ async function loadSharedNotificationFeed(supabase: any): Promise<any[]> {
 
   const task = (async (): Promise<any[]> => {
     try {
-      const [{ data: logs }, { data: fallbackRow }] = await Promise.all([
+      const [{ data: globalLogs }, { data: recentLogs }, { data: fallbackRow }] = await Promise.all([
+        supabase
+          .from('push_logs')
+          .select('id, title, body, url, target_type, target_value, created_at')
+          .in('target_type', ['all', 'broadcast', 'lcd'])
+          .order('created_at', { ascending: false })
+          .limit(40),
         supabase
           .from('push_logs')
           .select('id, title, body, url, target_type, target_value, created_at')
           .order('created_at', { ascending: false })
-          .limit(60),
+          .limit(80),
         supabase
           .from('system_settings')
           .select('value')
@@ -90,8 +99,11 @@ async function loadSharedNotificationFeed(supabase: any): Promise<any[]> {
         combinedRows.push(row);
       };
 
-      if (Array.isArray(logs)) {
-        for (const r of logs) pushUnique(r);
+      if (Array.isArray(globalLogs)) {
+        for (const r of globalLogs) pushUnique(r);
+      }
+      if (Array.isArray(recentLogs)) {
+        for (const r of recentLogs) pushUnique(r);
       }
       if (fallbackRow?.value) {
         try {
@@ -146,7 +158,7 @@ export async function GET() {
       mssv
         ? supabase
             .from('event_registrations')
-            .select('event_id')
+            .select('event_id, role_type, attended')
             .eq('mssv', mssv)
         : Promise.resolve({ data: [] }),
       getReadIdSet(supabase, lowerEmail),
@@ -165,15 +177,39 @@ export async function GET() {
         ? userRow.class_id
         : master?.class_id || '';
     const myLcd = resolveStudentLcd(classId, mssv);
-    const myEventIds = new Set<string>(
-      (regs || []).map((r: any) => String(r.event_id || '')).filter(Boolean)
-    );
+    const myRegByEventId = new Map<string, { role_type?: string | null; attended?: boolean | null }>();
+    for (const r of regs || []) {
+      const evId = String(r.event_id || '').trim();
+      if (evId) myRegByEventId.set(evId, r);
+    }
+
+    // Preload registration extras ONLY for events that have volunteer-audience notifications
+    const volunteerExtraEvents = new Set<string>();
+    for (const row of combinedRows) {
+      const tType = String(row.target_type || '').toLowerCase();
+      if (tType === 'event:volunteers_accepted' || tType === 'event:volunteers_pending') {
+        const eventIdPart = String(row.target_value || '').split(':')[0].trim();
+        if (eventIdPart && myRegByEventId.get(eventIdPart)?.role_type === 'volunteer') {
+          volunteerExtraEvents.add(eventIdPart);
+        }
+      }
+    }
+    const extrasByEventId = new Map<string, Record<string, any>>();
+    if (mssv && volunteerExtraEvents.size > 0) {
+      await Promise.all(
+        Array.from(volunteerExtraEvents).map(async (evId) => {
+          try {
+            const ex = await getRegistrationExtras(supabase, evId);
+            if (ex) extrasByEventId.set(evId, ex);
+          } catch {}
+        })
+      );
+    }
 
     const matched: InboxNotification[] = [];
     for (const row of combinedRows) {
       const tType = String(row.target_type || '').toLowerCase();
       const tVal = String(row.target_value || '');
-      const tValLower = tVal.toLowerCase();
 
       let relevant = false;
       if (tType === 'all' || tType === 'broadcast') {
@@ -185,21 +221,50 @@ export async function GET() {
           .filter(Boolean);
         relevant = Boolean(myLcd && lcdTargets.includes(myLcd.code));
       } else if (tType === 'email' || tType === 'emails' || tType === 'user') {
-        relevant = tValLower.includes(lowerEmail);
+        const emailTokens = tVal
+          .split(',')
+          .map((x) => x.trim().toLowerCase())
+          .filter(Boolean);
+        relevant = emailTokens.includes(lowerEmail);
       } else if (tType === 'mssv') {
-        relevant = Boolean(mssv && tVal.toUpperCase().includes(mssv));
-      } else if (tType === 'event' || tType.startsWith('event')) {
+        const mssvTokens = tVal
+          .split(',')
+          .map((x) => x.trim().toUpperCase())
+          .filter(Boolean);
+        relevant = Boolean(mssv && mssvTokens.includes(mssv));
+      } else if (tType === 'event' || tType.startsWith('event:')) {
         const eventIdPart = tVal.split(':')[0].trim();
-        relevant = Boolean(eventIdPart && myEventIds.has(eventIdPart));
+        const myReg = eventIdPart ? myRegByEventId.get(eventIdPart) : undefined;
+        if (myReg) {
+          const audience = tType.startsWith('event:') ? tType.slice('event:'.length) : 'all_registered';
+          if (audience === 'checked_in') {
+            relevant = Boolean(myReg.attended);
+          } else if (audience === 'not_checked_in') {
+            relevant = !myReg.attended;
+          } else if (audience === 'participants') {
+            relevant = !myReg.role_type || myReg.role_type === 'participant';
+          } else if (audience === 'volunteers_accepted') {
+            const myExtra = mssv ? extrasByEventId.get(eventIdPart)?.[mssv] : undefined;
+            relevant = myReg.role_type === 'volunteer' && String(myExtra?.review_status || '').toLowerCase() === 'accepted';
+          } else if (audience === 'volunteers_pending') {
+            const myExtra = mssv ? extrasByEventId.get(eventIdPart)?.[mssv] : undefined;
+            const revStatus = String(myExtra?.review_status || '').toLowerCase();
+            relevant = myReg.role_type === 'volunteer' && (revStatus === '' || revStatus === 'pending');
+          } else {
+            relevant = true;
+          }
+        }
       }
 
       if (!relevant) continue;
+
+      const safeUrl = row.url ? sanitizeRedirectPath(String(row.url), '') || null : null;
 
       matched.push({
         id: String(row.id),
         title: String(row.title || 'Thông báo'),
         body: String(row.body || ''),
-        url: row.url ? String(row.url) : null,
+        url: safeUrl,
         target_type: tType,
         created_at: String(row.created_at),
         is_read: readSet.has(String(row.id)),
@@ -241,30 +306,33 @@ export async function POST(req: Request) {
     const supabase = (await getSupabase()) || (await createClient());
 
     const lowerEmail = auth.email.toLowerCase().trim();
-    const readSet = await getReadIdSet(supabase, lowerEmail);
+    const updatedList = await runSerializedByKey(`notif_read_${lowerEmail}`, async () => {
+      const readSet = await getReadIdSet(supabase, lowerEmail);
 
-    if (typeof body.id === 'string' && body.id.trim()) {
-      readSet.add(body.id.trim());
-    }
-    if (Array.isArray(body.ids)) {
-      for (const id of body.ids) {
-        if (typeof id === 'string' && id.trim()) {
-          readSet.add(id.trim());
+      if (typeof body.id === 'string' && body.id.trim()) {
+        readSet.add(body.id.trim());
+      }
+      if (Array.isArray(body.ids)) {
+        for (const id of body.ids) {
+          if (typeof id === 'string' && id.trim()) {
+            readSet.add(id.trim());
+          }
         }
       }
-    }
 
-    // Keep latest 100 read IDs so system_settings row stays compact
-    const updatedList = Array.from(readSet).slice(-100);
+      // Keep latest 100 read IDs so system_settings row stays compact
+      const nextList = Array.from(readSet).slice(-100);
 
-    await supabase.from('system_settings').upsert(
-      {
-        key: getReadKey(lowerEmail),
-        value: JSON.stringify(updatedList),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'key' }
-    );
+      await supabase.from('system_settings').upsert(
+        {
+          key: getReadKey(lowerEmail),
+          value: JSON.stringify(nextList),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'key' }
+      );
+      return nextList;
+    });
 
     return NextResponse.json({ success: true, read_count: updatedList.length });
   } catch (err: any) {

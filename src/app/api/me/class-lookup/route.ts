@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 
 export async function GET() {
@@ -9,7 +9,8 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createClient();
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
     const now = new Date().toISOString();
 
     // Check if current user is an active delegate in class_delegates

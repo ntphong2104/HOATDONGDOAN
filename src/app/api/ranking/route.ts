@@ -21,6 +21,7 @@ import {
 } from '@/lib/utils/student-profile';
 import { isValidMSSV, isUnitAccount, extractMSSV } from '@/lib/utils/extract-mssv';
 import { getGraduatedCohorts, isStudentGraduated } from '@/lib/utils/graduated-cohorts';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 import type {
   AcademicSemester,
   LcdRankingItem,
@@ -134,15 +135,22 @@ async function computeSemesterRanking(
   supabase: any,
   selectedSemester: AcademicSemester
 ): Promise<CachedSemesterRanking> {
-    // 2. Lấy danh sách sự kiện, proposals & quy tắc khóa tốt nghiệp song song
+    // 2. Lấy danh sách sự kiện, proposals & quy tắc khóa tốt nghiệp song song (phân trang đầy đủ >1.000 dòng)
     const [{ data: eventsData, error: eventsError }, { data: proposalsData }, graduatedRules] = await Promise.all([
-      supabase
-        .from('events')
-        .select('event_id, event_name, event_date, created_at, created_by, semester, status'),
-      supabase
-        .from('event_proposals')
-        .select('created_event_id, organization_unit')
-        .not('created_event_id', 'is', null),
+      fetchAllRows<any>(() =>
+        supabase
+          .from('events')
+          .select('event_id, event_name, event_date, created_at, created_by, semester, status')
+          .order('event_date', { ascending: false })
+          .order('event_id', { ascending: false })
+      ),
+      fetchAllRows<any>(() =>
+        supabase
+          .from('event_proposals')
+          .select('created_event_id, organization_unit')
+          .not('created_event_id', 'is', null)
+          .order('created_at', { ascending: false })
+      ),
       getGraduatedCohorts(supabase, true),
     ]);
 
@@ -581,6 +589,9 @@ async function computeSemesterRanking(
 export async function GET(req: Request) {
   try {
     const auth = await getAuthContext();
+    if (!auth) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const requestedSemesterId = searchParams.get('semester_id');
     const forceRefresh = searchParams.get('refresh') === '1';

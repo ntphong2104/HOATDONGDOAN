@@ -41,7 +41,11 @@ export async function GET(req: Request) {
       .limit(500);
 
     if (!isAdmin) {
-      q = q.ilike('email', auth.email);
+      if (vol?.mssv) {
+        q = q.or(`email.ilike.${auth.email.trim().toLowerCase()},mssv.eq.${vol.mssv}`);
+      } else {
+        q = q.ilike('email', auth.email);
+      }
     }
     if (from) q = q.gte('duty_date', from);
     if (to) q = q.lte('duty_date', to);
@@ -91,7 +95,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Không tìm thấy lịch trực tương ứng.' }, { status: 404 });
     }
 
-    if (!isAdmin && String(reg.email || '').toLowerCase() !== auth.email.toLowerCase()) {
+    const isOwnerByEmail = String(reg.email || '').toLowerCase() === auth.email.toLowerCase();
+    const isOwnerByMssv = Boolean(
+      vol?.mssv && String(reg.mssv || '').trim().toUpperCase() === vol.mssv.trim().toUpperCase()
+    );
+    if (!isAdmin && !isOwnerByEmail && !isOwnerByMssv) {
       return NextResponse.json({ success: false, error: 'Không thể chấm công hộ người khác.' }, { status: 403 });
     }
 

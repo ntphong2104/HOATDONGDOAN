@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import InAppBrowserWarning from '@/components/InAppBrowserWarning';
 import { fetchMeCached } from '@/lib/client/me-cache';
-import QRScanner from '@/components/QRScanner';
 import EventSelector from '@/components/EventSelector';
 import RoleSelector from '@/components/RoleSelector';
 import ScanResultOverlay from '@/components/ScanResultOverlay';
+
+const QRScanner = dynamic(() => import('@/components/QRScanner'), { ssr: false });
 import {
   ScanCameraIcon,
   QrCodeIcon,
@@ -21,6 +23,7 @@ import {
 } from '@/components/icons';
 import { audioService } from '@/lib/utils/audio';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
+import { getVietnamDateString, getVietnamHHMM } from '@/lib/utils/vn-date';
 import type { SessionUser, ParticipateRole } from '@/lib/types';
 import styles from './scanner.module.css';
 
@@ -53,6 +56,8 @@ interface HudState {
 
 export default function ScannerPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isOnScannerRoute = pathname === '/scanner' || Boolean(pathname?.startsWith('/scanner/'));
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -97,22 +102,27 @@ export default function ScannerPage() {
 
   // Fetch active session when event changes
   useEffect(() => {
+    let cancelled = false;
     if (!selectedEventId) {
-      setActiveSession(null);
-      return;
+      queueMicrotask(() => {
+        if (!cancelled) setActiveSession(null);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     fetch(`/api/events/${selectedEventId}/sessions`)
       .then((res) => res.json())
       .then((data) => {
+        if (cancelled) return;
         const sessions = Array.isArray(data.data)
           ? data.data
           : Array.isArray(data.data?.sessions)
           ? data.data.sessions
           : null;
         if (data.success && sessions) {
-          const now = new Date();
-          const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-          const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          const nowDateStr = getVietnamDateString(0);
+          const nowHHMM = getVietnamHHMM();
           const current = sessions.find((s: any) => {
             const sDate = s.session_date || '';
             const sStart = s.start_time || '00:00';
@@ -126,7 +136,12 @@ export default function ScannerPage() {
           const canSelectRole =
             user?.tier === 'super_admin' ||
             user?.tier === 'event_admin' ||
-            Boolean(user?.isEventAdmin);
+            Boolean(user?.isEventAdmin) ||
+            Boolean(
+              user?.managed_events?.some(
+                (e) => e.event_id === selectedEventId && e.role_type === 'event_admin'
+              )
+            );
           if (canSelectRole && current?.session_type === 'internal') {
             setSelectedRole('volunteer');
           } else {
@@ -135,9 +150,23 @@ export default function ScannerPage() {
         }
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [selectedEventId, user]);
 
   // Auto-focus external input when switching to external mode
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (blurTimerRef.current) {
+        clearTimeout(blurTimerRef.current);
+        blurTimerRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (scanMode === 'external') {
       const t = setTimeout(() => {
@@ -173,7 +202,7 @@ export default function ScannerPage() {
       const isDynamicToken = parts.length === 3 && !isNaN(parseInt(parts[1], 10));
       const mssv = isDynamicToken ? dataToSend : extractMSSV(dataToSend) || dataToSend;
 
-      const currentTimeStr = new Date().toLocaleTimeString('vi-VN');
+      const currentTimeStr = new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
       if (!mssv) {
         audioService.playError();
@@ -514,7 +543,7 @@ export default function ScannerPage() {
         {scanMode === 'camera' ? (
           /* ── Camera Viewport ── */
           <div className={styles.scannerWrapper}>
-            {selectedEventId && activeEvents.some((e) => e.event_id === selectedEventId) ? (
+            {isOnScannerRoute && selectedEventId && activeEvents.some((e) => e.event_id === selectedEventId) ? (
               <QRScanner onScanSuccess={handleCameraScan} isPaused={isPaused} />
             ) : (
               <div className={styles.noEvent}>
@@ -559,7 +588,9 @@ export default function ScannerPage() {
                 placeholder="Đặt con trỏ tại đây & bấm máy quét mã vạch..."
                 onKeyDown={handleExternalKeyDown}
                 onBlur={() => {
-                  setTimeout(() => {
+                  if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+                  blurTimerRef.current = setTimeout(() => {
+                    blurTimerRef.current = null;
                     if (scanMode === 'external') {
                       const active = document.activeElement;
                       if (!active || (active.tagName !== 'SELECT' && active.tagName !== 'BUTTON')) {

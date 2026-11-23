@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 
 export async function GET(request: Request) {
   try {
@@ -59,26 +60,30 @@ export async function GET(request: Request) {
     const attendedEventsByMssv: Record<string, Map<string, string>> = {};
 
     if (mssvList.length > 0) {
-      const { data: checkIns } = await adminSupabase
-        .from('check_ins')
-        .select('mssv, event_id, events(event_name, event_date)')
-        .in('mssv', mssvList)
-        .limit(5000);
+      const allCheckIns: any[] = [];
+      for (const mChunk of chunkArray(mssvList, 100)) {
+        const { data: chunkCheckIns } = await fetchAllRows<any>(() =>
+          adminSupabase
+            .from('check_ins')
+            .select('mssv, event_id, events(event_name, event_date)')
+            .in('mssv', mChunk)
+            .order('created_at', { ascending: false })
+        );
+        if (chunkCheckIns) allCheckIns.push(...chunkCheckIns);
+      }
 
-      if (checkIns) {
-        for (const ci of checkIns as any[]) {
-          const m = String(ci.mssv || '').trim().toUpperCase();
-          const evId = String(ci.event_id || '');
-          if (!m || !evId) continue;
-          if (!attendedEventsByMssv[m]) attendedEventsByMssv[m] = new Map();
-          if (!attendedEventsByMssv[m].has(evId)) {
-            const evObj = Array.isArray(ci.events) ? ci.events[0] : ci.events;
-            const evName = String(evObj?.event_name || 'Sự kiện').trim();
-            const rawDate = evObj?.event_date ? String(evObj.event_date).slice(0, 10) : '';
-            const dateParts = rawDate.split('-');
-            const dateVN = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : '';
-            attendedEventsByMssv[m].set(evId, dateVN ? `${evName} (${dateVN})` : evName);
-          }
+      for (const ci of allCheckIns) {
+        const m = String(ci.mssv || '').trim().toUpperCase();
+        const evId = String(ci.event_id || '');
+        if (!m || !evId) continue;
+        if (!attendedEventsByMssv[m]) attendedEventsByMssv[m] = new Map();
+        if (!attendedEventsByMssv[m].has(evId)) {
+          const evObj = Array.isArray(ci.events) ? ci.events[0] : ci.events;
+          const evName = String(evObj?.event_name || 'Sự kiện').trim();
+          const rawDate = evObj?.event_date ? String(evObj.event_date).slice(0, 10) : '';
+          const dateParts = rawDate.split('-');
+          const dateVN = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : '';
+          attendedEventsByMssv[m].set(evId, dateVN ? `${evName} (${dateVN})` : evName);
         }
       }
     }

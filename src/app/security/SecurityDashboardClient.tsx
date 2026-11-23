@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { getVietnamDateString } from '@/lib/utils/vn-date';
+import { isSafeExternalUrl } from '@/lib/security/redirect';
 import {
   CalendarIcon,
   ClockIcon,
@@ -505,9 +506,9 @@ export default function SecurityDashboardClient({
                 {/* Footer Actions */}
                 <div className={styles.roomCardFooter}>
                   <div>
-                    {item.plan_url ? (
+                    {isSafeExternalUrl(item.plan_url) ? (
                       <a
-                        href={item.plan_url}
+                        href={item.plan_url!}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={styles.planLink}

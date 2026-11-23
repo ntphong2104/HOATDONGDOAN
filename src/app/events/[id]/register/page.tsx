@@ -95,8 +95,13 @@ export default function EventRegisterPage({
   };
 
   useEffect(() => {
-    fetchUser();
-    fetchRegistrationData();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      fetchUser();
+      fetchRegistrationData();
+    })();
 
     const onRefresh = () => {
       if (document.visibilityState === 'visible' && Date.now() - lastRefreshAtRef.current >= 5000) {
@@ -121,6 +126,7 @@ export default function EventRegisterPage({
     }
 
     return () => {
+      cancelled = true;
       window.removeEventListener('focus', onRefresh);
       document.removeEventListener('visibilitychange', onRefresh);
       window.removeEventListener('storage', onStorage);

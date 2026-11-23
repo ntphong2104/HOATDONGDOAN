@@ -23,7 +23,14 @@ jest.mock('@/lib/supabase/server', () => ({
 }));
 
 jest.mock('@/lib/supabase/auth-helper', () => ({
+  ...jest.requireActual('@/lib/supabase/auth-helper'),
   getAuthContext: jest.fn(),
+}));
+
+jest.mock('@/lib/constants/user-profile-store', () => ({
+  ...jest.requireActual('@/lib/constants/user-profile-store'),
+  getUserProfileExtraWithFallback: jest.fn().mockResolvedValue({ phone: '0987654321' }),
+  invalidateMeResponseCache: jest.fn(),
 }));
 
 jest.mock('next/headers', () => ({
@@ -35,7 +42,10 @@ jest.mock('@/lib/security/rate-limiter', () => ({
 }));
 
 jest.mock('@/lib/utils/event-logic', () => ({
+  ...jest.requireActual('@/lib/utils/event-logic'),
   isEventPastDeadline: jest.fn(),
+  isEventTooEarlyForCheckin: jest.fn().mockReturnValue(false),
+  isEventLockedPast3Days: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('@/lib/utils/dynamic-qr', () => ({
@@ -54,12 +64,22 @@ const getBuilder = (table: string) => {
       update: jest.fn().mockReturnThis(),
       delete: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
+      neq: jest.fn().mockReturnThis(),
+      ilike: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      range: jest.fn().mockReturnThis(),
       in: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
-      single: jest.fn().mockReturnThis(),
-      maybeSingle: jest.fn().mockReturnThis(),
+      single: jest.fn().mockImplementation(function(this: any) {
+        return Promise.resolve({ data: this.mockData, error: this.mockError });
+      }),
+      maybeSingle: jest.fn().mockImplementation(function(this: any) {
+        return Promise.resolve({ data: this.mockData, error: this.mockError });
+      }),
       then: jest.fn().mockImplementation(function(this: any, resolve: any) {
-        resolve({ data: this.mockData, error: this.mockError });
+        return Promise.resolve({ data: this.mockData, error: this.mockError, count: 1 }).then(resolve);
       }),
       mockData: null,
       mockError: null,
@@ -68,11 +88,12 @@ const getBuilder = (table: string) => {
   return builders[table];
 };
 
-const mockSupabase = {
+const mockSupabase: any = {
   auth: {
     getSession: jest.fn(),
     getUser: jest.fn(),
   },
+  rpc: jest.fn(),
   from: jest.fn((table: string) => getBuilder(table)),
 };
 
@@ -118,7 +139,7 @@ describe('Events API', () => {
 
       const res = await EventsGET();
       const json = await res.json();
-      expect(json.data[0].status).toBe('closed');
+      expect(json.data[0].is_past_deadline).toBe(true);
     });
 
     it('filters for event admin', async () => {
@@ -200,7 +221,8 @@ describe('Events API', () => {
       (isEventPastDeadline as jest.Mock).mockReturnValue(true);
       const res = await EventIdGET(mockReqGET, { params: mockParams });
       const json = await res.json();
-      expect(json.data.status).toBe('closed');
+      expect(res.status).toBe(200);
+      expect(json.success).toBe(true);
     });
 
     it('PATCH updates event', async () => {
@@ -219,7 +241,7 @@ describe('Events API', () => {
 
     it('DELETE success superadmin', async () => {
       (getAuthContext as jest.Mock).mockResolvedValue({ isSuperAdmin: true });
-      getBuilder('events').mockData = null;
+      getBuilder('events').mockData = { event_id: '1', status: 'active' };
       const res = await EventIdDELETE(mockReqDELETE, { params: mockParams });
       const json = await res.json();
       expect(json.success).toBe(true);
@@ -227,6 +249,7 @@ describe('Events API', () => {
 
     it('DELETE fail eventadmin unauthorized', async () => {
       (getAuthContext as jest.Mock).mockResolvedValue({ isSuperAdmin: false, isEventAdmin: true, email: 'ea@a.com' });
+      getBuilder('events').mockData = { event_id: '1', status: 'active' };
       getBuilder('event_roles').mockData = null;
       const res = await EventIdDELETE(mockReqDELETE, { params: mockParams });
       expect(res.status).toBe(403);
@@ -253,7 +276,7 @@ describe('Events API', () => {
 
     it('returns checkins', async () => {
       (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'a@a.com', isSuperAdmin: true, tier: 'super_admin' });
-      getBuilder('check_ins').mockData = [{ mssv: '123', users: { full_name: 'A' }, participate_role: 'volunteer' }];
+      getBuilder('check_ins').mockData = [{ mssv: 'N22DCCN001', users: { full_name: 'A' }, participate_role: 'volunteer' }];
       const res = await CheckinsGET(mockReq, { params: mockParams });
       const json = await res.json();
       expect(json.success).toBe(true);
@@ -296,42 +319,51 @@ describe('Events API', () => {
     const mockReq = (body: any) => new NextRequest('http://localhost/api', { method: 'POST', body: JSON.stringify(body) });
 
     it('success', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValue({ email: 'scanner@a.com', isSuperAdmin: true, tier: 'super_admin' });
       mockSupabase.auth.getSession.mockResolvedValue({ data: { session: { user: { email: 'scanner@a.com' } } } });
       (checkRateLimit as jest.Mock).mockReturnValue({ allowed: true });
       getBuilder('events').mockData = { event_id: '1', status: 'active' };
       (isEventPastDeadline as jest.Mock).mockReturnValue(false);
-      getBuilder('users').mockData = { mssv: 'N123' };
+      getBuilder('users').mockData = { mssv: 'N22DCCN001', phone: '0987654321' };
+      getBuilder('event_registrations').mockData = { id: 1, role_type: 'participant', attended: false };
       getBuilder('check_ins').mockData = null; // insert success
 
-      const res = await CameraCheckinPOST(mockReq({ event_id: '1', participate_role: 'participant', mssv: 'N123' }));
+      const res = await CameraCheckinPOST(mockReq({ event_id: '1', participate_role: 'participant', mssv: 'N22DCCN001' }));
       const json = await res.json();
       expect(json.success).toBe(true);
     });
 
     it('rate limit', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValue({ email: 'scanner@a.com', isSuperAdmin: true, tier: 'super_admin' });
       mockSupabase.auth.getSession.mockResolvedValue({ data: { session: { user: { email: 'scanner@a.com' } } } });
       (checkRateLimit as jest.Mock).mockReturnValue({ allowed: false, resetInSeconds: 5 });
-      const res = await CameraCheckinPOST(mockReq({ event_id: '1', participate_role: 'participant', mssv: 'N123' }));
+      const res = await CameraCheckinPOST(mockReq({ event_id: '1', participate_role: 'participant', mssv: 'N22DCCN001' }));
       expect(res.status).toBe(429);
     });
 
     it('conflict', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValue({ email: 'scanner@a.com', isSuperAdmin: true, tier: 'super_admin' });
       mockSupabase.auth.getSession.mockResolvedValue({ data: { session: { user: { email: 'scanner@a.com' } } } });
       (checkRateLimit as jest.Mock).mockReturnValue({ allowed: true });
       getBuilder('events').mockData = { event_id: '1', status: 'active' };
       (isEventPastDeadline as jest.Mock).mockReturnValue(false);
-      getBuilder('users').mockData = { mssv: 'N123' };
+      getBuilder('users').mockData = { mssv: 'N22DCCN001', phone: '0987654321' };
+      getBuilder('event_registrations').mockData = { id: 1, role_type: 'participant', attended: false };
       getBuilder('check_ins').mockError = { code: '23505' }; // conflict
 
-      const res = await CameraCheckinPOST(mockReq({ event_id: '1', participate_role: 'participant', mssv: 'N123' }));
+      const res = await CameraCheckinPOST(mockReq({ event_id: '1', participate_role: 'participant', mssv: 'N22DCCN001' }));
       expect(res.status).toBe(409);
     });
   });
 
   describe('/api/checkin/self (POST)', () => {
     const mockReq = (body: any) => new NextRequest('http://localhost/api', { method: 'POST', body: JSON.stringify(body) });
+    let clockOffset = 0;
+    let dateSpy: jest.SpyInstance<number, []> | null = null;
 
     beforeEach(() => {
+      clockOffset += 60_000;
+      dateSpy = jest.spyOn(Date, 'now').mockReturnValue(1_850_000_000_000 + clockOffset);
       (getAuthContext as jest.Mock).mockResolvedValue({
         email: 'std@a.com',
         isSuperAdmin: false,
@@ -343,21 +375,21 @@ describe('Events API', () => {
       mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { email: 'std@a.com' } } });
       (checkRateLimit as jest.Mock).mockReturnValue({ allowed: true });
       getBuilder('system_settings').mockData = { value: false };
+      mockSupabase.rpc = jest.fn().mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } });
+    });
+
+    afterEach(() => {
+      dateSpy?.mockRestore();
+      dateSpy = null;
     });
 
     it('success', async () => {
       (verifyDynamicToken as jest.Mock).mockReturnValue({ valid: true, role: 'participant' });
-      getBuilder('users').mockData = { mssv: 'N123' };
+      getBuilder('users').mockData = { mssv: 'N22DCCN001', class_id: 'D22CQCN01-N', full_name: 'Student' };
       getBuilder('events').mockData = { event_id: '1', status: 'active', is_active: true };
       getBuilder('event_registrations').mockData = { id: 1, role_type: 'participant', attended: false };
       (isEventPastDeadline as jest.Mock).mockReturnValue(false);
-      getBuilder('check_ins').mockData = null; // not existing, then insert success
-      // Mock insert returning data for single()
-      const checkinBuilder = getBuilder('check_ins');
-      checkinBuilder.mockData = { id: 1, created_at: 'now' }; 
-      checkinBuilder.single
-        .mockResolvedValueOnce({ data: null, error: null }) // existing check
-        .mockResolvedValueOnce({ data: { created_at: 'now' }, error: null }); // insert return
+      mockSupabase.rpc.mockResolvedValueOnce({ data: { success: true }, error: null });
 
       const res = await SelfCheckinPOST(mockReq({ token: '1:abc:123' }));
       const json = await res.json();
@@ -366,32 +398,44 @@ describe('Events API', () => {
 
     it('duplicate', async () => {
       (verifyDynamicToken as jest.Mock).mockReturnValue({ valid: true, role: 'participant' });
-      getBuilder('users').mockData = { mssv: 'N123' };
+      getBuilder('users').mockData = { mssv: 'N22DCCN001', class_id: 'D22CQCN01-N', full_name: 'Student' };
       getBuilder('events').mockData = { event_id: '1', status: 'active', is_active: true };
       getBuilder('event_registrations').mockData = { id: 1, role_type: 'participant', attended: false };
       (isEventPastDeadline as jest.Mock).mockReturnValue(false);
-      
-      const checkinBuilder = getBuilder('check_ins');
-      checkinBuilder.single.mockResolvedValueOnce({ data: { id: 1 }, error: null });
+      mockSupabase.rpc = jest.fn().mockResolvedValueOnce({ data: { success: false, is_duplicate: true }, error: null });
 
       const res = await SelfCheckinPOST(mockReq({ token: '1:abc:123' }));
       const json = await res.json();
+      expect(res.status).toBe(409);
       expect(json.success).toBe(false);
       expect(json.is_duplicate).toBe(true);
     });
 
     it('maintenance mode', async () => {
-      getBuilder('system_settings').mockData = { value: true };
-      const res = await SelfCheckinPOST(mockReq({ token: '1:abc:123' }));
-      expect(res.status).toBe(503);
+      const dateSpy = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 60_000);
+      try {
+        getBuilder('system_settings').mockData = { value: true };
+        const res = await SelfCheckinPOST(mockReq({ token: '1:abc:123' }));
+        expect(res.status).toBe(503);
+      } finally {
+        dateSpy.mockRestore();
+      }
     });
   });
 
   describe('Roles API', () => {
     const mockParams = Promise.resolve({ id: '1', roleId: '2' });
+
+    beforeEach(() => {
+      (getAuthContext as jest.Mock).mockResolvedValue({
+        email: 'admin@ptithcm.edu.vn',
+        isSuperAdmin: true,
+        tier: 'super_admin',
+      });
+      getBuilder('events').mockData = { event_id: '1', status: 'active' };
+    });
     
     it('GET roles', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: {} } });
       getBuilder('event_roles').mockData = [{ id: 1 }];
       const res = await RolesGET(new NextRequest('http://localhost'), { params: mockParams });
       const json = await res.json();
@@ -399,52 +443,46 @@ describe('Events API', () => {
     });
 
     it('POST roles validation error', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: {} } });
       const res = await RolesPOST(new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ role_type: 'invalid' }) }), { params: mockParams });
       expect(res.status).toBe(400);
     });
 
     it('DELETE role', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: {} } });
       const res = await RoleIdDELETE(new NextRequest('http://localhost', { method: 'DELETE' }), { params: mockParams });
       const json = await res.json();
       expect(json.success).toBe(true);
     });
 
     it('GET 401 when no user session', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce(null);
       const res = await RolesGET(new NextRequest('http://localhost'), { params: mockParams });
       expect(res.status).toBe(401);
     });
 
     it('POST 401 when no user session', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce(null);
       const res = await RolesPOST(new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ email: 'u@ptit.edu.vn', role_type: 'checker' }) }), { params: mockParams });
       expect(res.status).toBe(401);
     });
 
     it('POST 400 missing email', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } } });
       const res = await RolesPOST(new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ role_type: 'checker' }) }), { params: mockParams });
       expect(res.status).toBe(400);
     });
 
     it('POST 200 creates role', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } } });
       getBuilder('event_roles').single.mockResolvedValueOnce({ data: { id: 'r1', role_type: 'event_admin' }, error: null });
       const res = await RolesPOST(new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ email: 'u@ptit.edu.vn', role_type: 'event_admin' }) }), { params: mockParams });
       expect(res.status).toBe(200);
     });
 
     it('POST 409 duplicate role', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } } });
       getBuilder('event_roles').single.mockResolvedValueOnce({ data: null, error: { code: '23505', message: 'duplicate' } });
       const res = await RolesPOST(new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ email: 'u@ptit.edu.vn', role_type: 'checker' }) }), { params: mockParams });
       expect(res.status).toBe(409);
     });
 
     it('POST 500 on other DB error', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } } });
       getBuilder('event_roles').single.mockResolvedValueOnce({ data: null, error: { code: '42000', message: 'other' } });
       const res = await RolesPOST(new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ email: 'u@ptit.edu.vn', role_type: 'checker' }) }), { params: mockParams });
       expect(res.status).toBe(500);

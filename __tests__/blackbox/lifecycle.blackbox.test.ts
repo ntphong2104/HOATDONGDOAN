@@ -1,20 +1,23 @@
 import { POST } from '@/app/api/checkin/route';
 import { GET as getCheckins } from '@/app/api/events/[id]/checkins/route';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }));
 
 describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
   let dbEvents: Record<string, { event_id: string; event_name: string; semester: string; status: 'active' | 'closed' }> = {};
-  let dbUsers: Record<string, { mssv: string; email: string; full_name: string; class_id: string }> = {};
+  let dbUsers: Record<string, { mssv: string; email: string; full_name: string; class_id: string; phone: string }> = {};
   let dbCheckins: Array<{ mssv: string; event_id: string; participate_role: string; checked_by: string; created_at: string }> = [];
 
   let mockSupabase: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    invalidateAuthContextCache();
 
     // Seed initial operational state
     dbEvents = {
@@ -32,18 +35,21 @@ describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
         email: 'n22dccn001@ptit.edu.vn',
         full_name: 'Nguyễn Văn An',
         class_id: 'D22CQCN01-N',
+        phone: '0987654321',
       },
       N22DCCN002: {
         mssv: 'N22DCCN002',
         email: 'n22dccn002@ptit.edu.vn',
         full_name: 'Trần Thị Bích',
         class_id: 'D22CQCN01-N',
+        phone: '0987654322',
       },
       N22DCCN003: {
         mssv: 'N22DCCN003',
         email: 'n22dccn003@ptit.edu.vn',
         full_name: 'Lê Văn Cường',
         class_id: 'D22CQCN01-N',
+        phone: '0987654323',
       },
     };
 
@@ -56,51 +62,102 @@ describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
         }),
         getUser: jest.fn().mockResolvedValue({
           data: { user: { email: 'admin@ptit.edu.vn' } },
+          error: null,
         }),
       },
       from: jest.fn().mockImplementation((table: string) => {
+        const makeDefaultChain = (resolvedData: any = [], singleData: any = null) => {
+          const chain: any = {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+            single: jest.fn().mockResolvedValue({ data: singleData, error: null }),
+            maybeSingle: jest.fn().mockResolvedValue({ data: singleData, error: null }),
+            then: (resolve: any, reject?: any) => Promise.resolve({ data: resolvedData, error: null }).then(resolve, reject),
+          };
+          return chain;
+        };
+
         if (table === 'super_admins') {
           return {
             select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockImplementation((col: string, val: string) => ({
+            eq: jest.fn().mockImplementation((_col: string, val: string) => ({
               single: jest.fn().mockResolvedValue({ data: val === 'admin@ptit.edu.vn' ? { email: val } : null, error: null }),
               maybeSingle: jest.fn().mockResolvedValue({ data: val === 'admin@ptit.edu.vn' ? { email: val } : null, error: null }),
             })),
-            ilike: jest.fn().mockImplementation((col: string, val: string) => ({
+            ilike: jest.fn().mockImplementation((_col: string, val: string) => ({
               single: jest.fn().mockResolvedValue({ data: val === 'admin@ptit.edu.vn' ? { email: val } : null, error: null }),
               maybeSingle: jest.fn().mockResolvedValue({ data: val === 'admin@ptit.edu.vn' ? { email: val } : null, error: null }),
             })),
+            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
             single: jest.fn().mockResolvedValue({ data: null, error: null }),
             maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
           };
         }
         if (table === 'event_roles') {
-          return {
+          let isCheckerQuery = false;
+          const chain: any = {
             select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            ilike: jest.fn().mockResolvedValue({ data: [], error: null }),
-            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+            eq: jest.fn().mockImplementation((_col: string, val: string) => {
+              if (val === 'checker@ptit.edu.vn') isCheckerQuery = true;
+              return chain;
+            }),
+            ilike: jest.fn().mockImplementation((_col: string, val: string) => {
+              if (val === 'checker@ptit.edu.vn') isCheckerQuery = true;
+              return chain;
+            }),
+            maybeSingle: jest.fn().mockImplementation(() =>
+              Promise.resolve({ data: isCheckerQuery ? { role_type: 'checker' } : null, error: null })
+            ),
+            single: jest.fn().mockImplementation(() =>
+              Promise.resolve({ data: isCheckerQuery ? { role_type: 'checker' } : null, error: null })
+            ),
+            then: (resolve: any, reject?: any) =>
+              Promise.resolve({
+                data: isCheckerQuery ? [{ event_id: 'event-001', role_type: 'checker' }] : [],
+                error: null,
+              }).then(resolve, reject),
           };
+          return chain;
         }
         if (table === 'events') {
-          return {
+          let lastEqVal: string | null = null;
+          const chain: any = {
             select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockImplementation((col: string, val: string) => ({
-              single: jest.fn().mockImplementation(() =>
-                Promise.resolve({ data: dbEvents[val] || null, error: null })
-              ),
-            })),
+            eq: jest.fn().mockImplementation((_col: string, val: string) => {
+              lastEqVal = val;
+              return chain;
+            }),
+            ilike: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+            single: jest.fn().mockImplementation(() =>
+              Promise.resolve({ data: (lastEqVal && dbEvents[lastEqVal]) || null, error: null })
+            ),
+            maybeSingle: jest.fn().mockImplementation(() =>
+              Promise.resolve({ data: (lastEqVal && dbEvents[lastEqVal]) || null, error: null })
+            ),
           };
+          return chain;
         }
         if (table === 'users') {
-          return {
+          let lastEqVal: string | null = null;
+          const chain: any = {
             select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockImplementation((col: string, val: string) => ({
-              single: jest.fn().mockImplementation(() =>
-                Promise.resolve({ data: dbUsers[val] || null, error: null })
-              ),
-            })),
+            eq: jest.fn().mockImplementation((_col: string, val: string) => {
+              lastEqVal = val;
+              return chain;
+            }),
+            single: jest.fn().mockImplementation(() =>
+              Promise.resolve({ data: (lastEqVal && dbUsers[lastEqVal]) || null, error: null })
+            ),
+            maybeSingle: jest.fn().mockImplementation(() =>
+              Promise.resolve({ data: (lastEqVal && dbUsers[lastEqVal]) || null, error: null })
+            ),
           };
+          return chain;
         }
         if (table === 'check_ins') {
           return {
@@ -117,10 +174,15 @@ describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
               dbCheckins.push(newEntry);
               return Promise.resolve({ data: newEntry, error: null });
             }),
+            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
             select: jest.fn().mockImplementation(() => ({
-              eq: jest.fn().mockImplementation((col: string, val: string) => ({
-                eq: jest.fn().mockImplementation((col2: string, val2: string) => ({
+              eq: jest.fn().mockImplementation((_col: string, val: string) => ({
+                eq: jest.fn().mockImplementation((_col2: string, val2: string) => ({
                   single: jest.fn().mockImplementation(() => {
+                    const found = dbCheckins.find((c) => c.mssv === val && c.event_id === val2);
+                    return Promise.resolve({ data: found || null, error: null });
+                  }),
+                  maybeSingle: jest.fn().mockImplementation(() => {
                     const found = dbCheckins.find((c) => c.mssv === val && c.event_id === val2);
                     return Promise.resolve({ data: found || null, error: null });
                   }),
@@ -137,21 +199,53 @@ describe('Blackbox Tests: End-to-End Operational Lifecycle', () => {
             })),
           };
         }
-        if (table === 'event_registrations') {
-          return {
-            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                eq: jest.fn().mockResolvedValue({ data: [], error: null }),
-              }),
+        if (table === 'system_settings') {
+          let lastKey = '';
+          const chain: any = {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockImplementation((_col: string, val: string) => {
+              lastKey = val;
+              return chain;
             }),
+            maybeSingle: jest.fn().mockImplementation(() =>
+              Promise.resolve({
+                data: lastKey.startsWith('event_meta_')
+                  ? { value: JSON.stringify({ require_registration: false }) }
+                  : null,
+                error: null,
+              })
+            ),
+            single: jest.fn().mockImplementation(() =>
+              Promise.resolve({
+                data: lastKey.startsWith('event_meta_')
+                  ? { value: JSON.stringify({ require_registration: false }) }
+                  : null,
+                error: null,
+              })
+            ),
+            then: (resolve: any, reject?: any) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
           };
+          return chain;
         }
-        return {};
+        if (table === 'event_registrations') {
+          const chain: any = {
+            insert: jest.fn().mockResolvedValue({ data: null, error: null }),
+            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+            update: jest.fn().mockReturnThis(),
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+            then: (resolve: any, reject?: any) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
+          };
+          return chain;
+        }
+        return makeDefaultChain();
       }),
     };
 
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
   });
 
   test('Complete Lifecycle Scenario: Scan -> Prevent Duplicate -> Close Event -> Export Report', async () => {

@@ -16,6 +16,7 @@
 import { ROOT_SUPER_ADMIN, getStoredOfficerRoles } from './officers-store';
 import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
 import { getEffectiveEndDate, parseDateStringToTime } from '@/lib/utils/event-logic';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 
 /** Cấp cán bộ được giữ quyền sự kiện vĩnh viễn (không bị thu hồi tự động). */
 const PERMANENT_OFFICER_TIERS = new Set(['super_admin', 'youth_union', 'ctsv', 'facility', 'security']);
@@ -146,10 +147,13 @@ export async function cleanupExpiredStudentEventRoles(
     const [superAdminsRes, storedRolesRes, eventRolesRes] = await Promise.all([
       supabase.from('super_admins').select('email').then((r: any) => r.data || []).catch(() => []),
       getStoredOfficerRoles(supabase).catch(() => []),
-      supabase
-        .from('event_roles')
-        .select('id, email, role_type, created_at, event_id, events(event_id, event_name, event_date, start_time, end_time, status, is_active)')
-        .then((r: any) => r.data || [])
+      fetchAllRows<any>(() =>
+        supabase
+          .from('event_roles')
+          .select('id, email, role_type, created_at, event_id, events(event_id, event_name, event_date, start_time, end_time, status, is_active)')
+          .order('id', { ascending: true })
+      )
+        .then((r) => r.data || [])
         .catch(() => []),
     ]);
 
@@ -188,12 +192,14 @@ export async function cleanupExpiredStudentEventRoles(
 
     // Tự động đóng các sự kiện đã qua > 3 ngày để làm sạch hệ thống
     if (autoCloseEventIds.size > 0) {
-      try {
-        await supabase
-          .from('events')
-          .update({ status: 'closed', is_active: false })
-          .in('event_id', Array.from(autoCloseEventIds));
-      } catch {}
+      for (const chunk of chunkArray(Array.from(autoCloseEventIds), 100)) {
+        try {
+          await supabase
+            .from('events')
+            .update({ status: 'closed', is_active: false })
+            .in('event_id', chunk);
+        } catch {}
+      }
     }
 
     // Thực hiện xóa theo lô, chỉ đếm những dòng thực sự đã bị xóa

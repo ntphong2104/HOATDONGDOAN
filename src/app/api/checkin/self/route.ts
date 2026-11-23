@@ -2,13 +2,22 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { verifyDynamicToken } from '@/lib/utils/dynamic-qr';
-import { extractMSSV } from '@/lib/utils/extract-mssv';
+import { extractMSSV, isValidMSSV } from '@/lib/utils/extract-mssv';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
-import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
+import {
+  isEventPastDeadline,
+  isEventTooEarlyForCheckin,
+  getEarliestCheckinTime,
+  isApprovedVolunteer,
+  parseJsonSetting,
+} from '@/lib/utils/event-logic';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, type EventSession } from '@/lib/constants/event-meta-store';
+import { getEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, getRegistrationExtras } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { runWithConcurrency, QueueTimeoutError } from '@/lib/utils/concurrency-queue';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
+import { getGraduatedCohorts, getGraduatedBlockReason } from '@/lib/utils/graduated-cohorts';
+import { getMasterStudentByMssv } from '@/lib/utils/student-profile';
 
 // In-memory cache for event metadata during high-concurrency check-in spikes (TTL: 5 seconds, bounded)
 const MAX_SELF_CHECKIN_CACHE = 200;
@@ -65,11 +74,11 @@ async function handleSelfCheckinPost(req: Request) {
           .eq('key', 'maintenance_mode')
           .single();
 
-        const val = maintenanceSetting?.value;
+        const val = parseJsonSetting<any>(maintenanceSetting?.value);
         isMaintenance =
           val === true ||
           val === 'true' ||
-          (val && typeof val === 'object' && (val.enabled === true || val.enabled === 'true'));
+          (Boolean(val) && typeof val === 'object' && (val.enabled === true || val.enabled === 'true'));
         selfCheckinMaintenanceCache = { enabled: isMaintenance, timestamp: now };
       } catch {}
     }
@@ -157,9 +166,10 @@ async function handleSelfCheckinPost(req: Request) {
       mssv = email.split('@')[0].toUpperCase();
     }
 
-    if (!mssv) {
-      return NextResponse.json({ success: false, error: 'Không tìm thấy thông tin MSSV của bạn' }, { status: 400 });
+    if (!mssv || !isValidMSSV(mssv)) {
+      return NextResponse.json({ success: false, error: 'Tài khoản không có MSSV sinh viên hợp lệ để tự điểm danh' }, { status: 400 });
     }
+    mssv = mssv.trim().toUpperCase();
 
     // Check phone number - require phone to be updated before checkin
     const profileExtra = await getUserProfileExtraWithFallback(supabase, email || '', mssv);
@@ -181,7 +191,7 @@ async function handleSelfCheckinPost(req: Request) {
     const matchedSession = sessions.find((s: any) => s.id === targetSessionId) || {
       id: 'main',
       name: 'Buổi chính',
-      session_date: event.event_date || new Date().toISOString().split('T')[0],
+      session_date: event.event_date || getVietnamDateString(0),
       start_time: event.start_time || '07:30',
       end_time: event.end_time || '11:30',
     };
@@ -208,41 +218,114 @@ async function handleSelfCheckinPost(req: Request) {
       }, { status: 400 });
     }
 
-    // Check if student has registered for this event
-    let registration = null;
-    if (meta.require_registration !== false) {
-      const { data: regData } = await supabase
-        .from('event_registrations')
-        .select('id, role_type, attended')
-        .eq('event_id', eventId)
-        .eq('mssv', mssv)
-        .maybeSingle();
-      
-      registration = regData;
+    const isInternalSession = matchedSession?.session_type === 'internal';
 
-      if (!registration) {
-        return NextResponse.json({
-          success: false,
-          error: 'Sự kiện này yêu cầu đăng ký trước khi điểm danh. Vui lòng đăng ký tại cổng đăng ký sự kiện trước.',
-          require_registration: true,
-        }, { status: 400 });
-      }
-    } else {
-      const { data: regData } = await supabase
+    // Check blacklist, graduated cohorts, registrations, and extras in parallel (even when require_registration === false)
+    const [
+      { data: penalty },
+      graduatedRules,
+      { data: registration },
+      regExtras,
+      { data: eventRoleRow },
+    ] = await Promise.all([
+      supabase.from('user_penalties').select('is_blacklisted, missed_count').eq('mssv', mssv).maybeSingle(),
+      getGraduatedCohorts(supabase),
+      supabase
         .from('event_registrations')
         .select('id, role_type, attended')
         .eq('event_id', eventId)
         .eq('mssv', mssv)
-        .maybeSingle();
-      registration = regData;
+        .maybeSingle(),
+      isInternalSession ? getRegistrationExtras(supabase, eventId) : Promise.resolve(null),
+      isInternalSession
+        ? supabase
+            .from('event_roles')
+            .select('role_type')
+            .eq('event_id', eventId)
+            .ilike('email', email.trim())
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    if (penalty?.is_blacklisted) {
+      return NextResponse.json({
+        success: false,
+        error: `Tài khoản của bạn (${mssv}) đang bị KHÓA (Blacklist) do vắng mặt ${penalty.missed_count || 3} lần. Vui lòng liên hệ Văn phòng Đoàn để được xem xét mở khóa.`,
+        is_blacklisted: true,
+      }, { status: 403 });
     }
 
-    const effectiveRole =
-      assignedRole !== 'participant'
-        ? assignedRole
-        : registration?.role_type === 'volunteer'
-        ? 'volunteer'
-        : 'participant';
+    if (graduatedRules.length > 0) {
+      const graduatedReason = getGraduatedBlockReason(mssv, studentUser?.class_id || null, graduatedRules);
+      if (graduatedReason) {
+        return NextResponse.json({
+          success: false,
+          error: graduatedReason,
+          is_graduated: true,
+        }, { status: 403 });
+      }
+    }
+
+    const extra = regExtras?.[mssv] || null;
+    const isAcceptedVolunteer =
+      typeof isApprovedVolunteer === 'function'
+        ? isApprovedVolunteer(registration?.role_type, extra)
+        : Boolean(
+            registration?.role_type === 'volunteer' &&
+              extra?.review_status === 'accepted'
+          );
+    const isStaff = Boolean(
+      auth?.isSuperAdmin ||
+        auth?.tier === 'super_admin' ||
+        auth?.tier === 'youth_union' ||
+        eventRoleRow?.role_type === 'event_admin' ||
+        eventRoleRow?.role_type === 'checker' ||
+        registration?.role_type === 'organizer'
+    );
+
+    if (isInternalSession && !isStaff && !isAcceptedVolunteer) {
+      return NextResponse.json({
+        success: false,
+        error: `🚫 Ca "${matchedSession.name}" là ca nội bộ dành cho Ban Tổ Chức & Cộng Tác Viên đã duyệt.`,
+      }, { status: 403 });
+    }
+
+    if (!isInternalSession && meta.require_registration !== false && !registration) {
+      return NextResponse.json({
+        success: false,
+        error: 'Sự kiện này yêu cầu đăng ký trước khi điểm danh. Vui lòng đăng ký tại cổng đăng ký sự kiện trước.',
+        require_registration: true,
+      }, { status: 400 });
+    }
+
+    // Ensure student exists in `users` before checkin_atomic inserts FK-bound check-in rows
+    if (!studentUser) {
+      const masterStudent = getMasterStudentByMssv(mssv);
+      try {
+        await supabase.from('users').upsert(
+          {
+            mssv,
+            email: email.toLowerCase(),
+            full_name: masterStudent?.full_name || mssv,
+            class_id: masterStudent?.class_id || 'PTIT-HCM',
+            tier: 'user',
+          },
+          { onConflict: 'mssv', ignoreDuplicates: true }
+        );
+      } catch {}
+    }
+
+    const effectiveRole = isInternalSession
+      ? isStaff
+        ? 'organizer'
+        : 'volunteer'
+      : assignedRole !== 'participant'
+      ? assignedRole
+      : isAcceptedVolunteer
+      ? 'volunteer'
+      : registration?.role_type === 'organizer'
+      ? 'organizer'
+      : 'participant';
 
     // ── Sức chứa chỉ áp dụng cho NGƯỜI THAM GIA vãng lai (không có đăng ký) ──
     // Người đã đăng ký đã được giữ chỗ lúc đăng ký; CTV/BTC không tính vào sức chứa khán giả.

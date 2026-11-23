@@ -101,7 +101,14 @@ export default function OfficeBorrowPage() {
   }, [toast]);
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await loadData();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadData]);
 
   const categories = useMemo(() => {

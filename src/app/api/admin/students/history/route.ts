@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
+import { resolveActorLcdScope } from '@/lib/utils/lcd-auth';
+import { resolveStudentLcd } from '@/lib/utils/lcd';
+import { getMasterStudentByMssv, isPlaceholderClass } from '@/lib/utils/student-profile';
 
 export async function GET(request: Request) {
   try {
@@ -10,7 +13,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'event_admin') {
+    if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'youth_union' && auth.tier !== 'ctsv' && auth.tier !== 'event_admin') {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
@@ -22,10 +25,17 @@ export async function GET(request: Request) {
     }
 
     const cleanMssv = decodeURIComponent(mssv).trim().toUpperCase();
-    const supabase = await createClient();
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
 
-    // Run all queries in parallel for performance
-    const [userResult, checkInsResult, attendedRegsResult, penaltyResult] = await Promise.all([
+    const isFullViewer =
+      Boolean(auth.isSuperAdmin) ||
+      auth.tier === 'super_admin' ||
+      auth.tier === 'youth_union' ||
+      auth.tier === 'ctsv';
+
+    const [scope, userResult, checkInsResult, attendedRegsResult, penaltyResult] = await Promise.all([
+      isFullViewer ? Promise.resolve({ role: 'all' as const, lcd: null }) : resolveActorLcdScope(supabase, auth),
       supabase.from('users').select('*').eq('mssv', cleanMssv).maybeSingle(),
       supabase.from('check_ins').select(`
         id, event_id, participate_role, created_at,
@@ -39,6 +49,23 @@ export async function GET(request: Request) {
     ]);
 
     const user = userResult.data;
+    if (!isFullViewer) {
+      if (scope.role === 'none' || !scope.lcd) {
+        return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+      }
+      const master = getMasterStudentByMssv(cleanMssv);
+      const cls =
+        user?.class_id && !isPlaceholderClass(user.class_id)
+          ? String(user.class_id).trim().toUpperCase()
+          : master?.class_id || null;
+      const targetLcd = resolveStudentLcd(cls, cleanMssv);
+      if (!targetLcd || targetLcd.code !== scope.lcd.code) {
+        return NextResponse.json(
+          { success: false, error: 'Bạn chỉ có quyền tra cứu sinh viên thuộc Liên Chi Đoàn của mình.' },
+          { status: 403 }
+        );
+      }
+    }
     const checkIns = checkInsResult.data;
     if (checkInsResult.error) console.error('Check-in fetch error:', checkInsResult.error);
     const attendedRegs = attendedRegsResult.data;

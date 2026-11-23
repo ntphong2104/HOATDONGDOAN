@@ -330,8 +330,20 @@ export const DEFAULT_OFFICERS: OfficerRoleItem[] = [
   },
 ];
 
-// In-memory runtime cache
-let inMemoryOfficers: OfficerRoleItem[] | null = null;
+// Shared globalThis runtime cache across Next.js route bundles
+const gOfficers = globalThis as unknown as {
+  __hddInMemoryOfficers?: OfficerRoleItem[] | null;
+  __hddOfficerRolesCache?: { list: OfficerRoleItem[]; expiresAt: number } | null;
+  __hddOfficerRolesInflight?: Promise<OfficerRoleItem[]> | null;
+};
+
+function getInMemoryOfficers(): OfficerRoleItem[] | null {
+  return gOfficers.__hddInMemoryOfficers ?? null;
+}
+
+function setInMemoryOfficers(list: OfficerRoleItem[] | null) {
+  gOfficers.__hddInMemoryOfficers = list;
+}
 
 function getStoreFilePath(): string {
   try {
@@ -367,14 +379,11 @@ function saveToFile(list: OfficerRoleItem[]) {
 const OFFICER_SETTINGS_KEY = 'officer_roles_registry';
 
 // Cache ngắn hạn: danh sách cán bộ hiếm khi đổi nhưng được đọc ở mọi lượt đăng nhập / /api/me.
-// Khi hàng trăm sinh viên vào cùng lúc, không cần hỏi Supabase lại cho từng người.
 const OFFICER_CACHE_TTL_MS = 20000;
-let officerRolesCache: { list: OfficerRoleItem[]; expiresAt: number } | null = null;
-let officerRolesInflight: Promise<OfficerRoleItem[]> | null = null;
 
 export function invalidateOfficerRolesCache() {
-  officerRolesCache = null;
-  officerRolesInflight = null;
+  gOfficers.__hddOfficerRolesCache = null;
+  gOfficers.__hddOfficerRolesInflight = null;
 }
 
 export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRoleItem[]> {
@@ -382,24 +391,24 @@ export async function getStoredOfficerRoles(supabase?: any): Promise<OfficerRole
     return loadOfficerRoles(supabase);
   }
 
-  if (officerRolesCache && officerRolesCache.expiresAt > Date.now()) {
-    return officerRolesCache.list;
+  if (gOfficers.__hddOfficerRolesCache && gOfficers.__hddOfficerRolesCache.expiresAt > Date.now()) {
+    return gOfficers.__hddOfficerRolesCache.list;
   }
 
   // Gộp các lượt gọi đồng thời thành một truy vấn duy nhất (tránh "thundering herd")
-  if (officerRolesInflight) return officerRolesInflight;
+  if (gOfficers.__hddOfficerRolesInflight) return gOfficers.__hddOfficerRolesInflight;
 
   const inflight = loadOfficerRoles(supabase)
     .then((list) => {
-      if (officerRolesInflight === inflight) {
-        officerRolesCache = { list, expiresAt: Date.now() + OFFICER_CACHE_TTL_MS };
+      if (gOfficers.__hddOfficerRolesInflight === inflight) {
+        gOfficers.__hddOfficerRolesCache = { list, expiresAt: Date.now() + OFFICER_CACHE_TTL_MS };
       }
       return list;
     })
     .finally(() => {
-      if (officerRolesInflight === inflight) officerRolesInflight = null;
+      if (gOfficers.__hddOfficerRolesInflight === inflight) gOfficers.__hddOfficerRolesInflight = null;
     });
-  officerRolesInflight = inflight;
+  gOfficers.__hddOfficerRolesInflight = inflight;
   return inflight;
 }
 
@@ -432,7 +441,7 @@ async function loadOfficerRoles(supabase?: any): Promise<OfficerRoleItem[]> {
         }
 
         // Cache in memory and file
-        inMemoryOfficers = mapped;
+        setInMemoryOfficers(mapped);
         saveToFile(mapped);
         return mapped;
       }
@@ -440,13 +449,13 @@ async function loadOfficerRoles(supabase?: any): Promise<OfficerRoleItem[]> {
 
     // 2. Try Supabase system_settings table (key = 'officer_roles_registry')
     try {
-      const { data: settingsData } = await supabase
+      const { data: settingsData, error: settingsErr } = await supabase
         .from('system_settings')
         .select('value')
         .eq('key', OFFICER_SETTINGS_KEY)
         .maybeSingle();
 
-      if (settingsData?.value) {
+      if (!settingsErr && settingsData?.value) {
         let parsed = settingsData.value;
         if (typeof parsed === 'string') {
           try {
@@ -463,70 +472,77 @@ async function loadOfficerRoles(supabase?: any): Promise<OfficerRoleItem[]> {
           if (!mapped.some((m) => m.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase())) {
             mapped.unshift(DEFAULT_OFFICERS[0]);
           }
-          inMemoryOfficers = mapped;
+          setInMemoryOfficers(mapped);
           saveToFile(mapped);
           return mapped;
         }
       }
 
-      // Auto-seed default officers to system_settings only when completely empty
-      await supabase.from('system_settings').upsert({
-        key: OFFICER_SETTINGS_KEY,
-        value: JSON.stringify(DEFAULT_OFFICERS),
-        updated_at: new Date().toISOString(),
-      });
+      // Auto-seed default officers ONLY when DB query succeeded cleanly and row is genuinely absent
+      if (!settingsErr && !settingsData) {
+        await supabase.from('system_settings').upsert({
+          key: OFFICER_SETTINGS_KEY,
+          value: DEFAULT_OFFICERS,
+          updated_at: new Date().toISOString(),
+        });
+      }
     } catch {}
   }
 
   // 3. Try in-memory cache
-  if (inMemoryOfficers && inMemoryOfficers.length > 0) {
-    return inMemoryOfficers;
+  const memOfficers = getInMemoryOfficers();
+  if (memOfficers && memOfficers.length > 0) {
+    return memOfficers;
   }
 
   // 4. Try reading from server local file storage
   const fromFile = loadFromFile();
   if (fromFile && Array.isArray(fromFile)) {
-    inMemoryOfficers = fromFile;
+    setInMemoryOfficers(fromFile);
     return fromFile;
   }
 
   // 5. Initial seed
   const initial = [...DEFAULT_OFFICERS];
-  inMemoryOfficers = initial;
+  setInMemoryOfficers(initial);
   saveToFile(initial);
   return initial;
 }
 
 export async function saveOfficerRole(officer: OfficerRoleItem, supabase?: any): Promise<void> {
-  const current = await getStoredOfficerRoles(supabase);
+  invalidateOfficerRolesCache();
+  const current = await loadOfficerRoles(supabase);
   const updated = [
     officer,
     ...current.filter((o) => !(o.email === officer.email && o.role_tier === officer.role_tier)),
   ];
 
-  inMemoryOfficers = updated;
+  setInMemoryOfficers(updated);
   saveToFile(updated);
   invalidateOfficerRolesCache();
 
   if (supabase) {
     // 1. Try upserting to officer_roles table
     try {
-      await supabase.from('officer_roles').upsert({
-        email: officer.email,
-        role_tier: officer.role_tier,
-        unit_code: officer.unit_code,
-        unit_name: officer.unit_name,
-        full_name: officer.full_name,
-        notes: officer.notes,
-        created_by: officer.created_by,
-      });
+      await supabase.from('officer_roles').upsert(
+        {
+          email: officer.email,
+          role_tier: officer.role_tier,
+          unit_code: officer.unit_code,
+          unit_name: officer.unit_name,
+          full_name: officer.full_name,
+          notes: officer.notes,
+          created_by: officer.created_by,
+        },
+        { onConflict: 'email,role_tier,unit_code' }
+      );
     } catch {}
 
-    // 2. Also save to system_settings for 100% cloud persistence
+    // 2. Also save to system_settings as native JSONB array for cloud persistence & SQL RLS readability
     try {
       await supabase.from('system_settings').upsert({
         key: OFFICER_SETTINGS_KEY,
-        value: JSON.stringify(updated),
+        value: updated,
         updated_at: new Date().toISOString(),
       });
     } catch {}
@@ -536,7 +552,8 @@ export async function saveOfficerRole(officer: OfficerRoleItem, supabase?: any):
 
 export async function removeOfficerRole(email: string, roleTier?: string, id?: string, supabase?: any): Promise<void> {
   const normalizedEmail = email.toLowerCase().trim();
-  const current = await getStoredOfficerRoles(supabase);
+  invalidateOfficerRolesCache();
+  const current = await loadOfficerRoles(supabase);
 
   const updated = current.filter((o) => {
     if (id && o.id === id) return false;
@@ -552,7 +569,7 @@ export async function removeOfficerRole(email: string, roleTier?: string, id?: s
     updated.unshift(DEFAULT_OFFICERS[0]);
   }
 
-  inMemoryOfficers = updated;
+  setInMemoryOfficers(updated);
   saveToFile(updated);
   invalidateOfficerRolesCache();
 
@@ -568,11 +585,11 @@ export async function removeOfficerRole(email: string, roleTier?: string, id?: s
       }
     } catch {}
 
-    // 2. Also update system_settings
+    // 2. Also update system_settings as native JSONB array
     try {
       await supabase.from('system_settings').upsert({
         key: OFFICER_SETTINGS_KEY,
-        value: JSON.stringify(updated),
+        value: updated,
         updated_at: new Date().toISOString(),
       });
     } catch {}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DataTable from '@/components/DataTable';
 import EventCard from '@/components/EventCard';
@@ -45,7 +45,7 @@ describe('Unit Tests: Additional UI Components', () => {
     const mockEvent: any = {
       event_id: 'ev-1',
       event_name: 'Ngày Hội Sinh Viên 2026',
-      event_date: '2026-10-20',
+      event_date: '2099-10-20',
       semester: '2026-2027-HK1',
       status: 'active',
       checkin_count: 142,
@@ -54,7 +54,7 @@ describe('Unit Tests: Additional UI Components', () => {
     test('renders event details and status', () => {
       render(<EventCard event={mockEvent} />);
       expect(screen.getByText('Ngày Hội Sinh Viên 2026')).toBeInTheDocument();
-      expect(screen.getByText('20/10/2026')).toBeInTheDocument();
+      expect(screen.getByText('20/10/2099')).toBeInTheDocument();
       expect(screen.getByText(/Sắp diễn ra|Đang mở/)).toBeInTheDocument();
       expect(screen.getByText('142')).toBeInTheDocument();
     });
@@ -68,7 +68,7 @@ describe('Unit Tests: Additional UI Components', () => {
   });
 
   describe('QRCodeDisplay', () => {
-    test('renders student information and monospace MSSV label', () => {
+    test('renders student information and monospace MSSV label', async () => {
       render(
         <QRCodeDisplay
           value="N22DCCN001"
@@ -79,7 +79,11 @@ describe('Unit Tests: Additional UI Components', () => {
       expect(screen.getByText('Nguyễn Văn An')).toBeInTheDocument();
       expect(screen.getByText('D22CQCN01-N')).toBeInTheDocument();
       expect(screen.getByText('N22DCCN001')).toBeInTheDocument();
-      expect(screen.getByText('Lưu ảnh QR')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: /Hiện mã QR điểm danh/i }));
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: /Hiện mã QR điểm danh/i })).not.toBeInTheDocument();
+      });
+      expect(screen.getByRole('img')).toBeInTheDocument();
     });
   });
 

@@ -78,10 +78,11 @@ export default function DataTable({
   }, [data, searchTerm, onSearchChange]);
 
   const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
+  const effectivePage = Math.min(currentPage, totalPages);
   const paginatedData = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
+    const start = (effectivePage - 1) * pageSize;
     return filteredData.slice(start, start + pageSize);
-  }, [filteredData, currentPage, pageSize]);
+  }, [filteredData, effectivePage, pageSize]);
 
   return (
     <div className={styles.container}>
@@ -123,9 +124,9 @@ export default function DataTable({
               paginatedData.map((row, rowIndex) => (
                 <tr key={rowIndex}>
                   {activeColumns.map((col) => (
-                    <td key={col.key} data-label={col.label}>
+                    <td key={col.key} data-label={typeof col.label === 'string' ? col.label : undefined}>
                       {col.render
-                        ? col.render(row[col.key], row, (currentPage - 1) * pageSize + rowIndex)
+                        ? col.render(row[col.key], row, (effectivePage - 1) * pageSize + rowIndex)
                         : (row[col.key] ?? '-')}
                     </td>
                   ))}
@@ -144,7 +145,7 @@ export default function DataTable({
 
       <div className={styles.footer}>
         <div>
-          Hiển thị {filteredData.length > 0 ? `${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filteredData.length)}` : '0'} / Tổng {filteredData.length} kết quả
+          Hiển thị {filteredData.length > 0 ? `${(effectivePage - 1) * pageSize + 1}-${Math.min(effectivePage * pageSize, filteredData.length)}` : '0'} / Tổng {filteredData.length} kết quả
         </div>
 
         {totalPages > 1 && (
@@ -152,19 +153,19 @@ export default function DataTable({
             <button
               type="button"
               className={styles.pageBtn}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(Math.max(1, effectivePage - 1))}
+              disabled={effectivePage === 1}
             >
               ← Trước
             </button>
             <span className={styles.pageInfo}>
-              Trang {currentPage} / {totalPages}
+              Trang {effectivePage} / {totalPages}
             </span>
             <button
               type="button"
               className={styles.pageBtn}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(Math.min(totalPages, effectivePage + 1))}
+              disabled={effectivePage === totalPages}
             >
               Tiếp →
             </button>

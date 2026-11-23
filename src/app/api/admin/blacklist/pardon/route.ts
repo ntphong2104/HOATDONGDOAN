@@ -6,6 +6,7 @@ import {
   pardonEventInNotes,
   pardonAllInNotes,
   hasActiveManualBan,
+  parsePenaltyNotes,
 } from '@/lib/utils/blacklist-logic';
 
 export async function POST(req: Request) {
@@ -71,8 +72,7 @@ export async function POST(req: Request) {
     let updatedNotes = '';
 
     if (action === 'single_event') {
-      const currentMissed = existing.missed_count || 1;
-      newMissed = Math.max(0, currentMissed - 1);
+      const currentMissed = existing.missed_count || 0;
 
       updatedNotes = pardonEventInNotes({
         notesStr: existing.notes,
@@ -82,6 +82,9 @@ export async function POST(req: Request) {
         adminEmail: auth.email,
         nowFormatted,
       });
+
+      const wasChanged = updatedNotes !== (existing.notes || '');
+      newMissed = wasChanged ? Math.max(0, currentMissed - 1) : currentMissed;
 
       const isManuallyBanned = hasActiveManualBan(updatedNotes);
       isBlacklisted = isManuallyBanned || (newMissed >= MAX_MISSED_STRIKES);
@@ -102,6 +105,14 @@ export async function POST(req: Request) {
       newMissed = 0;
       isBlacklisted = false;
 
+      const penalizedEventIds = Array.from(
+        new Set(
+          parsePenaltyNotes(existing.notes)
+            .filter((item) => !item.isPardoned && item.eventId)
+            .map((item) => item.eventId as string)
+        )
+      );
+
       updatedNotes = pardonAllInNotes({
         notesStr: existing.notes,
         reason: cleanReason,
@@ -109,12 +120,15 @@ export async function POST(req: Request) {
         nowFormatted,
       });
 
-      // Mark all past unattended registrations as attended
-      await supabase
-        .from('event_registrations')
-        .update({ attended: true })
-        .eq('mssv', cleanMssv)
-        .eq('attended', false);
+      // Mark ONLY the previously penalized past event registrations as attended (never upcoming events!)
+      if (penalizedEventIds.length > 0) {
+        await supabase
+          .from('event_registrations')
+          .update({ attended: true })
+          .eq('mssv', cleanMssv)
+          .in('event_id', penalizedEventIds)
+          .eq('attended', false);
+      }
     }
 
     // 2. Persist updated penalty status

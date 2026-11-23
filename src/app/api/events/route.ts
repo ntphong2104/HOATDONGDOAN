@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isEventPastDeadline } from '@/lib/utils/event-logic';
 import { getVietnamDateString } from '@/lib/utils/vn-date';
+import { normalizeAllowedCohorts } from '@/lib/utils/cohort';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 
 export async function GET() {
   const auth = await getAuthContext();
@@ -14,11 +16,9 @@ export async function GET() {
   const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
   const isYouthUnion = auth.tier === 'youth_union';
 
-  const supabase = await createClient();
-  let query = supabase
-    .from('events')
-    .select('*, event_roles(id, email, role_type)')
-    .order('created_at', { ascending: false });
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
+  let allowedIds: string[] | null = null;
 
   if (!isSuperAdmin && !isYouthUnion) {
     const [
@@ -43,28 +43,46 @@ export async function GET() {
     if (allAccessibleIds.length === 0) {
       return NextResponse.json({ success: true, data: [] });
     }
-    query = query.in('event_id', allAccessibleIds);
+    allowedIds = allAccessibleIds;
   }
 
-  const { data: events, error } = await query;
+  const buildQuery = () => {
+    let q: any = supabase
+      .from('events')
+      .select('*, event_roles(id, email, role_type)')
+      .order('created_at', { ascending: false });
+    if (q && typeof q.order === 'function') {
+      q = q.order('event_id', { ascending: false });
+    }
+    if (allowedIds !== null) {
+      q = q.in('event_id', allowedIds);
+    }
+    return q;
+  };
+
+  const { data: events, error } = await fetchAllRows<any>(buildQuery);
 
   if (error) return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
 
-  // Batch-fetch all event meta (sessions) to correctly determine deadline
+  // Batch-fetch all event meta (sessions) in chunks to avoid PostgREST URI length limits
   const metaKeys = (events || []).map((ev: any) => `event_meta_${ev.event_id}`);
-  
-  let metaMap: Record<string, any> = {};
+
+  const metaMap: Record<string, any> = {};
   if (metaKeys.length > 0) {
     try {
-      const { data: metaRows } = await supabase
-        .from('system_settings')
-        .select('key, value')
-        .in('key', metaKeys);
-      for (const row of metaRows || []) {
-        const eventId = row.key.replace('event_meta_', '');
-        const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
-        metaMap[eventId] = parsed;
-      }
+      await Promise.all(
+        chunkArray(metaKeys, 100).map(async (chunk) => {
+          const { data: metaRows } = await supabase
+            .from('system_settings')
+            .select('key, value')
+            .in('key', chunk);
+          for (const row of metaRows || []) {
+            const eventId = row.key.replace('event_meta_', '');
+            const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+            metaMap[eventId] = parsed;
+          }
+        })
+      );
     } catch {}
   }
 
@@ -107,7 +125,8 @@ export async function POST(req: Request) {
   if (event_date && event_date < todayStr) {
     return NextResponse.json({ success: false, error: '🚫 Ngày tổ chức sự kiện không thể ở trong quá khứ! Vui lòng chọn ngày hiện tại hoặc tương lai.' }, { status: 400 });
   }
-  const supabase = await createClient();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
   const isAutoApproved = auth.isSuperAdmin;
   const initialStatus = isAutoApproved ? 'active' : 'pending';
   const initialIsActive = isAutoApproved;
@@ -123,7 +142,10 @@ export async function POST(req: Request) {
       is_active: initialIsActive,
       status: initialStatus,
       created_by: auth.email,
-      allowed_cohorts: Array.isArray(allowed_cohorts) && allowed_cohorts.length > 0 ? allowed_cohorts : null,
+      allowed_cohorts: (() => {
+        const normalized = normalizeAllowedCohorts(allowed_cohorts);
+        return normalized.length > 0 ? normalized : null;
+      })(),
     })
     .select()
     .single();

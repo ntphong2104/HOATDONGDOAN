@@ -10,7 +10,9 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('next/link', () => {
-  return ({ children, href, ...rest }: any) => <a href={href} {...rest}>{children}</a>;
+  return function MockLink({ children, href, ...rest }: any) {
+    return <a href={href} {...rest}>{children}</a>;
+  };
 });
 
 describe('EventDetailPage render test', () => {

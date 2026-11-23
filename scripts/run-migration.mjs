@@ -1,71 +1,65 @@
-// Script chạy SQL migration qua Supabase REST API
-// Cần SUPABASE_SERVICE_ROLE_KEY để chạy DDL
+// Script kiểm tra hoặc chạy SQL migration qua biến môi trường.
+// Mặc định chỉ đọc file migration (dry-run); truyền --apply (kèm DATABASE_URL và --allow-remote nếu trỏ DB remote) để thực thi qua psql.
 
-const SUPABASE_URL = 'https://zpllkynavzeorenclwrc.supabase.co';
+import fs from 'fs';
+import path from 'path';
+import { execFileSync } from 'child_process';
+
+for (const name of ['.env.local', '.env', '.env.production']) {
+  const p = path.join(process.cwd(), name);
+  if (!fs.existsSync(p)) continue;
+  for (const line of fs.readFileSync(p, 'utf-8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^['"]|['"]$/g, '');
+  }
+}
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const DATABASE_URL = process.env.DATABASE_URL || '';
+const MIGRATION_FILE = process.env.MIGRATION_FILE || 'supabase/migrations/016_security_and_schema_hardening.sql';
+const APPLY = process.argv.includes('--apply');
+const ALLOW_REMOTE = process.argv.includes('--allow-remote');
 
 async function runMigration() {
-  // Thử đọc service role key từ env
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  
-  if (!serviceKey) {
-    console.log('');
-    console.log('⚠️  Không tìm thấy SUPABASE_SERVICE_ROLE_KEY');
-    console.log('');
-    console.log('Bạn cần chạy SQL migration THỦ CÔNG:');
-    console.log('');
-    console.log('1. Mở: https://supabase.com/dashboard/project/zpllkynavzeorenclwrc/sql/new');
-    console.log('2. Copy nội dung file: supabase/migrations/20260924_session_checkins.sql');
-    console.log('3. Paste vào SQL Editor → Bấm "Run"');
-    console.log('');
-    console.log('Hoặc set biến env rồi chạy lại:');
-    console.log('  SUPABASE_SERVICE_ROLE_KEY=your_key node scripts/run-migration.mjs');
-    console.log('');
-    
-    // Thử kiểm tra bảng đã tồn tại chưa bằng anon key
-    const anonKey = 'sb_publishable_Znj1iNQM4v8icsDBeAYJiw_JgZJGlsS';
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/session_checkins?select=count&limit=0`, {
-        headers: {
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
-        }
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+  if (!fs.existsSync(MIGRATION_FILE)) {
+    console.error(`❌ Không tìm thấy file migration: ${MIGRATION_FILE}`);
+    process.exit(1);
+  }
+
+  const sql = fs.readFileSync(MIGRATION_FILE, 'utf-8');
+  console.log(`📄 Migration file: ${MIGRATION_FILE} (${sql.length} chars)`);
+
+  if (!APPLY) {
+    console.log('ℹ️  Dry-run mode. Truyền --apply cùng DATABASE_URL (và --allow-remote nếu trỏ remote) để chạy qua psql, hoặc dán file SQL vào Supabase SQL Editor.');
+    if (SUPABASE_URL && serviceKey) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/session_checkins?select=id&limit=1`, {
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
       });
-      if (res.ok) {
-        console.log('✅ Bảng session_checkins ĐÃ TỒN TẠI — có thể đã chạy migration rồi!');
-      } else {
-        console.log('❌ Bảng session_checkins CHƯA TỒN TẠI — cần chạy migration.');
-      }
-    } catch (e) {
-      console.log('❌ Không kết nối được Supabase');
+      console.log(res.ok ? '✅ Kết nối REST kiểm tra bảng session_checkins thành công.' : `⚠️  session_checkins chưa tồn tại hoặc bị chặn (HTTP ${res.status}).`);
     }
     return;
   }
 
-  // Có service key → chạy migration qua SQL endpoint  
-  const fs = await import('fs');
-  const sql = fs.readFileSync('supabase/migrations/20260924_session_checkins.sql', 'utf-8');
-  
-  console.log('🚀 Đang chạy SQL migration...');
-  
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/`, {
-    method: 'POST',
-    headers: {
-      'apikey': serviceKey,
-      'Authorization': `Bearer ${serviceKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query: sql }),
-  });
-  
-  if (res.ok) {
-    console.log('✅ Migration thành công!');
-  } else {
-    const err = await res.text();
-    console.log('❌ Lỗi:', err);
-    console.log('');
-    console.log('→ Hãy chạy thủ công trong SQL Editor:');
-    console.log('  https://supabase.com/dashboard/project/zpllkynavzeorenclwrc/sql/new');
+  if (!DATABASE_URL) {
+    console.error('❌ Thiếu DATABASE_URL để chạy psql. PostgREST không hỗ trợ thực thi DDL SQL trực tiếp — vui lòng chạy file SQL trong Supabase SQL Editor hoặc cung cấp DATABASE_URL.');
+    process.exit(1);
   }
+
+  if (/supabase\.(co|com)|pooler\.supabase/i.test(DATABASE_URL) && !ALLOW_REMOTE) {
+    console.error('🛑 Chặn an toàn: từ chối áp dụng migration lên remote Supabase khi chưa truyền --allow-remote.');
+    process.exit(1);
+  }
+
+  console.log(`🚀 Đang chạy SQL migration qua psql: ${MIGRATION_FILE}`);
+  execFileSync('psql', [DATABASE_URL, '-v', 'ON_ERROR_STOP=1', '-f', MIGRATION_FILE], {
+    stdio: 'inherit',
+  });
+  console.log('✅ Migration thành công!');
 }
 
-runMigration();
+runMigration().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

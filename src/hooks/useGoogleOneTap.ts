@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { isValidSchoolEmail } from '@/lib/utils/extract-mssv';
 import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
+import { sanitizeRedirectPath } from '@/lib/security/redirect';
 
 declare global {
   interface Window {
@@ -15,6 +16,7 @@ declare global {
           prompt: (notification?: (notification: any) => void) => void;
           renderButton: (parent: HTMLElement, options: any) => void;
           disableAutoSelect: () => void;
+          cancel?: () => void;
         };
       };
     };
@@ -42,19 +44,41 @@ async function hashNonce(nonce: string): Promise<string> {
 export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: boolean, error?: string) => void) {
   const router = useRouter();
   const googleClientId = clientId || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const onStatusChangeRef = useRef(onStatusChange);
+
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange;
+  }, [onStatusChange]);
 
   useEffect(() => {
     if (!googleClientId) return;
-    if (typeof navigator !== 'undefined' && (navigator.webdriver || /Lighthouse|HeadlessChrome|Chrome-Lighthouse|bot/i.test(navigator.userAgent))) {
+    if (
+      typeof navigator !== 'undefined' &&
+      (navigator.webdriver || /Lighthouse|HeadlessChrome|Chrome-Lighthouse|bot/i.test(navigator.userAgent))
+    ) {
       return;
     }
 
     let isMounted = true;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let initTimer: ReturnType<typeof setTimeout> | null = null;
+    let idleHandle: number | null = null;
+    let attachedScriptEl: HTMLScriptElement | null = null;
     const rawNonce = generateNonce();
 
+    const onScriptLoad = () => {
+      if (isMounted) initializeOneTap();
+    };
+
     const loadGoogleScript = async () => {
-      if (document.getElementById('google-gsi-client')) {
-        initializeOneTap();
+      const existing = document.getElementById('google-gsi-client') as HTMLScriptElement | null;
+      if (existing) {
+        if (window.google?.accounts?.id) {
+          initializeOneTap();
+        } else {
+          attachedScriptEl = existing;
+          existing.addEventListener('load', onScriptLoad);
+        }
         return;
       }
 
@@ -63,9 +87,8 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
       script.defer = true;
-      script.onload = () => {
-        if (isMounted) initializeOneTap();
-      };
+      attachedScriptEl = script;
+      script.addEventListener('load', onScriptLoad);
       document.body.appendChild(script);
     };
 
@@ -74,12 +97,13 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
 
       try {
         const hashedNonce = await hashNonce(rawNonce);
+        if (!isMounted) return;
 
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: async (response: { credential?: string }) => {
             if (!response.credential) return;
-            if (onStatusChange) onStatusChange(true);
+            onStatusChangeRef.current?.(true);
 
             const supabase = createClient();
             const { data, error } = await supabase.auth.signInWithIdToken({
@@ -89,7 +113,7 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
             });
 
             if (error) {
-              if (onStatusChange) onStatusChange(false, error.message);
+              onStatusChangeRef.current?.(false, error.message);
               return;
             }
 
@@ -99,21 +123,20 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
 
               if (!isSchool) {
                 await supabase.auth.signOut();
-                if (onStatusChange)
-                  onStatusChange(
-                    false,
-                    'Vui lòng sử dụng tài khoản Email Học Viện (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn)'
-                  );
+                onStatusChangeRef.current?.(
+                  false,
+                  'Vui lòng sử dụng tài khoản Email Học Viện (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn)'
+                );
                 router.push('/login?error=invalid_domain');
                 return;
               }
 
-              const redirectParam =
+              const rawRedirect =
                 typeof window !== 'undefined'
                   ? new URLSearchParams(window.location.search).get('redirect') ||
                     new URLSearchParams(window.location.search).get('next')
                   : null;
-              window.location.href = redirectParam && redirectParam.startsWith('/') && redirectParam !== '/login' ? redirectParam : '/';
+              window.location.href = sanitizeRedirectPath(rawRedirect, '/');
             }
           },
           nonce: hashedNonce,
@@ -122,18 +145,20 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
           context: 'signin',
         });
 
-        // Retry prompt with exponential backoff if Google doesn't respond
         let retryCount = 0;
         const maxRetries = 3;
         const tryPrompt = () => {
           if (!isMounted || retryCount >= maxRetries) return;
           window.google?.accounts?.id?.prompt((notification: any) => {
-            // If Google skipped/dismissed the prompt, retry after delay
-            if (notification?.isSkippedMoment?.() || notification?.isDismissedMoment?.()) {
+            if (notification?.isDismissedMoment?.()) {
+              return;
+            }
+            if (notification?.isSkippedMoment?.()) {
               retryCount++;
               if (retryCount < maxRetries && isMounted) {
+                if (retryTimer) clearTimeout(retryTimer);
                 const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
-                setTimeout(tryPrompt, delay);
+                retryTimer = setTimeout(tryPrompt, delay);
               }
             }
           });
@@ -143,17 +168,29 @@ export function useGoogleOneTap(clientId?: string, onStatusChange?: (loading: bo
     };
 
     if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(() => {
+      idleHandle = (window as any).requestIdleCallback(() => {
         if (isMounted) loadGoogleScript();
       });
     } else {
-      setTimeout(() => {
+      initTimer = setTimeout(() => {
         if (isMounted) loadGoogleScript();
       }, 300);
     }
 
     return () => {
       isMounted = false;
+      if (attachedScriptEl) {
+        attachedScriptEl.removeEventListener('load', onScriptLoad);
+        attachedScriptEl = null;
+      }
+      if (retryTimer) clearTimeout(retryTimer);
+      if (initTimer) clearTimeout(initTimer);
+      if (idleHandle !== null && 'cancelIdleCallback' in window) {
+        (window as any).cancelIdleCallback(idleHandle);
+      }
+      try {
+        window.google?.accounts?.id?.cancel?.();
+      } catch {}
     };
-  }, [googleClientId, router, onStatusChange]);
+  }, [googleClientId, router]);
 }

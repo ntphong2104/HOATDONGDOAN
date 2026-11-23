@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { getAuthContext, canManageEvent } from '@/lib/supabase/auth-helper';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isEventScheduleExpired, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta, invalidateEventCache } from '@/lib/constants/event-meta-store';
@@ -11,14 +11,15 @@ export async function POST(
 ) {
   const resolvedParams = await params;
   const auth = await getAuthContext();
-  if (!auth || (!auth.isSuperAdmin && !auth.isEventAdmin && auth.tier !== 'youth_union')) {
+  if (!auth) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
   const isPrivileged = isSuperAdmin || auth.tier === 'youth_union';
 
-  const supabase = await createClient();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
   // 1. Fetch current event & meta
   const [eventResult, meta] = await Promise.all([
@@ -29,6 +30,11 @@ export async function POST(
 
   if (eventResult.error || !event) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
+  }
+
+  const allowed = await canManageEvent(auth, resolvedParams.id, event.created_by ?? null, supabase);
+  if (!allowed) {
+    return NextResponse.json({ success: false, error: 'Bạn không có quyền quản lý cổng đăng ký sự kiện này' }, { status: 403 });
   }
 
   const eventWithSessions = { ...event, sessions: meta.sessions || [] };

@@ -1,10 +1,96 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useId } from 'react';
 import Image from 'next/image';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ArrowLeftIcon, FlashlightIcon, ImageIcon, QRIcon } from '@/components/icons';
 import styles from './QRScanner.module.css';
+
+/* ── Global hardware MediaStream tracker ──
+ * Guarantees macOS Safari / PWA (AVCaptureSession) & mobile browsers immediately
+ * turn off the camera indicator LED even when unmounted mid-getUserMedia() or
+ * when html5-qrcode removes <video> without clearing srcObject / load().
+ */
+const activeScannerStreams = new Set<MediaStream>();
+let activeScannerInstances = 0;
+let originalGetUserMedia: MediaDevices['getUserMedia'] | null = null;
+
+function stopAndClearMediaStream(stream: MediaStream | null | undefined) {
+  if (!stream) return;
+  try {
+    stream.getTracks().forEach((track) => {
+      try {
+        track.enabled = false;
+      } catch {}
+      try {
+        track.stop();
+      } catch {}
+      try {
+        stream.removeTrack(track);
+      } catch {}
+    });
+  } catch {}
+  activeScannerStreams.delete(stream);
+}
+
+function installCameraStreamTracker() {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return;
+  if (originalGetUserMedia) return;
+
+  const md = navigator.mediaDevices;
+  originalGetUserMedia = md.getUserMedia.bind(md);
+  const patched: MediaDevices['getUserMedia'] = async (constraints) => {
+    const stream = await originalGetUserMedia!(constraints);
+    if (activeScannerInstances <= 0) {
+      // Unmounted while waiting for user permission or camera warm-up
+      stopAndClearMediaStream(stream);
+    } else {
+      activeScannerStreams.add(stream);
+    }
+    return stream;
+  };
+  try {
+    md.getUserMedia = patched;
+  } catch {
+    originalGetUserMedia = null;
+  }
+}
+
+function uninstallCameraStreamTrackerIfIdle() {
+  if (activeScannerInstances > 0 || !originalGetUserMedia) return;
+  try {
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
+      navigator.mediaDevices.getUserMedia = originalGetUserMedia;
+    }
+  } catch {}
+  originalGetUserMedia = null;
+}
+
+function releaseVideosInRoot(root: ParentNode | null | undefined) {
+  if (!root || typeof root.querySelectorAll !== 'function') return;
+  try {
+    const videos = root.querySelectorAll('video');
+    videos.forEach((videoEl) => {
+      const video = videoEl as HTMLVideoElement;
+      try {
+        stopAndClearMediaStream(video.srcObject as MediaStream | null);
+      } catch {}
+      try {
+        video.pause();
+      } catch {}
+      try {
+        video.srcObject = null;
+      } catch {}
+      try {
+        video.removeAttribute('src');
+        video.load();
+      } catch {}
+      try {
+        video.remove();
+      } catch {}
+    });
+  } catch {}
+}
 
 interface QRScannerProps {
   onScan?: (mssv: string) => void;
@@ -29,9 +115,18 @@ export default function QRScanner({
   bottomActionText = 'Đóng máy quét',
   onBottomAction,
 }: QRScannerProps) {
+  const rawId = useId();
+  const scannerId = `qr-reader-viewport-${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const isMountedRef = useRef(true);
+  const effectGenRef = useRef(0);
+  const transitionPromiseRef = useRef<Promise<void>>(Promise.resolve());
+  const facingModeRef = useRef<'environment' | 'user'>('environment');
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const capsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [hasCameraError, setHasCameraError] = useState(false);
@@ -55,16 +150,34 @@ export default function QRScanner({
     scanCallbackRef.current = onScanSuccess || onScan;
   }, [onScanSuccess, onScan]);
 
+  const forceReleaseCameraHardware = useCallback(
+    (viewportEl?: HTMLDivElement | null, containerEl?: HTMLDivElement | null) => {
+      releaseVideosInRoot(viewportEl || viewportRef.current);
+      releaseVideosInRoot(containerEl || containerRef.current);
+      if (typeof document !== 'undefined') {
+        releaseVideosInRoot(document.getElementById(scannerId));
+      }
+      for (const stream of Array.from(activeScannerStreams)) {
+        stopAndClearMediaStream(stream);
+      }
+    },
+    [scannerId]
+  );
+
   const getVideoTrack = useCallback((): MediaStreamTrack | null => {
     try {
-      const videoEl = document.querySelector('#qr-reader-viewport video') as HTMLVideoElement | null;
+      const videoEl =
+        (viewportRef.current?.querySelector('video') as HTMLVideoElement | null) ||
+        (typeof document !== 'undefined'
+          ? (document.querySelector(`#${scannerId} video`) as HTMLVideoElement | null)
+          : null);
       const stream = videoEl?.srcObject as MediaStream | null;
       if (stream && stream.getVideoTracks().length > 0) {
         return stream.getVideoTracks()[0];
       }
     } catch {}
     return null;
-  }, []);
+  }, [scannerId]);
 
   const applyZoom = useCallback(async (level: number) => {
     const clampedLevel = Math.max(1, Math.min(level, maxZoom));
@@ -85,7 +198,9 @@ export default function QRScanner({
     }
 
     // Digital Zoom fallback (CSS scaling on video element)
-    const videoEl = document.querySelector('#qr-reader-viewport video') as HTMLVideoElement | null;
+    const videoEl =
+      (viewportRef.current?.querySelector('video') as HTMLVideoElement | null) ||
+      (document.querySelector(`#${scannerId} video`) as HTMLVideoElement | null);
     if (videoEl) {
       if (!hardwareApplied && clampedLevel > 1) {
         videoEl.style.transform = `scale(${clampedLevel})`;
@@ -93,7 +208,7 @@ export default function QRScanner({
         videoEl.style.transform = 'scale(1)';
       }
     }
-  }, [maxZoom, getVideoTrack]);
+  }, [maxZoom, getVideoTrack, scannerId]);
 
   const triggerFocus = useCallback(async (customX?: number, customY?: number) => {
     const container = containerRef.current;
@@ -108,7 +223,11 @@ export default function QRScanner({
 
     if (pxX !== undefined && pxY !== undefined) {
       setFocusPoint({ x: pxX, y: pxY });
-      setTimeout(() => setFocusPoint(null), 750);
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = setTimeout(() => {
+        focusTimerRef.current = null;
+        if (isMountedRef.current) setFocusPoint(null);
+      }, 750);
     }
 
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -149,8 +268,9 @@ export default function QRScanner({
     }
   }, [isTorchOn, getVideoTrack]);
 
-  const startScanner = async () => {
-    const scannerId = 'qr-reader-viewport';
+  const startScanner = useCallback(async (gen: number, targetFacingMode: 'environment' | 'user') => {
+    const shouldContinue = () => isMountedRef.current && effectGenRef.current === gen;
+    if (!shouldContinue()) return;
     setHasCameraError(false);
 
     try {
@@ -169,6 +289,8 @@ export default function QRScanner({
         } catch {}
       }
 
+      if (!shouldContinue()) return;
+
       const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
         const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
         const qrboxSize = Math.floor(minEdge * 0.85);
@@ -178,16 +300,15 @@ export default function QRScanner({
       const config = {
         fps: 15,
         qrbox: qrboxFunction,
-        aspectRatio: 1.0,
         videoConstraints: {
-          facingMode: { ideal: facingMode },
+          facingMode: { ideal: targetFacingMode },
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
       };
 
       await scannerRef.current.start(
-        { facingMode },
+        { facingMode: targetFacingMode },
         config,
         (decodedText) => {
           if (!isPausedRef.current && scanCallbackRef.current) {
@@ -197,8 +318,31 @@ export default function QRScanner({
         undefined
       );
 
+      // Record any attached video MediaStream as tracked hardware resource
+      try {
+        const videoEl =
+          (viewportRef.current?.querySelector('video') as HTMLVideoElement | null) ||
+          (document.querySelector(`#${scannerId} video`) as HTMLVideoElement | null);
+        const attachedStream = videoEl?.srcObject as MediaStream | null;
+        if (attachedStream) activeScannerStreams.add(attachedStream);
+      } catch {}
+
+      // Immediately release hardware camera if unmounted or switched while start() was awaiting permissions
+      if (!shouldContinue()) {
+        if (scannerRef.current && scannerRef.current.isScanning) {
+          try {
+            await scannerRef.current.stop();
+          } catch {}
+        }
+        forceReleaseCameraHardware();
+        return;
+      }
+
       // Check capabilities & auto-enable continuous focus
-      setTimeout(async () => {
+      if (capsTimerRef.current) clearTimeout(capsTimerRef.current);
+      capsTimerRef.current = setTimeout(async () => {
+        capsTimerRef.current = null;
+        if (!shouldContinue()) return;
         const track = getVideoTrack();
         if (track && typeof track.getCapabilities === 'function') {
           const caps: any = track.getCapabilities();
@@ -216,35 +360,146 @@ export default function QRScanner({
         }
       }, 400);
     } catch (err) {
-      console.error('Failed to start camera scanner:', err);
-      setHasCameraError(true);
+      forceReleaseCameraHardware();
+      if (shouldContinue()) {
+        console.error('Failed to start camera scanner:', err);
+        setHasCameraError(true);
+      }
     }
-  };
+  }, [scannerId, getVideoTrack, forceReleaseCameraHardware]);
 
   useEffect(() => {
-    let isMounted = true;
-    startScanner();
+    const capturedViewportEl = viewportRef.current;
+    const capturedContainerEl = containerRef.current;
 
-    return () => {
-      isMounted = false;
+    activeScannerInstances += 1;
+    installCameraStreamTracker();
+    isMountedRef.current = true;
+    facingModeRef.current = facingMode;
+    const gen = ++effectGenRef.current;
+
+    const runStart = () => startScanner(gen, facingMode);
+    transitionPromiseRef.current = transitionPromiseRef.current.then(runStart, runStart);
+
+    const stopEverythingNow = () => {
+      effectGenRef.current++;
       if (scannerRef.current && scannerRef.current.isScanning) {
         scannerRef.current.stop().catch(() => {});
       }
+      forceReleaseCameraHardware(capturedViewportEl, capturedContainerEl);
     };
-  }, [facingMode]);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        const stopOnHide = async () => {
+          effectGenRef.current++;
+          if (scannerRef.current && scannerRef.current.isScanning) {
+            try {
+              await scannerRef.current.stop();
+            } catch {}
+          }
+          forceReleaseCameraHardware(capturedViewportEl, capturedContainerEl);
+        };
+        transitionPromiseRef.current = transitionPromiseRef.current.then(stopOnHide, stopOnHide);
+      } else if (isMountedRef.current) {
+        const resumeGen = ++effectGenRef.current;
+        const resumeStart = () => startScanner(resumeGen, facingModeRef.current);
+        transitionPromiseRef.current = transitionPromiseRef.current.then(resumeStart, resumeStart);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pagehide', stopEverythingNow);
+      window.addEventListener('beforeunload', stopEverythingNow);
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      activeScannerInstances = Math.max(0, activeScannerInstances - 1);
+      isMountedRef.current = false;
+      effectGenRef.current++;
+      if (focusTimerRef.current) {
+        clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+      if (capsTimerRef.current) {
+        clearTimeout(capsTimerRef.current);
+        capsTimerRef.current = null;
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pagehide', stopEverythingNow);
+        window.removeEventListener('beforeunload', stopEverythingNow);
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+
+      // 1) Synchronous camera release immediately on route change / unmount
+      forceReleaseCameraHardware(capturedViewportEl, capturedContainerEl);
+
+      // 2) Serialized stop after any pending Html5Qrcode transition + second sweep
+      const runStop = async () => {
+        if (scannerRef.current) {
+          if (scannerRef.current.isScanning) {
+            try {
+              await scannerRef.current.stop();
+            } catch {}
+          }
+          try {
+            scannerRef.current.clear();
+          } catch {}
+          scannerRef.current = null;
+        }
+        forceReleaseCameraHardware(capturedViewportEl, capturedContainerEl);
+        uninstallCameraStreamTrackerIfIdle();
+      };
+      transitionPromiseRef.current = transitionPromiseRef.current.then(runStop, runStop);
+    };
+  }, [facingMode, startScanner, forceReleaseCameraHardware]);
 
   // Handle Photo Scan from Album ("Chọn từ ảnh")
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !scannerRef.current) return;
+    if (!file) return;
 
-    try {
-      const decodedText = await scannerRef.current.scanFile(file, false);
+    const runFileScan = async () => {
+      const wasScanning = Boolean(scannerRef.current?.isScanning);
+      if (wasScanning && scannerRef.current) {
+        try {
+          await scannerRef.current.stop();
+        } catch {}
+      }
+
+      if (!scannerRef.current) {
+        scannerRef.current = new Html5Qrcode(scannerId, {
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
+          verbose: false,
+        });
+      }
+
+      let decodedText: string | null = null;
+      try {
+        decodedText = await scannerRef.current.scanFile(file, false);
+      } catch {
+        alert('Không tìm thấy mã QR hợp lệ trong ảnh này. Vui lòng chọn ảnh khác.');
+      }
+
       if (decodedText && scanCallbackRef.current) {
         scanCallbackRef.current(decodedText);
       }
-    } catch (err) {
-      alert('Không tìm thấy mã QR hợp lệ trong ảnh này. Vui lòng chọn ảnh khác.');
+
+      if (wasScanning && isMountedRef.current) {
+        await startScanner(effectGenRef.current, facingModeRef.current);
+      }
+    };
+
+    try {
+      transitionPromiseRef.current = transitionPromiseRef.current.then(runFileScan, runFileScan);
+      await transitionPromiseRef.current;
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -257,13 +512,19 @@ export default function QRScanner({
     triggerFocus(e.clientX - rect.left, e.clientY - rect.top);
   };
 
+  const handleRetryCamera = () => {
+    const gen = ++effectGenRef.current;
+    const runRetry = () => startScanner(gen, facingModeRef.current);
+    transitionPromiseRef.current = transitionPromiseRef.current.then(runRetry, runRetry);
+  };
+
   return (
     <div
       ref={containerRef}
       className={styles.scannerContainer}
       onClick={handleTap}
     >
-      <div id="qr-reader-viewport" className={styles.viewport}></div>
+      <div id={scannerId} ref={viewportRef} className={styles.viewport}></div>
 
       {/* Hidden file input for "Chọn từ ảnh" */}
       <input
@@ -414,7 +675,7 @@ export default function QRScanner({
           <span>Không thể truy cập camera. Vui lòng cấp quyền máy ảnh trong trình duyệt.</span>
           <button
             type="button"
-            onClick={startScanner}
+            onClick={handleRetryCamera}
             style={{
               marginTop: '0.85rem',
               padding: '0.5rem 1.25rem',

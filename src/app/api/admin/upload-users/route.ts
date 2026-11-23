@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { getMasterStudentByMssv, isPlaceholderClass } from '@/lib/utils/student-profile';
+import { chunkArray } from '@/lib/supabase/pagination';
 import * as XLSX from 'xlsx';
 
 function normalizeKey(str: string): string {
@@ -339,11 +340,15 @@ export async function POST(request: Request) {
         const oldClassesList = Array.from(affectedOldClasses);
 
         // 1. Thu hồi BCH nếu chính bạn BCH vừa chuyển sang lớp mới khác với lớp đang được cấp quyền
-        const { data: activeDelegatesByMssv } = await supabase
-          .from('class_delegates')
-          .select('id, mssv, class_id')
-          .eq('is_active', true)
-          .in('mssv', changedMssvList);
+        const activeDelegatesByMssv: any[] = [];
+        for (const mChunk of chunkArray(changedMssvList, 200)) {
+          const { data: delChunk } = await supabase
+            .from('class_delegates')
+            .select('id, mssv, class_id')
+            .eq('is_active', true)
+            .in('mssv', mChunk);
+          if (delChunk) activeDelegatesByMssv.push(...delChunk);
+        }
 
         const revokeIds = new Set<string>();
         for (const d of activeDelegatesByMssv || []) {
@@ -376,13 +381,15 @@ export async function POST(request: Request) {
 
         if (revokeIds.size > 0) {
           const idsArr = Array.from(revokeIds);
-          const { error: revErr } = await supabase
-            .from('class_delegates')
-            .update({ is_active: false })
-            .in('id', idsArr);
-          if (!revErr) {
-            delegatesRevokedCount = idsArr.length;
+          let revokedTotal = 0;
+          for (const idChunk of chunkArray(idsArr, 200)) {
+            const { error: revErr } = await supabase
+              .from('class_delegates')
+              .update({ is_active: false })
+              .in('id', idChunk);
+            if (!revErr) revokedTotal += idChunk.length;
           }
+          delegatesRevokedCount = revokedTotal;
         }
       } catch (revCatch) {
         console.warn('[upload-users] Auto-revoke stale delegates skipped:', revCatch);
@@ -392,25 +399,33 @@ export async function POST(request: Request) {
     // Sync updated student names and classes to any matching records in user_penalties
     try {
       const allUploadedMssvs = finalRecords.map((r) => r.mssv.toUpperCase().trim());
-      const { data: penalizedStudents } = await supabase
-        .from('user_penalties')
-        .select('mssv')
-        .in('mssv', allUploadedMssvs);
+      const penalizedStudents: any[] = [];
+      for (const mChunk of chunkArray(allUploadedMssvs, 200)) {
+        const { data: penChunk } = await supabase
+          .from('user_penalties')
+          .select('mssv')
+          .in('mssv', mChunk);
+        if (penChunk) penalizedStudents.push(...penChunk);
+      }
 
-      if (penalizedStudents && penalizedStudents.length > 0) {
-        for (const p of penalizedStudents) {
-          const rec = uniqueMap.get(p.mssv.toUpperCase().trim());
-          if (rec) {
-            await supabase
-              .from('user_penalties')
-              .update({
-                full_name: rec.full_name,
-                class_id: rec.class_id,
-                email: rec.email,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('mssv', p.mssv);
-          }
+      if (penalizedStudents.length > 0) {
+        const nowIso = new Date().toISOString();
+        for (const pChunk of chunkArray(penalizedStudents, 25)) {
+          await Promise.all(
+            pChunk.map(async (p) => {
+              const rec = uniqueMap.get(String(p.mssv || '').toUpperCase().trim());
+              if (!rec) return;
+              await supabase
+                .from('user_penalties')
+                .update({
+                  full_name: rec.full_name,
+                  class_id: rec.class_id,
+                  email: rec.email,
+                  updated_at: nowIso,
+                })
+                .eq('mssv', p.mssv);
+            })
+          );
         }
       }
     } catch {}

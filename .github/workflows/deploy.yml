@@ -8,25 +8,116 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+# Lưu ý vận hành VPS:
+# Cần cấu hình cron hàng ngày (ví dụ 02:00 VN) gọi /api/cron/reconcile:
+# 0 2 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://your-domain/api/cron/reconcile >/dev/null 2>&1
+
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Unit & Whitebox tests
+        run: npm test -- --watchAll=false
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH (Isolated Release Build)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            set -e
-            cd /var/www/hoatdongdoan
-            git pull origin main
-            rm -rf .next-staging
-            NEXT_DIST_DIR=.next-staging npx next build --webpack
-            rm -rf .next-old
-            [ -d .next ] && mv .next .next-old
-            mv .next-staging .next
+            set -euo pipefail
+
+            APP_LINK="/var/www/hoatdongdoan"
+            RELEASES_DIR="/var/www/hoatdongdoan-releases"
+            SHARED_DIR="/var/www/hoatdongdoan-shared"
+            RELEASE_ID="$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:-manual}"
+            RELEASE_DIR="${RELEASES_DIR}/${RELEASE_ID}"
+
+            mkdir -p "$RELEASES_DIR" "$SHARED_DIR/data"
+
+            # Resolve git remote from existing checkout on VPS
+            if [ -d "${APP_LINK}/.git" ]; then
+              REPO_URL="$(git -C "$APP_LINK" remote get-url origin)"
+            elif [ -f "${SHARED_DIR}/repo_url" ]; then
+              REPO_URL="$(cat "${SHARED_DIR}/repo_url")"
+            else
+              echo "❌ Cannot determine git remote URL on VPS"
+              exit 1
+            fi
+            echo "$REPO_URL" > "${SHARED_DIR}/repo_url"
+
+            # Migrate .env.local and runtime data once into shared directory
+            if [ -f "${APP_LINK}/.env.local" ] && [ ! -L "${APP_LINK}/.env.local" ] && [ ! -f "${SHARED_DIR}/.env.local" ]; then
+              cp -a "${APP_LINK}/.env.local" "${SHARED_DIR}/.env.local"
+            fi
+            if [ -d "${APP_LINK}/data" ] && [ ! -L "${APP_LINK}/data" ]; then
+              for f in "${APP_LINK}/data"/*.json "${APP_LINK}/data"/*.xlsx; do
+                [ -f "$f" ] || continue
+                cp -n "$f" "${SHARED_DIR}/data/" || true
+              done
+            fi
+
+            # Clone & build cleanly in an isolated release directory (live PM2 workers stay untouched)
+            git clone --depth 1 --branch main "$REPO_URL" "$RELEASE_DIR"
+
+            if [ -f "${SHARED_DIR}/.env.local" ]; then
+              ln -sfn "${SHARED_DIR}/.env.local" "${RELEASE_DIR}/.env.local"
+            fi
+
+            # Seed any missing git-tracked data files into shared data without clobbering runtime edits
+            if [ -d "${RELEASE_DIR}/data" ]; then
+              for f in "${RELEASE_DIR}/data"/*; do
+                [ -f "$f" ] || continue
+                base="$(basename "$f")"
+                if [ "$base" = "Data.xlsx" ]; then
+                  cp -a "$f" "${SHARED_DIR}/data/${base}"
+                else
+                  cp -n "$f" "${SHARED_DIR}/data/${base}" || true
+                fi
+              done
+              rm -rf "${RELEASE_DIR}/data"
+            fi
+            ln -sfn "${SHARED_DIR}/data" "${RELEASE_DIR}/data"
+
+            cd "$RELEASE_DIR"
+            npm ci
+            npx next build --webpack
+
+            # Atomically switch /var/www/hoatdongdoan symlink to the built release
+            if [ -d "$APP_LINK" ] && [ ! -L "$APP_LINK" ]; then
+              LEGACY_BACKUP="/var/www/hoatdongdoan-legacy-$(date +%s)"
+              mv "$APP_LINK" "$LEGACY_BACKUP"
+            fi
+            ln -sfn "$RELEASE_DIR" "${APP_LINK}.next"
+            mv -Tf "${APP_LINK}.next" "$APP_LINK"
+
+            cd "$APP_LINK"
             pm2 startOrReload ecosystem.config.cjs --update-env || pm2 restart hoatdongdoan --update-env
-            rm -rf .next-old
-            echo "✅ Zero-downtime deploy completed at $(date)"
+
+            # Keep last 3 releases for fast rollback
+            ls -1dt "${RELEASES_DIR}"/* 2>/dev/null | tail -n +4 | xargs -r rm -rf || true
+
+            echo "✅ Zero-downtime release deploy completed: ${RELEASE_ID} at $(date)"

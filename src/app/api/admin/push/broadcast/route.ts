@@ -4,6 +4,8 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { normalizeLcdCode } from '@/lib/utils/lcd';
 import { dispatchPushToSubscriptions, recordInboxNotification } from '@/lib/utils/web-push';
+import { sanitizeRedirectPath } from '@/lib/security/redirect';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,10 +23,12 @@ export async function GET() {
     const supabase = (await getSupabase()) || (await createClient());
 
     const [{ data: subs }, { data: logs }, { data: activeEvents }] = await Promise.all([
-      supabase
-        .from('push_subscriptions')
-        .select('user_email, device_type, lcd_code')
-        .eq('is_active', true),
+      fetchAllRows<any>(() =>
+        supabase
+          .from('push_subscriptions')
+          .select('user_email, device_type, lcd_code')
+          .eq('is_active', true)
+      ),
       supabase
         .from('push_logs')
         .select('*')
@@ -87,7 +91,7 @@ export async function POST(req: Request) {
     const title = String(body?.title || '').trim();
     const message = String(body?.body || '').trim();
     const rawUrl = String(body?.url || '/').trim();
-    const url = rawUrl.startsWith('/') ? rawUrl : '/';
+    const url = sanitizeRedirectPath(rawUrl, '/');
     const targetType = String(body?.target_type || 'all');
     const targetValue = String(body?.target_value || '').trim();
 
@@ -108,41 +112,49 @@ export async function POST(req: Request) {
       if (!lcdCode) {
         return NextResponse.json({ success: false, error: 'Vui lòng chọn Liên Chi Đoàn hợp lệ' }, { status: 400 });
       }
-      const { data } = await supabase
-        .from('push_subscriptions')
-        .select('id, endpoint, p256dh, auth, user_email')
-        .eq('is_active', true)
-        .eq('lcd_code', lcdCode)
-        .limit(5000);
+      const { data } = await fetchAllRows<any>(() =>
+        supabase
+          .from('push_subscriptions')
+          .select('id, endpoint, p256dh, auth, user_email')
+          .eq('is_active', true)
+          .eq('lcd_code', lcdCode)
+      );
       subscriptions = data || [];
     } else if (targetType === 'event') {
       if (!targetValue) {
         return NextResponse.json({ success: false, error: 'Vui lòng chọn sự kiện cần gửi nhắc lịch' }, { status: 400 });
       }
-      const { data: regs } = await supabase
-        .from('event_registrations')
-        .select('mssv, email')
-        .eq('event_id', targetValue);
+      const { data: regs } = await fetchAllRows<any>(() =>
+        supabase
+          .from('event_registrations')
+          .select('mssv, email')
+          .eq('event_id', targetValue)
+      );
 
       const mssvs = Array.from(
         new Set((regs || []).map((r: any) => String(r.mssv || '').trim().toUpperCase()).filter(Boolean))
       );
       if (mssvs.length > 0) {
-        for (let i = 0; i < mssvs.length; i += 250) {
-          const { data: subChunk } = await supabase
-            .from('push_subscriptions')
-            .select('id, endpoint, p256dh, auth, user_email')
-            .eq('is_active', true)
-            .in('mssv', mssvs.slice(i, i + 250));
-          if (subChunk) subscriptions.push(...subChunk);
-        }
+        await Promise.all(
+          chunkArray(mssvs, 200).map(async (mChunk) => {
+            const { data: subChunk } = await fetchAllRows<any>(() =>
+              supabase
+                .from('push_subscriptions')
+                .select('id, endpoint, p256dh, auth, user_email')
+                .eq('is_active', true)
+                .in('mssv', mChunk)
+            );
+            if (subChunk.length > 0) subscriptions.push(...subChunk);
+          })
+        );
       }
     } else {
-      const { data } = await supabase
-        .from('push_subscriptions')
-        .select('id, endpoint, p256dh, auth, user_email')
-        .eq('is_active', true)
-        .limit(5000);
+      const { data } = await fetchAllRows<any>(() =>
+        supabase
+          .from('push_subscriptions')
+          .select('id, endpoint, p256dh, auth, user_email')
+          .eq('is_active', true)
+      );
       subscriptions = data || [];
     }
 

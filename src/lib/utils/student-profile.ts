@@ -38,7 +38,6 @@ export function getMasterStudentDirectory(): Map<string, { full_name: string; cl
       path.resolve(process.cwd(), 'data', 'Data.xlsx'),
       path.resolve(__dirname, '../../../data/Data.xlsx'),
       path.resolve(__dirname, '../../../../data/Data.xlsx'),
-      '/Users/mac/Dev/HOATDONGDOAN/data/Data.xlsx',
     ];
     const excelPath = candidates.find((p) => {
       try {

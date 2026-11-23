@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { getAuthContext, canScanEvent, canManageEvent } from '@/lib/supabase/auth-helper';
 import { generateDynamicToken } from '@/lib/utils/dynamic-qr';
+
+const ALLOWED_QR_ROLES = new Set(['participant', 'volunteer', 'organizer']);
 
 export async function GET(
   req: Request,
@@ -14,21 +16,12 @@ export async function GET(
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Authorization: only event admins, checkers, or super admins can generate dynamic QR
-  const isAuthorized = auth.isSuperAdmin || auth.tier === 'super_admin' || 
-    auth.isEventAdmin || auth.tier === 'event_admin' || auth.tier === 'youth_union';
-  if (!isAuthorized) {
-    return NextResponse.json({ success: false, error: 'Forbidden', message: 'Bạn không có quyền tạo mã QR điểm danh' }, { status: 403 });
-  }
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
-  const { searchParams } = new URL(req.url);
-  const role = searchParams.get('role') || 'participant';
-  const sessionId = searchParams.get('session_id') || searchParams.get('sessionId') || 'main';
-
-  const supabase = await createClient();
   const { data: event, error } = await supabase
     .from('events')
-    .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
+    .select('event_id, event_name, status, is_active, event_date, start_time, end_time, created_by')
     .eq('event_id', resolvedParams.id)
     .single();
 
@@ -36,8 +29,28 @@ export async function GET(
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
   }
 
-  // Generate real-time expiring token for specific role and session
-  const tokenData = generateDynamicToken(event.event_id, role, Date.now(), sessionId);
+  const { searchParams } = new URL(req.url);
+  const rawRole = (searchParams.get('role') || 'participant').trim().toLowerCase();
+  if (!ALLOWED_QR_ROLES.has(rawRole)) {
+    return NextResponse.json({ success: false, error: 'Vai trò điểm danh không hợp lệ' }, { status: 400 });
+  }
+
+  // Authorization:
+  // - `participant`: super_admin, youth_union, creator/event_admin/checker of THIS event
+  // - `volunteer` / `organizer`: must have event management permission (checker cannot mint CTV/BTC QR)
+  const allowed =
+    rawRole === 'participant'
+      ? await canScanEvent(auth, resolvedParams.id, event.created_by ?? null, supabase)
+      : await canManageEvent(auth, resolvedParams.id, event.created_by ?? null, supabase);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Forbidden', message: 'Bạn không có quyền tạo mã QR điểm danh cho vai trò/sự kiện này' },
+      { status: 403 }
+    );
+  }
+
+  const sessionId = searchParams.get('session_id') || searchParams.get('sessionId') || 'main';
+  const tokenData = generateDynamicToken(event.event_id, rawRole, Date.now(), sessionId);
 
   return NextResponse.json({
     success: true,

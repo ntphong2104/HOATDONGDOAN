@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, canScanEvent } from '@/lib/supabase/auth-helper';
 import { getSessionCheckIns, getEventMeta } from '@/lib/constants/event-meta-store';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
 import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -27,22 +28,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   if (!isPrivileged) {
-    const { data: eventRole } = await supabase
-      .from('event_roles')
-      .select('role_type')
-      .eq('email', auth.email)
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
-
-    const { data: event } = await supabase
-      .from('events')
-      .select('created_by')
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
-
-    const isCreator = event?.created_by && event.created_by.toLowerCase() === auth.email.toLowerCase();
-
-    if (!eventRole && !isCreator && auth.tier !== 'event_admin') {
+    const allowed = await canScanEvent(auth, resolvedParams.id, undefined, supabase);
+    if (!allowed) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
   }
@@ -54,22 +41,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     sessionCheckins,
     meta
   ] = await Promise.all([
-    supabase
-      .from('check_ins')
-      .select(`
-        mssv,
-        participate_role,
-        checked_by,
-        created_at,
-        users (full_name, class_id)
-      `)
-      .eq('event_id', resolvedParams.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('event_registrations')
-      .select('mssv, full_name, class_id, role_type, created_at')
-      .eq('event_id', resolvedParams.id)
-      .eq('attended', true),
+    fetchAllRows<any>(() =>
+      supabase
+        .from('check_ins')
+        .select(`
+          mssv,
+          participate_role,
+          checked_by,
+          created_at,
+          users (full_name, class_id)
+        `)
+        .eq('event_id', resolvedParams.id)
+        .order('created_at', { ascending: false })
+    ),
+    fetchAllRows<any>(() =>
+      supabase
+        .from('event_registrations')
+        .select('mssv, full_name, class_id, role_type, created_at')
+        .eq('event_id', resolvedParams.id)
+        .eq('attended', true)
+    ),
     getSessionCheckIns(supabase, resolvedParams.id),
     getEventMeta(supabase, resolvedParams.id)
   ]);
@@ -81,10 +72,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const checkinsMap = new Map<string, any>();
 
   (checkins || []).forEach((c: any) => {
-    if (!checkinsMap.has(c.mssv)) {
-      checkinsMap.set(c.mssv, {
-        mssv: c.mssv,
-        full_name: c.users?.full_name || c.mssv,
+    const cleanKey = String(c.mssv || '').trim().toUpperCase();
+    if (!cleanKey) return;
+    if (!checkinsMap.has(cleanKey)) {
+      checkinsMap.set(cleanKey, {
+        mssv: cleanKey,
+        full_name: c.users?.full_name || cleanKey,
         class_id: c.users?.class_id || '',
         participate_role:
           c.participate_role === 'volunteer'
@@ -99,10 +92,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   });
 
   (attendedRegistrations || []).forEach((r: any) => {
-    if (!checkinsMap.has(r.mssv)) {
-      checkinsMap.set(r.mssv, {
-        mssv: r.mssv,
-        full_name: r.full_name || r.mssv,
+    const cleanKey = String(r.mssv || '').trim().toUpperCase();
+    if (!cleanKey) return;
+    if (!checkinsMap.has(cleanKey)) {
+      checkinsMap.set(cleanKey, {
+        mssv: cleanKey,
+        full_name: r.full_name || cleanKey,
         class_id: r.class_id || '',
         participate_role: r.role_type === 'volunteer' ? 'Cộng tác viên' : 'Người tham gia',
         checked_by: 'Mã QR Động (Tự quét)',
@@ -132,11 +127,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
   }
 
-  // Enrich with per-session check-in history
+  // Pre-index per-session check-in history by uppercase MSSV (O(N+M) instead of O(N*M))
   const totalSessions = (meta.sessions && meta.sessions.length > 0) ? meta.sessions.length : 1;
+  const sessionsByMssv = new Map<string, typeof sessionCheckins>();
+  for (const s of sessionCheckins) {
+    const k = String(s.mssv || '').trim().toUpperCase();
+    if (!k) continue;
+    const list = sessionsByMssv.get(k);
+    if (list) list.push(s);
+    else sessionsByMssv.set(k, [s]);
+  }
 
   const exportData = Array.from(checkinsMap.values()).map((c, index) => {
-    const mySessions = sessionCheckins.filter((s) => s.mssv.toUpperCase() === c.mssv.toUpperCase());
+    const mySessions = sessionsByMssv.get(c.mssv) || [];
     const sessionNames = mySessions.length > 0
       ? mySessions.map((s) => s.session_name || s.session_id)
       : ['Buổi chính'];

@@ -20,7 +20,13 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'youth_union' && auth.tier !== 'event_admin') {
+    if (
+      !auth.isSuperAdmin &&
+      auth.tier !== 'super_admin' &&
+      auth.tier !== 'youth_union' &&
+      auth.tier !== 'ctsv' &&
+      auth.tier !== 'event_admin'
+    ) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
@@ -75,12 +81,24 @@ export async function GET(
         }
       : null;
 
-    // If caller is a scoped LCĐ account, enforce that they only inspect students in their own LCĐ
-    if (scope.role === 'lcd' && scope.lcd) {
-      const targetLcd = resolveStudentLcd(resolvedClassId !== 'N/A' ? resolvedClassId : null, cleanMssv);
-      if (targetLcd && targetLcd.code !== scope.lcd.code) {
+    // If caller is not Super Admin / Đoàn HV / CTSV, enforce strict LCĐ scope (reject CLB/single-event admins)
+    const isFullViewer =
+      Boolean(auth.isSuperAdmin) ||
+      auth.tier === 'super_admin' ||
+      auth.tier === 'youth_union' ||
+      auth.tier === 'ctsv';
+
+    if (!isFullViewer) {
+      if (scope.role !== 'lcd' || !scope.lcd) {
         return NextResponse.json(
-          { success: false, error: `Sinh viên ${cleanMssv} thuộc ${targetLcd.shortName}, ngoài phạm vi của ${scope.lcd.shortName}.` },
+          { success: false, error: 'Chỉ Super Admin, Đoàn Học Viện, CTSV hoặc Liên Chi Đoàn chủ quản mới có quyền xem lịch sử sinh viên.' },
+          { status: 403 }
+        );
+      }
+      const targetLcd = resolveStudentLcd(resolvedClassId !== 'N/A' ? resolvedClassId : null, cleanMssv);
+      if (!targetLcd || targetLcd.code !== scope.lcd.code) {
+        return NextResponse.json(
+          { success: false, error: `Sinh viên ${cleanMssv} thuộc ${targetLcd?.shortName || 'đơn vị khác'}, ngoài phạm vi của ${scope.lcd.shortName}.` },
           { status: 403 }
         );
       }

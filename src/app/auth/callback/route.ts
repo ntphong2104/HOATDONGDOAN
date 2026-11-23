@@ -3,6 +3,8 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isValidSchoolEmail, extractMSSV } from '@/lib/utils/extract-mssv';
 import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
 import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
+import { sanitizeRedirectPath, getTrustedOrigin } from '@/lib/security/redirect';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import {
   isPlaceholderName,
   isPlaceholderClass,
@@ -13,26 +15,7 @@ import {
 } from '@/lib/utils/student-profile';
 
 function getPublicOrigin(request: Request): string {
-  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
-  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
-
-  // Prioritize reverse proxy headers (e.g. ptithcm.com)
-  if (
-    forwardedHost &&
-    !forwardedHost.includes('127.0.0.1') &&
-    !forwardedHost.includes('localhost') &&
-    !forwardedHost.includes('0.0.0.0')
-  ) {
-    return `${forwardedProto}://${forwardedHost}`;
-  }
-
-  // In production VPS environment, default to production domain
-  if (process.env.NODE_ENV === 'production') {
-    return 'https://ptithcm.com';
-  }
-
-  const { origin } = new URL(request.url);
-  return origin;
+  return getTrustedOrigin(request);
 }
 
 export async function GET(request: Request) {
@@ -73,11 +56,13 @@ export async function GET(request: Request) {
       // 2. Check registered student or unit in users table (single query reused for upsert decision)
       (async () => {
         try {
+          const safeEmail = sanitizePostgrestValue(email, 120);
+          const safeMssv = studentMssv ? sanitizePostgrestValue(studentMssv, 30) : '';
           const q = adminSupabase
             .from('users')
             .select('mssv, email, full_name, class_id');
-          const res = studentMssv
-            ? await q.or(`email.eq.${email},mssv.eq.${studentMssv}`).maybeSingle()
+          const res = safeMssv
+            ? await q.or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`).maybeSingle()
             : await q.eq('email', email).maybeSingle();
           return res.data;
         } catch { return null; }
@@ -157,9 +142,15 @@ export async function GET(request: Request) {
     }
 
     // If a specific target page was requested (e.g. /events/[id]/register)
-    const nextTarget = searchParams.get('next') || searchParams.get('redirect');
-    if (nextTarget && nextTarget.startsWith('/') && nextTarget !== '/login') {
-      return NextResponse.redirect(`${origin}${nextTarget}`);
+    const rawNext = searchParams.get('next') || searchParams.get('redirect');
+    const safeNext = sanitizeRedirectPath(rawNext, '');
+    if (safeNext) {
+      return NextResponse.redirect(new URL(safeNext, origin));
+    }
+
+    // Super Admin mặc định vào thẳng Tổng quan Điều hành (/super-admin)
+    if (isSuperAdmin) {
+      return NextResponse.redirect(`${origin}/super-admin`);
     }
 
     // Tài khoản sinh viên (có MSSV) mặc định vào Tổng quan cá nhân (/)
@@ -168,9 +159,6 @@ export async function GET(request: Request) {
     }
 
     // Tài khoản đơn vị / phòng ban (không có MSSV) vào thẳng Bàn làm việc tương ứng
-    if (isSuperAdmin) {
-      return NextResponse.redirect(`${origin}/super-admin`);
-    }
     let departmentTier: string | null = getOfficialTierForEmail(email);
     if (!departmentTier) {
       try {

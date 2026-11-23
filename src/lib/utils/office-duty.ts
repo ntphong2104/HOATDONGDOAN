@@ -86,7 +86,15 @@ export async function getOfficeDutyConfig(supabase: any): Promise<OfficeDutyConf
       .eq('key', OFFICE_DUTY_CONFIG_KEY)
       .maybeSingle();
     if (!error && data?.value) {
-      return normalizeConfig(data.value);
+      let parsed = data.value;
+      if (typeof parsed === 'string') {
+        try {
+          parsed = JSON.parse(parsed);
+        } catch {}
+      }
+      if (parsed && typeof parsed === 'object') {
+        return normalizeConfig(parsed);
+      }
     }
   } catch {}
 
@@ -113,7 +121,7 @@ export async function saveOfficeDutyConfig(
       .upsert(
         {
           key: OFFICE_DUTY_CONFIG_KEY,
-          value: JSON.stringify(config),
+          value: config,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'key' }
@@ -272,20 +280,40 @@ export function validateCheckOutWindow(
 
 /**
  * Trích xuất địa chỉ IP client từ request headers (Cloudflare / Nginx / Next.js).
+ * Ở production, ưu tiên cf-connecting-ip / x-real-ip, và tránh tin tưởng IP loopback giả mạo
+ * khi request đi qua reverse proxy (có x-forwarded-for / cf-connecting-ip).
  */
+function sanitizeIp(raw?: string | null): string | null {
+  if (!raw) return null;
+  const cleaned = raw.trim().replace(/^::ffff:/i, '').slice(0, 64);
+  if (!cleaned || !/^[a-f0-9.:]{3,64}$/i.test(cleaned)) return null;
+  return cleaned;
+}
+
 export function extractClientIp(req: Request): string {
   const h = req.headers;
-  const candidates = [
-    h.get('cf-connecting-ip'),
-    h.get('x-real-ip'),
-    h.get('x-forwarded-for')?.split(',')[0],
-  ];
-  for (const raw of candidates) {
-    if (!raw) continue;
-    const cleaned = raw.trim().replace(/^::ffff:/i, '');
-    if (cleaned) return cleaned;
+  const cfIp = sanitizeIp(h.get('cf-connecting-ip'));
+  if (cfIp && cfIp !== '127.0.0.1' && cfIp !== '::1') return cfIp;
+
+  const realIp = sanitizeIp(h.get('x-real-ip'));
+  if (realIp && realIp !== '127.0.0.1' && realIp !== '::1') return realIp;
+
+  const xff = h.get('x-forwarded-for');
+  if (xff) {
+    const parts = xff
+      .split(',')
+      .map((p) => sanitizeIp(p))
+      .filter((p): p is string => Boolean(p));
+    // Rightmost non-loopback address appended by trusted edge/reverse proxy
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (parts[i] !== '127.0.0.1' && parts[i] !== '::1') {
+        return parts[i];
+      }
+    }
+    if (parts[0]) return parts[0];
   }
-  return '127.0.0.1';
+
+  return cfIp || realIp || '127.0.0.1';
 }
 
 /**
@@ -302,7 +330,7 @@ export function isIpAllowedForOffice(
 
   const ip = String(clientIp || '').trim().replace(/^::ffff:/i, '');
   const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === 'localhost';
-  if (isLocal && config.allow_localhost) {
+  if (isLocal && config.allow_localhost && process.env.NODE_ENV !== 'production') {
     return { allowed: true };
   }
 

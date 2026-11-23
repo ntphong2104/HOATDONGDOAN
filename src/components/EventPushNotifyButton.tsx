@@ -35,7 +35,13 @@ export default function EventPushNotifyButton({ eventId, eventName }: EventPushN
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    setTitle(`📢 ${eventName}`);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setTitle(`📢 ${eventName}`);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [eventName]);
 
   useEffect(() => {

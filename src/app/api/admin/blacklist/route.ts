@@ -1,25 +1,40 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { reconcileAllPastEvents, hasActiveManualBan } from '@/lib/utils/blacklist-logic';
+import { hasActiveManualBan } from '@/lib/utils/blacklist-logic';
+import { resolveActorLcdScope } from '@/lib/utils/lcd-auth';
+import { resolveStudentLcd } from '@/lib/utils/lcd';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const auth = await getAuthContext();
-  if (!auth || (!auth.isSuperAdmin && !auth.isEventAdmin)) {
+  if (!auth) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'youth_union' && auth.tier !== 'ctsv' && !auth.isEventAdmin) {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
   }
 
   const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
+  const isFullViewer = Boolean(
+    auth.isSuperAdmin || auth.tier === 'super_admin' || auth.tier === 'youth_union' || auth.tier === 'ctsv'
+  );
+  const scope = isFullViewer ? { role: 'all' as const, lcd: null } : await resolveActorLcdScope(supabase, auth);
+  if (!isFullViewer && scope.role === 'none') {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+  }
 
-  const { data: penalties, error } = await supabase
-    .from('user_penalties')
-    .select('*')
-    .order('is_blacklisted', { ascending: false })
-    .order('missed_count', { ascending: false })
-    .order('updated_at', { ascending: false })
-    .limit(1000);
+  const { data: penalties, error } = await fetchAllRows<any>(() =>
+    supabase
+      .from('user_penalties')
+      .select('*')
+      .order('is_blacklisted', { ascending: false })
+      .order('missed_count', { ascending: false })
+      .order('updated_at', { ascending: false })
+      .order('mssv', { ascending: true })
+  );
 
   if (error) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
@@ -218,8 +233,16 @@ export async function GET() {
     }
   }
 
+  const scopedPenaltyList =
+    !isFullViewer && scope.role === 'lcd' && scope.lcd
+      ? penaltyList.filter((pen: any) => {
+          const lcd = resolveStudentLcd(pen.class_id !== 'PTIT-HCM' ? pen.class_id : null, pen.mssv);
+          return lcd?.code === scope.lcd?.code;
+        })
+      : penaltyList;
+
   return NextResponse.json({
     success: true,
-    data: penaltyList,
+    data: scopedPenaltyList,
   });
 }

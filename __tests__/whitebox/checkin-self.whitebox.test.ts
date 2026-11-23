@@ -17,12 +17,13 @@ const mockQueryBuilder: any = {
   order: jest.fn().mockReturnThis(),
   limit: jest.fn().mockReturnThis(),
   single: jest.fn().mockResolvedValue({ data: {}, error: null }),
-  maybeSingle: jest.fn().mockResolvedValue({ data: {}, error: null }),
+  maybeSingle: jest.fn((...args: any[]) => mockQueryBuilder.single(...args)),
   then: jest.fn().mockImplementation((resolve) => resolve({ data: [], error: null })),
 };
 
 const mockSupabase: any = {
   from: jest.fn().mockReturnValue(mockQueryBuilder),
+  rpc: jest.fn().mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } }),
   auth: {
     signOut: jest.fn().mockResolvedValue({ error: null }),
     getUser: jest.fn().mockResolvedValue({ data: { user: null } }),
@@ -55,8 +56,28 @@ jest.mock('@/lib/security/rate-limiter', () => ({
   checkRateLimit: jest.fn().mockReturnValue({ allowed: true, remaining: 4, resetInSeconds: 10, limit: 5 }),
 }));
 
+jest.mock('@/lib/supabase/auth-helper', () => ({
+  ...jest.requireActual('@/lib/supabase/auth-helper'),
+  getAuthContext: jest.fn().mockResolvedValue({
+    email: 'n22dccn001@student.ptithcm.edu.vn',
+    isSuperAdmin: false,
+    isEventAdmin: false,
+    isChecker: false,
+    isSecurity: false,
+    tier: 'user',
+  }),
+}));
+
+jest.mock('@/lib/constants/user-profile-store', () => ({
+  ...jest.requireActual('@/lib/constants/user-profile-store'),
+  getUserProfileExtraWithFallback: jest.fn().mockResolvedValue({ phone: '0987654321' }),
+}));
+
 jest.mock('@/lib/utils/event-logic', () => ({
+  ...jest.requireActual('@/lib/utils/event-logic'),
   isEventPastDeadline: jest.fn().mockReturnValue(false),
+  isEventTooEarlyForCheckin: jest.fn().mockReturnValue(false),
+  getEarliestCheckinTime: jest.fn().mockReturnValue('07:15'),
 }));
 
 jest.mock('next/server', () => {
@@ -84,13 +105,23 @@ const mockVerify = verifyDynamicToken as jest.Mock;
 const mockRateLimit = checkRateLimit as jest.Mock;
 const mockDeadline = isEventPastDeadline as jest.Mock;
 
+let selfClockStep = 0;
+let selfDateSpy: jest.SpyInstance<number, []> | null = null;
+
 describe('/api/checkin/self additional branches', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    selfClockStep += 1;
+    selfDateSpy = jest.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000 + selfClockStep * 60_000);
     mockRateLimit.mockReturnValue({ allowed: true, remaining: 4, resetInSeconds: 10, limit: 5 });
     mockDeadline.mockReturnValue(false);
 
     ((cookies as unknown as () => any)().get as jest.Mock).mockReturnValue({ value: JSON.stringify({ email: 'n22dccn001@student.ptithcm.edu.vn', tier: 'user' }) });
+  });
+
+  afterEach(() => {
+    selfDateSpy?.mockRestore();
+    selfDateSpy = null;
   });
 
   test('returns 503 during maintenance mode', async () => {
@@ -121,10 +152,14 @@ describe('/api/checkin/self additional branches', () => {
   test('returns 409 for duplicate check-in', async () => {
     mockQueryBuilder.single
       .mockResolvedValueOnce({ data: { value: false }, error: null })
-      .mockResolvedValueOnce({ data: { mssv: 'N22DCCN001', full_name: 'An', class_id: 'D22' }, error: null })
       .mockResolvedValueOnce({ data: { event_id: 'e1', event_name: 'Test', status: 'active', is_active: true }, error: null })
-      .mockResolvedValueOnce({ data: { id: 'existing' }, error: null });
+      .mockResolvedValueOnce({ data: { mssv: 'N22DCCN001', full_name: 'An', class_id: 'D22' }, error: null })
+      .mockResolvedValueOnce({ data: { id: 'existing', role_type: 'participant', attended: false }, error: null });
 
+    mockSupabase.rpc.mockResolvedValueOnce({
+      data: { success: false, is_duplicate: true },
+      error: null,
+    });
     mockVerify.mockReturnValue({ valid: true, role: 'participant' });
 
     const req = new Request('http://l', {

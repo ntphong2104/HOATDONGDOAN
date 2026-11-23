@@ -55,6 +55,10 @@ export async function createAdminClient() {
   const supabaseUrl = getValidUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
   if (!serviceRoleKey) {
+    if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE !== 'phase-production-build') {
+      console.error('[CRITICAL] SUPABASE_SERVICE_ROLE_KEY is missing in production! Refusing silent fallback to anon/user client.');
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY is required in production');
+    }
     return createClient();
   }
 

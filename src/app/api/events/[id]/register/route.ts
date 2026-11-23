@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, canManageEvent, canScanEvent } from '@/lib/supabase/auth-helper';
 import { extractMSSV, isValidMSSV } from '@/lib/utils/extract-mssv';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isEventLockedPast3Days, isEventScheduleExpired, checkCancellationEligibility } from '@/lib/utils/event-logic';
 import { getEventMeta, getRegistrationExtras, saveRegistrationExtra } from '@/lib/constants/event-meta-store';
-import { runWithConcurrency, QueueTimeoutError } from '@/lib/utils/concurrency-queue';
+import { runWithConcurrency, runSerializedByKey, QueueTimeoutError } from '@/lib/utils/concurrency-queue';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 import { getGraduatedCohorts, getGraduatedBlockReason } from '@/lib/utils/graduated-cohorts';
 import { getUserProfileExtraWithFallback, saveUserProfileExtraWithSync } from '@/lib/constants/user-profile-store';
 import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass, getMasterStudentByMssv } from '@/lib/utils/student-profile';
@@ -23,7 +24,18 @@ export async function GET(
   const supabase = (await getSupabase()) || (await createClient());
 
   const mssv = auth?.email ? extractMSSV(auth.email) || auth.email : null;
-  const isAdmin = auth?.isSuperAdmin || auth?.isEventAdmin;
+  const fastAdmin = Boolean(
+    auth &&
+      (auth.isSuperAdmin ||
+        auth.tier === 'super_admin' ||
+        auth.tier === 'youth_union' ||
+        (Array.isArray(auth.managed_events) &&
+          auth.managed_events.some(
+            (r: any) =>
+              String(r?.event_id) === String(resolvedParams.id) &&
+              (r?.role_type === 'event_admin' || r?.role_type === 'checker')
+          )))
+  );
   const lowerAuthEmailForGet = auth?.email ? auth.email.toLowerCase().trim() : null;
   const upperMssvForGet = mssv ? String(mssv).toUpperCase().trim() : null;
 
@@ -36,8 +48,8 @@ export async function GET(
     { data: reg },
     { data: penalty },
     { data: studentRow },
-    { data: list },
-    { data: checkinList }
+    initialListRes,
+    initialCheckinRes
   ] = await Promise.all([
     supabase.from('events').select('*').eq('event_id', resolvedParams.id).maybeSingle(),
     getEventMeta(supabase, resolvedParams.id),
@@ -45,7 +57,19 @@ export async function GET(
     supabase.from('event_registrations').select('*', { count: 'exact', head: true }).eq('event_id', resolvedParams.id).or('role_type.eq.participant,role_type.is.null'),
     getRegistrationExtras(supabase, resolvedParams.id),
     auth?.email
-      ? supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id).eq('email', auth.email).maybeSingle()
+      ? mssv
+        ? supabase
+            .from('event_registrations')
+            .select('*')
+            .eq('event_id', resolvedParams.id)
+            .or(`mssv.eq.${upperMssvForGet},email.eq.${lowerAuthEmailForGet}`)
+            .maybeSingle()
+        : supabase
+            .from('event_registrations')
+            .select('*')
+            .eq('event_id', resolvedParams.id)
+            .eq('email', auth.email)
+            .maybeSingle()
       : Promise.resolve({ data: null }),
     mssv
       ? supabase.from('user_penalties').select('*').eq('mssv', mssv).maybeSingle()
@@ -53,16 +77,32 @@ export async function GET(
     lowerAuthEmailForGet && upperMssvForGet
       ? supabase.from('users').select('class_id').or(`email.eq.${lowerAuthEmailForGet},mssv.eq.${upperMssvForGet}`).maybeSingle()
       : Promise.resolve({ data: null }),
-    isAdmin
-      ? supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id).order('created_at', { ascending: false })
+    fastAdmin
+      ? fetchAllRows<any>(() => supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id).order('created_at', { ascending: false }))
       : Promise.resolve({ data: null }),
-    isAdmin
-      ? supabase.from('check_ins').select('mssv').eq('event_id', resolvedParams.id)
+    fastAdmin
+      ? fetchAllRows<any>(() => supabase.from('check_ins').select('mssv').eq('event_id', resolvedParams.id))
       : Promise.resolve({ data: null })
   ]);
 
   if (eventErr || !rawEvent) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện' }, { status: 404 });
+  }
+
+  // Fallback per-event authorization check if auth didn't carry managed_events or user is event creator
+  let isAdmin = fastAdmin;
+  let list = initialListRes?.data || null;
+  let checkinList = initialCheckinRes?.data || null;
+  if (!isAdmin && auth) {
+    isAdmin = await canScanEvent(auth, resolvedParams.id, rawEvent.created_by ?? null, supabase);
+    if (isAdmin) {
+      const [listRes, ciRes] = await Promise.all([
+        fetchAllRows<any>(() => supabase.from('event_registrations').select('*').eq('event_id', resolvedParams.id).order('created_at', { ascending: false })),
+        fetchAllRows<any>(() => supabase.from('check_ins').select('mssv').eq('event_id', resolvedParams.id)),
+      ]);
+      list = listRes.data || [];
+      checkinList = ciRes.data || [];
+    }
   }
 
   const allSessions = meta.sessions || [];
@@ -126,7 +166,7 @@ export async function GET(
   }
 
   let myRegistration = null;
-  let penaltyStatus = penalty || null;
+  const penaltyStatus = penalty || null;
 
   if (auth?.email && mssv && reg) {
     const extra = regExtras[mssv.toUpperCase()] || {};
@@ -183,12 +223,14 @@ export async function GET(
     });
 
     if (needsAttendedUpdate.length > 0) {
-      Promise.resolve(
-        supabase
-          .from('event_registrations')
-          .update({ attended: true })
-          .eq('event_id', resolvedParams.id)
-          .in('mssv', needsAttendedUpdate)
+      Promise.all(
+        chunkArray(needsAttendedUpdate, 200).map((mChunk) =>
+          supabase
+            .from('event_registrations')
+            .update({ attended: true })
+            .eq('event_id', resolvedParams.id)
+            .in('mssv', mChunk)
+        )
       ).catch(() => {});
     }
   }
@@ -358,19 +400,6 @@ async function handleRegisterPost(
     }, { status: 403 });
   }
 
-  // 2.2. CHECK GRADUATED COHORT BY LCĐ (Khóa đã tốt nghiệp không được đăng ký chương trình mới)
-  const graduatedRules = await getGraduatedCohorts(supabase);
-  if (graduatedRules.length > 0) {
-    const graduatedReason = getGraduatedBlockReason(mssv, null, graduatedRules);
-    if (graduatedReason) {
-      return NextResponse.json({
-        success: false,
-        error: graduatedReason,
-        is_graduated: true,
-      }, { status: 403 });
-    }
-  }
-
   // 2.5. CHECK COHORT RESTRICTION (Giới hạn khóa SV - Cấp Sự Kiện hoặc Cấp Ca) — áp dụng cho cả khán giả và CTV
   const allSessions = meta.sessions || [];
   const selectedSession = requestedSessionId ? allSessions.find((s: any) => s.id === requestedSessionId) : null;
@@ -418,6 +447,19 @@ async function handleRegisterPost(
     ? userProfile.class_id
     : (masterStudent?.class_id || userProfile?.class_id || 'PTIT-HCM');
 
+  // 3.2. CHECK GRADUATED COHORT BY LCĐ (after resolving finalClassId so major-transfer students are checked accurately)
+  const graduatedRules = await getGraduatedCohorts(supabase);
+  if (graduatedRules.length > 0) {
+    const graduatedReason = getGraduatedBlockReason(mssv, finalClassId, graduatedRules);
+    if (graduatedReason) {
+      return NextResponse.json({
+        success: false,
+        error: graduatedReason,
+        is_graduated: true,
+      }, { status: 403 });
+    }
+  }
+
   // 3.5. CHECK LCĐ RESTRICTION (Phân chương trình theo Liên Chi Đoàn — áp dụng cho cả khán giả và CTV)
   const lcdCheck = checkLcdEligibility(meta.allowed_lcds, finalClassId, mssv);
   if (!lcdCheck.eligible) {
@@ -429,17 +471,19 @@ async function handleRegisterPost(
     }, { status: 403 });
   }
 
-  // Check phone number & gender from profile store with Supabase + registration fallback
-  const profileExtra = await getUserProfileExtraWithFallback(supabase, auth.email, mssv);
+  // Check phone number & gender from profile store (bypass negative cache on write path for PM2 cluster consistency)
+  const profileExtra = await getUserProfileExtraWithFallback(supabase, auth.email, mssv, true);
 
   const role_type = body.role_type === 'volunteer' ? 'volunteer' : 'participant';
-  const gender = body.gender || profileExtra?.gender || 'Nam';
-  const phone = body.phone !== undefined && String(body.phone).trim() !== ''
+  const rawGender = String(body.gender || profileExtra?.gender || 'Nam').trim();
+  const gender = ['Nam', 'Nữ', 'Khác'].includes(rawGender) ? rawGender : 'Nam';
+  const rawPhone = body.phone !== undefined && String(body.phone).trim() !== ''
     ? String(body.phone).trim()
     : (profileExtra?.phone || '');
-  const note = body.note || '';
-  const department_id = body.department_id || null;
-  let department_name = body.department_name || null;
+  const phone = rawPhone.slice(0, 20);
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, 500) : '';
+  const department_id = typeof body.department_id === 'string' ? body.department_id.slice(0, 80) : null;
+  let department_name = typeof body.department_name === 'string' ? body.department_name.slice(0, 120) : null;
 
   const resolvedPhone = phone;
 
@@ -518,31 +562,98 @@ async function handleRegisterPost(
     });
   }
 
-  // 4. Register for the event (Insert standard Postgres columns safely)
-  const review_status = role_type === 'volunteer' ? 'pending' : 'accepted';
-
-  const { data: reg, error: regErr } = await supabase
-    .from('event_registrations')
-    .upsert(
-      {
-        event_id: resolvedParams.id,
-        email: auth.email,
-        mssv: mssv,
-        full_name: finalFullName,
-        class_id: finalClassId,
-        role_type,
-        session_id: requestedSessionId,
-        attended: false,
-      },
-      { onConflict: 'event_id,mssv' }
-    )
-    .select()
-    .maybeSingle();
-
-  if (regErr) {
-    console.error('Registration database error:', regErr);
-    return NextResponse.json({ success: false, error: 'Lỗi đăng ký trong cơ sở dữ liệu' }, { status: 500 });
+  // 4. Register for the event (serialize capacity check + insert when limited to prevent race oversubscription)
+  // Preserve existing `attended` flag and prior volunteer review_status so re-submitting cannot reset attendance or rejected CTV status
+  const existingExtras = await getRegistrationExtras(supabase, resolvedParams.id).catch(() => ({} as Record<string, any>));
+  const priorExtra = existingExtras?.[upperMssv] || null;
+  if (role_type === 'volunteer' && priorExtra?.review_status === 'rejected') {
+    return NextResponse.json(
+      { success: false, error: 'Đơn ứng tuyển CTV của bạn cho sự kiện này đã bị từ chối trước đó.' },
+      { status: 403 }
+    );
   }
+  const review_status: 'pending' | 'accepted' | undefined =
+    role_type === 'volunteer'
+      ? priorExtra?.review_status === 'accepted'
+        ? 'accepted'
+        : 'pending'
+      : undefined;
+
+  const executeRegistrationInsert = async (): Promise<NextResponse | { reg: any }> => {
+    const { data: existingOwn } = await supabase
+      .from('event_registrations')
+      .select('id, role_type, attended')
+      .eq('event_id', resolvedParams.id)
+      .eq('mssv', mssv)
+      .maybeSingle();
+
+    if (role_type === 'participant' && event.max_participants && event.max_participants > 0) {
+      const countQuery = supabase
+        .from('event_registrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', resolvedParams.id);
+      const { count: currentParticipantCount } =
+        typeof countQuery.or === 'function'
+          ? await countQuery.or('role_type.eq.participant,role_type.is.null')
+          : await countQuery.eq('role_type', 'participant');
+
+      if ((currentParticipantCount || 0) >= event.max_participants) {
+        if (!existingOwn || (existingOwn.role_type && existingOwn.role_type !== 'participant')) {
+          return NextResponse.json({
+            success: false,
+            error: `Sự kiện đã đủ số lượng sinh viên tham gia quy định (${currentParticipantCount}/${event.max_participants} sinh viên). Cổng đăng ký đã tự động đóng!`,
+          }, { status: 400 });
+        }
+      }
+    }
+
+    const baseRow = {
+      event_id: resolvedParams.id,
+      email: auth.email,
+      mssv,
+      full_name: finalFullName,
+      class_id: finalClassId,
+      role_type,
+      attended: existingOwn?.attended === true,
+    };
+
+    let { data: reg, error: regErr } = await supabase
+      .from('event_registrations')
+      .upsert(
+        { ...baseRow, session_id: requestedSessionId },
+        { onConflict: 'event_id,mssv' }
+      )
+      .select()
+      .maybeSingle();
+
+    // Schema fallback if `session_id` column is not present yet in event_registrations
+    if (regErr && (regErr.code === 'PGRST204' || regErr.code === '42703' || String(regErr.message || '').includes('session_id'))) {
+      const retry = await supabase
+        .from('event_registrations')
+        .upsert(baseRow, { onConflict: 'event_id,mssv' })
+        .select()
+        .maybeSingle();
+      reg = retry.data;
+      regErr = retry.error;
+    }
+
+    if (regErr) {
+      console.error('Registration database error:', regErr);
+      return NextResponse.json({ success: false, error: 'Lỗi đăng ký trong cơ sở dữ liệu' }, { status: 500 });
+    }
+
+    return { reg };
+  };
+
+  const hasCapacityLimit = role_type === 'participant' && Boolean(event.max_participants && event.max_participants > 0);
+  const insertOutcome = hasCapacityLimit
+    ? await runSerializedByKey(`reg_cap_${resolvedParams.id}`, executeRegistrationInsert)
+    : await executeRegistrationInsert();
+
+  if (insertOutcome instanceof NextResponse) {
+    return insertOutcome;
+  }
+  const { reg } = insertOutcome;
 
   // Save extra attributes (departments, review status, notes, session) in persistent meta store
   await saveRegistrationExtra(supabase, resolvedParams.id, mssv, {
@@ -592,10 +703,7 @@ export async function DELETE(
   const supabase = (await getSupabase()) || (await createClient());
 
   const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
-  const isYouthUnion = auth.tier === 'youth_union';
-  const isEventAdmin = auth.isEventAdmin || auth.tier === 'event_admin';
 
-  let isCreator = false;
   let eventRecord: any = null;
   let eventMeta: any = null;
   try {
@@ -609,7 +717,6 @@ export async function DELETE(
     ]);
     eventRecord = event;
     eventMeta = meta;
-    isCreator = !!(event?.created_by && auth.email && event.created_by.toLowerCase() === auth.email.toLowerCase());
   } catch {}
 
   if (eventRecord && isEventLockedPast3Days({ ...eventRecord, sessions: eventMeta?.sessions || [] }) && !isSuperAdmin) {
@@ -622,27 +729,35 @@ export async function DELETE(
     );
   }
 
-  const canManage = isSuperAdmin || isYouthUnion || isEventAdmin || isCreator;
+  // Strictly enforce per-event ownership for admin batch/other-student deletions
+  const canManage = await canManageEvent(auth, resolvedParams.id, eventRecord?.created_by ?? null, supabase);
 
   try {
     const body = await req.json().catch(() => ({}));
 
-    // 1. Bulk delete by array of MSSVs
+    // 1. Bulk delete by array of MSSVs (chunked to avoid PostgREST URI limit)
     if (canManage && Array.isArray(body.mssvs) && body.mssvs.length > 0) {
-      const cleanMssvs = body.mssvs.map((m: any) => String(m).trim().toUpperCase());
-      const { error, count } = await supabase
-        .from('event_registrations')
-        .delete({ count: 'exact' })
-        .eq('event_id', resolvedParams.id)
-        .in('mssv', cleanMssvs);
+      const cleanMssvs = Array.from(
+        new Set<string>(body.mssvs.map((m: any) => String(m).trim().toUpperCase()).filter(Boolean))
+      );
+      let totalDeleted = 0;
+      for (let i = 0; i < cleanMssvs.length; i += 200) {
+        const chunk = cleanMssvs.slice(i, i + 200);
+        const { error, count } = await supabase
+          .from('event_registrations')
+          .delete({ count: 'exact' })
+          .eq('event_id', resolvedParams.id)
+          .in('mssv', chunk);
 
-      if (error) {
-        return NextResponse.json({ success: false, error: 'Lỗi khi xóa hàng loạt đăng ký' }, { status: 500 });
+        if (error) {
+          return NextResponse.json({ success: false, error: 'Lỗi khi xóa hàng loạt đăng ký' }, { status: 500 });
+        }
+        totalDeleted += count ?? chunk.length;
       }
       return NextResponse.json({
         success: true,
-        count: count ?? cleanMssvs.length,
-        message: `Đã xóa thành công ${count ?? cleanMssvs.length} sinh viên khỏi danh sách đăng ký!`,
+        count: totalDeleted,
+        message: `Đã xóa thành công ${totalDeleted} sinh viên khỏi danh sách đăng ký!`,
       });
     }
 

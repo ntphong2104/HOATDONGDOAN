@@ -18,15 +18,30 @@ export default function MaintenanceToggle({
   const [currentMessage, setCurrentMessage] = useState(propMessage ?? '');
   const [savedMessage, setSavedMessage] = useState(propMessage ?? '');
   const [isLoading, setIsLoading] = useState(false);
+  const prevPropIsEnabledRef = React.useRef(propIsEnabled);
+  const prevPropMessageRef = React.useRef(propMessage);
 
   useEffect(() => {
-    if (propIsEnabled !== undefined) {
-      setIsEnabled(propIsEnabled);
-    }
-    if (propMessage !== undefined) {
-      setCurrentMessage(propMessage);
-      setSavedMessage(propMessage);
-    }
+    const enabledChanged = propIsEnabled !== prevPropIsEnabledRef.current;
+    const messageChanged = propMessage !== prevPropMessageRef.current;
+    prevPropIsEnabledRef.current = propIsEnabled;
+    prevPropMessageRef.current = propMessage;
+    if (!enabledChanged && !messageChanged) return;
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (enabledChanged && propIsEnabled !== undefined) {
+        setIsEnabled(propIsEnabled);
+      }
+      if (messageChanged && propMessage !== undefined) {
+        setCurrentMessage(propMessage);
+        setSavedMessage(propMessage);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [propIsEnabled, propMessage]);
 
   useEffect(() => {

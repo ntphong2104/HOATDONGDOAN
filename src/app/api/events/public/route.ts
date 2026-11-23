@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { isEventPastDeadline, isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,18 +22,22 @@ function getPublicEventsCache(): PublicEventsCache {
 }
 
 async function fetchActivePublicEvents(): Promise<any[]> {
-  const supabase = await createClient();
-  const { data: events, error } = await supabase
-    .from('events')
-    .select('*')
-    .order('event_date', { ascending: false });
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
+  const { data: events, error } = await fetchAllRows<any>(() =>
+    supabase
+      .from('events')
+      .select('event_id, event_name, event_date, start_time, end_time, status, is_active, semester, is_registration_open, allowed_cohorts, created_at')
+      .order('event_date', { ascending: false })
+      .order('event_id', { ascending: false })
+  );
 
   if (error) {
     console.error('Fetch public events error:', error);
-    return [];
+    throw error;
   }
 
-  // Fetch sessions for active events to correctly determine deadline
+  // Fetch sessions for active events in chunks to avoid PostgREST URI length limits
   const activeIds = (events || [])
     .filter((ev) => ev.status === 'active' || ev.status !== 'closed')
     .map((ev) => `event_meta_${ev.event_id}`);
@@ -40,20 +45,25 @@ async function fetchActivePublicEvents(): Promise<any[]> {
   const metaMap: Record<string, any> = {};
   if (activeIds.length > 0) {
     try {
-      const { data: metaRows } = await supabase
-        .from('system_settings')
-        .select('key, value')
-        .in('key', activeIds);
-      for (const row of metaRows || []) {
-        const eventId = row.key.replace('event_meta_', '');
-        const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
-        metaMap[eventId] = parsed;
-      }
+      const chunks = chunkArray(activeIds, 100);
+      await Promise.all(
+        chunks.map(async (chunk) => {
+          const { data: metaRows } = await supabase
+            .from('system_settings')
+            .select('key, value')
+            .in('key', chunk);
+          for (const row of metaRows || []) {
+            const eventId = row.key.replace('event_meta_', '');
+            const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+            metaMap[eventId] = parsed;
+          }
+        })
+      );
     } catch {}
   }
 
   return (events || []).filter((ev) => {
-    if (ev.status === 'closed') return false;
+    if (ev.status === 'closed' || ev.status === 'pending') return false;
     const sessions = metaMap[ev.event_id]?.sessions || [];
     if (ev.status === 'active') {
       return !isEventLockedPast3Days({ ...ev, sessions });

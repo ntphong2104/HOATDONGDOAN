@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { reconcileAllPastEvents } from '@/lib/utils/blacklist-logic';
+import { reconcileAllPastEvents } from '@/lib/utils/blacklist-reconcile';
 
 export const dynamic = 'force-dynamic';
 

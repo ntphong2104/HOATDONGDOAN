@@ -26,7 +26,7 @@ describe('Unit Tests: extractMSSV & isValidSchoolEmail', () => {
     test('handles empty or malformed email strings gracefully', () => {
       expect(extractMSSV('')).toBeNull();
       expect(extractMSSV('invalid-email')).toBeNull();
-      expect(extractMSSV('@student.ptithcm.edu.vn')).toBe('');
+      expect(extractMSSV('@student.ptithcm.edu.vn')).toBeNull();
     });
   });
 

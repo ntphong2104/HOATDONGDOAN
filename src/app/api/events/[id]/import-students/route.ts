@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, canManageEvent } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, saveRegistrationExtrasBulk, getRegistrationExtras } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtra } from '@/lib/constants/user-profile-store';
 import { isValidMSSV, extractMSSV } from '@/lib/utils/extract-mssv';
-import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { isEventLockedPast3Days, isApprovedVolunteer } from '@/lib/utils/event-logic';
 import { getMasterStudentByMssv, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
+import { formatVnHHMM, getVietnamDateString, getVietnamHHMM } from '@/lib/utils/vn-date';
 
 export async function POST(
   req: Request,
@@ -21,9 +23,7 @@ export async function POST(
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
   const supabase = (await getSupabase()) || (await createClient());
 
-  const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
-  const isYouthUnion = auth.tier === 'youth_union';
-  const isEventAdmin = auth.isEventAdmin;
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
 
   // 1. Fetch Event & Meta (sessions)
   const [eventResult, meta] = await Promise.all([
@@ -52,24 +52,9 @@ export async function POST(
     );
   }
 
-  const isEventCreator = event.created_by && auth.email && event.created_by.toLowerCase() === auth.email.toLowerCase();
-
-  // Check event-specific role assignment
-  let hasEventRole = false;
-  if (!isSuperAdmin && !isYouthUnion && !isEventAdmin && !isEventCreator) {
-    try {
-      const { data: eventRole } = await supabase
-        .from('event_roles')
-        .select('role_type')
-        .eq('email', auth.email)
-        .eq('event_id', resolvedParams.id)
-        .maybeSingle();
-      hasEventRole = !!eventRole;
-    } catch {}
-  }
-
-  // Allow Super Admin, Youth Union, Event Admin, Event Creator, and anyone with an event role
-  if (!isSuperAdmin && !isYouthUnion && !isEventAdmin && !isEventCreator && !hasEventRole) {
+  // Strictly enforce ownership for THIS specific event (super_admin, youth_union, event creator, or event_admin in event_roles)
+  const allowed = await canManageEvent(auth, resolvedParams.id, event.created_by ?? null, supabase);
+  if (!allowed) {
     return NextResponse.json(
       { success: false, error: 'Bạn không có quyền nạp danh sách cho sự kiện này' },
       { status: 403 }
@@ -145,9 +130,8 @@ export async function POST(
         targetSession = sessions.find((s: any) => s.id === session_id) || null;
       }
       if (!targetSession) {
-        const now = new Date();
-        const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const nowDateStr = getVietnamDateString(0);
+        const nowHHMM = getVietnamHHMM();
         for (const s of sessions) {
           const sDate = s.session_date || '';
           const sStart = s.start_time || '00:00';
@@ -206,22 +190,26 @@ export async function POST(
         }
       });
 
-      // 1. Fetch check_ins for this event
-      const { data: eventCheckins } = await supabase
-        .from('check_ins')
-        .select('mssv, participate_role, checked_by, created_at')
-        .eq('event_id', resolvedParams.id);
+      // 1. Fetch check_ins for this event (paginated)
+      const { data: eventCheckins } = await fetchAllRows<any>(() =>
+        supabase
+          .from('check_ins')
+          .select('mssv, participate_role, checked_by, created_at')
+          .eq('event_id', resolvedParams.id)
+      );
 
       const checkinMap = new Map<string, any>();
       (eventCheckins || []).forEach((c: any) => {
         checkinMap.set(String(c.mssv).trim().toUpperCase(), c);
       });
 
-      // 2. Fetch event_registrations for this event
-      const { data: eventRegs } = await supabase
-        .from('event_registrations')
-        .select('mssv, full_name, class_id, role_type, attended')
-        .eq('event_id', resolvedParams.id);
+      // 2. Fetch event_registrations for this event (paginated)
+      const { data: eventRegs } = await fetchAllRows<any>(() =>
+        supabase
+          .from('event_registrations')
+          .select('mssv, full_name, class_id, role_type, attended')
+          .eq('event_id', resolvedParams.id)
+      );
 
       const regMap = new Map<string, any>();
       (eventRegs || []).forEach((r: any) => {
@@ -237,7 +225,7 @@ export async function POST(
         const checkinRecord = checkinMap.get(mssv);
         const regRecord = regMap.get(mssv);
         const studentExtra = regExtras[mssv] || regExtras[mssv.toUpperCase()];
-        const isCtvVolunteer = regRecord?.role_type === 'volunteer' || Boolean(studentExtra?.department_name || studentExtra?.department_id || studentExtra?.review_status === 'accepted' || excelData?.department_name);
+        const isCtvVolunteer = isApprovedVolunteer(regRecord?.role_type, studentExtra) || Boolean(excelData?.department_name);
         const isOrganizerStaff = regRecord?.role_type === 'organizer' || excelData?.role_type === 'organizer';
         const duplicateCount = rawMssvCounts.get(mssv) || 1;
 
@@ -264,7 +252,7 @@ export async function POST(
         if (isAlreadyCheckedIn) {
           if (targetMode === 'checkin') {
             const timeStr = checkinRecord.created_at
-              ? new Date(checkinRecord.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+              ? formatVnHHMM(new Date(checkinRecord.created_at))
               : '';
             warnings.push(`Đã điểm danh trước đó${timeStr ? ` (lúc ${timeStr})` : ''}`);
             badges.push({ type: 'warning', text: 'Đã điểm danh rồi' });
@@ -478,9 +466,11 @@ export async function POST(
       });
 
     if (userUpserts.length > 0) {
-      try {
-        await supabase.from('users').upsert(userUpserts as any, { onConflict: 'mssv' });
-      } catch {}
+      for (const uChunk of chunkArray(userUpserts, 200)) {
+        try {
+          await supabase.from('users').upsert(uChunk as any, { onConflict: 'mssv' });
+        } catch {}
+      }
     }
 
     // Auto-create departments in event meta if Excel specified custom department names
@@ -516,12 +506,16 @@ export async function POST(
     const now = new Date().toISOString();
     const actorEmail = auth.email;
 
-    // Fetch existing registrations to preserve role_type (e.g., CTV/volunteer)
-    const { data: existingRegs } = await supabase
-      .from('event_registrations')
-      .select('mssv, role_type')
-      .eq('event_id', resolvedParams.id)
-      .in('mssv', cleanedMssvs);
+    // Fetch existing registrations to preserve role_type (chunked for large imports)
+    const existingRegs: any[] = [];
+    for (const mChunk of chunkArray(cleanedMssvs, 200)) {
+      const { data: chunkRegs } = await supabase
+        .from('event_registrations')
+        .select('mssv, role_type')
+        .eq('event_id', resolvedParams.id)
+        .in('mssv', mChunk);
+      if (chunkRegs) existingRegs.push(...chunkRegs);
+    }
 
     const regMap = new Map<string, any>();
     (existingRegs || []).forEach((r: any) => {
@@ -539,7 +533,7 @@ export async function POST(
         const regRecord = regMap.get(mssv);
         const sData = studentDataMap.get(mssv);
         const sExtra = regExtras[mssv] || regExtras[mssv.toUpperCase()];
-        const isCtv = regRecord?.role_type === 'volunteer' || Boolean(sExtra?.department_name || sExtra?.department_id || sExtra?.review_status === 'accepted' || sData?.department_name);
+        const isCtv = isApprovedVolunteer(regRecord?.role_type, sExtra) || Boolean(sData?.department_name);
         const isOrg = regRecord?.role_type === 'organizer' || sData?.role_type === 'organizer';
 
         if (isInternalSession && !isCtv && !isOrg) {
@@ -561,7 +555,7 @@ export async function POST(
         const sData = studentDataMap.get(mssv);
         const regRecord = regMap.get(mssv);
         const sExtra = regExtras[mssv] || regExtras[mssv.toUpperCase()];
-        const isCtv = regRecord?.role_type === 'volunteer' || Boolean(sExtra?.department_name || sExtra?.department_id || sExtra?.review_status === 'accepted' || sData?.department_name);
+        const isCtv = isApprovedVolunteer(regRecord?.role_type, sExtra) || Boolean(sData?.department_name);
         const isOrg = regRecord?.role_type === 'organizer' || sData?.role_type === 'organizer';
 
         let resolvedRole = 'participant';
@@ -618,13 +612,15 @@ export async function POST(
         }
       }
 
-      // Also mark as attended in `event_registrations` if registration exists WITHOUT modifying role_type
+      // Also mark as attended in `event_registrations` in chunks WITHOUT modifying role_type
       try {
-        await supabase
-          .from('event_registrations')
-          .update({ attended: true })
-          .eq('event_id', resolvedParams.id)
-          .in('mssv', eligibleMssvs);
+        for (const mChunk of chunkArray(eligibleMssvs, 200)) {
+          await supabase
+            .from('event_registrations')
+            .update({ attended: true })
+            .eq('event_id', resolvedParams.id)
+            .in('mssv', mChunk);
+        }
       } catch {}
 
       // Also save department info + importer for CTV in checkin mode
@@ -632,7 +628,7 @@ export async function POST(
         const sData = studentDataMap.get(mssv);
         const regRecord = regMap.get(mssv);
         const sExtra = regExtras[mssv] || regExtras[mssv.toUpperCase()];
-        const isCtv = regRecord?.role_type === 'volunteer' || Boolean(sExtra?.department_name || sExtra?.department_id || sExtra?.review_status === 'accepted' || sData?.department_name);
+        const isCtv = isApprovedVolunteer(regRecord?.role_type, sExtra) || Boolean(sData?.department_name);
         return isCtv || isInternalSession || participate_role === 'volunteer';
       });
 
@@ -691,7 +687,7 @@ export async function POST(
           full_name: resolvedFullName,
           class_id: resolvedClassId,
           role_type: resolvedRole,
-          attended: false,
+          attended: existingReg?.attended === true,
           created_at: now,
         };
       });
@@ -742,13 +738,12 @@ export async function POST(
         await saveRegistrationExtrasBulk(supabase, resolvedParams.id, extrasMap);
       }
 
-      // Also save importer info for non-volunteer registrations
+      // Also save importer info for non-volunteer registrations (do NOT stamp volunteer review_status onto participants)
       const nonVolunteerMssvs = cleanedMssvs.filter((mssv) => !volunteerMssvs.includes(mssv));
       if (nonVolunteerMssvs.length > 0) {
         const extrasMap: Record<string, any> = {};
         for (const mssv of nonVolunteerMssvs) {
           extrasMap[mssv] = {
-            review_status: 'accepted',
             note: `Nạp DS bởi ${actorEmail} lúc ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
             imported_by: actorEmail,
             imported_at: now,

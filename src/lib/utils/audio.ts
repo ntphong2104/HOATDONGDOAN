@@ -1,13 +1,26 @@
 class AudioService {
   private ctx: AudioContext | null = null;
 
+  private getAudioContextCtor(): typeof AudioContext | null {
+    if (typeof window === 'undefined') return null;
+    return window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext || null;
+  }
+
   private initCtx() {
+    const AudioCtx = this.getAudioContextCtor();
+    if (!AudioCtx) return;
     if (!this.ctx) {
-      this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.ctx = new AudioCtx();
     }
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      Promise.resolve(this.ctx.resume()).catch(() => {});
     }
+  }
+
+  unlock() {
+    try {
+      this.initCtx();
+    } catch {}
   }
 
   playSuccess() {

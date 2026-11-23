@@ -75,7 +75,7 @@ export async function PATCH(req: Request) {
     .upsert(
       {
         key: 'maintenance_mode',
-        value: JSON.stringify(payloadValue),
+        value: payloadValue,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'key' }
@@ -87,6 +87,15 @@ export async function PATCH(req: Request) {
     : await upsertQuery.single();
 
   if (error) return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
+
+  // Immediately synchronize in-worker middleware cache
+  const gMaint = globalThis as unknown as {
+    __hddMaintenanceCache?: { enabled: boolean; timestamp: number };
+  };
+  gMaint.__hddMaintenanceCache = {
+    enabled: Boolean(payloadValue.enabled),
+    timestamp: Date.now(),
+  };
 
   return NextResponse.json({
     success: true,

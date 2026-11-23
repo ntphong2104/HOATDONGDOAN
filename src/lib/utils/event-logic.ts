@@ -1,6 +1,7 @@
 /**
  * Utility functions for event lifecycle, scheduling, and auto-closing.
  */
+import { formatVnHHMM, vnWallClockToUtcMs } from '@/lib/utils/vn-date';
 
 export interface EventSessionSchedule {
   id?: string;
@@ -27,60 +28,7 @@ export interface EventScheduleInfo {
  * Returns null if invalid.
  */
 export function parseDateStringToTime(dateStr?: string | null, timeStr?: string | null): number | null {
-  if (!dateStr || !dateStr.trim()) return null;
-  const cleanDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.trim();
-  const cleanTime = (timeStr ? timeStr.slice(0, 5) : '22:00').trim();
-  const [hoursStr, minutesStr] = cleanTime.split(':');
-  const hours = parseInt(hoursStr || '22', 10);
-  const minutes = parseInt(minutesStr || '0', 10);
-
-  let year: number, month: number, day: number;
-
-  if (cleanDate.includes('/')) {
-    const parts = cleanDate.split('/');
-    if (parts.length === 3) {
-      if (parts[2].length === 4) {
-        // DD/MM/YYYY
-        day = parseInt(parts[0], 10);
-        month = parseInt(parts[1], 10);
-        year = parseInt(parts[2], 10);
-      } else {
-        // YYYY/MM/DD
-        year = parseInt(parts[0], 10);
-        month = parseInt(parts[1], 10);
-        day = parseInt(parts[2], 10);
-      }
-    } else {
-      return null;
-    }
-  } else if (cleanDate.includes('-')) {
-    const parts = cleanDate.split('-');
-    if (parts.length === 3) {
-      if (parts[0].length === 4) {
-        // YYYY-MM-DD
-        year = parseInt(parts[0], 10);
-        month = parseInt(parts[1], 10);
-        day = parseInt(parts[2], 10);
-      } else {
-        // DD-MM-YYYY
-        day = parseInt(parts[0], 10);
-        month = parseInt(parts[1], 10);
-        year = parseInt(parts[2], 10);
-      }
-    } else {
-      return null;
-    }
-  } else {
-    return null;
-  }
-
-  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
-    return null;
-  }
-
-  const dt = new Date(year, month - 1, day, hours, minutes, 0, 0);
-  const time = dt.getTime();
-  return isNaN(time) ? null : time;
+  return vnWallClockToUtcMs(dateStr, timeStr || '22:00');
 }
 
 /**
@@ -276,10 +224,8 @@ export function getEarliestCheckinTime(
   const startDateTime = getEventStartDateTime(event);
   if (!startDateTime) return null;
 
-  const allowedOpenDate = new Date(startDateTime.getTime() - earlyBufferMinutes * 60 * 1000);
-  const hours = String(allowedOpenDate.getHours()).padStart(2, '0');
-  const minutes = String(allowedOpenDate.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
+  const allowedOpenMs = startDateTime.getTime() - earlyBufferMinutes * 60 * 1000;
+  return formatVnHHMM(allowedOpenMs);
 }
 
 /**
@@ -383,4 +329,52 @@ export function isEventLockedPast3Days(
 
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
   return currentTimeMs - endDateTimeMs > THREE_DAYS_MS;
+}
+
+/**
+ * Safely unwraps a `system_settings.value` payload whether stored natively as
+ * a JSONB object/array/boolean or double-encoded as a JSON string scalar.
+ */
+export function parseJsonSetting<T = any>(raw: unknown): T | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== 'string') return raw as T;
+  let current: unknown = raw;
+  for (let depth = 0; depth < 3 && typeof current === 'string'; depth++) {
+    const trimmed = current.trim();
+    if (!trimmed) return null;
+    try {
+      current = JSON.parse(trimmed);
+    } catch {
+      return depth === 0 ? null : (current as T);
+    }
+  }
+  return current as T;
+}
+
+/**
+ * Determines whether a student registration qualifies as an approved volunteer (CTV).
+ * Strictly requires volunteer role (volunteer / ctv / dept_*) or assigned department
+ * AND `review_status === 'accepted'`.
+ * Regular `participant` registrations NEVER qualify as volunteers even when their
+ * registration metadata carries `review_status: 'accepted'`.
+ */
+export function isApprovedVolunteer(
+  registeredRole?: string | null,
+  extra?: {
+    review_status?: string | null;
+    department_id?: string | null;
+    department_name?: string | null;
+  } | null
+): boolean {
+  const role = String(registeredRole || '').toLowerCase().trim();
+  if (role === 'participant') return false;
+
+  const status = String(extra?.review_status || '').toLowerCase().trim();
+  if (status !== 'accepted') return false;
+
+  if (role === 'volunteer' || role === 'ctv' || role.startsWith('dept_')) {
+    return true;
+  }
+
+  return Boolean(extra?.department_id || extra?.department_name);
 }

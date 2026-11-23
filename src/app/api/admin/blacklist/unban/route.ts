@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { pardonAllInNotes } from '@/lib/utils/blacklist-logic';
 
 export async function POST(req: Request) {
   const auth = await getAuthContext();
@@ -13,8 +14,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Thiếu MSSV' }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const cleanMssv = mssv.trim().toUpperCase();
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
+  const cleanMssv = String(mssv).trim().toUpperCase();
 
   if (hard_delete) {
     const { error } = await supabase
@@ -32,8 +34,16 @@ export async function POST(req: Request) {
       .eq('mssv', cleanMssv)
       .maybeSingle();
 
-    const note = `[Đã mở khóa] Lý do: ${reason || 'Super Admin xóa khỏi Blacklist'} (Bởi ${auth.email} lúc ${new Date().toLocaleString('vi-VN')})`;
-    const updatedNotes = existing?.notes ? `${existing.notes}; ${note}` : note;
+    const nowVn = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const cleanReason = reason || 'Super Admin xóa khỏi Blacklist';
+    const updatedNotes = existing?.notes
+      ? pardonAllInNotes({
+          notesStr: existing.notes,
+          reason: cleanReason,
+          adminEmail: auth.email,
+          nowFormatted: nowVn,
+        })
+      : `[Đã mở khóa] Lý do: ${cleanReason} (Bởi ${auth.email} lúc ${nowVn})`;
 
     const { error } = await supabase
       .from('user_penalties')

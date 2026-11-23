@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import DutyMatrixTable from '@/components/DutyMatrixTable';
 import { useToast } from '@/components/ToastProvider';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 import {
   CalendarIcon,
   ClockIcon,
@@ -78,11 +79,18 @@ export default function OfficeDutyPage() {
   }, [toast]);
 
   useEffect(() => {
-    loadAll();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await loadAll();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadAll]);
 
   const handleShiftChangeWeek = (deltaDays: number) => {
-    const base = weekAnchor || data?.workdays?.[0] || new Date().toISOString().slice(0, 10);
+    const base = weekAnchor || data?.workdays?.[0] || getVietnamDateString(0);
     const next = addDays(base, deltaDays);
     setWeekAnchor(next);
     loadAll(next);

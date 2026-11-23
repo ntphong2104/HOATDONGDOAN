@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { extractMSSV, isStudentPersonalAccount } from '@/lib/utils/extract-mssv';
-import { getUserProfileExtraWithFallback, setBoundedMeResponseCache } from '@/lib/constants/user-profile-store';
+import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
 import {
   isPlaceholderName,
@@ -37,6 +37,10 @@ export default async function HomePage({
             isEventAdmin: ['super_admin', 'youth_union', 'ctsv', 'facility', 'event_admin'].includes(demoUser.tier),
             isChecker: demoUser.tier === 'checker' || Boolean(demoUser.isChecker),
             isSecurity: demoUser.tier === 'security',
+            isOfficeAdmin:
+              demoUser.tier === 'super_admin' ||
+              demoUser.tier === 'office_admin' ||
+              Boolean(demoUser.isOfficeAdmin),
             tier: demoUser.tier || 'user',
           };
         }
@@ -49,6 +53,13 @@ export default async function HomePage({
   }
 
   const resolvedParams = searchParams ? await searchParams : {};
+
+  // Super Admin mặc định vào thẳng Tổng quan Điều hành (/super-admin),
+  // trừ khi chủ động mở Cổng Sinh Viên cá nhân (/?view=student)
+  if ((auth.tier === 'super_admin' || auth.isSuperAdmin) && resolvedParams.view !== 'student') {
+    redirect('/super-admin');
+  }
+
   const isStudent = isStudentPersonalAccount({
     email: auth.email,
     mssv: auth.email.split('@')[0],
@@ -100,6 +111,7 @@ export default async function HomePage({
 
   let history: HistoryItem[] = [];
   let initialRegistrations: any[] = [];
+  let isDutyVolunteer = false;
 
   try {
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
@@ -112,6 +124,7 @@ export default async function HomePage({
       profileExtra,
       { data: historyData },
       { data: regData },
+      dutyVolRows,
     ] = await Promise.all([
       supabase
         .from('users')
@@ -152,7 +165,19 @@ export default async function HomePage({
         `)
         .or(`email.eq.${lowerEmail},mssv.eq.${rawMssv}`)
         .order('created_at', { ascending: false }),
+      Promise.resolve(
+        supabase
+          .from('office_duty_volunteers')
+          .select('mssv')
+          .eq('is_active', true)
+          .or(`email.ilike.${lowerEmail},mssv.eq.${rawMssv}`)
+          .limit(1)
+      )
+        .then((r: any) => (Array.isArray(r?.data) ? r.data : []))
+        .catch(() => []),
     ]);
+
+    isDutyVolunteer = Array.isArray(dutyVolRows) && dutyVolRows.length > 0;
 
     if (dbUser) {
       const realName = (dbUser.full_name && !dbUser.full_name.includes('@')) ? dbUser.full_name : user.full_name;
@@ -242,15 +267,12 @@ export default async function HomePage({
     isSuperAdmin: auth.isSuperAdmin,
     isEventAdmin: auth.isEventAdmin,
     isChecker: auth.isChecker,
+    isOfficeAdmin: Boolean(auth.isOfficeAdmin || auth.isSuperAdmin || auth.tier === 'office_admin'),
+    isDutyVolunteer,
     managed_events: auth.managed_events || [],
     profile_incomplete: profileMissingFields.length > 0,
     profile_missing_fields: profileMissingFields,
   };
-
-  // Warm /api/me server cache during SSR so immediate client /api/me calls return in <0.5ms with 0 DB queries
-  if (profileMissingFields.length === 0) {
-    setBoundedMeResponseCache(auth.email, sessionUser, 15000);
-  }
 
   const rawTab = resolvedParams?.tab;
   const activeStudentTab: 'overview' | 'registered' | 'history' | 'delegate' =
@@ -268,10 +290,11 @@ export default async function HomePage({
       <main className={styles.main}>
         <StudentDashboardClient
           user={user}
-          tier={auth.tier}
+          tier={auth.isSuperAdmin ? 'super_admin' : auth.tier}
           initialHistory={history}
           initialRegistrations={initialRegistrations}
           activeSection={activeStudentTab}
+          isDutyVolunteer={isDutyVolunteer}
         />
       </main>
     </div>

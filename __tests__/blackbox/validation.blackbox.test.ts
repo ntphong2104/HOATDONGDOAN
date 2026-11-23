@@ -1,8 +1,10 @@
 import { POST } from '@/app/api/checkin/route';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }));
 
 describe('Blackbox Tests: Validation & Equivalence Partitioning', () => {
@@ -10,6 +12,7 @@ describe('Blackbox Tests: Validation & Equivalence Partitioning', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    invalidateAuthContextCache();
   });
 
   const setupEnv = () => {
@@ -18,43 +21,116 @@ describe('Blackbox Tests: Validation & Equivalence Partitioning', () => {
         getSession: jest.fn().mockResolvedValue({
           data: { session: { user: { email: 'checker@ptit.edu.vn' } } },
         }),
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: { email: 'checker@ptit.edu.vn' } },
+          error: null,
+        }),
       },
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'events') {
-          return {
+          const eventResult = { data: { event_id: 'ev-1', status: 'active' }, error: null };
+          const chain: any = {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
-            single: jest.fn().mockImplementation(() =>
-              Promise.resolve({ data: { status: 'active' }, error: null })
-            ),
+            ilike: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+            single: jest.fn().mockResolvedValue(eventResult),
+            maybeSingle: jest.fn().mockResolvedValue(eventResult),
           };
+          return chain;
         }
         if (table === 'users') {
           return {
             select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockImplementation((col: string, val: string) => {
+            eq: jest.fn().mockImplementation((_col: string, val: string) => {
               // Valid students in the system
-              if (['N22DCCN001', 'B21DCAT123'].includes(val)) {
-                return {
-                  single: jest.fn().mockResolvedValue({
-                    data: { mssv: val, full_name: 'Sinh Viên Chuẩn', class_id: 'D22CQCN01' },
-                    error: null,
-                  }),
-                };
-              }
-              return { single: jest.fn().mockResolvedValue({ data: null, error: null }) };
+              const res = ['N22DCCN001', 'B21DCAT123'].includes(val)
+                ? { data: { mssv: val, full_name: 'Sinh Viên Chuẩn', class_id: 'D22CQCN01', phone: '0987654321' }, error: null }
+                : { data: null, error: null };
+              return {
+                single: jest.fn().mockResolvedValue(res),
+                maybeSingle: jest.fn().mockResolvedValue(res),
+              };
             }),
           };
+        }
+        if (table === 'event_roles') {
+          const rolesResult = { data: [{ event_id: 'ev-1', role_type: 'checker' }], error: null };
+          const chain: any = {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: { role_type: 'checker' }, error: null }),
+            single: jest.fn().mockResolvedValue({ data: { role_type: 'checker' }, error: null }),
+            then: (resolve: any, reject?: any) => Promise.resolve(rolesResult).then(resolve, reject),
+          };
+          return chain;
         }
         if (table === 'check_ins') {
           return {
             insert: jest.fn().mockResolvedValue({ error: null }),
+            upsert: jest.fn().mockResolvedValue({ error: null }),
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
           };
         }
-        return {};
+        if (table === 'system_settings') {
+          let lastKey = '';
+          const chain: any = {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockImplementation((_col: string, val: string) => {
+              lastKey = val;
+              return chain;
+            }),
+            maybeSingle: jest.fn().mockImplementation(() =>
+              Promise.resolve({
+                data: lastKey.startsWith('event_meta_')
+                  ? { value: JSON.stringify({ require_registration: false }) }
+                  : null,
+                error: null,
+              })
+            ),
+            single: jest.fn().mockImplementation(() =>
+              Promise.resolve({
+                data: lastKey.startsWith('event_meta_')
+                  ? { value: JSON.stringify({ require_registration: false }) }
+                  : null,
+                error: null,
+              })
+            ),
+          };
+          return chain;
+        }
+        if (table === 'event_registrations') {
+          const chain: any = {
+            insert: jest.fn().mockResolvedValue({ data: null, error: null }),
+            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+            update: jest.fn().mockReturnThis(),
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+            then: (resolve: any, reject?: any) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
+          };
+          return chain;
+        }
+        const defaultChain: any = {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          order: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockReturnThis(),
+          upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          then: (resolve: any, reject?: any) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
+        };
+        return defaultChain;
       }),
     };
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
   };
 
   describe('Equivalence Partition: MSSV Parameter', () => {
@@ -86,7 +162,7 @@ describe('Blackbox Tests: Validation & Equivalence Partitioning', () => {
       });
 
       const res = await POST(req);
-      expect(res.status).toBe(404); // Handled safely via parameterized queries
+      expect(res.status).toBe(400); // Rejected early by strict MSSV format validator
       const body = await res.json();
       expect(body.success).toBe(false);
     });

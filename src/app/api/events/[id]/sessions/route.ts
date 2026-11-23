@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, canManageEvent } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, getSessionCheckIns, type EventSession } from '@/lib/constants/event-meta-store';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -47,7 +48,7 @@ export async function GET(
         {
           id: 'main',
           name: 'Buổi chính',
-          session_date: event.event_date || new Date().toISOString().split('T')[0],
+          session_date: event.event_date || getVietnamDateString(0),
           start_time: event.start_time || '07:30',
           end_time: event.end_time || '11:30',
           created_at: new Date().toISOString(),
@@ -112,8 +113,8 @@ export async function POST(
   try {
     const resolvedParams = await params;
     const auth = await getAuthContext();
-    if (!auth || (!auth.isSuperAdmin && !auth.isEventAdmin && auth.tier === 'user')) {
-      return NextResponse.json({ success: false, error: 'Chỉ Ban Tổ Chức mới có quyền quản lý ca sự kiện' }, { status: 403 });
+    if (!auth) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
@@ -123,12 +124,17 @@ export async function POST(
     const [eventResult, meta] = await Promise.all([
       supabase
         .from('events')
-        .select('event_id, event_date, end_time, status')
+        .select('event_id, event_date, end_time, status, created_by')
         .eq('event_id', resolvedParams.id)
         .maybeSingle(),
       getEventMeta(supabase, resolvedParams.id),
     ]);
     const currentEvent = eventResult.data;
+
+    const allowed = await canManageEvent(auth, resolvedParams.id, currentEvent?.created_by ?? null, supabase);
+    if (!allowed) {
+      return NextResponse.json({ success: false, error: 'Chỉ Ban Tổ Chức sự kiện này mới có quyền quản lý ca' }, { status: 403 });
+    }
 
     if (currentEvent && isEventLockedPast3Days({ ...currentEvent, sessions: meta.sessions || [] }) && !isSuperAdmin) {
       return NextResponse.json(
@@ -151,7 +157,7 @@ export async function POST(
       const newSession: EventSession = {
         id: session.id || `session_${Date.now()}`,
         name: session.name.trim(),
-        session_date: session.session_date || new Date().toISOString().split('T')[0],
+        session_date: session.session_date || getVietnamDateString(0),
         start_time: session.start_time || '07:30',
         end_time: session.end_time || '11:30',
         room_id: session.room_id || null,
@@ -197,8 +203,8 @@ export async function DELETE(
   try {
     const resolvedParams = await params;
     const auth = await getAuthContext();
-    if (!auth || (!auth.isSuperAdmin && !auth.isEventAdmin && auth.tier === 'user')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+    if (!auth) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -214,12 +220,17 @@ export async function DELETE(
     const [eventResult, meta] = await Promise.all([
       supabase
         .from('events')
-        .select('event_id, event_date, end_time, status')
+        .select('event_id, event_date, end_time, status, created_by')
         .eq('event_id', resolvedParams.id)
         .maybeSingle(),
       getEventMeta(supabase, resolvedParams.id),
     ]);
     const currentEvent = eventResult.data;
+
+    const allowed = await canManageEvent(auth, resolvedParams.id, currentEvent?.created_by ?? null, supabase);
+    if (!allowed) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
 
     if (currentEvent && isEventLockedPast3Days({ ...currentEvent, sessions: meta.sessions || [] }) && !isSuperAdmin) {
       return NextResponse.json(

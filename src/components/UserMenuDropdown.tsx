@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fetchMeCached, primeClientMeCache, invalidateClientMeCache } from '@/lib/client/me-cache';
 import {
@@ -35,28 +34,35 @@ export default function UserMenuDropdown({
   avatarUrl: propAvatarUrl,
   onLogout,
 }: UserMenuDropdownProps) {
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [imgError, setImgError] = useState(false);
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(propUser || null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
     // Use propUser as initial state immediately for fast render (no redundant /api/me fetch when SSR provided rich user)
     if (propUser && propUser.full_name) {
-      setCurrentUser(propUser);
+      queueMicrotask(() => {
+        if (!cancelled) setCurrentUser(propUser);
+      });
       primeClientMeCache(propUser);
       try {
         sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(propUser));
       } catch {}
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     // Read cached session on client mount
     try {
       const cached = sessionStorage.getItem('ptit_user_session_cache');
       if (cached) {
-        setCurrentUser(JSON.parse(cached));
+        const parsedCached = JSON.parse(cached);
+        queueMicrotask(() => {
+          if (!cancelled) setCurrentUser(parsedCached);
+        });
       }
     } catch {}
 
@@ -64,7 +70,7 @@ export default function UserMenuDropdown({
     if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
       fetchMeCached()
         .then(({ json: data }) => {
-          if (data?.success && data?.data) {
+          if (!cancelled && data?.success && data?.data) {
             setCurrentUser(data.data);
             try {
               sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(data.data));
@@ -75,6 +81,9 @@ export default function UserMenuDropdown({
           console.error('Failed to fetch user profile', err);
         });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [propUser, propUserName, propAvatarUrl]);
 
   // Click outside & Escape key listener
@@ -113,7 +122,7 @@ export default function UserMenuDropdown({
     } catch (e) {
       console.error('Logout error:', e);
     }
-    router.push('/login');
+    window.location.replace('/login');
   };
 
   const displayName =
@@ -143,7 +152,10 @@ export default function UserMenuDropdown({
   const isPureApprover = tier === 'youth_union' || tier === 'ctsv' || tier === 'facility';
 
   const rawAvatar = currentUser?.avatar_url || propAvatarUrl;
-  const hasRealAvatar = !!rawAvatar && !imgError && (rawAvatar.startsWith('http') || rawAvatar.startsWith('/'));
+  const hasRealAvatar =
+    !!rawAvatar &&
+    failedAvatarUrl !== rawAvatar &&
+    (rawAvatar.startsWith('http') || rawAvatar.startsWith('/'));
   const initialLetter = (displayName ? displayName.trim().charAt(0).toUpperCase() : 'U');
 
   const isUnit = isUnitAccount({
@@ -169,7 +181,7 @@ export default function UserMenuDropdown({
             src={rawAvatar}
             alt={displayName}
             className={styles.avatar}
-            onError={() => setImgError(true)}
+            onError={() => setFailedAvatarUrl(rawAvatar || null)}
           />
         ) : (
           <div className={styles.avatarFallback} suppressHydrationWarning>
@@ -203,7 +215,7 @@ export default function UserMenuDropdown({
                 src={rawAvatar}
                 alt={displayName}
                 className={styles.largeAvatar}
-                onError={() => setImgError(true)}
+                onError={() => setFailedAvatarUrl(rawAvatar || null)}
               />
             ) : (
               <div

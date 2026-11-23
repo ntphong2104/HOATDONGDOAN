@@ -2,10 +2,12 @@ import { GET as getEvents, POST as createEvent } from '@/app/api/events/route';
 import { DELETE as deleteEvent } from '@/app/api/events/[id]/route';
 import { GET as getMaintenance, PATCH as toggleMaintenance } from '@/app/api/admin/maintenance/route';
 import { GET as getHistory } from '@/app/api/me/history/route';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }));
 
 describe('Whitebox Tests: Admin & Event API Routes', () => {
@@ -13,6 +15,7 @@ describe('Whitebox Tests: Admin & Event API Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    invalidateAuthContextCache();
   });
 
   const setupMockSupabase = (userEmail: string | null = 'admin@ptit.edu.vn', isSuperAdmin = true) => {
@@ -31,6 +34,7 @@ describe('Whitebox Tests: Admin & Event API Routes', () => {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
             ilike: jest.fn().mockReturnThis(),
+            upsert: jest.fn().mockResolvedValue({ error: null }),
             single: jest.fn().mockResolvedValue({
               data: isSuperAdmin ? { email: userEmail } : null,
               error: null,
@@ -47,13 +51,21 @@ describe('Whitebox Tests: Admin & Event API Routes', () => {
             eq: jest.fn().mockReturnThis(),
             ilike: jest.fn().mockResolvedValue({ data: [], error: null }),
             delete: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+            then: (resolve: any, reject?: any) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
           };
         }
         if (table === 'events') {
+          const eventList = [{ event_id: 'e1', event_name: 'Sự kiện 1', semester: 'HK1', status: 'active' }];
           return {
             select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+            maybeSingle: jest.fn().mockResolvedValue({ data: eventList[0], error: null }),
+            single: jest.fn().mockResolvedValue({ data: eventList[0], error: null }),
             order: jest.fn().mockResolvedValue({
-              data: [{ event_id: 'e1', event_name: 'Sự kiện 1', semester: 'HK1', status: 'active' }],
+              data: eventList,
               error: null,
             }),
             insert: jest.fn().mockImplementation((data: any) => ({
@@ -73,6 +85,12 @@ describe('Whitebox Tests: Admin & Event API Routes', () => {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            or: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: { mssv: 'N22DCCN001' },
+              error: null,
+            }),
             single: jest.fn().mockResolvedValue({
               data: { mssv: 'N22DCCN001' },
               error: null,
@@ -91,13 +109,45 @@ describe('Whitebox Tests: Admin & Event API Routes', () => {
           };
         }
         if (table === 'system_settings') {
-          return {
+          let lastEqVal = '';
+          const settingsChain: any = {
             select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            single: jest.fn().mockResolvedValue({
-              data: { maintenance_mode: false, maintenance_message: 'Đang bảo trì' },
-              error: null,
+            eq: jest.fn().mockImplementation((_col: string, val: string) => {
+              lastEqVal = val;
+              return settingsChain;
             }),
+            in: jest.fn().mockReturnThis(),
+            delete: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({ error: null }),
+              in: jest.fn().mockResolvedValue({ error: null }),
+            }),
+            single: jest.fn().mockImplementation(() =>
+              Promise.resolve({
+                data: lastEqVal === 'maintenance_mode'
+                  ? { maintenance_mode: false, maintenance_message: 'Đang bảo trì' }
+                  : null,
+                error: null,
+              })
+            ),
+            maybeSingle: jest.fn().mockImplementation(() =>
+              Promise.resolve({
+                data: lastEqVal === 'maintenance_mode'
+                  ? { maintenance_mode: false, maintenance_message: 'Đang bảo trì' }
+                  : null,
+                error: null,
+              })
+            ),
+            upsert: jest.fn().mockImplementation(() => ({
+              select: jest.fn().mockReturnThis(),
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { maintenance_mode: true, maintenance_message: 'Đang chốt điểm' },
+                error: null,
+              }),
+              single: jest.fn().mockResolvedValue({
+                data: { maintenance_mode: true, maintenance_message: 'Đang chốt điểm' },
+                error: null,
+              }),
+            })),
             update: jest.fn().mockImplementation(() => ({
               eq: jest.fn().mockReturnThis(),
               select: jest.fn().mockReturnThis(),
@@ -106,15 +156,27 @@ describe('Whitebox Tests: Admin & Event API Routes', () => {
                 error: null,
               }),
             })),
+            then: (resolve: any, reject?: any) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
           };
+          return settingsChain;
         }
         return {
           select: jest.fn().mockReturnThis(),
-          delete: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+          eq: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          delete: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue({ error: null }),
+            in: jest.fn().mockResolvedValue({ error: null }),
+          }),
+          then: (resolve: any, reject?: any) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
         };
       }),
     };
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
   };
 
   describe('Events API (/api/events)', () => {

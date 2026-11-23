@@ -3,15 +3,24 @@ import { createClient, createAdminClient } from './server';
 import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officers-store';
 import type { UserTier } from '@/lib/types';
 import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
+import { isKnownUnitEmail } from '@/lib/constants/units';
 import crypto from 'crypto';
 
-const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
+function getDemoCookieSecret(): string | null {
+  const envSecret = process.env.DEMO_COOKIE_SECRET;
+  if (envSecret && envSecret.length >= 32) return envSecret;
+  if (process.env.NODE_ENV === 'production') return null;
+  return envSecret || 'dev-cookie-secret';
+}
 
 export function parseDemoCookie(cookieVal: string): any | null {
   if (!cookieVal) return null;
   // SECURITY: Only honor demo sessions in development or if explicitly enabled
   const isDemoAllowed = process.env.ENABLE_DEMO_MODE === 'true' || process.env.NODE_ENV === 'development';
   if (!isDemoAllowed) return null;
+
+  const secret = getDemoCookieSecret();
+  if (!secret) return null;
 
   try {
     let str = cookieVal.trim();
@@ -31,7 +40,7 @@ export function parseDemoCookie(cookieVal: string): any | null {
 
     // Verify HMAC signature before trusting the payload
     const expectedSig = crypto
-      .createHmac('sha256', COOKIE_SECRET)
+      .createHmac('sha256', secret)
       .update(payload)
       .digest('hex');
 
@@ -142,6 +151,28 @@ export function invalidateAuthContextCache(email?: string) {
   }
 }
 
+export function invalidateTokenCaches() {
+  verifiedTokenCache.clear();
+  inflightTokenVerify.clear();
+  authContextCache.clear();
+  inflightAuthContext.clear();
+}
+
+export function invalidateTokenCacheForUser(rawToken?: string | null, email?: string | null) {
+  if (rawToken) {
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const cached = verifiedTokenCache.get(tokenHash);
+    if (cached?.email) {
+      invalidateAuthContextCache(cached.email);
+    }
+    verifiedTokenCache.delete(tokenHash);
+    inflightTokenVerify.delete(tokenHash);
+  }
+  if (email) {
+    invalidateAuthContextCache(email);
+  }
+}
+
 function decodeBase64Safe(str: string): string {
   try {
     const padded = str.length % 4 === 0 ? str : str + '='.repeat(4 - (str.length % 4));
@@ -190,6 +221,15 @@ function verifySupabaseJwtLocally(rawToken: string): { email: string; id: string
     if (!payload || typeof payload.exp !== 'number' || payload.exp <= nowSec) {
       return null;
     }
+    if (typeof payload.nbf === 'number' && payload.nbf > nowSec + 5) {
+      return null;
+    }
+    if (payload.role !== 'authenticated') {
+      return null;
+    }
+    if (payload.aud !== 'authenticated') {
+      return null;
+    }
 
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase().trim() : '';
     if (!email) return null;
@@ -204,11 +244,19 @@ function verifySupabaseJwtLocally(rawToken: string): { email: string; id: string
   }
 }
 
+const SB_AUTH_COOKIE_RE = /^sb-[^-]+-auth-token(?:\.(\d+))?$/;
+
 export function extractRawTokenFromCookies(cookieList: Array<{ name: string; value: string }>): string | null {
   try {
     const authCookies = cookieList
-      .filter((c) => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .map((c) => {
+        const m = SB_AUTH_COOKIE_RE.exec(c.name);
+        if (!m) return null;
+        return { cookie: c, chunkIdx: m[1] !== undefined ? parseInt(m[1], 10) : -1 };
+      })
+      .filter((x): x is { cookie: { name: string; value: string }; chunkIdx: number } => x !== null)
+      .sort((a, b) => a.chunkIdx - b.chunkIdx)
+      .map((x) => x.cookie);
 
     if (authCookies.length === 0) return null;
 
@@ -335,7 +383,6 @@ export function extractUserFromCookies(cookieList: Array<{ name: string; value: 
 
 export async function getAuthContext(): Promise<AuthContext | null> {
   let email: string | null = null;
-  let explicitTier: UserTier | null = null;
 
   const supabase = await createClient();
 
@@ -350,11 +397,10 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         const isSuperAdmin = explicitTier === 'super_admin' || lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
         const isYouthUnion = explicitTier === 'youth_union';
         const demoOfficialTier = getOfficialTierForEmail(lowerEmail);
-        const isCtsv = explicitTier === 'ctsv' || demoOfficialTier === 'ctsv';
-        const isFacility = explicitTier === 'facility' || demoOfficialTier === 'facility';
         const isSecurity = explicitTier === 'security' || demoOfficialTier === 'security';
-        const isEventAdmin = isSuperAdmin || isYouthUnion || isCtsv || isFacility || explicitTier === 'event_admin';
-        const isChecker = isEventAdmin || isSecurity || explicitTier === 'checker';
+        const isOfficeAdmin = isSuperAdmin || explicitTier === 'office_admin';
+        const isEventAdmin = isSuperAdmin || isYouthUnion || explicitTier === 'event_admin';
+        const isChecker = isEventAdmin || explicitTier === 'checker';
 
         return {
           email: demoUser.email,
@@ -362,6 +408,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
           isEventAdmin,
           isChecker,
           isSecurity,
+          isOfficeAdmin,
           tier: explicitTier,
           managed_events: Array.isArray(demoUser.managed_events) ? demoUser.managed_events : undefined,
         };
@@ -414,30 +461,6 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     return cached.ctx;
   }
 
-  if (explicitTier) {
-    const lowerEmail = email.toLowerCase();
-    const isSuperAdmin = explicitTier === 'super_admin' || lowerEmail === 'n22dccn158@student.ptithcm.edu.vn';
-    const isYouthUnion = explicitTier === 'youth_union';
-    const explicitOfficialTier = getOfficialTierForEmail(lowerEmail);
-    const isCtsv = explicitTier === 'ctsv' || explicitOfficialTier === 'ctsv';
-    const isFacility = explicitTier === 'facility' || explicitOfficialTier === 'facility';
-    const isSecurity = explicitTier === 'security' || explicitOfficialTier === 'security';
-    const isEventAdmin = isSuperAdmin || isYouthUnion || isCtsv || isFacility || explicitTier === 'event_admin';
-    const isChecker = isEventAdmin || isSecurity || explicitTier === 'checker';
-
-    const ctx: AuthContext = {
-      email,
-      isSuperAdmin,
-      isEventAdmin,
-      isChecker,
-      isSecurity,
-      isOfficeAdmin: isSuperAdmin || explicitTier === 'office_admin',
-      tier: explicitTier,
-    };
-    setBoundedAuthContext(email.toLowerCase(), ctx, 60000);
-    return ctx;
-  }
-
   const lowerEmail = email.toLowerCase().trim();
 
   // In-flight deduplication for concurrent getAuthContext calls of the same user
@@ -453,9 +476,8 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
       // Run all auth queries in parallel for performance (use .eq on lowerEmail to hit B-tree indexes!)
       const [superAdmin, assignedOfficerRole, eventRoles, hasCreatedEvents] = await Promise.all([
-        // Check super_admins table
+        // Check super_admins table (never skip student domains — a @student email may be granted super_admin)
         (async () => {
-          if (isRegularStudent) return null;
           try {
             const q = adminClient.from('super_admins').select('email');
             const { data } = typeof q.eq === 'function'
@@ -494,7 +516,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         })(),
       ]);
 
-      const isSubAdminUnit = lowerEmail.startsWith('lcd') || lowerEmail.startsWith('clb') || lowerEmail.startsWith('doi');
+      const isSubAdminUnit = isKnownUnitEmail(lowerEmail);
 
       // SECURITY: exact-match allowlist only (no substring matching on email)
       const officialTier = getOfficialTierForEmail(lowerEmail);
@@ -505,53 +527,43 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       const isSuperAdmin =
         lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
         !!superAdmin ||
-        hasOfficerTier('super_admin') ||
-        explicitTier === 'super_admin';
+        hasOfficerTier('super_admin');
 
       const isYouthUnion =
         officialTier === 'youth_union' ||
-        hasOfficerTier('youth_union') ||
-        explicitTier === 'youth_union';
+        hasOfficerTier('youth_union');
 
       const isCtsv =
         officialTier === 'ctsv' ||
-        hasOfficerTier('ctsv') ||
-        explicitTier === 'ctsv';
+        hasOfficerTier('ctsv');
 
       const isFacility =
         officialTier === 'facility' ||
-        hasOfficerTier('facility') ||
-        explicitTier === 'facility';
+        hasOfficerTier('facility');
 
       const isSecurity =
         officialTier === 'security' ||
-        hasOfficerTier('security') ||
-        explicitTier === 'security';
+        hasOfficerTier('security');
 
       const isOfficeAdmin =
         isSuperAdmin ||
-        hasOfficerTier('office_admin') ||
-        explicitTier === 'office_admin';
+        hasOfficerTier('office_admin');
 
       const isEventAdmin =
         isSuperAdmin ||
         isYouthUnion ||
-        isCtsv ||
-        isFacility ||
         isSubAdminUnit ||
         hasCreatedEvents ||
         hasOfficerTier('event_admin') ||
-        (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false) ||
-        explicitTier === 'event_admin';
+        (eventRoles?.some((r: any) => r.role_type === 'event_admin') ?? false);
 
       const isChecker =
         isSuperAdmin ||
-        isSecurity ||
+        isYouthUnion ||
         hasOfficerTier('checker') ||
-        (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false) ||
-        explicitTier === 'checker';
+        (eventRoles?.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin') ?? false);
 
-      let tier: UserTier = explicitTier || 'user';
+      let tier: UserTier = 'user';
       if (isSuperAdmin) {
         tier = 'super_admin';
       } else if (isYouthUnion) {
@@ -599,4 +611,114 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   inflightAuthContext.set(lowerEmail, resolveCtxPromise);
   return resolveCtxPromise;
+}
+
+/**
+ * Checks whether the authenticated user owns/administers the specific `eventId`
+ * (Super Admin, Đoàn Học Viện, event creator, or `event_admin` assigned in `event_roles`).
+ * Uses cached `auth.managed_events` + `eventCreatedBy` for 0-DB-round-trip authorization under high load.
+ */
+export async function canManageEvent(
+  auth: AuthContext | null,
+  eventId: string,
+  eventCreatedBy?: string | null,
+  supabase?: any
+): Promise<boolean> {
+  if (!auth) return false;
+  if (auth.isSuperAdmin || auth.tier === 'super_admin' || auth.tier === 'youth_union') {
+    return true;
+  }
+  const lowerEmail = (auth.email || '').toLowerCase().trim();
+  if (!lowerEmail) return false;
+
+  if (eventCreatedBy && eventCreatedBy.toLowerCase().trim() === lowerEmail) {
+    return true;
+  }
+
+  if (Array.isArray(auth.managed_events)) {
+    if (
+      auth.managed_events.some(
+        (r: any) => String(r?.event_id) === String(eventId) && r?.role_type === 'event_admin'
+      )
+    ) {
+      return true;
+    }
+  }
+
+  if (supabase && eventId) {
+    try {
+      if (eventCreatedBy === undefined) {
+        const qEv = supabase.from('events').select('created_by').eq('event_id', eventId);
+        const evRes =
+          typeof qEv.maybeSingle === 'function' ? await qEv.maybeSingle() : await qEv.single();
+        if (evRes?.data?.created_by?.toLowerCase().trim() === lowerEmail) {
+          return true;
+        }
+      }
+      if (!Array.isArray(auth.managed_events)) {
+        const qRole = supabase
+          .from('event_roles')
+          .select('role_type')
+          .eq('event_id', eventId);
+        const roleRes =
+          typeof qRole.ilike === 'function'
+            ? await qRole.ilike('email', lowerEmail)
+            : await qRole.eq('email', lowerEmail);
+        if (
+          Array.isArray(roleRes?.data) &&
+          roleRes.data.some((r: any) => r.role_type === 'event_admin')
+        ) {
+          return true;
+        }
+      }
+    } catch {}
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether the authenticated user can scan / view check-ins / view dynamic QR
+ * for the specific `eventId` (Event managers OR `checker` assigned to this specific event).
+ */
+export async function canScanEvent(
+  auth: AuthContext | null,
+  eventId: string,
+  eventCreatedBy?: string | null,
+  supabase?: any
+): Promise<boolean> {
+  if (await canManageEvent(auth, eventId, eventCreatedBy, supabase)) {
+    return true;
+  }
+  if (!auth) return false;
+
+  if (Array.isArray(auth.managed_events)) {
+    return auth.managed_events.some(
+      (r: any) =>
+        String(r?.event_id) === String(eventId) &&
+        (r?.role_type === 'checker' || r?.role_type === 'event_admin')
+    );
+  }
+
+  if (supabase && eventId) {
+    try {
+      const lowerEmail = (auth.email || '').toLowerCase().trim();
+      const qRole = supabase
+        .from('event_roles')
+        .select('role_type')
+        .eq('event_id', eventId);
+      const roleRes =
+        typeof qRole.ilike === 'function'
+          ? await qRole.ilike('email', lowerEmail)
+          : await qRole.eq('email', lowerEmail);
+      if (
+        Array.isArray(roleRes?.data) &&
+        roleRes.data.some((r: any) => r.role_type === 'checker' || r.role_type === 'event_admin')
+      ) {
+        return true;
+      }
+    } catch {}
+  }
+
+  return false;
 }

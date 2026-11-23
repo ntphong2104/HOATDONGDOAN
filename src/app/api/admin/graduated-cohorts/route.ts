@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { normalizeCohort } from '@/lib/utils/cohort';
 import { isUnitAccount } from '@/lib/utils/extract-mssv';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 import {
   getGraduatedCohortsConfig,
   saveGraduatedCohorts,
@@ -17,9 +18,13 @@ function clearRelatedCaches() {
   const g = globalThis as unknown as {
     __hddRankingCache?: Map<string, unknown>;
     __hddLcdUsersCache?: { expiresAt: number };
+    __hddAdminDashboardCache?: Map<string, unknown>;
+    __hddDiscoverCache?: { expiresAt: number };
   };
   if (g.__hddRankingCache) g.__hddRankingCache.clear();
   if (g.__hddLcdUsersCache) g.__hddLcdUsersCache.expiresAt = 0;
+  if (g.__hddAdminDashboardCache) g.__hddAdminDashboardCache.clear();
+  if (g.__hddDiscoverCache) g.__hddDiscoverCache.expiresAt = 0;
 }
 
 export async function GET() {
@@ -130,6 +135,7 @@ export async function DELETE(req: Request) {
         .from('users')
         .select('mssv, class_id, email')
         .or(`mssv.ilike.N${yy}%,class_id.ilike.D${yy}%,class_id.ilike.E${yy}%`)
+        .order('mssv', { ascending: true })
         .range(offset, offset + pageSize - 1);
       if (error || !rows || rows.length === 0) break;
       for (const u of rows) {
@@ -149,13 +155,11 @@ export async function DELETE(req: Request) {
     if (uniqueMssvs.length > 0) {
       // 2. Find which MSSVs have historical check_ins / registrations / penalties (preserve those rows so old event stats stay intact)
       const protectedSet = new Set<string>();
-      const CHUNK = 400;
-      for (let i = 0; i < uniqueMssvs.length; i += CHUNK) {
-        const chunk = uniqueMssvs.slice(i, i + CHUNK);
+      for (const chunk of chunkArray(uniqueMssvs, 200)) {
         const [ciRes, regRes, penRes] = await Promise.all([
-          supabase.from('check_ins').select('mssv').in('mssv', chunk),
-          supabase.from('event_registrations').select('mssv').in('mssv', chunk),
-          supabase.from('user_penalties').select('mssv').in('mssv', chunk),
+          fetchAllRows<any>(() => supabase.from('check_ins').select('mssv').in('mssv', chunk)),
+          fetchAllRows<any>(() => supabase.from('event_registrations').select('mssv').in('mssv', chunk)),
+          fetchAllRows<any>(() => supabase.from('user_penalties').select('mssv').in('mssv', chunk)),
         ]);
         for (const r of ciRes.data || []) if (r.mssv) protectedSet.add(String(r.mssv).trim().toUpperCase());
         for (const r of regRes.data || []) if (r.mssv) protectedSet.add(String(r.mssv).trim().toUpperCase());
@@ -171,8 +175,7 @@ export async function DELETE(req: Request) {
       const deletableMssvs = uniqueMssvs.filter((m) => !protectedSet.has(m));
       preservedHistoryCount = uniqueMssvs.length - deletableMssvs.length;
 
-      for (let i = 0; i < deletableMssvs.length; i += CHUNK) {
-        const chunk = deletableMssvs.slice(i, i + CHUNK);
+      for (const chunk of chunkArray(deletableMssvs, 200)) {
         const { error: delErr } = await supabase.from('users').delete().in('mssv', chunk);
         if (!delErr) {
           deletedDbCount += chunk.length;

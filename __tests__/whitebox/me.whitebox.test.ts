@@ -1,11 +1,15 @@
 import { GET } from '@/app/api/me/route';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
+import { invalidateMeResponseCache } from '@/lib/constants/user-profile-store';
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }));
 
 jest.mock('@/lib/constants/officers-store', () => ({
+  ROOT_SUPER_ADMIN: 'n22dccn158@student.ptithcm.edu.vn',
   getStoredOfficerRoles: jest.fn().mockResolvedValue([
     { email: 'doanthanhnien@ptithcm.edu.vn', role_tier: 'youth_union', role_title: 'Đoàn Học Viện' },
     { email: 'phongctsv@ptithcm.edu.vn', role_tier: 'ctsv', role_title: 'Phòng CTSV' },
@@ -18,6 +22,8 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
 
   beforeEach(() => {
     jest.clearAllMocks();
+    invalidateAuthContextCache();
+    invalidateMeResponseCache();
   });
 
   const setupMockSupabase = ({
@@ -32,12 +38,20 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
         getSession: jest.fn().mockResolvedValue({
           data: { session: sessionUser ? { user: sessionUser } : null },
         }),
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: sessionUser },
+          error: null,
+        }),
       },
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'users') {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            or: jest.fn().mockReturnThis(),
+            upsert: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: dbUser, error: null }),
             single: jest.fn().mockResolvedValue({ data: dbUser, error: null }),
           };
         }
@@ -45,28 +59,51 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+            maybeSingle: jest.fn().mockResolvedValue({ data: superAdmin, error: null }),
             single: jest.fn().mockResolvedValue({ data: superAdmin, error: null }),
           };
         }
         if (table === 'event_roles') {
-          return {
+          const res = { data: eventRoles, error: null };
+          const chain: any = {
             select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockResolvedValue({ data: eventRoles, error: null }),
+            eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            then: (resolve: any, reject?: any) => Promise.resolve(res).then(resolve, reject),
           };
+          return chain;
         }
         if (table === 'events') {
-          return {
+          const res = { data: allEvents, error: null };
+          const chain: any = {
             select: jest.fn().mockReturnThis(),
-            order: jest.fn().mockResolvedValue({ data: allEvents, error: null }),
+            eq: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+            order: jest.fn().mockResolvedValue(res),
+            then: (resolve: any, reject?: any) => Promise.resolve(res).then(resolve, reject),
           };
+          return chain;
         }
-        return {
+        const defaultChain: any = {
           select: jest.fn().mockReturnThis(),
-          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+          eq: jest.fn().mockReturnThis(),
+          ilike: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockReturnThis(),
+          order: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          then: (resolve: any, reject?: any) => Promise.resolve({ data: [], error: null }).then(resolve, reject),
         };
+        return defaultChain;
       }),
     };
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
   };
 
   test('Branch 1: Returns 401 Unauthorized if no active session', async () => {
@@ -78,13 +115,14 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
     expect(body.success).toBe(false);
   });
 
-  test('Branch 2: Returns 404 Not Found if user is not in users table', async () => {
+  test('Branch 2: Falls back gracefully with 200 if user is not in users table', async () => {
     setupMockSupabase({ dbUser: null });
 
     const res = await GET();
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.success).toBe(false);
+    expect(body.success).toBe(true);
+    expect(body.data.tier).toBe('user');
   });
 
   test('Branch 3: Resolves tier to "super_admin" when user exists in super_admins table', async () => {
@@ -100,12 +138,11 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
     expect(body.data.tier).toBe('super_admin');
   });
 
-  test('Branch 4: Resolves tier to "event_admin" when user has event_admin role in events', async () => {
+  test('Branch 4: Keeps student tier as "user" while granting isEventAdmin and managed_events from event_roles', async () => {
     setupMockSupabase({
       superAdmin: null,
       eventRoles: [
         { event_id: 'e1', role_type: 'event_admin', events: { event_name: 'Ngày hội CN' } },
-        { event_id: 'e2', role_type: 'checker', events: { event_name: 'Hiến máu' } },
       ],
     });
 
@@ -113,8 +150,9 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.data.tier).toBe('event_admin');
-    expect(body.data.managed_events).toHaveLength(2);
+    expect(body.data.tier).toBe('checker');
+    expect(body.data.isEventAdmin).toBe(true);
+    expect(body.data.managed_events).toHaveLength(1);
   });
 
   test('Branch 5: Resolves tier to "checker" when user only has checker roles', async () => {
@@ -144,14 +182,16 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
     expect(body.data.managed_events).toEqual([]);
   });
 
-  test('Branch 7: Returns 404 for non-registered non-student user', async () => {
+  test('Branch 7: Falls back to default user profile (200) for non-registered non-student user', async () => {
     setupMockSupabase({
       sessionUser: { email: 'random@gmail.com' },
       dbUser: null,
     });
 
     const res = await GET();
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.tier).toBe('user');
   });
 
   test('Branch 8: Resolves super_admin tier and fetches all managed events', async () => {

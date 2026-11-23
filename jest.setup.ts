@@ -1,10 +1,33 @@
 import '@testing-library/jest-dom';
 
-// Attach Fetch API to window in JSDOM
+// Test environment defaults for guarded runtime features & secrets
+process.env.ENABLE_DEMO_MODE = process.env.ENABLE_DEMO_MODE || 'true';
+process.env.PERSONAL_QR_SECRET = process.env.PERSONAL_QR_SECRET || 'jest-personal-qr-secret-key';
+process.env.DYNAMIC_QR_SECRET = process.env.DYNAMIC_QR_SECRET || 'jest-dynamic-qr-secret-key';
+process.env.CRON_SECRET = process.env.CRON_SECRET || 'jest-cron-secret-key';
+process.env.NEXT_PUBLIC_SCHOOL_DOMAIN = process.env.NEXT_PUBLIC_SCHOOL_DOMAIN || 'student.ptithcm.edu.vn';
+
+// Attach Fetch API and matchMedia to window in JSDOM
 if (typeof window !== 'undefined') {
   (window as any).Headers = (global as any).Headers;
   (window as any).Request = (global as any).Request;
   (window as any).Response = (global as any).Response;
+
+  if (!window.matchMedia) {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: jest.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      })),
+    });
+  }
 }
 
 // Polyfill Next.js next/navigation for Jest
@@ -60,4 +83,6 @@ class MockAudioContext {
 }
 
 (global as any).AudioContext = MockAudioContext;
-(window as any).AudioContext = MockAudioContext;
+if (typeof window !== 'undefined') {
+  (window as any).AudioContext = MockAudioContext;
+}

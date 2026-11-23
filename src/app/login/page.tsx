@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useGoogleOneTap } from '@/hooks/useGoogleOneTap';
+import { sanitizeRedirectPath } from '@/lib/security/redirect';
 import {
   YouthUnionIcon,
   ShieldCheckIcon,
@@ -163,7 +164,7 @@ function LoginContent() {
   const errorParam = searchParams.get('error');
   const redirectParam = searchParams.get('redirect') || searchParams.get('next');
 
-  const [modalDismissed, setModalDismissed] = useState(false);
+  const [errorParamDismissed, setErrorParamDismissed] = useState(false);
 
   // Activate Google One Tap prompt automatically on page load
   useGoogleOneTap(undefined, (isLoading, err) => {
@@ -171,26 +172,26 @@ function LoginContent() {
     if (err) setOneTapError(err);
   });
 
-  const supabase = createClient();
-  const [isLocal, setIsLocal] = useState(false);
+  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsLocal(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    }
+    let active = true;
 
     // Auto-redirect if already authenticated
     const checkAlreadyLoggedIn = async () => {
       try {
         const res = await fetch('/api/me');
+        if (!active) return;
         if (res.ok) {
           const data = await res.json();
+          if (!active) return;
           if (data.success && data.data) {
-            const redirectParam =
+            const rawRedirect =
               new URLSearchParams(window.location.search).get('redirect') ||
               new URLSearchParams(window.location.search).get('next');
-            if (redirectParam && redirectParam.startsWith('/') && redirectParam !== '/login') {
-              window.location.href = redirectParam;
+            const safeRedirect = sanitizeRedirectPath(rawRedirect, '');
+            if (safeRedirect) {
+              window.location.href = safeRedirect;
             } else if (data.data.tier === 'super_admin' || data.data.isSuperAdmin) {
               window.location.href = '/super-admin';
             } else if (['youth_union', 'ctsv', 'facility'].includes(data.data.tier)) {
@@ -209,29 +210,10 @@ function LoginContent() {
       } catch {}
     };
     checkAlreadyLoggedIn();
+    return () => {
+      active = false;
+    };
   }, []);
-
-  const handleDemoLogin = async (role: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/demo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (role === 'super_admin') window.location.href = '/super-admin';
-        else if (role === 'youth_union') window.location.href = '/admin/proposals';
-        else if (role === 'event_admin' || role === 'lcdcntt') window.location.href = '/admin';
-        else window.location.href = '/';
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogin = async () => {
     setLoading(true);
@@ -240,10 +222,10 @@ function LoginContent() {
       ? currentOrigin
       : currentOrigin.replace(/^http:\/\//, 'https://');
 
-    const callbackUrl =
-      redirectParam && redirectParam.startsWith('/')
-        ? `${secureOrigin}/auth/callback?next=${encodeURIComponent(redirectParam)}`
-        : `${secureOrigin}/auth/callback`;
+    const safeRedirectParam = sanitizeRedirectPath(redirectParam, '');
+    const callbackUrl = safeRedirectParam
+      ? `${secureOrigin}/auth/callback?next=${encodeURIComponent(safeRedirectParam)}`
+      : `${secureOrigin}/auth/callback`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -258,7 +240,13 @@ function LoginContent() {
   };
 
   let modalInfo: { title: string; message: string; type: 'warning' | 'error' } | null = null;
-  if (!modalDismissed) {
+  if (oneTapError) {
+    modalInfo = {
+      title: 'Thông Báo Đăng Nhập',
+      message: oneTapError,
+      type: 'warning',
+    };
+  } else if (!errorParamDismissed) {
     if (errorParam === 'invalid_domain') {
       modalInfo = {
         title: 'Yêu Cầu Email Học Viện',
@@ -277,17 +265,11 @@ function LoginContent() {
         message: 'Không thể xác thực tài khoản Google. Vui lòng thử lại hoặc chọn tài khoản khác.',
         type: 'error',
       };
-    } else if (oneTapError) {
-      modalInfo = {
-        title: 'Thông Báo Đăng Nhập',
-        message: oneTapError,
-        type: 'warning',
-      };
     }
   }
 
   const closeModal = () => {
-    setModalDismissed(true);
+    setErrorParamDismissed(true);
     setOneTapError(null);
     if (typeof window !== 'undefined') {
       window.history.replaceState({}, '', '/login');

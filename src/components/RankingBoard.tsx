@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import * as XLSX from 'xlsx';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   BadgeMedalIcon,
   BuildingIcon,
@@ -62,8 +61,10 @@ export default function RankingBoard({
   // Student tab filters
   const [studentSearch, setStudentSearch] = useState('');
   const [studentLcdFilter, setStudentLcdFilter] = useState('ALL');
+  const requestIdRef = useRef(0);
 
   const fetchRanking = useCallback(async (semesterId?: string, forceRefresh = false) => {
+    const reqId = ++requestIdRef.current;
     const cacheKey = semesterId || 'default';
     const cached = !forceRefresh ? clientRankingCache.get(cacheKey) : undefined;
     const now = Date.now();
@@ -96,6 +97,7 @@ export default function RankingBoard({
       const qs = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`/api/ranking${qs}`, { cache: 'no-store' });
       const json = await res.json();
+      if (reqId !== requestIdRef.current) return;
       if (json.success && json.data) {
         const d = json.data as RankingResponseData;
         const ts = Date.now();
@@ -111,16 +113,25 @@ export default function RankingBoard({
         setErrorMsg(json.error || 'Không thể tải dữ liệu bảng xếp hạng');
       }
     } catch {
-      if (!hasStale) {
+      if (reqId === requestIdRef.current && !hasStale) {
         setErrorMsg('Lỗi kết nối máy chủ khi tải bảng xếp hạng.');
       }
     } finally {
-      setLoading(false);
+      if (reqId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchRanking();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await fetchRanking();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [fetchRanking]);
 
   const handleSemesterChange = (newId: string) => {
@@ -151,47 +162,123 @@ export default function RankingBoard({
     });
   }, [data, studentSearch, studentLcdFilter]);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (!data) return;
-    const wb = XLSX.utils.book_new();
+    const { downloadStyledWorkbook } = await import('@/lib/utils/styled-excel');
+    const semName = data.semester?.name || 'Học kỳ hiện tại';
+    const semRange =
+      data.semester?.start_date && data.semester?.end_date
+        ? ` (${formatDateVN(data.semester.start_date)} – ${formatDateVN(data.semester.end_date)})`
+        : '';
+    const semSubtitle = `Học kỳ: ${semName}${semRange}`;
 
     const lcdSheetRows = data.lcd_rankings.map((r) => ({
-      'Hạng': r.rank,
-      'Mã LCĐ': r.lcd_code,
-      'Liên Chi Đoàn': r.lcd_name,
-      'Tổng lượt tham gia': r.total_participations,
-      'Đoàn viên tham gia (duy nhất)': r.active_students_count,
-      'Tổng Đoàn viên': r.total_students,
-      'Tỷ lệ tham gia (%)': `${r.participation_rate}%`,
-      'Sự kiện đã tổ chức': r.events_organized_count,
+      rank: r.rank,
+      lcd_code: r.lcd_code,
+      lcd_name: r.lcd_name,
+      total_participations: r.total_participations,
+      active_students_count: r.active_students_count,
+      total_students: r.total_students,
+      participation_rate: `${r.participation_rate}%`,
+      events_organized_count: r.events_organized_count,
     }));
-    const wsLcd = XLSX.utils.json_to_sheet(lcdSheetRows);
-    XLSX.utils.book_append_sheet(wb, wsLcd, 'XepHang_LCD');
+    const sumLcdPart = data.lcd_rankings.reduce((s, r) => s + r.total_participations, 0);
+    const sumLcdActive = data.lcd_rankings.reduce((s, r) => s + r.active_students_count, 0);
+    const sumLcdTotal = data.lcd_rankings.reduce((s, r) => s + r.total_students, 0);
+    const sumLcdEvents = data.lcd_rankings.reduce((s, r) => s + r.events_organized_count, 0);
+    const totalLcdRate =
+      sumLcdTotal > 0 ? `${Number(((sumLcdActive / sumLcdTotal) * 100).toFixed(1))}%` : '0%';
 
     const unitSheetRows = data.unit_rankings.map((u) => ({
-      'Hạng': u.rank,
-      'CLB / Đội / Nhóm': u.unit_name,
-      'Số sự kiện tổ chức': u.events_count,
-      'Tổng lượt người tham gia': u.total_participants,
-      'Người tham gia duy nhất': u.unique_participants,
-      'Trung bình lượt / sự kiện': u.avg_participants_per_event,
+      rank: u.rank,
+      unit_name: u.unit_name,
+      events_count: u.events_count,
+      total_participants: u.total_participants,
+      unique_participants: u.unique_participants,
+      avg_participants_per_event: u.avg_participants_per_event,
     }));
-    const wsUnits = XLSX.utils.json_to_sheet(unitSheetRows);
-    XLSX.utils.book_append_sheet(wb, wsUnits, 'XepHang_CLB');
+    const sumUnitEvents = data.unit_rankings.reduce((s, u) => s + u.events_count, 0);
+    const sumUnitParticipants = data.unit_rankings.reduce((s, u) => s + u.total_participants, 0);
 
     const studentSheetRows = data.top_students.map((s) => ({
-      'Hạng': s.rank,
-      'MSSV': s.mssv,
-      'Họ và Tên': s.full_name,
-      'Chi đoàn / Lớp': s.class_id,
-      'Liên Chi Đoàn': s.lcd_name || 'Chưa xác định',
-      'Số sự kiện tham gia': s.participations_count,
+      rank: s.rank,
+      mssv: s.mssv,
+      full_name: s.full_name,
+      class_id: s.class_id,
+      lcd_name: s.lcd_name || 'Chưa xác định',
+      participations_count: s.participations_count,
     }));
-    const wsStudents = XLSX.utils.json_to_sheet(studentSheetRows);
-    XLSX.utils.book_append_sheet(wb, wsStudents, 'Top_SinhVien');
 
     const safeSem = (data.semester?.id || 'hoc-ky').replace(/[^a-zA-Z0-9_-]/g, '_');
-    XLSX.writeFile(wb, `BangXepHang_HoatDongDoan_${safeSem}.xlsx`);
+    downloadStyledWorkbook({
+      filename: `BangXepHang_HoatDongDoan_${safeSem}.xlsx`,
+      sheets: [
+        {
+          sheetName: 'XepHang_8LCD',
+          reportTitle: 'BẢNG XẾP HẠNG PHONG TRÀO 8 LIÊN CHI ĐOÀN',
+          reportSubtitle: semSubtitle,
+          showSignatureBlock: true,
+          columns: [
+            { key: 'rank', label: 'Hạng', align: 'center', width: 9, numFmt: 'rawInt' },
+            { key: 'lcd_code', label: 'Mã LCĐ', align: 'center', width: 13, tone: 'code' },
+            { key: 'lcd_name', label: 'Liên Chi Đoàn', align: 'left', width: 32, tone: 'bold' },
+            { key: 'total_participations', label: 'Tổng Lượt Tham Gia', align: 'right', width: 20, numFmt: 'int' },
+            { key: 'active_students_count', label: 'ĐV Tham Gia (Duy Nhất)', align: 'right', width: 23, numFmt: 'int' },
+            { key: 'total_students', label: 'Tổng Đoàn Viên', align: 'right', width: 17, numFmt: 'int' },
+            { key: 'participation_rate', label: 'Tỷ Lệ Tham Gia (%)', align: 'center', width: 19, tone: 'bold' },
+            { key: 'events_organized_count', label: 'SK Đã Tổ Chức', align: 'right', width: 17, numFmt: 'int' },
+          ],
+          rows: lcdSheetRows,
+          summaryRow: {
+            rank: '',
+            lcd_code: 'TOÀN TRƯỜNG',
+            lcd_name: 'TỔNG CỘNG 8 LIÊN CHI ĐOÀN',
+            total_participations: sumLcdPart,
+            active_students_count: sumLcdActive,
+            total_students: sumLcdTotal,
+            participation_rate: totalLcdRate,
+            events_organized_count: sumLcdEvents,
+          },
+        },
+        {
+          sheetName: 'XepHang_16CLB',
+          reportTitle: 'BẢNG XẾP HẠNG HOẠT ĐỘNG CLB / ĐỘI / NHÓM TRỰC THUỘC',
+          reportSubtitle: semSubtitle,
+          columns: [
+            { key: 'rank', label: 'Hạng', align: 'center', width: 9, numFmt: 'rawInt' },
+            { key: 'unit_name', label: 'CLB / Đội / Nhóm', align: 'left', width: 38, tone: 'bold' },
+            { key: 'events_count', label: 'Số SK Tổ Chức', align: 'right', width: 17, numFmt: 'int' },
+            { key: 'total_participants', label: 'Tổng Lượt Tham Gia', align: 'right', width: 22, numFmt: 'int' },
+            { key: 'unique_participants', label: 'SV Tham Gia Duy Nhất', align: 'right', width: 22, numFmt: 'int' },
+            { key: 'avg_participants_per_event', label: 'TB Lượt / Sự Kiện', align: 'right', width: 20, numFmt: 'float' },
+          ],
+          rows: unitSheetRows,
+          summaryRow: {
+            rank: '',
+            unit_name: `TỔNG CỘNG (${unitSheetRows.length} CLB/Đội/Nhóm)`,
+            events_count: sumUnitEvents,
+            total_participants: sumUnitParticipants,
+            unique_participants: '—',
+            avg_participants_per_event:
+              sumUnitEvents > 0 ? Number((sumUnitParticipants / sumUnitEvents).toFixed(1)) : 0,
+          },
+        },
+        {
+          sheetName: 'Top_DoanVien',
+          reportTitle: 'DANH SÁCH ĐOÀN VIÊN TIÊU BIỂU TÍCH CỰC NHẤT HỌC KỲ',
+          reportSubtitle: semSubtitle,
+          columns: [
+            { key: 'rank', label: 'Hạng', align: 'center', width: 9, numFmt: 'rawInt' },
+            { key: 'mssv', label: 'MSSV', align: 'center', width: 15, tone: 'code' },
+            { key: 'full_name', label: 'Họ Và Tên', align: 'left', width: 28, tone: 'bold' },
+            { key: 'class_id', label: 'Chi Đoàn / Lớp', align: 'center', width: 18 },
+            { key: 'lcd_name', label: 'Liên Chi Đoàn', align: 'left', width: 30 },
+            { key: 'participations_count', label: 'Số Sự Kiện Tham Gia', align: 'right', width: 21, numFmt: 'int' },
+          ],
+          rows: studentSheetRows,
+        },
+      ],
+    });
   };
 
   const renderRankBadge = (rank: number) => {

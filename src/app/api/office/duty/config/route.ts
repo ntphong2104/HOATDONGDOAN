@@ -35,7 +35,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        config,
+        config: isAdmin ? config : { ...config, allowed_ips: [] },
         client_ip: clientIp,
         ip_allowed: ipCheck.allowed,
         ip_reason: ipCheck.reason || null,

@@ -20,16 +20,28 @@ if (!URL_ || !KEY) {
   process.exit(1);
 }
 const APPLY = process.argv.includes('--apply');
+const ALLOW_REMOTE = process.argv.includes('--allow-remote');
+if (APPLY && /supabase\.co/i.test(URL_) && !ALLOW_REMOTE) {
+  console.error('🛑 Chặn an toàn: từ chối ghi trực tiếp lên remote *.supabase.co khi chưa truyền --allow-remote.');
+  process.exit(1);
+}
 const headers = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
 
-const res = await fetch(
-  `${URL_}/rest/v1/event_proposals?select=id,title,organization_unit,participant_count,requires_ctsv_approval,requires_facility_approval,current_stage,status&status=eq.pending`,
-  { headers }
-);
-const rows = await res.json();
-if (!Array.isArray(rows)) {
-  console.error('Lỗi đọc dữ liệu:', rows);
-  process.exit(1);
+const rows = [];
+const pageSize = 1000;
+for (let offset = 0; ; offset += pageSize) {
+  const res = await fetch(
+    `${URL_}/rest/v1/event_proposals?select=id,title,organization_unit,participant_count,requires_ctsv_approval,requires_facility_approval,current_stage,status&status=eq.pending&order=id.asc&limit=${pageSize}&offset=${offset}`,
+    { headers: { ...headers, Range: `${offset}-${offset + pageSize - 1}` } }
+  );
+  if (!res.ok) {
+    console.error('Lỗi đọc dữ liệu:', res.status, await res.text());
+    process.exit(1);
+  }
+  const batch = await res.json();
+  if (!Array.isArray(batch) || batch.length === 0) break;
+  rows.push(...batch);
+  if (batch.length < pageSize) break;
 }
 
 const wrong = rows.filter((p) => (Number(p.participant_count) || 0) <= 50 && p.requires_ctsv_approval);
@@ -39,13 +51,14 @@ for (const p of wrong) {
   const patch = { requires_ctsv_approval: false };
   let note = '';
   if (p.current_stage === 'ctsv') {
-    // Đã qua Đoàn Học Viện → chuyển thẳng sang bước tiếp theo
-    patch.current_stage = p.requires_facility_approval ? 'facility' : 'super_admin';
+    // Nếu có mượn phòng -> chuyển thẳng sang Phòng TC-HC-QT ('facility').
+    // Nếu không mượn phòng -> trả về 'youth_union' để Đoàn Học Viện / Super Admin bấm Duyệt 1 lần tạo sự kiện chính thức (không gán stage cũ 'super_admin').
+    patch.current_stage = p.requires_facility_approval ? 'facility' : 'youth_union';
     note = ` | stage ctsv -> ${patch.current_stage}`;
   }
   console.log(`- ${p.title} [${p.organization_unit}] SV=${p.participant_count} stage=${p.current_stage}${note}`);
   if (APPLY) {
-    const r = await fetch(`${URL_}/rest/v1/event_proposals?id=eq.${p.id}`, {
+    const r = await fetch(`${URL_}/rest/v1/event_proposals?id=eq.${encodeURIComponent(p.id)}`, {
       method: 'PATCH',
       headers: { ...headers, Prefer: 'return=minimal' },
       body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
@@ -53,4 +66,4 @@ for (const p of wrong) {
     console.log(r.ok ? '   ✓ đã sửa' : `   ✗ lỗi ${r.status} ${await r.text()}`);
   }
 }
-if (!APPLY && wrong.length) console.log('\n(Chạy thử — thêm --apply để ghi thật)');
+if (!APPLY && wrong.length) console.log('\n(Chạy thử — thêm --apply [--allow-remote] để ghi thật)');

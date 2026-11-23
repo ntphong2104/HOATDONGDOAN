@@ -57,8 +57,8 @@ describe('Event Proposal Approval Logic (CTSV & Phòng Tổ Chức)', () => {
   describe('getStageLabel', () => {
     test('returns descriptive Vietnamese labels for all stages', () => {
       expect(getStageLabel('ctsv')).toContain('Phòng Công Tác Sinh Viên');
-      expect(getStageLabel('facility')).toContain('Phòng Tổ Chức');
-      expect(getStageLabel('approved')).toContain('Đã duyệt toàn bộ');
+      expect(getStageLabel('facility')).toContain('TC-HC-QT');
+      expect(getStageLabel('approved')).toContain('Đã phê duyệt');
       expect(getStageLabel('rejected')).toContain('Bị từ chối');
     });
   });

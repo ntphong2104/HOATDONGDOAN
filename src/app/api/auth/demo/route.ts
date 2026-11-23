@@ -2,8 +2,17 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { signCookie, DEMO_PROFILES } from '@/lib/auth/demo-cookie';
+import { sanitizeRedirectPath, getTrustedOrigin } from '@/lib/security/redirect';
+
+function getClientIp(req: Request): string {
+  const fwd = req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for');
+  if (fwd) return fwd.split(',')[0].trim();
+  return 'local';
+}
+
 export async function POST(req: Request) {
-  const rateLimit = checkRateLimit('demo_login', 10, 60000);
+  const ip = getClientIp(req);
+  const rateLimit = checkRateLimit(`demo_login_${ip}`, 10, 60000);
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { success: false, error: `Thao tác quá nhanh, thử lại sau ${rateLimit.resetInSeconds} giây` },
@@ -32,21 +41,22 @@ export async function POST(req: Request) {
 
     if (!profile) profile = DEMO_PROFILES.user;
 
-    const cookieStore = await cookies();
-    cookieStore.set('demo_session', signCookie(JSON.stringify(profile)), {
+    const cookieOptions = {
       path: '/',
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
+    };
+
+    const signedCookie = signCookie(JSON.stringify(profile));
+    const cookieStore = await cookies();
+    cookieStore.set('demo_session', signedCookie, cookieOptions);
 
     const targetRedirect = body.redirect || body.next;
-    let redirectUrl =
-      targetRedirect && typeof targetRedirect === 'string' && targetRedirect.startsWith('/')
-        ? targetRedirect
-        : '/';
+    let redirectUrl = sanitizeRedirectPath(targetRedirect, '/');
 
-    if (!targetRedirect || targetRedirect === '/') {
+    if (!targetRedirect || redirectUrl === '/') {
       if (profile.tier === 'checker') redirectUrl = '/scanner';
       if (profile.tier === 'security') redirectUrl = '/security';
       if (profile.tier === 'event_admin') redirectUrl = '/admin/proposals';
@@ -67,27 +77,31 @@ export async function POST(req: Request) {
       }
     );
 
-    response.cookies.set('demo_session', signCookie(JSON.stringify(profile)), {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    response.cookies.set('demo_session', signedCookie, cookieOptions);
 
     return response;
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 }
 
 export async function GET(req: Request) {
-  // SECURITY: Block demo login in production
+  // SECURITY: Block demo login in production unless explicitly enabled
   if (process.env.ENABLE_DEMO_MODE !== 'true') {
     return NextResponse.json({ success: false, error: 'Demo mode is disabled' }, { status: 403 });
   }
 
+  const ip = getClientIp(req);
+  const rateLimit = checkRateLimit(`demo_get_${ip}`, 15, 60000);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Thao tác quá nhanh, thử lại sau ${rateLimit.resetInSeconds} giây` },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.resetInSeconds) } }
+    );
+  }
+
   const { searchParams } = new URL(req.url);
-  const role = searchParams.get('role') || 'super_admin';
+  const role = searchParams.get('role') || 'user';
   const targetRedirect = searchParams.get('redirect') || searchParams.get('next');
 
   let profile = DEMO_PROFILES[role];
@@ -101,14 +115,11 @@ export async function GET(req: Request) {
       managed_events: [],
     };
   }
-  if (!profile) profile = DEMO_PROFILES.super_admin;
+  if (!profile) profile = DEMO_PROFILES.user;
 
-  let redirectUrl =
-    targetRedirect && typeof targetRedirect === 'string' && targetRedirect.startsWith('/')
-      ? targetRedirect
-      : '/';
+  let redirectUrl = sanitizeRedirectPath(targetRedirect, '/');
 
-  if (!targetRedirect || targetRedirect === '/') {
+  if (!targetRedirect || redirectUrl === '/') {
     if (profile.tier === 'checker') redirectUrl = '/scanner';
     if (profile.tier === 'security') redirectUrl = '/security';
     if (profile.tier === 'event_admin') redirectUrl = '/admin';
@@ -118,20 +129,14 @@ export async function GET(req: Request) {
     if (profile.tier === 'super_admin') redirectUrl = '/super-admin';
   }
 
-  const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
-  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
-  const baseOrigin =
-    process.env.NODE_ENV === 'production'
-      ? 'https://ptithcm.com'
-      : forwardedHost && !forwardedHost.includes('127.0.0.1') && !forwardedHost.includes('localhost')
-      ? `${forwardedProto}://${forwardedHost}`
-      : new URL(req.url).origin;
+  const baseOrigin = getTrustedOrigin(req);
 
   const res = NextResponse.redirect(new URL(redirectUrl, baseOrigin));
   res.cookies.set('demo_session', signCookie(JSON.stringify(profile)), {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
     maxAge: 60 * 60 * 24 * 7,
   });
 

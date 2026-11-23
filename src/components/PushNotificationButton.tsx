@@ -54,6 +54,10 @@ function detectDeviceType(): 'ios_pwa' | 'android' | 'desktop' | 'unknown' {
 const CLIENT_INBOX_TTL_MS = 60_000;
 let clientInboxCache: { notifications: InboxNotification[]; unreadCount: number; ts: number } | null = null;
 
+function writeClientInboxCache(notifications: InboxNotification[], unreadCount: number) {
+  clientInboxCache = { notifications, unreadCount, ts: Date.now() };
+}
+
 export default function PushNotificationButton() {
   const router = useRouter();
   const toast = useToast();
@@ -124,14 +128,21 @@ export default function PushNotificationButton() {
   }, []);
 
   useEffect(() => {
-    loadInbox();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await loadInbox();
+    })();
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
         loadInbox();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [loadInbox]);
 
   // Sync PWA Home Screen red badge (iOS 16.4+ PWA, Android, Desktop) with unread count
@@ -152,20 +163,23 @@ export default function PushNotificationButton() {
 
   const handleMarkRead = async (item: InboxNotification) => {
     if (!item.is_read) {
-      setNotifications((prev) => {
-        const next = prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n));
-        const nextCount = next.filter((n) => !n.is_read).length;
-        clientInboxCache = { notifications: next, unreadCount: nextCount, ts: Date.now() };
-        setUnreadCount(nextCount);
-        return next;
-      });
+      const next = notifications.map((n) => (n.id === item.id ? { ...n, is_read: true } : n));
+      const nextCount = next.filter((n) => !n.is_read).length;
+      writeClientInboxCache(next, nextCount);
+      setNotifications(next);
+      setUnreadCount(nextCount);
       fetch('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: item.id }),
       }).catch(() => {});
     }
-    if (item.url && item.url.startsWith('/')) {
+    if (
+      item.url &&
+      item.url.startsWith('/') &&
+      !item.url.startsWith('//') &&
+      !item.url.startsWith('/\\')
+    ) {
       setOpen(false);
       router.push(item.url);
     }
@@ -174,11 +188,9 @@ export default function PushNotificationButton() {
   const handleMarkAllRead = async () => {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
     if (unreadIds.length === 0) return;
-    setNotifications((prev) => {
-      const next = prev.map((n) => ({ ...n, is_read: true }));
-      clientInboxCache = { notifications: next, unreadCount: 0, ts: Date.now() };
-      return next;
-    });
+    const next = notifications.map((n) => ({ ...n, is_read: true }));
+    writeClientInboxCache(next, 0);
+    setNotifications(next);
     setUnreadCount(0);
     try {
       await fetch('/api/notifications', {
@@ -224,7 +236,14 @@ export default function PushNotificationButton() {
   }, []);
 
   useEffect(() => {
-    checkLocalSubscription();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await checkLocalSubscription();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [checkLocalSubscription]);
 
   useEffect(() => {

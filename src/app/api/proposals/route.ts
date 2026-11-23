@@ -13,6 +13,8 @@ import { deriveBookingSchedule, describeConflict, findInternalOverlaps, describe
 import { checkRoomConflicts } from '@/lib/utils/room-booking-server';
 import { normalizeAllowedCohorts } from '@/lib/utils/cohort';
 import { normalizeAllowedLcds } from '@/lib/utils/lcd';
+import { vnWallClockToDate } from '@/lib/utils/vn-date';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 import type { EventProposal } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -27,53 +29,63 @@ export async function GET(req: Request) {
   const stage = searchParams.get('stage');
   const status = searchParams.get('status');
 
-  const isSuperAdmin = auth.isSuperAdmin;
+  const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
   const isApprover =
     isSuperAdmin ||
     auth.tier === 'youth_union' ||
     auth.tier === 'ctsv' ||
-    auth.tier === 'facility' ||
-    auth.tier === 'security';
+    auth.tier === 'facility';
+  const isSecurity = auth.tier === 'security';
 
   try {
     const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || await createClient();
 
-    let query = supabase
-      .from('event_proposals')
-      .select('*')
-      .neq('status', 'deleted')
-      .order('start_datetime', { ascending: true });
+    const buildProposalsQuery = () => {
+      let query = supabase
+        .from('event_proposals')
+        .select('*')
+        .neq('status', 'deleted')
+        .order('start_datetime', { ascending: true })
+        .order('id', { ascending: true });
 
-    if (!isApprover) {
-      query = query.eq('created_by', auth.email);
-    }
+      if (!isApprover && !isSecurity) {
+        query = query.eq('created_by', auth.email);
+      } else if (isSecurity && !isApprover) {
+        query = query.eq('status', 'approved');
+      }
 
-    if (stage) {
-      query = query.eq('current_stage', stage);
-    }
+      if (stage) {
+        query = query.eq('current_stage', stage);
+      }
 
-    if (status) {
-      query = query.eq('status', status);
-    }
+      if (status) {
+        query = query.eq('status', status);
+      }
+      return query;
+    };
 
     const [
       { data: proposals, error },
       handoverDbResult,
       { data: allRatings }
     ] = await Promise.all([
-      query,
+      fetchAllRows<any>(buildProposalsQuery),
       getHandoverRegistryFromDb(supabase).catch(() => ({})),
-      supabase.from('unit_ratings').select('*')
+      fetchAllRows<any>(() => supabase.from('unit_ratings').select('*').order('id', { ascending: true }))
     ]);
 
     if (!error && proposals) {
-      let handoverDb: any = handoverDbResult;
+      const handoverDb: any = handoverDbResult;
 
-      // Auto-heal: Only for approved proposals missing a real event (rare case)
-      const needsHeal = proposals.filter(p =>
-        (p.status === 'approved' || p.current_stage === 'approved') &&
-        (!p.created_event_id || p.created_event_id.startsWith('ev-'))
-      );
+      // Auto-heal: Only for stale approved proposals (>2m old) missing a real event so GET never races with live approve POST
+      const STALE_HEAL_THRESHOLD_MS = 120_000;
+      const nowMs = Date.now();
+      const needsHeal = proposals.filter((p) => {
+        if (p.status !== 'approved' && p.current_stage !== 'approved') return false;
+        if (p.created_event_id && !p.created_event_id.startsWith('ev-')) return false;
+        const updatedAtMs = p.updated_at ? Date.parse(p.updated_at) : 0;
+        return !updatedAtMs || nowMs - updatedAtMs > STALE_HEAL_THRESHOLD_MS;
+      });
 
       if (needsHeal.length > 0) {
         await Promise.all(needsHeal.map(async (prop) => {
@@ -126,7 +138,16 @@ export async function GET(req: Request) {
       const proposalsWithRatings = proposals.map((prop) => {
         const local = storedMap.get(prop.id);
         const dbHandover = handoverDb[prop.id];
-        const summary = summarizeUnitRatings(allRatings || [], prop.organization_unit || 'Đơn vị tổ chức');
+        const rawSummary = summarizeUnitRatings(allRatings || [], prop.organization_unit || 'Đơn vị tổ chức');
+        const summary = isSuperAdmin
+          ? rawSummary
+          : {
+              ...rawSummary,
+              recent_low_ratings: (rawSummary.recent_low_ratings || []).map((r: any) => ({
+                ...r,
+                rater_email: undefined,
+              })),
+            };
         return {
           ...prop,
           key_status: dbHandover?.key_status || prop.key_status || local?.key_status || 'pending',
@@ -143,8 +164,10 @@ export async function GET(req: Request) {
 
   // Fallback to local proposals store
   let stored = getStoredProposals().filter(p => p.status !== ('deleted' as any));
-  if (!isApprover) {
-    stored = stored.filter(p => p.created_by.toLowerCase() === auth.email.toLowerCase());
+  if (!isApprover && !isSecurity) {
+    stored = stored.filter(p => (p.created_by || '').toLowerCase() === auth.email.toLowerCase());
+  } else if (isSecurity && !isApprover) {
+    stored = stored.filter(p => p.status === 'approved');
   }
   if (stage) {
     stored = stored.filter(p => p.current_stage === stage);
@@ -165,6 +188,19 @@ export async function POST(req: Request) {
   const auth = await getAuthContext();
   if (!auth) {
     return NextResponse.json({ success: false, error: 'Vui lòng đăng nhập' }, { status: 401 });
+  }
+
+  const canSubmitProposal =
+    Boolean(auth.isSuperAdmin) ||
+    auth.tier === 'super_admin' ||
+    auth.tier === 'youth_union' ||
+    Boolean(auth.isEventAdmin) ||
+    auth.tier === 'event_admin';
+  if (!canSubmitProposal) {
+    return NextResponse.json(
+      { success: false, error: 'Chỉ Cán bộ đơn vị (LCĐ/CLB/Khoa) hoặc Ban Tổ Chức mới có quyền nộp kế hoạch sự kiện.' },
+      { status: 403 }
+    );
   }
 
   const rateLimit = checkRateLimit(`proposal_create_${auth.email}`, 5, 60000);
@@ -254,10 +290,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Vui lòng nhập đầy đủ thời gian bắt đầu và kết thúc' }, { status: 400 });
     }
 
-    const startDatetime = new Date(`${start_date}T${start_time}`);
-    const endDatetime = new Date(`${end_date}T${end_time}`);
+    const startDatetime = vnWallClockToDate(start_date, start_time || '07:30');
+    const endDatetime = vnWallClockToDate(end_date, end_time || '11:30');
 
-    if (isNaN(startDatetime.getTime()) || isNaN(endDatetime.getTime())) {
+    if (!startDatetime || !endDatetime || isNaN(startDatetime.getTime()) || isNaN(endDatetime.getTime())) {
       return NextResponse.json({ success: false, error: 'Định dạng ngày giờ không hợp lệ' }, { status: 400 });
     }
 
@@ -358,7 +394,7 @@ export async function POST(req: Request) {
     );
 
     // Insert proposal
-    let insertPayload: any = {
+    const insertPayload: any = {
       title: sanitizedTitle,
       created_by: auth.email,
       organization_unit: sanitizeInput(finalOrganizationUnit) || 'Liên Chi Đoàn',
@@ -438,8 +474,14 @@ export async function POST(req: Request) {
       }
     } catch {}
 
-    // If Supabase unavailable or returned no data, persist to local store
+    // In production, never silently fall back to worker-local JSON when DB insert fails
     if (!newProposal) {
+      if (process.env.NODE_ENV === 'production' && process.env.ENABLE_DEMO_MODE !== 'true') {
+        return NextResponse.json(
+          { success: false, error: 'Không thể lưu kế hoạch vào cơ sở dữ liệu. Vui lòng thử lại sau.' },
+          { status: 500 }
+        );
+      }
       const generatedId = `prop-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
       newProposal = {
         ...insertPayload,

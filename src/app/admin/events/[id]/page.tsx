@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import Header from '@/components/Header';
 import StatCard from '@/components/StatCard';
 import ExcelExportButton from '@/components/ExcelExportButton';
+import { downloadStyledSheet } from '@/lib/utils/styled-excel';
 import DataTable from '@/components/DataTable';
 import DynamicEventQRModal from '@/components/DynamicEventQRModal';
 import EventBulkImportModal from '@/components/EventBulkImportModal';
@@ -39,7 +39,11 @@ import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepart
 import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin, isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 import styles from './page.module.css';
+
+const createDeptId = () => `dept_${Date.now()}`;
+const nowTimestampMs = () => Date.now();
 
 // Prevent Excel Formula Injection (CWE-1236)
 const sanitizeForExcel = (val: any): any => {
@@ -55,7 +59,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
     (typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '') ||
     '';
   const resolvedParams = { id: rawId };
-  const [supabase] = useState(() => createClient());
+  const isMountedRef = useRef(true);
   const [event, setEvent] = useState<Event | null>(null);
   const [checkins, setCheckins] = useState<CheckinExportRow[]>([]);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -120,21 +124,10 @@ export default function EventDetailPage({ params }: { params?: any }) {
   const [copiedRecruitment, setCopiedRecruitment] = useState(false);
   const [showDynamicQR, setShowDynamicQR] = useState(false);
   const [projectorRole, setProjectorRole] = useState<'participant' | 'volunteer' | 'organizer'>('participant');
+  const [projectorSessionId, setProjectorSessionId] = useState<string | undefined>(undefined);
   const [showCapacityModal, setShowCapacityModal] = useState(false);
   const [newCapacity, setNewCapacity] = useState<number>(0);
   const [savingCapacity, setSavingCapacity] = useState(false);
-
-  useEffect(() => {
-    fetchData(true);
-
-    const handlePageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) {
-        fetchData(false);
-      }
-    };
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [resolvedParams.id]);
 
   const fetchData = async (isInitial = false) => {
     if (!resolvedParams.id) return;
@@ -152,6 +145,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
       ]);
 
       const meData = await meRes.json();
+      if (!isMountedRef.current) return;
       if (meData.success && meData.data) {
         setCurrentUser(meData.data);
       } else {
@@ -167,20 +161,11 @@ export default function EventDetailPage({ params }: { params?: any }) {
         ratingRes.json().catch(() => ({ success: false })),
         sessionsRes.json().catch(() => ({ success: false })),
       ]);
+      if (!isMountedRef.current) return;
 
       if (eventData.success && eventData.data) {
         setEvent(eventData.data);
         setDepartments(eventData.data.departments || []);
-      } else {
-        const { data: directEvent } = await supabase
-          .from('events')
-          .select('*')
-          .eq('event_id', resolvedParams.id)
-          .single();
-        if (directEvent) {
-          setEvent(directEvent);
-          setDepartments(directEvent.departments || []);
-        }
       }
 
       if (checkinsData.success) {
@@ -209,9 +194,30 @@ export default function EventDetailPage({ params }: { params?: any }) {
     } catch (err) {
       console.error('Failed to fetch event data:', err);
     } finally {
-      if (isInitial) setLoading(false);
+      if (isInitial && isMountedRef.current) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await fetchData(true);
+    })();
+
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        fetchData(false);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => {
+      cancelled = true;
+      isMountedRef.current = false;
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [resolvedParams.id]);
 
   const handleAddDepartment = async () => {
     const isLocked = isEventLockedPast3Days(eventWithSessions || event);
@@ -227,7 +233,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
     }
 
     const newDept: EventDepartment = {
-      id: `dept_${Date.now()}`,
+      id: createDeptId(),
       name: newDeptName.trim(),
       quota: Number(newDeptQuota) || 5,
       gender_req: newDeptGender,
@@ -416,10 +422,10 @@ export default function EventDetailPage({ params }: { params?: any }) {
       if (typeof window !== 'undefined') {
         if ('BroadcastChannel' in window) {
           const bc = new BroadcastChannel('hdd_event_sync');
-          bc.postMessage({ eventId, ts: Date.now() });
+          bc.postMessage({ eventId, ts: nowTimestampMs() });
           bc.close();
         }
-        localStorage.setItem('hdd_event_sync', JSON.stringify({ eventId, ts: Date.now() }));
+        localStorage.setItem('hdd_event_sync', JSON.stringify({ eventId, ts: nowTimestampMs() }));
       }
     } catch {}
   };
@@ -485,42 +491,44 @@ export default function EventDetailPage({ params }: { params?: any }) {
     }
 
     try {
-      const XLSX = await import('xlsx');
       const cleanCtvList = ctvList.filter((r) => isValidMSSV(r.mssv || ''));
       const data = cleanCtvList.map((r, index) => ({
-        'STT': index + 1,
-        'Mã Số Sinh Viên': r.mssv,
-        'Họ Và Tên': sanitizeForExcel(r.full_name || ''),
-        'Lớp Niên Chế': sanitizeForExcel(r.class_id || ''),
-        'Ban Ứng Tuyển': sanitizeForExcel(r.department_name || 'Cộng tác viên'),
-        'Giới Tính': r.gender || 'Nam',
-        'Số Điện Thoại / Zalo': sanitizeForExcel(r.phone || ''),
-        'Kỹ Năng / Ghi Chú': sanitizeForExcel(r.note || ''),
-        'Trạng Thái Duyệt': r.review_status === 'accepted' ? 'Trúng Tuyển' : r.review_status === 'rejected' ? 'Từ Chối' : 'Chờ Duyệt',
-        'Thời Gian Nộp Đơn': r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+        stt: index + 1,
+        mssv: r.mssv,
+        full_name: r.full_name || '',
+        class_id: r.class_id || '',
+        department_name: r.department_name || 'Cộng tác viên',
+        gender: r.gender || 'Nam',
+        phone: r.phone || '',
+        note: r.note || '',
+        review_status:
+          r.review_status === 'accepted'
+            ? 'Trúng Tuyển'
+            : r.review_status === 'rejected'
+            ? 'Từ Chối'
+            : 'Chờ Duyệt',
+        created_at: r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
       }));
 
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      const columnWidths = [
-        { wch: 6 },
-        { wch: 15 },
-        { wch: 25 },
-        { wch: 15 },
-        { wch: 22 },
-        { wch: 12 },
-        { wch: 18 },
-        { wch: 30 },
-        { wch: 16 },
-        { wch: 22 },
-      ];
-      worksheet['!cols'] = columnWidths;
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Ung_Tuyen_CTV');
-      XLSX.writeFile(
-        workbook,
-        `Danh_Sach_Ung_Tuyen_CTV_${event?.event_name ? event.event_name.replace(/[^a-zA-Z0-9]/g, '_') : 'Su_Kien'}.xlsx`
-      );
+      downloadStyledSheet({
+        filename: `Danh_Sach_Ung_Tuyen_CTV_${event?.event_name ? event.event_name.replace(/[^a-zA-Z0-9]/g, '_') : 'Su_Kien'}.xlsx`,
+        sheetName: 'Ung_Tuyen_CTV',
+        reportTitle: 'DANH SÁCH ỨNG VIÊN ĐĂNG KÝ CỘNG TÁC VIÊN (CTV)',
+        reportSubtitle: `${event?.event_name || 'Sự kiện'}  •  Tổng số: ${data.length} ứng viên`,
+        columns: [
+          { key: 'stt', label: 'STT', align: 'center', width: 7, numFmt: 'rawInt' },
+          { key: 'mssv', label: 'MSSV', align: 'center', width: 15, tone: 'code' },
+          { key: 'full_name', label: 'Họ Và Tên', align: 'left', width: 25, tone: 'bold' },
+          { key: 'class_id', label: 'Lớp Niên Chế', align: 'center', width: 16 },
+          { key: 'department_name', label: 'Ban Ứng Tuyển', align: 'left', width: 22 },
+          { key: 'gender', label: 'Giới Tính', align: 'center', width: 12 },
+          { key: 'phone', label: 'SĐT / Zalo', align: 'center', width: 17 },
+          { key: 'note', label: 'Kỹ Năng / Ghi Chú', align: 'left', width: 32 },
+          { key: 'review_status', label: 'Trạng Thái Duyệt', align: 'center', width: 17 },
+          { key: 'created_at', label: 'Thời Gian Nộp Đơn', align: 'center', width: 21 },
+        ],
+        rows: data,
+      });
     } catch (e) {
       console.error(e);
       alert('Lỗi xuất file Excel');
@@ -541,7 +549,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
         body: JSON.stringify({
           session: {
             name: newSessionName.trim(),
-            session_date: newSessionDate || (event?.event_date || new Date().toISOString().split('T')[0]),
+            session_date: newSessionDate || (event?.event_date || getVietnamDateString(0)),
             start_time: newSessionStartTime || '07:30',
             end_time: newSessionEndTime || '11:30',
             session_type: newSessionType,
@@ -1993,6 +2001,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => {
+                    setProjectorSessionId(undefined);
                     setProjectorRole('participant');
                     setShowDynamicQR(true);
                   }}
@@ -2017,6 +2026,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
                 <button
                   onClick={() => {
+                    setProjectorSessionId(undefined);
                     setProjectorRole('volunteer');
                     setShowDynamicQR(true);
                   }}
@@ -2041,6 +2051,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
                 <button
                   onClick={() => {
+                    setProjectorSessionId(undefined);
                     setProjectorRole('organizer');
                     setShowDynamicQR(true);
                   }}
@@ -2072,6 +2083,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
             eventId={event.event_id}
             eventName={event.event_name}
             targetRole={projectorRole}
+            initialSessionId={projectorSessionId}
             isOpen={showDynamicQR}
             onClose={() => setShowDynamicQR(false)}
           />
@@ -2425,6 +2437,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     fetchUrl={`/api/events/${resolvedParams.id}/checkins`}
                     filename={`DiemDanh_${event.event_name.replace(/\s+/g, '_')}`}
                     label="Xuất File Excel"
+                    reportTitle="DANH SÁCH ĐOÀN VIÊN ĐIỂM DANH SỰ KIỆN"
+                    reportSubtitle={event.event_name}
+                    sheetName="DiemDanh_SuKien"
                   />
                 </div>
                 {isSuperAdmin && (
@@ -2938,7 +2953,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   type="button"
                   onClick={() => {
                     setNewSessionName(`Buổi ${sessions.length + 1}`);
-                    setNewSessionDate(event?.event_date || new Date().toISOString().split('T')[0]);
+                    setNewSessionDate(event?.event_date || getVietnamDateString(0));
                     setShowAddSessionModal(true);
                   }}
                   style={{
@@ -3105,6 +3120,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       <button
                         type="button"
                         onClick={() => {
+                          setProjectorSessionId(s.id);
+                          setProjectorRole(s.session_type === 'internal' ? 'volunteer' : 'participant');
                           setShowDynamicQR(true);
                         }}
                         style={{
@@ -3182,24 +3199,39 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 {participantRegistrations.length > 0 && (
                   <button
                     type="button"
-                    onClick={async () => {
+                    onClick={() => {
                       try {
-                        const XLSX = await import('xlsx');
                         const cleanRegs = participantRegistrations.filter((r: any) => isValidMSSV(r.mssv || ''));
                         const data = cleanRegs.map((r: any, i: number) => ({
-                          'STT': i + 1,
-                          'MSSV': r.mssv || '',
-                          'Họ Và Tên': sanitizeForExcel(r.full_name || ''),
-                          'Lớp': sanitizeForExcel(r.class_id || ''),
-                          'Vai Trò': r.role_type === 'volunteer' ? 'CTV' : r.role_type === 'organizer' ? 'BTC' : 'Người tham gia',
-                          'Trạng Thái': r.attended ? 'Đã điểm danh' : 'Chưa điểm danh',
-                          'Ngày Đăng Ký': r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+                          stt: i + 1,
+                          mssv: r.mssv || '',
+                          full_name: r.full_name || '',
+                          class_id: r.class_id || '',
+                          role_type:
+                            r.role_type === 'volunteer'
+                              ? 'Cộng tác viên (CTV)'
+                              : r.role_type === 'organizer'
+                              ? 'Ban tổ chức (BTC)'
+                              : 'Người tham gia',
+                          status: r.attended ? 'Đã điểm danh' : 'Chưa điểm danh',
+                          created_at: r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
                         }));
-                        const ws = XLSX.utils.json_to_sheet(data);
-                        ws['!cols'] = [{ wch: 5 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
-                        const wb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(wb, ws, 'Danh_Sach_Dang_Ky');
-                        XLSX.writeFile(wb, `Danh_Sach_Dang_Ky_${event?.event_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Su_Kien'}.xlsx`);
+                        downloadStyledSheet({
+                          filename: `Danh_Sach_Dang_Ky_${event?.event_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Su_Kien'}.xlsx`,
+                          sheetName: 'Danh_Sach_Dang_Ky',
+                          reportTitle: 'DANH SÁCH SINH VIÊN ĐĂNG KÝ THAM GIA SỰ KIỆN',
+                          reportSubtitle: `${event?.event_name || 'Sự kiện'}  •  Tổng số: ${data.length} sinh viên`,
+                          columns: [
+                            { key: 'stt', label: 'STT', align: 'center', width: 7, numFmt: 'rawInt' },
+                            { key: 'mssv', label: 'MSSV', align: 'center', width: 15, tone: 'code' },
+                            { key: 'full_name', label: 'Họ Và Tên', align: 'left', width: 28, tone: 'bold' },
+                            { key: 'class_id', label: 'Lớp Niên Chế', align: 'center', width: 16 },
+                            { key: 'role_type', label: 'Vai Trò', align: 'center', width: 22 },
+                            { key: 'status', label: 'Trạng Thái', align: 'center', width: 18 },
+                            { key: 'created_at', label: 'Ngày Đăng Ký', align: 'center', width: 21 },
+                          ],
+                          rows: data,
+                        });
                       } catch { alert('Lỗi xuất file Excel'); }
                     }}
                     style={{
@@ -4111,23 +4143,39 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 {unattendedRegistrations.length > 0 && (
                   <button
                     type="button"
-                    onClick={async () => {
+                    onClick={() => {
                       try {
-                        const XLSX = await import('xlsx');
                         const noshowList = unattendedRegistrations;
                         const data = noshowList.map((r: any, i: number) => ({
-                          'STT': i + 1,
-                          'MSSV': r.mssv || '',
-                          'Họ Và Tên': sanitizeForExcel(r.full_name || ''),
-                          'Lớp': sanitizeForExcel(r.class_id || ''),
-                          'Vai Trò': r.role_type === 'volunteer' ? 'CTV' : r.role_type === 'organizer' ? 'BTC' : 'Người tham gia',
-                          'Ngày Đăng Ký': r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+                          stt: i + 1,
+                          mssv: r.mssv || '',
+                          full_name: r.full_name || '',
+                          class_id: r.class_id || '',
+                          role_type:
+                            r.role_type === 'volunteer'
+                              ? 'Cộng tác viên (CTV)'
+                              : r.role_type === 'organizer'
+                              ? 'Ban tổ chức (BTC)'
+                              : 'Người tham gia',
+                          status: 'Vắng / Chưa điểm danh',
+                          created_at: r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
                         }));
-                        const ws = XLSX.utils.json_to_sheet(data);
-                        ws['!cols'] = [{ wch: 5 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
-                        const wb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(wb, ws, 'Chua_Diem_Danh');
-                        XLSX.writeFile(wb, `Chua_Diem_Danh_${event?.event_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Su_Kien'}.xlsx`);
+                        downloadStyledSheet({
+                          filename: `Chua_Diem_Danh_${event?.event_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Su_Kien'}.xlsx`,
+                          sheetName: 'Chua_Diem_Danh',
+                          reportTitle: 'DANH SÁCH ĐĂNG KÝ CHƯA ĐIỂM DANH (VẮNG MẶT)',
+                          reportSubtitle: `${event?.event_name || 'Sự kiện'}  •  Tổng số: ${data.length} sinh viên chưa điểm danh`,
+                          columns: [
+                            { key: 'stt', label: 'STT', align: 'center', width: 7, numFmt: 'rawInt' },
+                            { key: 'mssv', label: 'MSSV', align: 'center', width: 15, tone: 'code' },
+                            { key: 'full_name', label: 'Họ Và Tên', align: 'left', width: 28, tone: 'bold' },
+                            { key: 'class_id', label: 'Lớp Niên Chế', align: 'center', width: 16 },
+                            { key: 'role_type', label: 'Vai Trò', align: 'center', width: 22 },
+                            { key: 'status', label: 'Trạng Thái', align: 'center', width: 22 },
+                            { key: 'created_at', label: 'Ngày Đăng Ký', align: 'center', width: 21 },
+                          ],
+                          rows: data,
+                        });
                       } catch { alert('Lỗi xuất file Excel'); }
                     }}
                     style={{

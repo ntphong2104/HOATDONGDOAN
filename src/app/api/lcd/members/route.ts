@@ -16,6 +16,7 @@ import {
   isPlaceholderClass,
   isPlaceholderName,
 } from '@/lib/utils/student-profile';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -216,10 +217,13 @@ export async function GET(req: Request) {
 
     const [allStudents, { data: delegatesData }, graduatedRules] = await Promise.all([
       loadAllStudentsCached(supabase),
-      supabase
-        .from('class_delegates')
-        .select('*')
-        .order('granted_at', { ascending: false }),
+      fetchAllRows<any>(() =>
+        supabase
+          .from('class_delegates')
+          .select('*')
+          .order('granted_at', { ascending: false })
+          .order('id', { ascending: false })
+      ),
       getGraduatedCohorts(supabase, true),
     ]);
 

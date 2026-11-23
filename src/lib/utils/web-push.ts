@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import type { LcdCode } from '@/lib/utils/lcd';
 import { runSerializedByKey } from '@/lib/utils/concurrency-queue';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 
 /**
  * Zero-dependency Web Push implementation using Node.js built-in `crypto` + native `fetch`.
@@ -287,6 +288,29 @@ export function encryptWebPushPayload(
   return Buffer.concat([salt, rsBuf, Buffer.from([asPublic.length]), asPublic, encrypted]);
 }
 
+const ALLOWED_PUSH_HOST_SUFFIXES = [
+  'fcm.googleapis.com',
+  'android.googleapis.com',
+  'updates.push.services.mozilla.com',
+  'web.push.apple.com',
+  'notify.windows.com',
+  'wns.windows.com',
+];
+
+export function isTrustedPushEndpoint(rawEndpoint: string): boolean {
+  try {
+    const parsed = new URL(rawEndpoint);
+    if (parsed.protocol !== 'https:') return false;
+    if (parsed.username || parsed.password) return false;
+    const host = parsed.hostname.toLowerCase();
+    return ALLOWED_PUSH_HOST_SUFFIXES.some(
+      (suffix) => host === suffix || host.endsWith(`.${suffix}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Sends a single encrypted Web Push message to one device subscription.
  */
@@ -297,6 +321,10 @@ export async function sendSingleWebPush(
   ttlSeconds = 86400
 ): Promise<{ ok: boolean; status: number; expired: boolean; error?: string }> {
   try {
+    if (!isTrustedPushEndpoint(subscription.endpoint)) {
+      return { ok: false, status: 0, expired: true, error: 'Untrusted push endpoint blocked' };
+    }
+
     const bodyJson = JSON.stringify({
       title: payload.title.slice(0, 120),
       body: payload.body.slice(0, 320),
@@ -322,6 +350,7 @@ export async function sendSingleWebPush(
     try {
       const res = await fetch(subscription.endpoint, {
         method: 'POST',
+        redirect: 'error',
         headers: {
           Authorization: authorization,
           'Content-Encoding': 'aes128gcm',
@@ -400,21 +429,25 @@ export async function dispatchPushToSubscriptions(
   }
 
   if (supabase && expiredEndpoints.length > 0) {
-    try {
-      await supabase
-        .from('push_subscriptions')
-        .update({ is_active: false, updated_at: new Date().toISOString() })
-        .in('endpoint', expiredEndpoints);
-    } catch {}
+    for (const chunk of chunkArray(expiredEndpoints, 20)) {
+      try {
+        await supabase
+          .from('push_subscriptions')
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .in('endpoint', chunk);
+      } catch {}
+    }
   }
 
   if (supabase && deliveredEndpoints.length > 0) {
-    try {
-      await supabase
-        .from('push_subscriptions')
-        .update({ last_used_at: new Date().toISOString() })
-        .in('endpoint', deliveredEndpoints.slice(0, 200));
-    } catch {}
+    for (const chunk of chunkArray(deliveredEndpoints, 20)) {
+      try {
+        await supabase
+          .from('push_subscriptions')
+          .update({ last_used_at: new Date().toISOString() })
+          .in('endpoint', chunk);
+      } catch {}
+    }
   }
 
   return {
@@ -526,14 +559,22 @@ export async function notifyUsersByEmail(
       target_value: clean.join(','),
     }).catch(() => {});
 
-    const { data, error } = await supabase
-      .from('push_subscriptions')
-      .select('id, endpoint, p256dh, auth, user_email')
-      .eq('is_active', true)
-      .in('user_email', clean);
+    const subscriptions: any[] = [];
+    for (const emailChunk of chunkArray(clean, 200)) {
+      const { data, error } = await fetchAllRows<any>(() =>
+        supabase
+          .from('push_subscriptions')
+          .select('id, endpoint, p256dh, auth, user_email')
+          .eq('is_active', true)
+          .in('user_email', emailChunk)
+      );
+      if (!error && data.length > 0) {
+        subscriptions.push(...data);
+      }
+    }
 
-    if (error || !data || data.length === 0) return { total: 0, delivered: 0, failed: 0 };
-    return await dispatchPushToSubscriptions(supabase, data, payload);
+    if (subscriptions.length === 0) return { total: 0, delivered: 0, failed: 0 };
+    return await dispatchPushToSubscriptions(supabase, subscriptions, payload);
   } catch {
     return { total: 0, delivered: 0, failed: 0 };
   }
@@ -560,18 +601,26 @@ export async function notifyUsersByMssv(
         body: payload.body,
         url: payload.url || null,
         target_type: 'mssv',
-        target_value: clean.slice(0, 80).join(','),
+        target_value: clean.join(','),
       }).catch(() => {});
     }
 
-    const { data, error } = await supabase
-      .from('push_subscriptions')
-      .select('id, endpoint, p256dh, auth, mssv')
-      .eq('is_active', true)
-      .in('mssv', clean);
+    const subscriptions: any[] = [];
+    for (const mssvChunk of chunkArray(clean, 200)) {
+      const { data, error } = await fetchAllRows<any>(() =>
+        supabase
+          .from('push_subscriptions')
+          .select('id, endpoint, p256dh, auth, mssv')
+          .eq('is_active', true)
+          .in('mssv', mssvChunk)
+      );
+      if (!error && data.length > 0) {
+        subscriptions.push(...data);
+      }
+    }
 
-    if (error || !data || data.length === 0) return { total: 0, delivered: 0, failed: 0 };
-    return await dispatchPushToSubscriptions(supabase, data, payload);
+    if (subscriptions.length === 0) return { total: 0, delivered: 0, failed: 0 };
+    return await dispatchPushToSubscriptions(supabase, subscriptions, payload);
   } catch {
     return { total: 0, delivered: 0, failed: 0 };
   }
@@ -597,17 +646,19 @@ export async function notifyStudentsByScope(
       target_value: isScoped ? allowedLcds.join(',') : null,
     }).catch(() => {});
 
-    let query = supabase
-      .from('push_subscriptions')
-      .select('id, endpoint, p256dh, auth, lcd_code, mssv')
-      .eq('is_active', true)
-      .not('mssv', 'is', null);
+    const { data, error } = await fetchAllRows<any>(() => {
+      let query = supabase
+        .from('push_subscriptions')
+        .select('id, endpoint, p256dh, auth, lcd_code, mssv')
+        .eq('is_active', true)
+        .not('mssv', 'is', null);
 
-    if (isScoped) {
-      query = query.in('lcd_code', allowedLcds);
-    }
+      if (isScoped) {
+        query = query.in('lcd_code', allowedLcds);
+      }
+      return query;
+    });
 
-    const { data, error } = await query.limit(5000);
     if (error || !data || data.length === 0) return { total: 0, delivered: 0, failed: 0 };
     return await dispatchPushToSubscriptions(supabase, data, payload);
   } catch {

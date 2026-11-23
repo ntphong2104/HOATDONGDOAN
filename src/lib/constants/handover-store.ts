@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { runSerializedByKey } from '@/lib/utils/concurrency-queue';
 
 export interface HandoverRecord {
   key_status: 'pending' | 'handed_over' | 'returned';
@@ -40,31 +41,33 @@ export async function saveHandoverRecordToDb(
   supabase: SupabaseClient,
   proposalId: string,
   record: HandoverRecord,
-  actorEmail?: string
+  _actorEmail?: string
 ): Promise<HandoverRegistry> {
-  let currentRegistry: HandoverRegistry = {};
-  try {
-    currentRegistry = await getHandoverRegistryFromDb(supabase);
-  } catch {}
+  return runSerializedByKey('security_handovers', async () => {
+    let currentRegistry: HandoverRegistry = {};
+    try {
+      currentRegistry = await getHandoverRegistryFromDb(supabase);
+    } catch {}
 
-  const updatedRegistry: HandoverRegistry = {
-    ...currentRegistry,
-    [proposalId]: {
-      ...currentRegistry[proposalId],
-      ...record,
-      updated_at: new Date().toISOString(),
-    },
-  };
+    const updatedRegistry: HandoverRegistry = {
+      ...currentRegistry,
+      [proposalId]: {
+        ...currentRegistry[proposalId],
+        ...record,
+        updated_at: new Date().toISOString(),
+      },
+    };
 
-  try {
-    await supabase.from('system_settings').upsert({
-      key: SETTINGS_KEY,
-      value: JSON.stringify(updatedRegistry),
-      updated_at: new Date().toISOString(),
-    });
-  } catch (err) {
-    console.warn('Could not save handover registry to system_settings:', err);
-  }
+    try {
+      await supabase.from('system_settings').upsert({
+        key: SETTINGS_KEY,
+        value: updatedRegistry,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Could not save handover registry to system_settings:', err);
+    }
 
-  return updatedRegistry;
+    return updatedRegistry;
+  });
 }

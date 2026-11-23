@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 
 /**
  * GET: Scan all event_registrations for invalid MSSV entries
@@ -20,11 +21,14 @@ export async function GET() {
   const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
   const supabase = (await getSupabase()) || (await createClient());
 
-  // Fetch all registrations
-  const { data: regs, error } = await supabase
-    .from('event_registrations')
-    .select('id, event_id, mssv, full_name, class_id, role_type, created_at')
-    .order('created_at', { ascending: false });
+  // Fetch all registrations (paginated beyond PostgREST 1,000-row cap)
+  const { data: regs, error } = await fetchAllRows<any>(() =>
+    supabase
+      .from('event_registrations')
+      .select('id, event_id, mssv, full_name, class_id, role_type, created_at')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+  );
 
   if (error) {
     return NextResponse.json({ success: false, error: 'Lỗi truy vấn database' }, { status: 500 });
@@ -90,35 +94,42 @@ export async function DELETE(req: Request) {
       }, { status: 400 });
     }
 
-    const { error } = await supabase
-      .from('event_registrations')
-      .delete()
-      .in('mssv', invalidTargets)
-      .eq('event_id', event_id);
+    for (const chunk of chunkArray(invalidTargets, 200)) {
+      const { error } = await supabase
+        .from('event_registrations')
+        .delete()
+        .in('mssv', chunk)
+        .eq('event_id', event_id);
 
-    if (error) {
-      return NextResponse.json({ success: false, error: 'Lỗi xóa dữ liệu' }, { status: 500 });
+      if (error) {
+        return NextResponse.json({ success: false, error: 'Lỗi xóa dữ liệu' }, { status: 500 });
+      }
     }
     deletedCount = invalidTargets.length;
   } else if (event_id) {
-    // Delete all invalid MSSVs from a specific event
-    const { data: regs } = await supabase
-      .from('event_registrations')
-      .select('id, mssv')
-      .eq('event_id', event_id);
+    // Delete all invalid MSSVs from a specific event (paginated & chunked)
+    const { data: regs } = await fetchAllRows<any>(() =>
+      supabase
+        .from('event_registrations')
+        .select('id, mssv')
+        .eq('event_id', event_id)
+        .order('id', { ascending: true })
+    );
 
     const invalidIds = (regs || [])
       .filter((r: any) => !isValidMSSV(r.mssv || ''))
       .map((r: any) => r.id);
 
     if (invalidIds.length > 0) {
-      const { error } = await supabase
-        .from('event_registrations')
-        .delete()
-        .in('id', invalidIds);
+      for (const chunk of chunkArray(invalidIds, 200)) {
+        const { error } = await supabase
+          .from('event_registrations')
+          .delete()
+          .in('id', chunk);
 
-      if (error) {
-        return NextResponse.json({ success: false, error: 'Lỗi xóa dữ liệu' }, { status: 500 });
+        if (error) {
+          return NextResponse.json({ success: false, error: 'Lỗi xóa dữ liệu' }, { status: 500 });
+        }
       }
       deletedCount = invalidIds.length;
     }

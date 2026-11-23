@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import * as XLSX from 'xlsx';
 import Header from '@/components/Header';
 import DutyMatrixTable from '@/components/DutyMatrixTable';
 import SupportEventCreator from '@/components/SupportEventCreator';
 import { useToast } from '@/components/ToastProvider';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 import {
   CalendarIcon,
   UsersIcon,
@@ -20,6 +20,8 @@ import {
 } from '@/components/icons';
 
 type AdminTab = 'schedule' | 'volunteers' | 'windows_network' | 'equipment' | 'support_events';
+
+const isBanStillActive = (bannedUntil: string) => new Date(bannedUntil).getTime() > Date.now();
 
 function fmtDateVN(d?: string | null): string {
   if (!d) return '—';
@@ -107,66 +109,84 @@ export default function OfficeAdminPage() {
   }, [toast]);
 
   const loadSchedule = useCallback(async (anchor?: string) => {
-    const qs = anchor ? `?week_of=${encodeURIComponent(anchor)}` : '';
-    const [sRes, aRes] = await Promise.all([
-      fetch(`/api/office/duty/schedule${qs}`, { cache: 'no-store' }),
-      fetch('/api/office/duty/attendance', { cache: 'no-store' }),
-    ]);
-    if (sRes.status === 403) {
-      setForbidden(true);
-      return;
-    }
-    const sJson = await sRes.json();
-    if (sJson.success && sJson.data) {
-      if (!sJson.data.is_admin) {
+    try {
+      const qs = anchor ? `?week_of=${encodeURIComponent(anchor)}` : '';
+      const [sRes, aRes] = await Promise.all([
+        fetch(`/api/office/duty/schedule${qs}`, { cache: 'no-store' }),
+        fetch('/api/office/duty/attendance', { cache: 'no-store' }),
+      ]);
+      if (sRes.status === 403) {
         setForbidden(true);
         return;
       }
-      setScheduleData(sJson.data);
-      if (!anchor && sJson.data.workdays?.[0]) {
-        setWeekAnchor(sJson.data.workdays[0]);
+      const sJson = await sRes.json();
+      if (sJson.success && sJson.data) {
+        if (!sJson.data.is_admin) {
+          setForbidden(true);
+          return;
+        }
+        setScheduleData(sJson.data);
+        if (!anchor && sJson.data.workdays?.[0]) {
+          setWeekAnchor(sJson.data.workdays[0]);
+        }
       }
+      if (aRes.ok) {
+        const aJson = await aRes.json();
+        if (aJson.success && Array.isArray(aJson.data)) setAttendanceList(aJson.data);
+      }
+    } catch {
+      toast.error('Lỗi tải lịch trực văn phòng.');
     }
-    const aJson = await aRes.json();
-    if (aJson.success && Array.isArray(aJson.data)) setAttendanceList(aJson.data);
-  }, []);
+  }, [toast]);
 
   const loadVolunteers = useCallback(async () => {
-    const res = await fetch('/api/office/duty/volunteers', { cache: 'no-store' });
-    if (res.status === 403) return setForbidden(true);
-    const json = await res.json();
-    if (json.success && Array.isArray(json.data)) setVolunteers(json.data);
-  }, []);
+    try {
+      const res = await fetch('/api/office/duty/volunteers', { cache: 'no-store' });
+      if (res.status === 403) return setForbidden(true);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) setVolunteers(json.data);
+    } catch {
+      toast.error('Lỗi tải danh sách CTV trực.');
+    }
+  }, [toast]);
 
   const loadWindowsAndConfig = useCallback(async () => {
-    const [wRes, cRes] = await Promise.all([
-      fetch('/api/office/duty/windows', { cache: 'no-store' }),
-      fetch('/api/office/duty/config', { cache: 'no-store' }),
-    ]);
-    if (wRes.status === 403) return setForbidden(true);
-    const wJson = await wRes.json();
-    if (wJson.success && Array.isArray(wJson.data)) setWindows(wJson.data);
-    const cJson = await cRes.json();
-    if (cJson.success && cJson.data) {
-      setConfig(cJson.data.config);
-      setClientIp(cJson.data.client_ip || '');
-      setIpsText((cJson.data.config?.allowed_ips || []).join('\n'));
+    try {
+      const [wRes, cRes] = await Promise.all([
+        fetch('/api/office/duty/windows', { cache: 'no-store' }),
+        fetch('/api/office/duty/config', { cache: 'no-store' }),
+      ]);
+      if (wRes.status === 403) return setForbidden(true);
+      const wJson = await wRes.json();
+      if (wJson.success && Array.isArray(wJson.data)) setWindows(wJson.data);
+      const cJson = await cRes.json();
+      if (cJson.success && cJson.data) {
+        setConfig(cJson.data.config);
+        setClientIp(cJson.data.client_ip || '');
+        setIpsText((cJson.data.config?.allowed_ips || []).join('\n'));
+      }
+    } catch {
+      toast.error('Lỗi tải cấu hình trực văn phòng.');
     }
-  }, []);
+  }, [toast]);
 
   const loadEquipment = useCallback(async () => {
-    const [iRes, rRes, bRes] = await Promise.all([
-      fetch('/api/office/equipment/items', { cache: 'no-store' }),
-      fetch('/api/office/equipment/requests', { cache: 'no-store' }),
-      fetch('/api/office/equipment/bans', { cache: 'no-store' }),
-    ]);
-    const iJson = await iRes.json();
-    const rJson = await rRes.json();
-    const bJson = await bRes.json();
-    if (iJson.success && Array.isArray(iJson.data)) setItems(iJson.data);
-    if (rJson.success && rJson.data) setRequests(rJson.data.requests || []);
-    if (bJson.success && Array.isArray(bJson.data)) setBans(bJson.data);
-  }, []);
+    try {
+      const [iRes, rRes, bRes] = await Promise.all([
+        fetch('/api/office/equipment/items', { cache: 'no-store' }),
+        fetch('/api/office/equipment/requests', { cache: 'no-store' }),
+        fetch('/api/office/equipment/bans', { cache: 'no-store' }),
+      ]);
+      const iJson = await iRes.json();
+      const rJson = await rRes.json();
+      const bJson = await bRes.json();
+      if (iJson.success && Array.isArray(iJson.data)) setItems(iJson.data);
+      if (rJson.success && rJson.data) setRequests(rJson.data.requests || []);
+      if (bJson.success && Array.isArray(bJson.data)) setBans(bJson.data);
+    } catch {
+      toast.error('Lỗi tải dữ liệu kho dụng cụ.');
+    }
+  }, [toast]);
 
   const loadSupportEvents = useCallback(async () => {
     setLoadingSupportEvents(true);
@@ -184,23 +204,31 @@ export default function OfficeAdminPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const tabParam = new URLSearchParams(window.location.search).get('tab');
-      if (
-        tabParam === 'schedule' ||
-        tabParam === 'volunteers' ||
-        tabParam === 'windows_network' ||
-        tabParam === 'equipment' ||
-        tabParam === 'support_events'
-      ) {
-        setActiveTab(tabParam);
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      if (typeof window !== 'undefined') {
+        const tabParam = new URLSearchParams(window.location.search).get('tab');
+        if (
+          tabParam === 'schedule' ||
+          tabParam === 'volunteers' ||
+          tabParam === 'windows_network' ||
+          tabParam === 'equipment' ||
+          tabParam === 'support_events'
+        ) {
+          setActiveTab(tabParam);
+        }
       }
-    }
-    loadSchedule();
-    loadVolunteers();
-    loadWindowsAndConfig();
-    loadEquipment();
-    loadSupportEvents();
+      loadSchedule();
+      loadVolunteers();
+      loadWindowsAndConfig();
+      loadEquipment();
+      loadSupportEvents();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadSchedule, loadVolunteers, loadWindowsAndConfig, loadEquipment, loadSupportEvents]);
 
   // Handlers
@@ -220,6 +248,8 @@ export default function OfficeAdminPage() {
       } else {
         showMsg('error', json.error || 'Lỗi gán ca trực');
       }
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi gán ca trực');
     } finally {
       setBusyCellKey(null);
     }
@@ -234,6 +264,8 @@ export default function OfficeAdminPage() {
         showMsg('success', 'Đã gỡ khỏi ca trực.');
         await loadSchedule(weekAnchor || undefined);
       } else showMsg('error', json.error || 'Lỗi xóa');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi gỡ ca trực');
     } finally {
       setBusyCellKey(null);
     }
@@ -255,6 +287,8 @@ export default function OfficeAdminPage() {
         setBulkMssvInput('');
         loadVolunteers();
       } else showMsg('error', json.error || 'Lỗi thêm CTV');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi thêm CTV');
     } finally {
       setSavingVol(false);
     }
@@ -262,49 +296,67 @@ export default function OfficeAdminPage() {
 
   const handleDeleteVolunteer = async (mssv: string) => {
     if (!window.confirm(`Xóa ${mssv} khỏi danh sách CTV trực?`)) return;
-    const res = await fetch(`/api/office/duty/volunteers?mssv=${encodeURIComponent(mssv)}`, { method: 'DELETE' });
-    const json = await res.json();
-    if (json.success) {
-      showMsg('success', json.message);
-      loadVolunteers();
-    } else showMsg('error', json.error || 'Lỗi xóa');
+    try {
+      const res = await fetch(`/api/office/duty/volunteers?mssv=${encodeURIComponent(mssv)}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        showMsg('success', json.message);
+        loadVolunteers();
+      } else showMsg('error', json.error || 'Lỗi xóa');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi xóa CTV');
+    }
   };
 
   const handleCreateWindow = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/office/duty/windows', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: winTitle,
-        apply_from: winFrom,
-        apply_to: winTo,
-        open_at: winOpen,
-        close_at: winClose,
-      }),
-    });
-    const json = await res.json();
-    if (json.success) {
-      showMsg('success', json.message);
-      setWinTitle('');
-      loadWindowsAndConfig();
-    } else showMsg('error', json.error || 'Lỗi mở đợt đăng ký');
+    try {
+      const res = await fetch('/api/office/duty/windows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: winTitle,
+          apply_from: winFrom,
+          apply_to: winTo,
+          open_at: winOpen,
+          close_at: winClose,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showMsg('success', json.message);
+        setWinTitle('');
+        loadWindowsAndConfig();
+      } else showMsg('error', json.error || 'Lỗi mở đợt đăng ký');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi mở đợt đăng ký');
+    }
   };
 
   const handleToggleWindow = async (w: any) => {
-    const res = await fetch('/api/office/duty/windows', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: w.id, is_active: !w.is_active }),
-    });
-    const json = await res.json();
-    if (json.success) loadWindowsAndConfig();
+    try {
+      const res = await fetch('/api/office/duty/windows', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: w.id, is_active: !w.is_active }),
+      });
+      const json = await res.json();
+      if (json.success) loadWindowsAndConfig();
+      else showMsg('error', json.error || 'Không thể cập nhật đợt đăng ký');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi cập nhật đợt đăng ký');
+    }
   };
 
   const handleDeleteWindow = async (id: string) => {
     if (!window.confirm('Xóa đợt đăng ký này?')) return;
-    const res = await fetch(`/api/office/duty/windows?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-    if (res.ok) loadWindowsAndConfig();
+    try {
+      const res = await fetch(`/api/office/duty/windows?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (res.ok) loadWindowsAndConfig();
+      else showMsg('error', 'Không thể xóa đợt đăng ký');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi xóa đợt đăng ký');
+    }
   };
 
   const handleSaveConfig = async (e: React.FormEvent) => {
@@ -326,6 +378,8 @@ export default function OfficeAdminPage() {
         showMsg('success', json.message);
         loadWindowsAndConfig();
       } else showMsg('error', json.error || 'Lỗi lưu cấu hình');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi lưu cấu hình');
     } finally {
       setSavingCfg(false);
     }
@@ -339,76 +393,138 @@ export default function OfficeAdminPage() {
       reject: 'Từ chối đơn mượn này?',
     };
     if (!window.confirm(confirmMap[action])) return;
-    const res = await fetch('/api/office/equipment/requests', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, action }),
-    });
-    const json = await res.json();
-    if (json.success) {
-      showMsg('success', json.message);
-      loadEquipment();
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('hdd:pending-counts-changed'));
-      }
-    } else showMsg('error', json.error || 'Lỗi xử lý đơn');
+    try {
+      const res = await fetch('/api/office/equipment/requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showMsg('success', json.message);
+        loadEquipment();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('hdd:pending-counts-changed'));
+        }
+      } else showMsg('error', json.error || 'Lỗi xử lý đơn');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi xử lý đơn mượn');
+    }
   };
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim()) return;
-    const res = await fetch('/api/office/equipment/items', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: newItemName.trim(),
-        category: newItemCat,
-        total_qty: newItemQty,
-        unit: newItemUnit,
-      }),
-    });
-    const json = await res.json();
-    if (json.success) {
-      showMsg('success', json.message);
-      setNewItemName('');
-      loadEquipment();
-    } else showMsg('error', json.error || 'Lỗi thêm vật phẩm');
+    try {
+      const res = await fetch('/api/office/equipment/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newItemName.trim(),
+          category: newItemCat,
+          total_qty: newItemQty,
+          unit: newItemUnit,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showMsg('success', json.message);
+        setNewItemName('');
+        loadEquipment();
+      } else showMsg('error', json.error || 'Lỗi thêm vật phẩm');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi thêm vật phẩm');
+    }
   };
 
   const handleDeleteItem = async (id: string) => {
     if (!window.confirm('Ẩn vật phẩm này khỏi danh mục kho VPĐ?')) return;
-    const res = await fetch(`/api/office/equipment/items?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-    if (res.ok) loadEquipment();
+    try {
+      const res = await fetch(`/api/office/equipment/items?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (res.ok) loadEquipment();
+      else showMsg('error', 'Không thể ẩn vật phẩm');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi ẩn vật phẩm');
+    }
   };
 
   const handleUnban = async (id: string) => {
     if (!window.confirm('Gỡ lệnh cấm mượn dụng cụ cho đơn vị này?')) return;
-    const res = await fetch(`/api/office/equipment/bans?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-    const json = await res.json();
-    if (json.success) {
-      showMsg('success', json.message);
-      loadEquipment();
+    try {
+      const res = await fetch(`/api/office/equipment/bans?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        showMsg('success', json.message);
+        loadEquipment();
+      } else showMsg('error', json.error || 'Không thể gỡ lệnh cấm');
+    } catch {
+      showMsg('error', 'Lỗi kết nối khi gỡ lệnh cấm');
     }
   };
 
-  const handleExportAttendance = () => {
+  const handleExportAttendance = async () => {
+    const { downloadStyledSheet } = await import('@/lib/utils/styled-excel');
     const rows = attendanceList.map((a, idx) => ({
-      STT: idx + 1,
-      'Ngày trực': fmtDateVN(a.duty_date),
-      Ca: a.shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều',
-      MSSV: a.mssv,
-      'Họ tên': a.full_name || a.mssv,
-      'Giờ Check-in': fmtDateTimeVN(a.check_in_at),
-      'IP Check-in': a.check_in_ip || '',
-      'Đi trễ (phút)': a.late_minutes || 0,
-      'Giờ Check-out': fmtDateTimeVN(a.check_out_at),
-      'IP Check-out': a.check_out_ip || '',
-      'Tổng phút trực': a.worked_minutes || 0,
-      'Trạng thái': a.status === 'completed' ? 'Hoàn thành' : 'Chưa check-out',
+      stt: idx + 1,
+      duty_date: fmtDateVN(a.duty_date),
+      shift: a.shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều',
+      mssv: a.mssv,
+      full_name: a.full_name || a.mssv,
+      check_in_at: fmtDateTimeVN(a.check_in_at),
+      check_in_ip: a.check_in_ip || '—',
+      late_minutes: a.late_minutes || 0,
+      check_out_at: fmtDateTimeVN(a.check_out_at),
+      check_out_ip: a.check_out_ip || '—',
+      worked_minutes: a.worked_minutes || 0,
+      status: a.status === 'completed' ? 'Hoàn thành' : 'Chưa check-out',
     }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'ChamCong_VPD');
-    XLSX.writeFile(wb, `ChamCong_TrucVanPhongDoan_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    const totalWorkedMinutes = attendanceList.reduce(
+      (sum, a) => sum + (Number(a.worked_minutes) || 0),
+      0
+    );
+    const totalLateMinutes = attendanceList.reduce(
+      (sum, a) => sum + (Number(a.late_minutes) || 0),
+      0
+    );
+    const completedCount = attendanceList.filter((a) => a.status === 'completed').length;
+
+    downloadStyledSheet({
+      filename: `ChamCong_TrucVanPhongDoan_${getVietnamDateString(0)}.xlsx`,
+      sheetName: 'ChamCong_VPD',
+      reportTitle: 'BẢNG CHẤM CÔNG TRỰC VĂN PHÒNG ĐOÀN THANH NIÊN',
+      reportSubtitle: `Tổng số ca ghi nhận: ${rows.length} ca  •  Đã hoàn thành: ${completedCount} ca`,
+      unitTitle: 'VĂN PHÒNG ĐOÀN HỌC VIỆN PTIT HCM',
+      showSignatureBlock: true,
+      columns: [
+        { key: 'stt', label: 'STT', align: 'center', width: 7, numFmt: 'rawInt' },
+        { key: 'duty_date', label: 'Ngày Trực', align: 'center', width: 14 },
+        { key: 'shift', label: 'Ca Trực', align: 'center', width: 13 },
+        { key: 'mssv', label: 'MSSV', align: 'center', width: 15, tone: 'code' },
+        { key: 'full_name', label: 'Họ Và Tên', align: 'left', width: 26, tone: 'bold' },
+        { key: 'check_in_at', label: 'Giờ Check-in', align: 'center', width: 19 },
+        { key: 'check_in_ip', label: 'IP Check-in', align: 'center', width: 16 },
+        { key: 'late_minutes', label: 'Đi Trễ (Phút)', align: 'right', width: 14, numFmt: 'int' },
+        { key: 'check_out_at', label: 'Giờ Check-out', align: 'center', width: 19 },
+        { key: 'check_out_ip', label: 'IP Check-out', align: 'center', width: 16 },
+        { key: 'worked_minutes', label: 'Tổng Phút Trực', align: 'right', width: 16, numFmt: 'int' },
+        { key: 'status', label: 'Trạng Thái', align: 'center', width: 17 },
+      ],
+      rows,
+      summaryRow: {
+        stt: '',
+        duty_date: 'TỔNG CỘNG',
+        shift: `${rows.length} ca`,
+        mssv: '',
+        full_name: `${completedCount}/${rows.length} ca đã hoàn thành`,
+        check_in_at: '',
+        check_in_ip: '',
+        late_minutes: totalLateMinutes,
+        check_out_at: '',
+        check_out_ip: '',
+        worked_minutes: totalWorkedMinutes,
+        status: `${(totalWorkedMinutes / 60).toFixed(1)} giờ`,
+      },
+    });
   };
 
   if (forbidden) {
@@ -428,7 +544,7 @@ export default function OfficeAdminPage() {
     );
   }
 
-  const activeBans = bans.filter((b) => b.is_active && new Date(b.banned_until).getTime() > Date.now());
+  const activeBans = bans.filter((b) => b.is_active && isBanStillActive(b.banned_until));
   const pendingBorrowCount = requests.filter((r) => r.status === 'pending').length;
   const activeBorrowCount = requests.filter((r) => r.status === 'approved' || r.status === 'borrowed').length;
   const doneBorrowCount = requests.filter((r) => r.status === 'returned' || r.status === 'rejected').length;

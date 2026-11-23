@@ -7,9 +7,24 @@ const require = createRequire(import.meta.url);
 const XLSX = require('xlsx');
 
 const BASE_URL = process.env.TEST_BASE_URL || 'http://127.0.0.1:3000';
-const JWT_SECRET = process.env.SUPABASE_JWT_SECRET || 'load-test-jwt-secret-ptithcm-2026';
+const JWT_SECRET = process.env.SUPABASE_JWT_SECRET || '';
 const TOTAL_USERS = Number(process.env.TOTAL_USERS || 1000);
 const CONCURRENCY = Number(process.env.CONCURRENCY || 200); // 200 simultaneous active connections in flight
+const APPLY = process.argv.includes('--apply');
+const ALLOW_REMOTE = process.argv.includes('--allow-remote');
+
+if (!APPLY) {
+  console.log('ℹ️  Dry-run mode. Truyền --apply để chạy giả lập 1.000 lượt đăng nhập (cần SUPABASE_JWT_SECRET).');
+  process.exit(0);
+}
+if (!JWT_SECRET) {
+  console.error('❌ Thiếu SUPABASE_JWT_SECRET trong biến môi trường.');
+  process.exit(1);
+}
+if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(BASE_URL) && !ALLOW_REMOTE) {
+  console.error('🛑 Chặn an toàn: từ chối load-test URL không phải localhost khi chưa truyền --allow-remote.');
+  process.exit(1);
+}
 
 function base64UrlEncode(str) {
   return Buffer.from(str, 'utf8')

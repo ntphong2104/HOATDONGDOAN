@@ -19,11 +19,23 @@ function loadEnv() {
 
 loadEnv();
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zpllkynavzeorenclwrc.supabase.co';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const APPLY = process.argv.includes('--apply');
+const ALLOW_REMOTE = process.argv.includes('--allow-remote');
 
-if (!SERVICE_KEY) {
-  console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY in environment / .env.local');
+if (!SUPABASE_URL || !SERVICE_KEY) {
+  console.error('❌ Thiếu NEXT_PUBLIC_SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY trong env / .env.local');
+  process.exit(1);
+}
+
+if (!APPLY) {
+  console.log('ℹ️  Dry-run mode. Truyền --apply để thực thi đồng bộ (thêm --allow-remote nếu trỏ tới *.supabase.co).');
+  process.exit(0);
+}
+
+if (/supabase\.co/i.test(SUPABASE_URL) && !ALLOW_REMOTE) {
+  console.error('🛑 Chặn an toàn: từ chối ghi trực tiếp lên *.supabase.co khi chưa truyền --allow-remote.');
   process.exit(1);
 }
 
@@ -44,6 +56,14 @@ function isPlaceholderName(name, mssv) {
 function isPlaceholderClass(cls) {
   const c = String(cls || '').trim().toUpperCase();
   return !c || c === 'PTIT-HCM';
+}
+
+function atomicWriteJson(filePath, data) {
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+  fs.renameSync(tmpPath, filePath);
 }
 
 async function fetchAllRows(table, selectCols, orderCol = 'created_at') {
@@ -323,9 +343,8 @@ async function main() {
     }
   }
 
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(profileFile, JSON.stringify(localProfiles, null, 2), 'utf-8');
-  console.log(`✅ Đã ghi đồng bộ ${Object.keys(localProfiles).length} khóa vào data/user-profiles.json`);
+  atomicWriteJson(profileFile, localProfiles);
+  console.log(`✅ Đã ghi đồng bộ (atomic) ${Object.keys(localProfiles).length} khóa vào data/user-profiles.json`);
 
   // Deduplicate settingsUpsert by key
   const uniqueSettingsMap = new Map();
@@ -376,20 +395,27 @@ async function main() {
     localRegExtras[eventId] = merged;
     eventRegUpserts.push({
       key: `event_regs_${eventId}`,
-      value: JSON.stringify(merged),
+      value: merged,
       updated_at: nowIso,
     });
   }
-  fs.writeFileSync(regExtraFile, JSON.stringify(localRegExtras, null, 2), 'utf-8');
+  atomicWriteJson(regExtraFile, localRegExtras);
   if (eventRegUpserts.length > 0) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/system_settings?on_conflict=key`, {
-      method: 'POST',
-      headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify(eventRegUpserts),
-    });
-    if (res.ok) {
-      console.log(`✅ Đã đồng bộ ${eventRegUpserts.length} sự kiện (event_regs_*) giữa file và Supabase system_settings`);
+    let syncedEvents = 0;
+    for (let i = 0; i < eventRegUpserts.length; i += 50) {
+      const batch = eventRegUpserts.slice(i, i + 50);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/system_settings?on_conflict=key`, {
+        method: 'POST',
+        headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(batch),
+      });
+      if (res.ok) {
+        syncedEvents += batch.length;
+      } else {
+        console.error(`❌ Lỗi sync event_regs_* batch ${i}:`, res.status, await res.text());
+      }
     }
+    console.log(`✅ Đã đồng bộ ${syncedEvents}/${eventRegUpserts.length} sự kiện (event_regs_*) giữa file và Supabase system_settings`);
   }
 
   console.log('\n🎉 HOÀN TẤT ĐỒNG BỘ DỮ LIỆU SINH VIÊN & SĐT!');

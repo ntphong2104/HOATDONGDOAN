@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { sanitizeInput } from '@/lib/security/sanitizer';
-import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime } from '@/lib/utils/event-logic';
-import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
+import { isEventPastDeadline, isEventTooEarlyForCheckin, getEarliestCheckinTime, isApprovedVolunteer } from '@/lib/utils/event-logic';
+import { getVietnamDateString, getVietnamHHMM } from '@/lib/utils/vn-date';
+import { getAuthContext, invalidateAuthContextCache, canManageEvent, canScanEvent } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, getSessionCheckIns, saveSessionCheckIn, checkinAtomic, getRegistrationExtras } from '@/lib/constants/event-meta-store';
 import { getUserProfileExtra, getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { verifyPersonalQRToken } from '@/lib/utils/personal-qr';
@@ -50,12 +51,15 @@ async function getCachedStaffRole(supabase: any, eventId: string, email: string)
   const hit = checkinStaffRoleCache.get(key);
   if (hit && Date.now() - hit.ts < CHECKIN_STAFF_CACHE_TTL) return hit.isStaff;
   try {
-    const { data } = await supabase
+    const lowerEmail = email.toLowerCase().trim();
+    const q = supabase
       .from('event_roles')
       .select('role_type')
-      .eq('event_id', eventId)
-      .eq('email', email)
-      .maybeSingle();
+      .eq('event_id', eventId);
+    const { data } =
+      typeof q.ilike === 'function'
+        ? await q.ilike('email', lowerEmail).maybeSingle()
+        : await q.eq('email', lowerEmail).maybeSingle();
     const isStaff = Boolean(data);
     checkinStaffRoleCache.set(key, { isStaff, ts: Date.now() });
     trimCache(checkinStaffRoleCache);
@@ -105,14 +109,15 @@ export async function POST(req: Request) {
   try {
     const body: CheckInRequest = await req.json();
     const { event_id, participate_role = 'participant', session_id } = body;
-    let mssv = sanitizeInput(body.mssv || '').toUpperCase().trim();
+    const rawMssvInput = sanitizeInput(body.mssv || '').trim();
+    let mssv = rawMssvInput.toUpperCase();
 
     // ── Detect and verify time-based personal QR token ──
-    // Format: MSSV:window:signature (3 parts separated by colons)
-    const qrParts = mssv.split(':');
+    // Format: MSSV:window:signature (3 parts separated by colons — preserve signature casing!)
+    const qrParts = rawMssvInput.split(':');
     if (qrParts.length === 3 && !isNaN(parseInt(qrParts[1], 10))) {
       // This is a dynamic personal QR token — must pass cryptographic verification (no fallback bypass)
-      const verification = verifyPersonalQRToken(mssv);
+      const verification = verifyPersonalQRToken(rawMssvInput);
       if (!verification.valid) {
         return NextResponse.json({
           success: false,
@@ -148,47 +153,56 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const isSuperAdmin =
+    const isSuperAdmin = Boolean(
       auth?.isSuperAdmin ||
-      auth?.tier === 'super_admin';
+      auth?.tier === 'super_admin'
+    );
+    const isSuperOrYouthUnion = Boolean(isSuperAdmin || auth?.tier === 'youth_union');
 
     const hasEventAdminRole =
-      auth?.managed_events?.some(
+      Array.isArray(auth?.managed_events) &&
+      auth.managed_events.some(
         (e: any) => String(e.event_id) === String(event_id) && e.role_type === 'event_admin'
-      ) || false;
+      );
 
-    let isSuperOrEventAdmin =
-      isSuperAdmin ||
-      auth?.isEventAdmin ||
-      hasEventAdminRole ||
-      auth?.tier === 'youth_union' ||
-      auth?.tier === 'event_admin';
+    const hasEventCheckerRole =
+      Array.isArray(auth?.managed_events) &&
+      auth.managed_events.some(
+        (e: any) =>
+          String(e.event_id) === String(event_id) &&
+          (e.role_type === 'checker' || e.role_type === 'event_admin')
+      );
 
-    // Authorization: only checker, event_admin, or super_admin can use this API
-    // Regular students must use /api/checkin/self (self-checkin with personal QR)
-    let isChecker =
-      auth?.managed_events?.some((e: any) => String(e.event_id) === String(event_id)) ||
-      (Boolean(auth?.isChecker || auth?.tier === 'checker') && (!auth?.managed_events || auth.managed_events.length === 0)) ||
-      false;
+    let isSuperOrEventAdmin = isSuperOrYouthUnion || hasEventAdminRole;
+    let isChecker = isSuperOrEventAdmin || hasEventCheckerRole;
 
-    if (!isSuperOrEventAdmin && !isChecker && userEmail) {
+    if (!isChecker && userEmail) {
       try {
-        const roleQuery = supabase
-          .from('event_roles')
-          .select('role_type')
-          .eq('event_id', event_id);
-        const { data: roleRow } =
-          typeof roleQuery.ilike === 'function'
-            ? await roleQuery.ilike('email', userEmail.trim()).maybeSingle()
-            : await roleQuery.eq('email', userEmail.trim().toLowerCase()).maybeSingle();
-        if (roleRow) {
+        const [roleRes, evCreatorRes] = await Promise.all([
+          (() => {
+            const roleQuery = supabase
+              .from('event_roles')
+              .select('role_type')
+              .eq('event_id', event_id);
+            return typeof roleQuery.ilike === 'function'
+              ? roleQuery.ilike('email', userEmail.trim()).maybeSingle()
+              : roleQuery.eq('email', userEmail.trim().toLowerCase()).maybeSingle();
+          })(),
+          supabase.from('events').select('created_by').eq('event_id', event_id).maybeSingle(),
+        ]);
+        const roleRow = roleRes?.data;
+        const isCreator =
+          evCreatorRes?.data?.created_by &&
+          evCreatorRes.data.created_by.toLowerCase().trim() === userEmail.trim().toLowerCase();
+
+        if (isCreator || roleRow?.role_type === 'event_admin') {
           isChecker = true;
-          if (roleRow.role_type === 'event_admin') {
-            isSuperOrEventAdmin = true;
-          }
-          if (typeof invalidateAuthContextCache === 'function') {
-            invalidateAuthContextCache(userEmail);
-          }
+          isSuperOrEventAdmin = true;
+        } else if (roleRow?.role_type === 'checker') {
+          isChecker = true;
+        }
+        if (isChecker && typeof invalidateAuthContextCache === 'function') {
+          invalidateAuthContextCache(userEmail);
         }
       } catch {}
     }
@@ -197,7 +211,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: false,
         error: 'Forbidden',
-        message: 'Bạn không có quyền điểm danh. Chỉ CTV quét mã, BTC, hoặc Admin mới được sử dụng chức năng này.'
+        message: 'Bạn không có quyền điểm danh cho sự kiện này. Chỉ CTV quét mã, BTC sự kiện, hoặc Admin mới được sử dụng.'
       }, { status: 403 });
     }
 
@@ -259,7 +273,6 @@ export async function POST(req: Request) {
       if (event) {
         checkinEventCache.set(event_id, { data: event, meta, ts: Date.now() });
         trimCache(checkinEventCache);
-        trimCache(checkinEventCache);
       }
     }
 
@@ -273,15 +286,6 @@ export async function POST(req: Request) {
     const eventWithSessions = { ...event, sessions: meta?.sessions || [] };
     if (!isSuperOrEventAdmin && (event.status !== 'active' || isEventPastDeadline(eventWithSessions))) {
       return NextResponse.json({ success: false, error: 'Bad Request', message: 'Sự kiện đã đóng hoặc đã kết thúc điểm danh (quá 1 giờ sau khi kết thúc)' }, { status: 400 });
-    }
-
-    if (!isSuperOrEventAdmin && typeof isEventTooEarlyForCheckin === 'function' && isEventTooEarlyForCheckin(event, Date.now(), 15)) {
-      const earliestTime = (typeof getEarliestCheckinTime === 'function' ? getEarliestCheckinTime(event, 15) : null) || '15 phút trước giờ diễn ra';
-      return NextResponse.json({
-        success: false,
-        error: 'Bad Request',
-        message: `⏳ Chưa đến giờ điểm danh! Cổng điểm danh sẽ tự động mở lúc ${earliestTime} (trước giờ bắt đầu 15 phút).`,
-      }, { status: 400 });
     }
 
     let finalStudent: any = student;
@@ -303,7 +307,7 @@ export async function POST(req: Request) {
           email: `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
         };
         try {
-          supabase.from('users').upsert(finalStudent, { onConflict: 'mssv', ignoreDuplicates: !masterStudent }).then(() => {});
+          await supabase.from('users').upsert(finalStudent, { onConflict: 'mssv', ignoreDuplicates: !masterStudent });
         } catch {}
       } else {
         return NextResponse.json({
@@ -360,9 +364,8 @@ export async function POST(req: Request) {
         activeSession = sessions.find((s: any) => s.id === targetSessionId) || null;
         if (activeSession) matchedSessionName = activeSession.name;
       } else {
-        const now = new Date();
-        const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const nowDateStr = getVietnamDateString(0);
+        const nowHHMM = getVietnamHHMM();
 
         let bestSession: typeof sessions[0] | null = null;
         for (const s of sessions) {
@@ -387,23 +390,46 @@ export async function POST(req: Request) {
 
     const isInternalSession = activeSession?.session_type === 'internal';
 
+    // Check early-checkin timing against the resolved activeSession (falling back to event schedule)
+    const scheduleToCheck = activeSession?.session_date
+      ? {
+          ...event,
+          event_date: activeSession.session_date,
+          start_time: activeSession.start_time || event.start_time,
+        }
+      : event;
+    if (
+      !isSuperOrEventAdmin &&
+      typeof isEventTooEarlyForCheckin === 'function' &&
+      isEventTooEarlyForCheckin(scheduleToCheck, Date.now(), 15)
+    ) {
+      const earliestTime =
+        (typeof getEarliestCheckinTime === 'function' ? getEarliestCheckinTime(scheduleToCheck, 15) : null) ||
+        '15 phút trước giờ diễn ra';
+      return NextResponse.json({
+        success: false,
+        error: 'Bad Request',
+        message: `⏳ Chưa đến giờ điểm danh! Cổng điểm danh sẽ tự động mở lúc ${earliestTime} (trước giờ bắt đầu 15 phút).`,
+      }, { status: 400 });
+    }
+
     // ── Verify student's registered role & CTV / BTC status ──
     const registeredRole = regData?.role_type || null;
 
-    // Check if student is an accepted volunteer in registration extras (department / Ban CTV)
-    // (đã được tải song song ở bước đầu + cache ngắn hạn)
+    // Check if student is an approved volunteer in registration extras (strictly excludes participants & pending/rejected CTV)
     let isAcceptedVolunteer = false;
     try {
       const studentExtra = (registrationExtras || {})[mssv.toUpperCase().trim()];
-      if (studentExtra && (studentExtra.department_name || studentExtra.department_id || studentExtra.review_status === 'accepted')) {
-        isAcceptedVolunteer = true;
-      }
+      isAcceptedVolunteer =
+        typeof isApprovedVolunteer === 'function'
+          ? isApprovedVolunteer(registeredRole, studentExtra)
+          : Boolean(registeredRole === 'volunteer' && studentExtra?.review_status === 'accepted');
     } catch {}
 
     // Check if student is an organizer/admin in event_roles (đã chạy song song với kiểm tra SĐT)
     const isEventOrganizerStaff = await staffRolePromise.catch(() => false);
 
-    const isVolunteer = registeredRole === 'volunteer' || isAcceptedVolunteer;
+    const isVolunteer = isAcceptedVolunteer;
     const isOrganizer = registeredRole === 'organizer' || isEventOrganizerStaff;
 
     // Auto-resolve checkin role: prioritize actual volunteer/organizer qualification
@@ -476,6 +502,8 @@ export async function POST(req: Request) {
       }
     }
 
+    const verifiedCheckedBy = userEmail || 'Scanner';
+
     // ── Try Atomic Check-in if session exists ──
     if (targetSessionId && sessions.length > 0) {
       const atomicResult = await checkinAtomic(supabase, {
@@ -484,7 +512,7 @@ export async function POST(req: Request) {
         session_name: matchedSessionName,
         mssv,
         role: resolvedCheckinRole,
-        checked_by: body.checked_by || userEmail || 'Scanner',
+        checked_by: verifiedCheckedBy,
         max_participants: 0, // sức chứa đã được kiểm tra ở trên theo đúng vai trò
       });
 
@@ -518,12 +546,12 @@ export async function POST(req: Request) {
         await saveSessionCheckIn(supabase, {
           event_id, session_id: targetSessionId, session_name: matchedSessionName,
           mssv, participate_role: resolvedCheckinRole, checked_at: new Date().toISOString(),
-          checked_by: body.checked_by || userEmail || 'Scanner',
+          checked_by: verifiedCheckedBy,
         });
 
         try {
           await supabase.from('check_ins').upsert(
-            { event_id, mssv, participate_role: resolvedCheckinRole, checked_by: body.checked_by || userEmail || `Scanner: ${matchedSessionName}` },
+            { event_id, mssv, participate_role: resolvedCheckinRole, checked_by: verifiedCheckedBy },
             { onConflict: 'event_id,mssv' }
           );
         } catch {}
@@ -544,7 +572,7 @@ export async function POST(req: Request) {
         .from('check_ins')
         .insert({
           mssv, event_id, participate_role: resolvedCheckinRole,
-          checked_by: body.checked_by || userEmail || 'Điểm danh thủ công',
+          checked_by: verifiedCheckedBy,
         });
 
       if (insertError) {

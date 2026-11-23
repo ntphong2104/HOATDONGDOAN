@@ -13,6 +13,10 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
+    const auth = await getAuthContext();
+    if (!auth) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
     const semesters = await getAcademicSemesters(supabase);

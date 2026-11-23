@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, canManageEvent } from '@/lib/supabase/auth-helper';
 import { isEventLockedPast3Days, normalizeCancellationPolicy } from '@/lib/utils/event-logic';
 import { normalizeAllowedLcds } from '@/lib/utils/lcd';
+import { normalizeAllowedCohorts } from '@/lib/utils/cohort';
 import {
   getEventMeta,
   saveEventMeta,
@@ -150,19 +151,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   // Cán bộ đơn vị trực thuộc chỉ được sửa sự kiện mình phụ trách
   if (!isPrivileged) {
-    const { data: role } = await supabase
-      .from('event_roles')
-      .select('id')
-      .eq('event_id', resolvedParams.id)
-      .eq('email', auth.email)
-      .eq('role_type', 'event_admin')
-      .maybeSingle();
-
-    const isCreator =
-      currentEvent.created_by &&
-      currentEvent.created_by.toLowerCase() === auth.email.toLowerCase();
-
-    if (!role && !isCreator) {
+    const allowed = await canManageEvent(auth, resolvedParams.id, currentEvent.created_by ?? null, supabase);
+    if (!allowed) {
       return NextResponse.json(
         { success: false, error: 'Bạn không có quyền chỉnh sửa sự kiện này' },
         { status: 403 }
@@ -176,6 +166,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       { success: false, error: 'Chỉ Super Admin mới có quyền điều chỉnh sức chứa sự kiện' },
       { status: 403 }
     );
+  }
+
+  // Chặn event_admin tự phê duyệt sự kiện đang chờ duyệt ('pending' -> 'active')
+  if (status !== undefined) {
+    const ALLOWED_STATUSES = new Set(['active', 'closed', 'pending']);
+    if (!ALLOWED_STATUSES.has(String(status))) {
+      return NextResponse.json({ success: false, error: 'Trạng thái sự kiện không hợp lệ' }, { status: 400 });
+    }
+    if (currentEvent.status === 'pending' && status !== 'pending' && !isPrivileged) {
+      return NextResponse.json(
+        { success: false, error: 'Chỉ Super Admin hoặc Đoàn Học viện mới có quyền phê duyệt sự kiện đang chờ duyệt' },
+        { status: 403 }
+      );
+    }
   }
 
   // Save departments, max_participants & recruitment custom metadata safely
@@ -204,7 +208,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (start_time !== undefined) dbPayload.start_time = start_time;
   if (end_time !== undefined) dbPayload.end_time = end_time;
   if (semester !== undefined) dbPayload.semester = semester;
-  if (allowed_cohorts !== undefined) dbPayload.allowed_cohorts = Array.isArray(allowed_cohorts) && allowed_cohorts.length > 0 ? allowed_cohorts : null;
+  if (allowed_cohorts !== undefined) {
+    const normalizedCohorts = normalizeAllowedCohorts(allowed_cohorts);
+    dbPayload.allowed_cohorts = normalizedCohorts.length > 0 ? normalizedCohorts : null;
+  }
 
   let updatedEvent = currentEvent;
   if (Object.keys(dbPayload).length > 0) {
@@ -278,19 +285,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     );
   }
 
-  // If not super admin, check if this event admin is authorized for this event
-  if (!isSuperAdmin) {
-    const { data: role } = await supabase
-      .from('event_roles')
-      .select('id')
-      .eq('event_id', resolvedParams.id)
-      .eq('email', auth.email)
-      .eq('role_type', 'event_admin')
-      .maybeSingle();
-
-    if (!role) {
-      return NextResponse.json({ success: false, error: 'Bạn không có quyền xóa sự kiện này' }, { status: 403 });
-    }
+  // If not super admin, check if this event admin is authorized for THIS specific event
+  const allowedDelete = await canManageEvent(auth, resolvedParams.id, currentEvent.created_by ?? null, supabase);
+  if (!allowedDelete) {
+    return NextResponse.json({ success: false, error: 'Bạn không có quyền xóa sự kiện này' }, { status: 403 });
   }
 
   // Delete all dependent records in parallel

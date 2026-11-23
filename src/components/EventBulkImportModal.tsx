@@ -13,7 +13,11 @@ import {
   ArrowLeftIcon,
 } from '@/components/icons';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
+import { getVietnamDateString, getVietnamHHMM } from '@/lib/utils/vn-date';
 import styles from './EventBulkImportModal.module.css';
+
+const EMPTY_DEPARTMENTS: Array<{ id: string; name: string }> = [];
+const EMPTY_SESSIONS: any[] = [];
 
 interface EventBulkImportModalProps {
   eventId: string;
@@ -88,9 +92,9 @@ export default function EventBulkImportModal({
   onSuccess,
   initialRole = 'participant',
   initialMode = 'checkin',
-  departments = [],
+  departments = EMPTY_DEPARTMENTS,
   initialDepartmentId = '',
-  sessions = [],
+  sessions = EMPTY_SESSIONS,
   initialSessionId = '',
 }: EventBulkImportModalProps) {
   const [step, setStep] = useState<'input' | 'preview'>('input');
@@ -115,44 +119,47 @@ export default function EventBulkImportModal({
   const [previewData, setPreviewData] = useState<PreviewResponse | null>(null);
   const [previewFilter, setPreviewFilter] = useState<'all' | 'warnings' | 'already_checked_in' | 'not_registered' | 'ready'>('all');
 
+  const prevOpenRef = React.useRef(false);
+
   React.useEffect(() => {
-    if (isOpen) {
-      let resolvedRole = initialRole;
-      let chosenSessionId = initialSessionId;
+    const justOpened = isOpen && !prevOpenRef.current;
+    prevOpenRef.current = isOpen;
+    if (!justOpened) return;
 
-      if (sessions && sessions.length > 0) {
-        const now = new Date();
-        const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        const defaultSession = sessions.find((s) => {
-          const sDate = s.session_date || '';
-          const sStart = s.start_time || '00:00';
-          const sEnd = s.end_time || '23:59';
-          const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
-          const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
-          return sDate === nowDateStr && nowHHMM >= sStart && nowHHMM <= bufferedEnd;
-        }) || sessions.find((s) => s.session_date === nowDateStr) || sessions[0];
+    let resolvedRole = initialRole;
+    let chosenSessionId = initialSessionId;
 
-        if (defaultSession) {
-          chosenSessionId = initialSessionId || defaultSession.id;
-          if (defaultSession.session_type === 'internal' && initialRole !== 'organizer') {
-            resolvedRole = 'volunteer';
-          }
+    if (sessions && sessions.length > 0) {
+      const nowDateStr = getVietnamDateString(0);
+      const nowHHMM = getVietnamHHMM();
+      const defaultSession = sessions.find((s) => {
+        const sDate = s.session_date || '';
+        const sStart = s.start_time || '00:00';
+        const sEnd = s.end_time || '23:59';
+        const endHour = parseInt(sEnd.split(':')[0], 10) + 1;
+        const bufferedEnd = `${String(Math.min(endHour, 23)).padStart(2, '0')}:${sEnd.split(':')[1] || '00'}`;
+        return sDate === nowDateStr && nowHHMM >= sStart && nowHHMM <= bufferedEnd;
+      }) || sessions.find((s) => s.session_date === nowDateStr) || sessions[0];
+
+      if (defaultSession) {
+        chosenSessionId = initialSessionId || defaultSession.id;
+        if (defaultSession.session_type === 'internal' && initialRole !== 'organizer') {
+          resolvedRole = 'volunteer';
         }
       }
-
-      setRole(resolvedRole);
-      setMode(initialMode || 'checkin');
-      if (initialDepartmentId) setSelectedDeptId(initialDepartmentId);
-      setSelectedSessionId(chosenSessionId || '');
-      setStep('input');
-      setFeedback(null);
-      setParsedStudents([]);
-      setInputText('');
-      setFileName(null);
-      setPreviewData(null);
-      setPreviewFilter('all');
     }
+
+    setRole(resolvedRole);
+    setMode(initialMode || 'checkin');
+    setSelectedDeptId(initialDepartmentId || '');
+    setSelectedSessionId(chosenSessionId || '');
+    setStep('input');
+    setFeedback(null);
+    setParsedStudents([]);
+    setInputText('');
+    setFileName(null);
+    setPreviewData(null);
+    setPreviewFilter('all');
   }, [isOpen, initialRole, initialMode, initialDepartmentId, initialSessionId, sessions]);
 
   if (!isOpen) return null;
@@ -234,7 +241,7 @@ export default function EventBulkImportModal({
         const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
         let headerRowIdx = -1;
-        let colMap: Record<string, number> = {
+        const colMap: Record<string, number> = {
           mssv: -1,
           fullName: -1,
           hoLot: -1,
@@ -318,14 +325,14 @@ export default function EventBulkImportModal({
               fullName = `${ho} ${ten}`.trim();
             }
 
-            let classId = colMap.classId !== -1 && row[colMap.classId] ? String(row[colMap.classId]).trim() : '';
-            let phone = colMap.phone !== -1 && row[colMap.phone] ? String(row[colMap.phone]).trim() : '';
+            const classId = colMap.classId !== -1 && row[colMap.classId] ? String(row[colMap.classId]).trim() : '';
+            const phone = colMap.phone !== -1 && row[colMap.phone] ? String(row[colMap.phone]).trim() : '';
             let gender = colMap.gender !== -1 && row[colMap.gender] ? String(row[colMap.gender]).trim() : '';
             if (gender) {
               gender = gender.toLowerCase().includes('nam') || gender.toLowerCase() === 'm' ? 'Nam' : 'Nữ';
             }
-            let deptName = colMap.dept !== -1 && row[colMap.dept] ? String(row[colMap.dept]).trim() : '';
-            let note = colMap.note !== -1 && row[colMap.note] ? String(row[colMap.note]).trim() : '';
+            const deptName = colMap.dept !== -1 && row[colMap.dept] ? String(row[colMap.dept]).trim() : '';
+            const note = colMap.note !== -1 && row[colMap.note] ? String(row[colMap.note]).trim() : '';
 
             let parsedRole: 'participant' | 'volunteer' | 'organizer' | undefined = undefined;
             if (colMap.role !== -1 && row[colMap.role]) {
@@ -476,10 +483,10 @@ export default function EventBulkImportModal({
     const newSummary = {
       ...previewData.summary,
       total_valid: updatedStudents.length,
-      already_checked_in: Math.max(0, previewData.summary.already_checked_in - (wasAlreadyCheckedIn ? 1 : 0)),
-      in_file_duplicates: Math.max(0, previewData.summary.in_file_duplicates - (wasDuplicate ? 1 : 0)),
-      not_in_system: Math.max(0, previewData.summary.not_in_system - (wasNotInSystem ? 1 : 0)),
-      not_registered: Math.max(0, previewData.summary.not_registered - (wasNotRegistered ? 1 : 0)),
+      already_checked_in: Math.max(0, (previewData.summary?.already_checked_in ?? 0) - (wasAlreadyCheckedIn ? 1 : 0)),
+      in_file_duplicates: Math.max(0, (previewData.summary?.in_file_duplicates ?? 0) - (wasDuplicate ? 1 : 0)),
+      not_in_system: Math.max(0, (previewData.summary?.not_in_system ?? 0) - (wasNotInSystem ? 1 : 0)),
+      not_registered: Math.max(0, (previewData.summary?.not_registered ?? 0) - (wasNotRegistered ? 1 : 0)),
     };
 
     setPreviewData({
@@ -896,14 +903,14 @@ export default function EventBulkImportModal({
                   className={styles.statCard}
                   style={{
                     background:
-                      previewData.summary.already_checked_in > 0 ? '#fffbeb' : '#ffffff',
+                      (previewData.summary?.already_checked_in ?? 0) > 0 ? '#fffbeb' : '#ffffff',
                   }}
                 >
                   <span
                     className={styles.statCardTitle}
                     style={{
                       color:
-                        previewData.summary.already_checked_in > 0 ? '#b45309' : '#64748b',
+                        (previewData.summary?.already_checked_in ?? 0) > 0 ? '#b45309' : '#64748b',
                     }}
                   >
                     Đã điểm danh rồi
@@ -912,10 +919,10 @@ export default function EventBulkImportModal({
                     className={styles.statCardValue}
                     style={{
                       color:
-                        previewData.summary.already_checked_in > 0 ? '#d97706' : '#0f172a',
+                        (previewData.summary?.already_checked_in ?? 0) > 0 ? '#d97706' : '#0f172a',
                     }}
                   >
-                    {previewData.summary.already_checked_in}
+                    {previewData.summary?.already_checked_in ?? 0}
                   </span>
                 </div>
               )}
@@ -924,7 +931,7 @@ export default function EventBulkImportModal({
                 <div className={styles.statCard}>
                   <span className={styles.statCardTitle}>Chưa đăng ký trước</span>
                   <span className={styles.statCardValue} style={{ color: '#6366f1' }}>
-                    {previewData.summary.not_registered}
+                    {previewData.summary?.not_registered ?? 0}
                   </span>
                 </div>
               )}
@@ -932,35 +939,35 @@ export default function EventBulkImportModal({
               <div className={styles.statCard}>
                 <span className={styles.statCardTitle}>Chưa có tài khoản</span>
                 <span className={styles.statCardValue} style={{ color: '#0284c7' }}>
-                  {previewData.summary.not_in_system}
+                  {previewData.summary?.not_in_system ?? 0}
                 </span>
               </div>
 
-              {previewData.summary.in_file_duplicates > 0 && (
+              {(previewData.summary?.in_file_duplicates ?? 0) > 0 && (
                 <div className={styles.statCard} style={{ background: '#fef2f2' }}>
                   <span className={styles.statCardTitle} style={{ color: '#b91c1c' }}>
                     Trùng lặp file
                   </span>
                   <span className={styles.statCardValue} style={{ color: '#dc2626' }}>
-                    {previewData.summary.in_file_duplicates}
+                    {previewData.summary?.in_file_duplicates ?? 0}
                   </span>
                 </div>
               )}
 
-              {previewData.rejected > 0 && (
+              {(previewData.rejected ?? 0) > 0 && (
                 <div className={styles.statCard} style={{ background: '#fef2f2' }}>
                   <span className={styles.statCardTitle} style={{ color: '#b91c1c' }}>
                     Sai format (loại)
                   </span>
                   <span className={styles.statCardValue} style={{ color: '#dc2626' }}>
-                    {previewData.rejected}
+                    {previewData.rejected ?? 0}
                   </span>
                 </div>
               )}
             </div>
 
             {/* Rejected MSSVs list */}
-            {previewData.rejected > 0 && previewData.rejected_mssvs.length > 0 && (
+            {(previewData.rejected ?? 0) > 0 && (previewData.rejected_mssvs?.length ?? 0) > 0 && (
               <div
                 style={{
                   padding: '0.65rem 0.85rem',
@@ -973,9 +980,9 @@ export default function EventBulkImportModal({
               >
                 <strong>Các mã bị loại trừ do không đúng format MSSV PTIT:</strong>
                 <div style={{ marginTop: '0.2rem', fontFamily: 'monospace' }}>
-                  {previewData.rejected_mssvs.join(', ')}
-                  {previewData.rejected > previewData.rejected_mssvs.length &&
-                    ` và ${previewData.rejected - previewData.rejected_mssvs.length} mã khác...`}
+                  {(previewData.rejected_mssvs || []).join(', ')}
+                  {(previewData.rejected ?? 0) > (previewData.rejected_mssvs?.length ?? 0) &&
+                    ` và ${(previewData.rejected ?? 0) - (previewData.rejected_mssvs?.length ?? 0)} mã khác...`}
                 </div>
               </div>
             )}
@@ -1001,7 +1008,7 @@ export default function EventBulkImportModal({
                 >
                   Cần lưu ý ({previewData.warnings_count})
                 </button>
-                {mode === 'checkin' && previewData.summary.already_checked_in > 0 && (
+                {mode === 'checkin' && (previewData.summary?.already_checked_in ?? 0) > 0 && (
                   <button
                     type="button"
                     onClick={() => setPreviewFilter('already_checked_in')}
@@ -1009,10 +1016,10 @@ export default function EventBulkImportModal({
                       previewFilter === 'already_checked_in' ? styles.filterTabBtnActive : ''
                     }`}
                   >
-                    Đã điểm danh ({previewData.summary.already_checked_in})
+                    Đã điểm danh ({previewData.summary?.already_checked_in ?? 0})
                   </button>
                 )}
-                {mode === 'checkin' && previewData.summary.not_registered > 0 && (
+                {mode === 'checkin' && (previewData.summary?.not_registered ?? 0) > 0 && (
                   <button
                     type="button"
                     onClick={() => setPreviewFilter('not_registered')}
@@ -1020,7 +1027,7 @@ export default function EventBulkImportModal({
                       previewFilter === 'not_registered' ? styles.filterTabBtnActive : ''
                     }`}
                   >
-                    Chưa đăng ký ({previewData.summary.not_registered})
+                    Chưa đăng ký ({previewData.summary?.not_registered ?? 0})
                   </button>
                 )}
                 <button
@@ -1035,7 +1042,7 @@ export default function EventBulkImportModal({
               </div>
 
               <div className={styles.quickActions}>
-                {mode === 'checkin' && previewData.summary.already_checked_in > 0 && (
+                {mode === 'checkin' && (previewData.summary?.already_checked_in ?? 0) > 0 && (
                   <button
                     type="button"
                     onClick={handleRemoveAlreadyCheckedIn}
@@ -1043,7 +1050,7 @@ export default function EventBulkImportModal({
                     style={{ borderColor: '#fcd34d', background: '#fffbeb', color: '#b45309' }}
                     title="Bỏ qua các bạn đã điểm danh trước đó để tránh ghi đè"
                   >
-                    Bỏ qua {previewData.summary.already_checked_in} bạn đã điểm danh
+                    Bỏ qua {previewData.summary?.already_checked_in ?? 0} bạn đã điểm danh
                   </button>
                 )}
                 {previewData.warnings_count > 0 && (
@@ -1206,7 +1213,7 @@ export default function EventBulkImportModal({
               </button>
 
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {mode === 'checkin' && previewData.summary.already_checked_in > 0 && (
+                {mode === 'checkin' && (previewData.summary?.already_checked_in ?? 0) > 0 && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1238,11 +1245,11 @@ export default function EventBulkImportModal({
                   className={styles.submitButton}
                   style={{
                     background:
-                      previewData.warnings_count > 0 &&
-                      previewData.summary.already_checked_in === 0 &&
-                      !previewData.summary.capacity.is_overflow
+                      (previewData.warnings_count ?? 0) > 0 &&
+                      (previewData.summary?.already_checked_in ?? 0) === 0 &&
+                      !previewData.summary?.capacity?.is_overflow
                         ? '#2563eb'
-                        : previewData.summary.capacity.is_overflow
+                        : previewData.summary?.capacity?.is_overflow
                         ? '#dc2626'
                         : '#2563eb',
                   }}

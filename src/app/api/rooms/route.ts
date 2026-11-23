@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 
 const DEFAULT_ROOMS = [
@@ -11,10 +11,11 @@ const DEFAULT_ROOMS = [
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
     const { data: rooms, error } = await supabase
       .from('rooms')
-      .select('*')
+      .select('id, room_name, capacity, location')
       .order('room_name', { ascending: true });
 
     if (error || !rooms || rooms.length === 0) {
@@ -33,18 +34,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
-  
-  // Verify super admin
-  const { data: superAdmin } = await supabase
-    .from('super_admins')
-    .select('email')
-    .eq('email', auth.email)
-    .single();
-
-  if (!superAdmin) {
-    return NextResponse.json({ success: false, error: 'Chỉ Super Admin mới có quyền thêm phòng' }, { status: 403 });
+  if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'facility') {
+    return NextResponse.json(
+      { success: false, error: 'Chỉ Super Admin hoặc Phòng TC-HC-QT mới có quyền thêm phòng' },
+      { status: 403 }
+    );
   }
+
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
   const body = await req.json();
   const { room_name, capacity = 100, location = '' } = body;
@@ -67,7 +65,7 @@ export async function POST(req: Request) {
     if (error.code === '23505') {
       return NextResponse.json({ success: false, error: 'Tên phòng/sân bãi này đã tồn tại' }, { status: 409 });
     }
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, data: newRoom });

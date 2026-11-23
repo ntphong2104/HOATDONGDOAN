@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { CloseIcon, LockIcon, SpinnerIcon, QrCodeIcon, MapPinIcon } from '@/components/icons';
 import type { ParticipateRole } from '@/lib/types';
-import { getVietnamDateString } from '@/lib/utils/vn-date';
+import { getVietnamDateString, vnWallClockToUtcMs, formatVnHHMM } from '@/lib/utils/vn-date';
 import styles from './DynamicEventQRModal.module.css';
 
 interface DynamicEventQRModalProps {
   eventId: string;
   eventName: string;
   targetRole?: ParticipateRole;
+  initialSessionId?: string;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -19,12 +20,14 @@ export default function DynamicEventQRModal({
   eventId,
   eventName,
   targetRole = 'participant',
+  initialSessionId,
   isOpen,
   onClose,
 }: DynamicEventQRModalProps) {
   const [token, setToken] = useState<string>('');
   const [secondsLeft, setSecondsLeft] = useState<number>(10);
   const [loading, setLoading] = useState<boolean>(true);
+  const [qrError, setQrError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('main');
   const [sessionTimeStatus, setSessionTimeStatus] = useState<{ status: 'open' | 'early' | 'late' | 'unknown'; message: string }>({ status: 'open', message: 'Đang mở điểm danh' });
@@ -46,15 +49,22 @@ export default function DynamicEventQRModal({
   // Load sessions for this event
   useEffect(() => {
     if (!isOpen || !eventId) return;
+    let cancelled = false;
     fetch(`/api/events/${eventId}/sessions`)
       .then((r) => r.json())
       .then((res) => {
+        if (cancelled) return;
         if (res.success && Array.isArray(res.data?.sessions) && res.data.sessions.length > 0) {
           setSessions(res.data.sessions);
+          const preferredSession = initialSessionId
+            ? res.data.sessions.find((s: any) => s.id === initialSessionId)
+            : null;
           // Try to find the session that matches today's date (Vietnam UTC+7)
           const todayStr = getVietnamDateString(0);
           const todaySession = res.data.sessions.find((s: any) => s.session_date === todayStr);
-          if (todaySession) {
+          if (preferredSession) {
+            setSelectedSessionId(preferredSession.id);
+          } else if (todaySession) {
             setSelectedSessionId(todaySession.id);
           } else {
             setSelectedSessionId(res.data.sessions[0].id);
@@ -62,53 +72,68 @@ export default function DynamicEventQRModal({
         }
       })
       .catch(() => {});
-  }, [isOpen, eventId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, eventId, initialSessionId]);
 
-  // Check time status for selected session
+  // Check time status for selected session (re-evaluated every 30s while open)
   useEffect(() => {
+    let cancelled = false;
     if (!selectedSessionId || sessions.length === 0) return;
     const currentSess = sessions.find((s) => s.id === selectedSessionId);
-    if (!currentSess || !currentSess.session_date) {
-      setSessionTimeStatus({ status: 'open', message: 'Đang mở điểm danh' });
-      return;
-    }
 
-    try {
-      const now = new Date();
-      const sessDateStr = currentSess.session_date;
-      const startTimeStr = currentSess.start_time || '07:30';
-      const endTimeStr = currentSess.end_time || '11:30';
-
-      const [startH, startM] = startTimeStr.split(':').map(Number);
-      const [endH, endM] = endTimeStr.split(':').map(Number);
-
-      const startDateTime = new Date(`${sessDateStr}T${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}:00`);
-      const endDateTime = new Date(`${sessDateStr}T${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00`);
-
-      const openCheckinTime = new Date(startDateTime.getTime() - 15 * 60 * 1000); // 15m early
-      const closeCheckinTime = new Date(endDateTime.getTime() + 60 * 60 * 1000); // 1h late
-
-      if (now < openCheckinTime) {
-        const earlyHours = String(openCheckinTime.getHours()).padStart(2, '0');
-        const earlyMins = String(openCheckinTime.getMinutes()).padStart(2, '0');
-        setSessionTimeStatus({
-          status: 'early',
-          message: `Chưa đến giờ điểm danh (Cổng mở lúc ${earlyHours}:${earlyMins})`,
-        });
-      } else if (now > closeCheckinTime) {
-        setSessionTimeStatus({
-          status: 'late',
-          message: `Đã quá hạn điểm danh (Kết thúc lúc ${endTimeStr})`,
-        });
-      } else {
-        setSessionTimeStatus({
-          status: 'open',
-          message: `Đang trong khung giờ điểm danh (${startTimeStr} - ${endTimeStr})`,
-        });
+    const evaluateTimeStatus = () => {
+      if (cancelled) return;
+      if (!currentSess || !currentSess.session_date) {
+        setSessionTimeStatus({ status: 'open', message: 'Đang mở điểm danh' });
+        return;
       }
-    } catch {
-      setSessionTimeStatus({ status: 'open', message: 'Đang mở điểm danh' });
-    }
+
+      try {
+        const nowMs = Date.now();
+        const sessDateStr = currentSess.session_date;
+        const startTimeStr = currentSess.start_time || '07:30';
+        const endTimeStr = currentSess.end_time || '11:30';
+
+        const startMs = vnWallClockToUtcMs(sessDateStr, startTimeStr);
+        const endMs = vnWallClockToUtcMs(sessDateStr, endTimeStr);
+        if (startMs === null || endMs === null) {
+          setSessionTimeStatus({ status: 'open', message: 'Đang mở điểm danh' });
+          return;
+        }
+
+        const openCheckinMs = startMs - 15 * 60 * 1000; // 15m early
+        const closeCheckinMs = endMs + 60 * 60 * 1000; // 1h late
+
+        if (nowMs < openCheckinMs) {
+          const earlyHHMM = formatVnHHMM(openCheckinMs);
+          setSessionTimeStatus({
+            status: 'early',
+            message: `Chưa đến giờ điểm danh (Cổng mở lúc ${earlyHHMM})`,
+          });
+        } else if (nowMs > closeCheckinMs) {
+          setSessionTimeStatus({
+            status: 'late',
+            message: `Đã quá hạn điểm danh (Kết thúc lúc ${endTimeStr})`,
+          });
+        } else {
+          setSessionTimeStatus({
+            status: 'open',
+            message: `Đang trong khung giờ điểm danh (${startTimeStr} - ${endTimeStr})`,
+          });
+        }
+      } catch {
+        setSessionTimeStatus({ status: 'open', message: 'Đang mở điểm danh' });
+      }
+    };
+
+    queueMicrotask(evaluateTimeStatus);
+    const statusInterval = setInterval(evaluateTimeStatus, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(statusInterval);
+    };
   }, [selectedSessionId, sessions]);
 
   useEffect(() => {
@@ -126,17 +151,27 @@ export default function DynamicEventQRModal({
           `/api/events/${eventId}/dynamic-qr?role=${targetRole}&session_id=${selectedSessionId}`,
           { cache: 'no-store' }
         );
-        const data = await res.json();
-        if (data.success && isSubscribed) {
+        const data = await res.json().catch(() => ({}));
+        if (!isSubscribed) return;
+        if (res.ok && data.success && data.data?.token) {
           const expSec = Math.max(1, Number(data.data.expiresInSeconds) || 10);
           setToken(data.data.token);
+          setQrError(null);
           // Add 150ms buffer so the next fetch always lands squarely inside the new 10s server window
           nextRefreshAt = Date.now() + expSec * 1000 + 150;
           setSecondsLeft(expSec);
           setLoading(false);
+        } else {
+          setQrError(data?.error || 'Không thể tải mã QR điểm danh. Đang tự động thử lại...');
+          setLoading(false);
+          nextRefreshAt = Date.now() + 3000;
         }
       } catch (err) {
         console.error('Failed to fetch dynamic QR token', err);
+        if (isSubscribed) {
+          setQrError('Mất kết nối máy chủ. Đang tự động thử lại...');
+          setLoading(false);
+        }
         // Retry cleanly in 2s if network hiccupped
         nextRefreshAt = Date.now() + 2000;
       } finally {
@@ -144,9 +179,14 @@ export default function DynamicEventQRModal({
       }
     };
 
-    // Initial fetch
-    setLoading(true);
-    fetchToken();
+    // Initial fetch — clear stale token from previous session immediately
+    queueMicrotask(() => {
+      if (!isSubscribed) return;
+      setToken('');
+      setQrError(null);
+      setLoading(true);
+      void fetchToken();
+    });
 
     // Sync countdown directly to wall-clock target (250ms tick = zero drift, exact QR flip)
     const intervalId = setInterval(() => {
@@ -176,7 +216,7 @@ export default function DynamicEventQRModal({
             <h3 className={styles.modalTitle}>Mã QR Điểm Danh Động</h3>
             <p className={styles.modalSubtitle}>Chiếu màn hình / máy chiếu để sinh viên tự quét</p>
           </div>
-          <button onClick={onClose} className={styles.closeButton} title="Đóng">
+          <button type="button" onClick={onClose} className={styles.closeButton} title="Đóng">
             <CloseIcon size={20} />
           </button>
         </div>
@@ -272,7 +312,12 @@ export default function DynamicEventQRModal({
           </div>
 
           <div className={styles.qrCard}>
-            {loading || !token ? (
+            {qrError && !token ? (
+              <div style={{ padding: '2.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textAlign: 'center' }}>
+                <span style={{ color: '#b91c1c', fontWeight: 700, fontSize: '0.92rem' }}>{qrError}</span>
+                <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Hệ thống sẽ tự động kết nối lại sau vài giây...</span>
+              </div>
+            ) : loading || !token ? (
               <div style={{ padding: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
                 <SpinnerIcon size={36} color="#2563eb" />
                 <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Đang tạo mã QR động...</span>
@@ -295,7 +340,7 @@ export default function DynamicEventQRModal({
           <div className={styles.instructions} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
             <QrCodeIcon size={16} color="#2563eb" />
             <span>
-              Sinh viên mở ứng dụng ➔ Bấm <strong>"Quét mã sự kiện"</strong> để ghi nhận vai trò <strong>{roleLabel}</strong>.
+              Sinh viên mở ứng dụng ➔ Bấm <strong>&quot;Quét mã sự kiện&quot;</strong> để ghi nhận vai trò <strong>{roleLabel}</strong>.
             </span>
           </div>
         </div>

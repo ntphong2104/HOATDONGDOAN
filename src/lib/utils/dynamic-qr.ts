@@ -1,15 +1,23 @@
 import crypto from 'crypto';
 
 function getSecret(): string {
-  const secret = process.env.DYNAMIC_QR_SECRET;
+  const secret =
+    process.env.DYNAMIC_QR_SECRET ||
+    process.env.PERSONAL_QR_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (secret) return secret;
   if (process.env.NODE_ENV === 'production') {
     throw new Error('DYNAMIC_QR_SECRET is required in production');
   }
   return 'dev-only-secret-key';
 }
+
 const WINDOW_SECONDS = 10; // Token changes every 10 seconds
 const TOLERANCE_WINDOWS = 2; // Valid for current window and 2 previous windows (~30s total)
+
+function signDynamicPayload(payload: string): string {
+  return crypto.createHmac('sha256', getSecret()).update(payload).digest('hex').substring(0, 16);
+}
 
 export function generateDynamicToken(
   eventId: string,
@@ -18,9 +26,8 @@ export function generateDynamicToken(
   sessionId?: string
 ): { token: string; expiresInSeconds: number; window: number; role: string; sessionId?: string } {
   const currentWindow = Math.floor(timestampMs / 1000 / WINDOW_SECONDS);
-  const cleanSessionId = sessionId ? sessionId.trim() : 'main';
-  const data = `${eventId}:${currentWindow}:${role}:${cleanSessionId}:${getSecret()}`;
-  const signature = crypto.createHash('sha256').update(data).digest('hex').substring(0, 16);
+  const cleanSessionId = (sessionId ? sessionId.trim() : 'main').replace(/:/g, '_');
+  const signature = signDynamicPayload(`${eventId}:${currentWindow}:${role}:${cleanSessionId}`);
   const token = `${eventId}:${currentWindow}:${role}:${cleanSessionId}:${signature}`;
 
   const secondsIntoWindow = Math.floor((timestampMs / 1000) % WINDOW_SECONDS);
@@ -37,7 +44,7 @@ export function verifyDynamicToken(
   if (!token || typeof token !== 'string') return { valid: false, role: 'participant' };
 
   const parts = token.split(':');
-  
+
   // Format with role and session: [eventId, window, role, sessionId, signature]
   if (parts.length === 5) {
     const [tokenEventId, tokenWindowStr, tokenRole, tokenSessionId, tokenSignature] = parts;
@@ -52,8 +59,7 @@ export function verifyDynamicToken(
       return { valid: false, role: 'participant' };
     }
 
-    const expectedData = `${eventId}:${tokenWindow}:${tokenRole}:${tokenSessionId}:${getSecret()}`;
-    const expectedSignature = crypto.createHash('sha256').update(expectedData).digest('hex').substring(0, 16);
+    const expectedSignature = signDynamicPayload(`${eventId}:${tokenWindow}:${tokenRole}:${tokenSessionId}`);
 
     const sigBuf = Buffer.from(tokenSignature);
     const expBuf = Buffer.from(expectedSignature);
@@ -77,8 +83,7 @@ export function verifyDynamicToken(
       return { valid: false, role: 'participant' };
     }
 
-    const expectedData = `${eventId}:${tokenWindow}:${tokenRole}:${getSecret()}`;
-    const expectedSignature = crypto.createHash('sha256').update(expectedData).digest('hex').substring(0, 16);
+    const expectedSignature = signDynamicPayload(`${eventId}:${tokenWindow}:${tokenRole}`);
 
     const sigBuf = Buffer.from(tokenSignature);
     const expBuf = Buffer.from(expectedSignature);
@@ -102,8 +107,7 @@ export function verifyDynamicToken(
       return { valid: false, role: 'participant' };
     }
 
-    const expectedData = `${eventId}:${tokenWindow}:${getSecret()}`;
-    const expectedSignature = crypto.createHash('sha256').update(expectedData).digest('hex').substring(0, 16);
+    const expectedSignature = signDynamicPayload(`${eventId}:${tokenWindow}`);
 
     const sigBuf = Buffer.from(tokenSignature);
     const expBuf = Buffer.from(expectedSignature);

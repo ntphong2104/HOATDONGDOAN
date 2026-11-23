@@ -85,8 +85,13 @@ export default function EventRecruitmentPage({
   };
 
   useEffect(() => {
-    fetchUser();
-    fetchRegistrationData();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      fetchUser();
+      fetchRegistrationData();
+    })();
 
     const onRefresh = () => {
       if (document.visibilityState === 'visible') {
@@ -111,6 +116,7 @@ export default function EventRecruitmentPage({
     }
 
     return () => {
+      cancelled = true;
       window.removeEventListener('focus', onRefresh);
       document.removeEventListener('visibilitychange', onRefresh);
       window.removeEventListener('storage', onStorage);

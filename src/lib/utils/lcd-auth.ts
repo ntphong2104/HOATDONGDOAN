@@ -38,7 +38,7 @@ export async function resolveActorLcdScope(
   // 2. Match against default officers + stored officers
   let storedOfficers: OfficerRoleItem[] = [];
   try {
-    storedOfficers = (await getStoredOfficerRoles()) || [];
+    storedOfficers = (await getStoredOfficerRoles(supabase)) || [];
   } catch {}
   const localMatch = [...DEFAULT_OFFICERS, ...storedOfficers].find(
     (o) => o?.email?.toLowerCase().trim() === lowerEmail

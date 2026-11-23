@@ -4,6 +4,7 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { resolveActorLcdScope, resolveDelegateExpiry } from '@/lib/utils/lcd-auth';
 import { normalizeLcdCode, resolveStudentLcd } from '@/lib/utils/lcd';
 import { getMasterStudentByMssv, isPlaceholderClass, isPlaceholderName } from '@/lib/utils/student-profile';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +27,13 @@ export async function GET(request: Request) {
       ? normalizeLcdCode(new URL(request.url).searchParams.get('lcd'))
       : null;
 
-    const { data, error } = await supabase
-      .from('class_delegates')
-      .select('*')
-      .order('granted_at', { ascending: false });
+    const { data, error } = await fetchAllRows<any>(() =>
+      supabase
+        .from('class_delegates')
+        .select('*')
+        .order('granted_at', { ascending: false })
+        .order('id', { ascending: false })
+    );
 
     if (error) {
       return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
@@ -269,7 +273,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const expiryLabel = expiryDate.toLocaleDateString('vi-VN');
+    const expiryLabel = expiryDate.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     const summaryMsg =
       uniqueMssvs.length === 1
         ? `Đã cấp quyền BCH Chi đoàn lớp ${(added[0] || updated[0]).class_id} cho ${(added[0] || updated[0]).full_name} (${uniqueMssvs[0]}) đến ${expiryLabel}!`
@@ -368,7 +372,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({
       success: true,
       data: updated,
-      message: `Đã gia hạn quyền BCH Chi đoàn ${existing.class_id} (${existing.full_name}) đến ${newExpiry.toLocaleDateString('vi-VN')}!`,
+      message: `Đã gia hạn quyền BCH Chi đoàn ${existing.class_id} (${existing.full_name}) đến ${newExpiry.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}!`,
     });
   } catch {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });

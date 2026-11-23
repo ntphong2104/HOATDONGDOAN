@@ -18,6 +18,7 @@ import {
 } from '@/components/icons';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
 import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { isSafeExternalUrl } from '@/lib/security/redirect';
 import type { EventProposal, ProposalStage, SessionUser } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -56,8 +57,13 @@ export default function ProposalsListPage() {
   };
 
   useEffect(() => {
-    fetchUser();
-    fetchProposals();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      fetchUser();
+      fetchProposals();
+    })();
 
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) {
@@ -66,7 +72,10 @@ export default function ProposalsListPage() {
       }
     };
     window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('pageshow', handlePageShow);
+    };
   }, []);
 
   // Tier is resolved server-side by /api/me (exact allowlist / officer registry).
@@ -440,23 +449,25 @@ export default function ProposalsListPage() {
                       <span>{item.room_name || 'Hội trường / Phòng họp'}</span>
                     </span>
 
-                    {item.plan_url && (
-                      <a
-                        href={item.plan_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                    {isSafeExternalUrl(item.plan_url) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.open(item.plan_url!, '_blank', 'noopener,noreferrer');
+                        }}
                         className={styles.metaChip}
                         style={{
                           background: '#eff6ff',
                           color: '#2563eb',
                           border: '1px solid #bfdbfe',
                           fontWeight: 700,
-                          textDecoration: 'none',
+                          cursor: 'pointer',
                         }}
                       >
                         <span>File Kế Hoạch ↗</span>
-                      </a>
+                      </button>
                     )}
                   </div>
 

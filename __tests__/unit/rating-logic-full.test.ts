@@ -138,7 +138,7 @@ describe('Rating Logic - getRatingDepartmentLabel', () => {
   test('returns correct labels for all tier types', () => {
     expect(getRatingDepartmentLabel('youth_union')).toBe('Đoàn Học Viện');
     expect(getRatingDepartmentLabel('ctsv')).toBe('Phòng Công Tác Sinh Viên (CTSV)');
-    expect(getRatingDepartmentLabel('facility')).toBe('Phòng Quản Trị CSVC & Tổ Chức');
+    expect(getRatingDepartmentLabel('facility')).toBe('Phòng. TC-HC-QT');
     expect(getRatingDepartmentLabel('super_admin')).toBe('Super Admin Đoàn Trường');
     expect(getRatingDepartmentLabel('unknown_tier')).toBe('Cấp Phê Duyệt');
   });

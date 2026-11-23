@@ -1,6 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
+import { getAuthContext, invalidateAuthContextCache, canManageEvent, canScanEvent } from '@/lib/supabase/auth-helper';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 import { getEventMeta } from '@/lib/constants/event-meta-store';
 import { invalidateMeResponseCache } from '@/lib/constants/user-profile-store';
@@ -13,6 +13,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
+
+    const allowed = await canScanEvent(auth, id, undefined, supabase);
+    if (!allowed) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
 
     const { data } = await supabase
       .from('event_roles')
@@ -55,15 +60,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       );
     }
 
-    // Authorization: only super_admin, youth_union, or event creator/admin can assign roles
-    const isSuperOrPrivileged = isSuperAdmin || auth.tier === 'youth_union';
-    const isEventAdmin = auth.isEventAdmin || auth.tier === 'event_admin';
-    
-    if (!isSuperOrPrivileged && !isEventAdmin) {
-      const isCreator = eventData?.created_by === auth.email;
-      if (!isCreator) {
-        return NextResponse.json({ success: false, error: 'Forbidden', message: 'Bạn không có quyền gán vai trò cho sự kiện này' }, { status: 403 });
-      }
+    // Authorization: only super_admin, youth_union, or THIS event's creator/event_admin can assign roles
+    const allowed = await canManageEvent(auth, id, eventData?.created_by ?? null, supabase);
+    if (!allowed) {
+      return NextResponse.json({ success: false, error: 'Forbidden', message: 'Bạn không có quyền gán vai trò cho sự kiện này' }, { status: 403 });
     }
 
     const body = await request.json();

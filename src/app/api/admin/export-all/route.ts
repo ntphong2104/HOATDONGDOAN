@@ -1,14 +1,20 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { sanitizeSpreadsheetCell } from '@/lib/security/redirect';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
+    const auth = await getAuthContext();
+    if (!auth) {
+      return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
+    }
+    if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'youth_union') {
+      return NextResponse.json({ success: false, error: 'forbidden' }, { status: 403 });
+    }
 
-    const { data: sa } = await supabase.from('super_admins').select('email').eq('email', user.email || '').single();
-    if (!sa) return NextResponse.json({ success: false, error: 'forbidden' }, { status: 403 });
+    const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+    const supabase = (await getSupabase()) || (await createClient());
 
     const allCheckins: Record<string, unknown>[] = [];
     const pageSize = 1000;
@@ -28,18 +34,18 @@ export async function GET() {
 
     const rows = allCheckins.map((c: Record<string, unknown>, i: number) => ({
       stt: i + 1,
-      mssv: c.mssv,
-      full_name: (c.users as Record<string, string>)?.full_name || '',
-      class_id: (c.users as Record<string, string>)?.class_id || '',
-      event_name: (c.events as Record<string, string>)?.event_name || '',
-      semester: (c.events as Record<string, string>)?.semester || '',
-      participate_role: c.participate_role,
-      checked_by: c.checked_by,
+      mssv: sanitizeSpreadsheetCell(c.mssv),
+      full_name: sanitizeSpreadsheetCell((c.users as Record<string, string>)?.full_name || ''),
+      class_id: sanitizeSpreadsheetCell((c.users as Record<string, string>)?.class_id || ''),
+      event_name: sanitizeSpreadsheetCell((c.events as Record<string, string>)?.event_name || ''),
+      semester: sanitizeSpreadsheetCell((c.events as Record<string, string>)?.semester || ''),
+      participate_role: sanitizeSpreadsheetCell(c.participate_role),
+      checked_by: sanitizeSpreadsheetCell(c.checked_by),
       checkin_time: c.created_at,
     }));
 
     return NextResponse.json({ success: true, data: rows });
   } catch {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 }

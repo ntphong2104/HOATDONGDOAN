@@ -1,4 +1,7 @@
 import { NextRequest } from 'next/server';
+import { invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
+import { invalidateMeResponseCache } from '@/lib/constants/user-profile-store';
+import { signCookie } from '@/lib/auth/demo-cookie';
 import { POST as DemoPOST, DELETE as DemoDELETE } from '@/app/api/auth/demo/route';
 import { POST as LogoutPOST, GET as LogoutGET } from '@/app/api/auth/logout/route';
 import { GET as MeGET } from '@/app/api/me/route';
@@ -32,11 +35,15 @@ const mockQueryBuilder: any = {
   upsert: jest.fn().mockReturnThis(),
   delete: jest.fn().mockReturnThis(),
   eq: jest.fn().mockReturnThis(),
+  neq: jest.fn().mockReturnThis(),
+  ilike: jest.fn().mockReturnThis(),
   or: jest.fn().mockReturnThis(),
+  lt: jest.fn().mockReturnThis(),
   gt: jest.fn().mockReturnThis(),
   in: jest.fn().mockReturnThis(),
   order: jest.fn().mockReturnThis(),
   limit: jest.fn().mockReturnThis(),
+  range: jest.fn().mockReturnThis(),
   single: jest.fn().mockResolvedValue({ data: {}, error: null }),
   maybeSingle: jest.fn().mockResolvedValue({ data: {}, error: null }),
   then: jest.fn().mockImplementation((resolve) => resolve({ data: [], error: null })),
@@ -51,32 +58,13 @@ const mockSupabase: any = {
   },
 };
 
-jest.mock('next/server', () => {
-  class MockNextResponse {
-    cookies = { set: jest.fn(), delete: jest.fn() };
-    body: any;
-    status: number;
-    constructor(body: any, init: any) {
-      this.body = body;
-      this.status = init?.status || 200;
-    }
-    json() {
-      return Promise.resolve(this.body);
-    }
-    static json(body: any, init: any) {
-      return new MockNextResponse(body, init);
-    }
-  }
-  return {
-    NextResponse: MockNextResponse,
-  };
-});
-
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn().mockImplementation(() => Promise.resolve(mockSupabase)),
+  createAdminClient: jest.fn().mockImplementation(() => Promise.resolve(mockSupabase)),
 }));
 
 jest.mock('@/lib/supabase/auth-helper', () => ({
+  ...jest.requireActual('@/lib/supabase/auth-helper'),
   getAuthContext: jest.fn().mockResolvedValue(null),
 }));
 
@@ -98,6 +86,15 @@ import * as blacklistLogic from '@/lib/utils/blacklist-logic';
 describe('API Route Whitebox Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    invalidateAuthContextCache();
+    invalidateMeResponseCache();
+    mockQueryBuilder.single.mockReset();
+    mockQueryBuilder.single.mockResolvedValue({ data: {}, error: null });
+    mockQueryBuilder.maybeSingle.mockReset();
+    mockQueryBuilder.maybeSingle.mockResolvedValue({ data: null, error: null });
+    mockQueryBuilder.then.mockReset();
+    mockQueryBuilder.then.mockImplementation((resolve: any) => resolve({ data: [], error: null }));
+    ((cookies as unknown as () => any)().get as jest.Mock).mockReturnValue(undefined);
   });
 
   describe('auth/demo/route', () => {
@@ -150,14 +147,15 @@ describe('API Route Whitebox Tests', () => {
     it('GET should call POST', async () => {
       const req = new Request('http://localhost', { method: 'GET' });
       const res = await LogoutGET(req);
-      const data = await res.json();
-      expect(data.success).toBe(true);
+      expect(res.status).toBe(307);
     });
   });
 
   describe('me/route', () => {
     it('GET should return demo user if cookie exists', async () => {
-      ((cookies as unknown as () => any)().get as jest.Mock).mockReturnValue({ value: encodeURIComponent(JSON.stringify({ mssv: 'TEST', email: 'test@student.ptithcm.edu.vn' })) });
+      ((cookies as unknown as () => any)().get as jest.Mock).mockReturnValue({
+        value: signCookie(encodeURIComponent(JSON.stringify({ mssv: 'TEST', email: 'test@student.ptithcm.edu.vn' }))),
+      });
       const res = await MeGET();
       const data = await res.json();
       expect(data.success).toBe(true);
@@ -176,7 +174,7 @@ describe('API Route Whitebox Tests', () => {
       mockSupabase.auth.getUser.mockResolvedValueOnce({ 
         data: { user: { email: 'test@student.ptithcm.edu.vn', user_metadata: {} } } 
       });
-      mockQueryBuilder.single
+      mockQueryBuilder.maybeSingle
         .mockResolvedValueOnce({ data: { mssv: 'TEST', full_name: 'Test' } }) // user
         .mockResolvedValueOnce({ data: null }); // superAdmin
       mockQueryBuilder.select.mockReturnThis();
@@ -191,14 +189,14 @@ describe('API Route Whitebox Tests', () => {
 
   describe('me/history/route', () => {
     it('GET should return 401 if no session', async () => {
-      mockSupabase.auth.getSession.mockResolvedValueOnce({ data: { session: null } });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce(null);
       const res = await MeHistoryGET();
       expect(res.status).toBe(401);
     });
 
     it('GET should return history if session exists', async () => {
-      mockSupabase.auth.getSession.mockResolvedValueOnce({ data: { session: { user: { email: 'test@test.com' } } } });
-      mockQueryBuilder.single.mockResolvedValueOnce({ data: { mssv: 'TEST' } });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'test@test.com', tier: 'user' });
+      mockQueryBuilder.maybeSingle.mockResolvedValueOnce({ data: { mssv: 'TEST' } });
       
       const mockHistory = [{ events: { event_name: 'E1', semester: 'S1' }, participate_role: 'user', created_at: 'now' }];
       mockQueryBuilder.then.mockImplementationOnce((cb: any) => cb({ data: mockHistory }));
@@ -299,10 +297,8 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('POST should create room if superadmin', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'sa@test.com' });
-      mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { email: 'sa@test.com' } }) // superadmin check
-        .mockResolvedValueOnce({ data: { room_name: 'R1' } }); // insert
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'sa@test.com', isSuperAdmin: true, tier: 'super_admin' });
+      mockQueryBuilder.single.mockResolvedValueOnce({ data: { room_name: 'R1' }, error: null });
       
       const req = new Request('http://localhost', { method: 'POST', body: JSON.stringify({ room_name: 'R1' }) });
       const res = await RoomsPOST(req);
@@ -313,10 +309,8 @@ describe('API Route Whitebox Tests', () => {
 
   describe('rooms/[id]/route', () => {
     it('PATCH should update room', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'sa@test.com' });
-      mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { email: 'sa@test.com' } })
-        .mockResolvedValueOnce({ data: { room_name: 'R2' } });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'sa@test.com', isSuperAdmin: true, tier: 'super_admin' });
+      mockQueryBuilder.single.mockResolvedValueOnce({ data: { room_name: 'R2' }, error: null });
         
       const req = new Request('http://localhost', { method: 'PATCH', body: JSON.stringify({ room_name: 'R2' }) });
       const res = await RoomPATCH(req, { params: Promise.resolve({ id: '1' }) });
@@ -325,8 +319,7 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('DELETE should delete room', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'sa@test.com' });
-      mockQueryBuilder.single.mockResolvedValueOnce({ data: { email: 'sa@test.com' } });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'sa@test.com', isSuperAdmin: true, tier: 'super_admin' });
       mockQueryBuilder.then.mockImplementationOnce((cb: any) => cb({ error: null }));
       
       const req = new Request('http://localhost', { method: 'DELETE' });
@@ -339,10 +332,13 @@ describe('API Route Whitebox Tests', () => {
   describe('events/[id]/register/route', () => {
     it('GET should return event and registration info', async () => {
       (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'test@test.com' });
-      mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { event_id: '1' } }) // event
+      mockQueryBuilder.maybeSingle
+        .mockResolvedValueOnce({ data: { event_id: '1', status: 'active', is_registration_open: true } }) // event
+        .mockResolvedValueOnce({ data: null }) // meta
+        .mockResolvedValueOnce({ data: null }) // regExtras
         .mockResolvedValueOnce({ data: { event_id: '1', email: 'test@test.com' } }) // myReg
-        .mockResolvedValueOnce({ data: null }); // penalty
+        .mockResolvedValueOnce({ data: null }) // penalty
+        .mockResolvedValueOnce({ data: null }); // studentRow
         
       mockQueryBuilder.then.mockImplementationOnce((cb: any) => cb({ count: 5 })); // count query
       
@@ -354,27 +350,31 @@ describe('API Route Whitebox Tests', () => {
 
     it('POST should fail if blacklisted', async () => {
       (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'test@test.com' });
-      mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { event_id: '1' } }) // event
+      mockQueryBuilder.maybeSingle
+        .mockResolvedValueOnce({ data: { event_id: 'ev-bl-1', status: 'active', is_registration_open: true } }) // event
+        .mockResolvedValueOnce({ data: null }) // meta
         .mockResolvedValueOnce({ data: { is_blacklisted: true, missed_count: 3 } }); // penalty
         
       const req = new Request('http://localhost', { method: 'POST', body: JSON.stringify({}) });
-      const res = await RegisterPOST(req, { params: Promise.resolve({ id: '1' }) });
+      const res = await RegisterPOST(req, { params: Promise.resolve({ id: 'ev-bl-1' }) });
       const data = await res.json();
       expect(res.status).toBe(403);
       expect(data.is_blacklisted).toBe(true);
     });
 
     it('POST should succeed if not blacklisted', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'test@test.com' });
-      mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { event_id: '1' } }) // event
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'n22dccn001@student.ptithcm.edu.vn' });
+      mockQueryBuilder.maybeSingle
+        .mockResolvedValueOnce({ data: { event_id: 'ev-ok-1', status: 'active', is_registration_open: true } }) // event
+        .mockResolvedValueOnce({ data: null }) // meta
         .mockResolvedValueOnce({ data: null }) // penalty
-        .mockResolvedValueOnce({ data: { full_name: 'Test' } }) // user profile
-        .mockResolvedValueOnce({ data: { event_id: '1' }, error: null }); // reg upsert
+        .mockResolvedValueOnce({ data: null }) // graduated
+        .mockResolvedValueOnce({ data: { full_name: 'Test', class_id: 'D22CQCN01-N' } }) // user profile
+        .mockResolvedValueOnce({ data: null }) // profile extra
+        .mockResolvedValueOnce({ data: { event_id: 'ev-ok-1' }, error: null }); // reg upsert
         
-      const req = new Request('http://localhost', { method: 'POST', body: JSON.stringify({}) });
-      const res = await RegisterPOST(req, { params: Promise.resolve({ id: '1' }) });
+      const req = new Request('http://localhost', { method: 'POST', body: JSON.stringify({ phone: '0987654321', gender: 'Nam' }) });
+      const res = await RegisterPOST(req, { params: Promise.resolve({ id: 'ev-ok-1' }) });
       const data = await res.json();
       expect(data.success).toBe(true);
     });
@@ -387,7 +387,7 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('DELETE should return 200 and cancel registration', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'n22dccn001@student.ptithcm.edu.vn', tier: 'student' });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'n22dccn001@student.ptithcm.edu.vn', tier: 'student', managed_events: [] });
       mockQueryBuilder.eq.mockReturnThis();
       mockQueryBuilder.then.mockImplementationOnce((cb: any) => cb({ error: null }));
       
@@ -395,11 +395,11 @@ describe('API Route Whitebox Tests', () => {
       const res = await RegisterDELETE(req, { params: Promise.resolve({ id: '1' }) });
       const data = await res.json();
       expect(res.status).toBe(200);
-      expect(data.message).toContain('hủy');
+      expect(data.message).toContain('xóa');
     });
 
     it('DELETE should return 500 on DB error', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'n22dccn001@student.ptithcm.edu.vn', tier: 'student' });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'n22dccn001@student.ptithcm.edu.vn', tier: 'student', managed_events: [] });
       mockQueryBuilder.eq.mockReturnThis();
       mockQueryBuilder.then.mockImplementationOnce((cb: any) => cb({ error: { message: 'FK err' } }));
       
@@ -434,13 +434,15 @@ describe('API Route Whitebox Tests', () => {
     it('POST should reconcile attendance and handle absent students', async () => {
       (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'sa@test.com', isSuperAdmin: true });
       mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { event_name: 'E1' } }) // event
-        .mockResolvedValueOnce({ data: { missed_count: 2 } }); // existing penalty for absent
+        .mockResolvedValueOnce({ data: { event_name: 'E1' } }); // event
         
       mockQueryBuilder.then
         .mockImplementationOnce((cb: any) => cb({ data: [{ mssv: 'S1' }, { mssv: 'S2' }] })) // registrations
         .mockImplementationOnce((cb: any) => cb({ data: [{ mssv: 'S1' }] })) // checkins
-        .mockImplementation((cb: any) => cb({ error: null })); // update & upsert
+        .mockImplementationOnce((cb: any) => cb({ error: null })) // update attended
+        .mockImplementationOnce((cb: any) => cb({ data: [] })) // users in
+        .mockImplementationOnce((cb: any) => cb({ data: [{ mssv: 'S2', missed_count: 2 }] })) // existing penalties in
+        .mockImplementation((cb: any) => cb({ error: null })); // upsert
         
       (blacklistLogic.reconcileAttendance as jest.Mock).mockReturnValueOnce({
         attended: [{ mssv: 'S1' }],
@@ -458,9 +460,8 @@ describe('API Route Whitebox Tests', () => {
 
   describe('Rooms POST — extra branches', () => {
     it('POST 409 duplicate room name', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn' });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
       mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null })
         .mockResolvedValueOnce({ data: null, error: { code: '23505', message: 'dup' } });
 
       const req = new Request('http://l', {
@@ -472,9 +473,8 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('POST 500 on other insert error', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn' });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
       mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null })
         .mockResolvedValueOnce({ data: null, error: { code: '42000', message: 'other' } });
 
       const req = new Request('http://l', {
@@ -486,8 +486,7 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('POST 400 for empty room name', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn' });
-      mockQueryBuilder.single.mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
 
       const req = new Request('http://l', {
         method: 'POST',
@@ -497,10 +496,12 @@ describe('API Route Whitebox Tests', () => {
       expect(res.status).toBe(400);
     });
 
-    it('GET 500 on error', async () => {
+    it('GET falls back gracefully (200) on error', async () => {
       mockQueryBuilder.then.mockImplementationOnce((resolve: any) => resolve({ data: null, error: { message: 'db err' } }));
       const res = await RoomsGET();
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
     });
   });
 
@@ -508,9 +509,8 @@ describe('API Route Whitebox Tests', () => {
     const p = (id: string) => ({ params: Promise.resolve({ id }) });
 
     it('PATCH 409 duplicate room name', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn' });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
       mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null }) // super_admin
         .mockResolvedValueOnce({ data: null, error: { code: '23505', message: 'dup' } }); // update
 
       const req = new Request('http://l', {
@@ -522,9 +522,8 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('PATCH 500 on other error', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn' });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
       mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null })
         .mockResolvedValueOnce({ data: null, error: { code: '42000', message: 'other' } });
 
       const req = new Request('http://l', {
@@ -536,9 +535,8 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('PATCH 200 updates room successfully', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn' });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
       mockQueryBuilder.single
-        .mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null })
         .mockResolvedValueOnce({ data: { id: 'r1', room_name: 'Updated' }, error: null });
 
       const req = new Request('http://l', {
@@ -550,8 +548,7 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('DELETE 500 on error', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn' });
-      mockQueryBuilder.single.mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
       mockQueryBuilder.then.mockImplementationOnce((resolve: any) => resolve({ error: { message: 'FK constraint' } }));
 
       const req = new Request('http://l', { method: 'DELETE' });
@@ -560,8 +557,7 @@ describe('API Route Whitebox Tests', () => {
     });
 
     it('DELETE 200 success', async () => {
-      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn' });
-      mockQueryBuilder.single.mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
       mockQueryBuilder.then.mockImplementationOnce((resolve: any) => resolve({ error: null }));
 
       const req = new Request('http://l', { method: 'DELETE' });

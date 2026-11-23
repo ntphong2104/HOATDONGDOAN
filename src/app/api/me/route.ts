@@ -14,6 +14,8 @@ import {
 } from '@/lib/constants/user-profile-store';
 import type { SessionUser, UserTier } from '@/lib/types';
 import { getOfficialTierForEmail } from '@/lib/auth/official-roles';
+import { isKnownUnitEmail } from '@/lib/constants/units';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import {
   isPlaceholderName,
@@ -24,6 +26,7 @@ import {
   saveStudentProfile,
   getMasterStudentByMssv,
 } from '@/lib/utils/student-profile';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -207,7 +210,9 @@ export async function GET() {
         try {
           const q = adminClient.from('users').select('mssv, full_name, class_id');
           if (typeof q.or === 'function') {
-            const r = await q.or(`email.eq.${lowerEmail},mssv.eq.${username}`).maybeSingle();
+            const safeEmail = sanitizePostgrestValue(lowerEmail, 120);
+            const safeUser = sanitizePostgrestValue(username, 40);
+            const r = await q.or(`email.eq.${safeEmail},mssv.eq.${safeUser}`).maybeSingle();
             return r?.data || null;
           }
           if (typeof q.eq === 'function') {
@@ -273,12 +278,9 @@ export async function GET() {
     const eventRoles = eventRolesResult;
     const createdEvents = createdEventsResult;
 
-    // SECURITY: exact-match allowlist for official approver accounts (no unsafe substring matching)
+    // SECURITY: exact-match allowlist for official approver & unit accounts
     const officialTier = getOfficialTierForEmail(lowerEmail);
-    const isSubAdminUnit =
-      lowerEmail.startsWith('lcd') ||
-      lowerEmail.startsWith('clb') ||
-      lowerEmail.startsWith('doi');
+    const isSubAdminUnit = isKnownUnitEmail(lowerEmail);
 
     const isSuperAdmin =
       lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
@@ -340,15 +342,16 @@ export async function GET() {
     else if (isChecker) tier = 'checker';
     // hasEventRolesOnly students stay tier = 'user'
 
-    // CTV trực văn phòng: nằm trong danh sách do Admin VPĐ nạp (bảng có thể chưa migrate → bỏ qua lỗi)
+    // CTV trực văn phòng: nằm trong danh sách do Admin VPĐ nạp (khớp theo Email hoặc MSSV)
     let isDutyVolunteer = false;
     try {
-      const { data: dutyRow } = await adminClient
+      const dutyQuery = adminClient
         .from('office_duty_volunteers')
         .select('mssv')
-        .ilike('email', lowerEmail)
-        .eq('is_active', true)
-        .limit(1);
+        .eq('is_active', true);
+      const { data: dutyRow } = /^[A-Z]\d{2}[A-Z]{4}\d{3}$/.test(username)
+        ? await dutyQuery.or(`email.ilike.${lowerEmail},mssv.eq.${username}`).limit(1)
+        : await dutyQuery.ilike('email', lowerEmail).limit(1);
       isDutyVolunteer = Array.isArray(dutyRow) && dutyRow.length > 0;
     } catch {
       isDutyVolunteer = false;
@@ -469,10 +472,16 @@ export async function GET() {
 
     let managed_events: any[] = [];
     if (isSuperAdmin) {
-      const { data: allEvents } = await adminClient
-        .from('events')
-        .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
-        .order('created_at', { ascending: false });
+      const { data: allEvents } = await fetchAllRows<any>(() => {
+        let q: any = adminClient
+          .from('events')
+          .select('event_id, event_name, status, is_active, event_date, start_time, end_time')
+          .order('created_at', { ascending: false });
+        if (q && typeof q.order === 'function') {
+          q = q.order('event_id', { ascending: false });
+        }
+        return q;
+      });
 
       managed_events = (allEvents || []).map((e: any) => ({
         event_id: e.event_id,
@@ -543,7 +552,8 @@ export async function GET() {
     return NextResponse.json({ success: true, data: sessionUser }, { headers: noCacheHeaders });
 
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại', message: err.message }, { status: 500, headers: noCacheHeaders });
+    console.error('GET /api/me error:', err);
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500, headers: noCacheHeaders });
   }
 }
 
@@ -575,6 +585,7 @@ export async function PATCH(req: Request) {
           path: '/',
           httpOnly: true,
           sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
           maxAge: 60 * 60 * 24 * 7,
         });
 
@@ -605,7 +616,7 @@ export async function PATCH(req: Request) {
 
     // ── Real name / class (students only) ──
     const wantsIdentityUpdate = body.full_name !== undefined || body.class_id !== undefined;
-    let savedIdentity: { full_name?: string; class_id?: string } = {};
+    const savedIdentity: { full_name?: string; class_id?: string } = {};
     if (wantsIdentityUpdate) {
       const studentMssv = extractMSSV(email);
       if (!studentMssv) {
@@ -668,10 +679,17 @@ export async function PATCH(req: Request) {
     invalidateAuthContextCache(email);
 
     const wantsExtraUpdate = gender !== undefined || phone !== undefined;
+    const sanitizedGender =
+      gender !== undefined
+        ? ['Nam', 'Nữ', 'Khác'].includes(String(gender).trim())
+          ? String(gender).trim()
+          : 'Nam'
+        : undefined;
+    const sanitizedPhone = phone !== undefined ? String(phone).trim().slice(0, 20) : undefined;
     if (wantsExtraUpdate) {
       const extraPatch: Record<string, any> = {};
-      if (gender !== undefined) extraPatch.gender = gender;
-      if (phone !== undefined) extraPatch.phone = String(phone).trim();
+      if (sanitizedGender !== undefined) extraPatch.gender = sanitizedGender;
+      if (sanitizedPhone !== undefined) extraPatch.phone = sanitizedPhone;
       const supabase = await createAdminClient();
       await saveUserProfileExtraWithSync(supabase, email, extractMSSV(email) || username, extraPatch);
     }
@@ -679,12 +697,12 @@ export async function PATCH(req: Request) {
     return NextResponse.json({
       success: true,
       message: 'Đã cập nhật thông tin cá nhân thành công!',
-      data: { gender, phone, ...savedIdentity },
+      data: { gender: sanitizedGender, phone: sanitizedPhone, ...savedIdentity },
     }, { headers: noCacheHeaders });
   } catch (err: any) {
     console.error('Update profile error:', err);
     return NextResponse.json(
-      { success: false, error: 'Lỗi cập nhật thông tin', message: err.message },
+      { success: false, error: 'Lỗi cập nhật thông tin' },
       { status: 500, headers: noCacheHeaders }
     );
   }

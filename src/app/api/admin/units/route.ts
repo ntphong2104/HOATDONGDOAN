@@ -14,6 +14,7 @@ export async function GET() {
   };
 
   try {
+    const auth = await getAuthContext().catch(() => null);
     const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
     const customUnits = await getCustomUnitsFromDb(supabase);
 
@@ -21,20 +22,18 @@ export async function GET() {
     const existingCodes = new Set(customUnits.map(u => u.code));
     const baseUnits = OFFICIAL_UNITS.filter(u => !existingCodes.has(u.code));
     const allUnits = [...baseUnits, ...customUnits].map((u) => {
-      if (u.code === 'LCD_MKT') {
-        return { ...u, email: 'lcdmarketing@student.ptithcm.edu.vn' };
-      }
-      return u;
+      const normalized = u.code === 'LCD_MKT' ? { ...u, email: 'lcdmarketing@student.ptithcm.edu.vn' } : u;
+      return auth ? normalized : { code: normalized.code, name: normalized.name, type: normalized.type };
     });
 
     return NextResponse.json({
       success: true,
       data: allUnits,
     }, { headers: noCacheHeaders });
-  } catch (err) {
+  } catch {
     return NextResponse.json({
       success: true,
-      data: OFFICIAL_UNITS,
+      data: OFFICIAL_UNITS.map((u) => ({ code: u.code, name: u.name, type: u.type })),
     }, { headers: noCacheHeaders });
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import styles from './Toast.module.css';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -61,6 +61,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const warning = useCallback((message: string) => showToast(message, 'warning'), [showToast]);
   const info = useCallback((message: string) => showToast(message, 'info'), [showToast]);
 
+  const contextValue = useMemo<ToastContextValue>(
+    () => ({ showToast, success, error, warning, info }),
+    [showToast, success, error, warning, info]
+  );
+
   useEffect(() => {
     globalToastHandler = showToast;
 
@@ -107,7 +112,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [showToast]);
 
   return (
-    <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
 
       {/* Top-Left Floating Toast Container */}
@@ -160,16 +165,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+const FALLBACK_TOAST_VALUE: ToastContextValue = {
+  showToast: showAppToast,
+  success: (msg: string) => showAppToast(msg, 'success'),
+  error: (msg: string) => showAppToast(msg, 'error'),
+  warning: (msg: string) => showAppToast(msg, 'warning'),
+  info: (msg: string) => showAppToast(msg, 'info'),
+};
+
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) {
-    return {
-      showToast: showAppToast,
-      success: (msg: string) => showAppToast(msg, 'success'),
-      error: (msg: string) => showAppToast(msg, 'error'),
-      warning: (msg: string) => showAppToast(msg, 'warning'),
-      info: (msg: string) => showAppToast(msg, 'info'),
-    };
-  }
-  return ctx;
+  return ctx || FALLBACK_TOAST_VALUE;
 }

@@ -56,12 +56,12 @@ describe('Auth Demo API — POST login', () => {
     expect(body.redirectUrl).toBe('/admin/proposals');
   });
 
-  test('logs in as youth_union → redirects to /admin/proposals', async () => {
+  test('logs in as unknown role → falls back to user tier', async () => {
     const req = new Request('http://l', { method: 'POST', body: JSON.stringify({ role: 'youth_union' }) });
     const res = await POST(req);
     const body = await res.json();
-    expect(body.profile.tier).toBe('youth_union');
-    expect(body.redirectUrl).toBe('/admin/proposals');
+    expect(body.profile.tier).toBe('user');
+    expect(body.redirectUrl).toBe('/');
   });
 
   test('logs in as ctsv → redirects to /admin/proposals', async () => {
@@ -192,7 +192,7 @@ describe('DEMO_PROFILES static data', () => {
     expect(DEMO_PROFILES.user).toBeDefined();
     expect(DEMO_PROFILES.checker).toBeDefined();
     expect(DEMO_PROFILES.event_admin).toBeDefined();
-    expect(DEMO_PROFILES.youth_union).toBeDefined();
+    expect(DEMO_PROFILES.security).toBeDefined();
     expect(DEMO_PROFILES.ctsv).toBeDefined();
     expect(DEMO_PROFILES.facility).toBeDefined();
     expect(DEMO_PROFILES.super_admin).toBeDefined();

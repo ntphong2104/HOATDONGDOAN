@@ -4,6 +4,7 @@ import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getRegistrationExtras } from '@/lib/constants/event-meta-store';
 import { notifyUsersByMssv, recordInboxNotification } from '@/lib/utils/web-push';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,11 +51,13 @@ async function verifyEventNotifyPermission(
 
 async function resolveAudienceBuckets(supabase: any, eventId: string) {
   const [{ data: regs }, { data: checkins }, extras] = await Promise.all([
-    supabase
-      .from('event_registrations')
-      .select('mssv, role_type, attended')
-      .eq('event_id', eventId),
-    supabase.from('check_ins').select('mssv').eq('event_id', eventId),
+    fetchAllRows<any>(() =>
+      supabase
+        .from('event_registrations')
+        .select('mssv, role_type, attended')
+        .eq('event_id', eventId)
+    ),
+    fetchAllRows<any>(() => supabase.from('check_ins').select('mssv').eq('event_id', eventId)),
     getRegistrationExtras(supabase, eventId),
   ]);
 

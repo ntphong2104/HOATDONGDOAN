@@ -44,6 +44,8 @@ export async function GET() {
   }
 }
 
+import { isTrustedPushEndpoint } from '@/lib/utils/web-push';
+
 export async function POST(req: Request) {
   try {
     const auth = await getAuthContext();
@@ -57,9 +59,9 @@ export async function POST(req: Request) {
     const authKey = String(body?.keys?.auth || body?.auth || '').trim();
     const deviceType = String(body?.device_type || 'unknown').slice(0, 32);
 
-    if (!endpoint.startsWith('https://') || !p256dh || !authKey) {
+    if (!isTrustedPushEndpoint(endpoint) || !p256dh || !authKey) {
       return NextResponse.json(
-        { success: false, error: 'Dữ liệu đăng ký thiết bị Web Push không hợp lệ' },
+        { success: false, error: 'Endpoint hoặc dữ liệu đăng ký thiết bị Web Push không hợp lệ' },
         { status: 400 }
       );
     }

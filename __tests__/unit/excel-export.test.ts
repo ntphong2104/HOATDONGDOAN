@@ -14,7 +14,7 @@ describe('Unit Tests: exportToExcel', () => {
     jest.clearAllMocks();
   });
 
-  test('generates Excel file and triggers download for valid data array', () => {
+  test('generates Excel file and triggers download for valid data array', async () => {
     const mockData = [
       {
         STT: 1,
@@ -32,7 +32,7 @@ describe('Unit Tests: exportToExcel', () => {
       },
     ];
 
-    exportToExcel(mockData, 'DanhSachDiemDanh', 'MinhChung');
+    await exportToExcel(mockData, 'DanhSachDiemDanh', 'MinhChung');
 
     expect(XLSX.writeFile).toHaveBeenCalledTimes(1);
     expect(XLSX.writeFile).toHaveBeenCalledWith(
@@ -41,14 +41,14 @@ describe('Unit Tests: exportToExcel', () => {
     );
   });
 
-  test('does nothing when data array is empty', () => {
-    exportToExcel([], 'EmptyFile');
+  test('does nothing when data array is empty', async () => {
+    await exportToExcel([], 'EmptyFile');
     expect(XLSX.writeFile).not.toHaveBeenCalled();
   });
 
-  test('uses default sheet name "Sheet1" when omitted', () => {
+  test('uses default sheet name "Sheet1" when omitted', async () => {
     const mockData = [{ MSSV: 'B22DCCN001' }];
-    exportToExcel(mockData, 'TestExport');
+    await exportToExcel(mockData, 'TestExport');
     expect(XLSX.writeFile).toHaveBeenCalledWith(expect.anything(), 'TestExport.xlsx');
   });
 });

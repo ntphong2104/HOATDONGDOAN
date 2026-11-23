@@ -13,10 +13,13 @@ export interface UserProfileExtra {
 }
 
 const MAX_ME_RESPONSE_CACHE = 2000;
-const NEGATIVE_PROFILE_CACHE_TTL_MS = 60000;
+const NEGATIVE_PROFILE_CACHE_TTL_MS = 5000;
 
 const g = globalThis as unknown as {
   __hddUserProfiles?: Record<string, UserProfileExtra>;
+  __hddUserProfilesMtime?: number;
+  __hddUserProfilesStatAt?: number;
+  __hddDirtyUserProfiles?: Record<string, UserProfileExtra>;
   __hddMeResponseCache?: Map<string, { data: any; expiresAt: number }>;
   __hddMissingProfileKeys?: Map<string, number>;
   __hddInflightProfileLookup?: Map<string, Promise<UserProfileExtra | null>>;
@@ -45,6 +48,11 @@ export function setBoundedMeResponseCache(emailKey: string, data: any, ttlMs = 1
 export function invalidateMeResponseCache(email?: string | null, mssv?: string | null): void {
   const cache = getMeResponseCache();
   const missingCache = g.__hddMissingProfileKeys;
+  if (!email && !mssv) {
+    cache.clear();
+    missingCache?.clear();
+    return;
+  }
   if (email) {
     const cleanEmail = email.trim().toLowerCase();
     cache.delete(cleanEmail);
@@ -58,18 +66,42 @@ export function invalidateMeResponseCache(email?: string | null, mssv?: string |
   }
 }
 
-function loadProfiles(): Record<string, UserProfileExtra> {
-  if (g.__hddUserProfiles) return g.__hddUserProfiles;
+function readProfilesFromDisk(): { data: Record<string, UserProfileExtra>; mtimeMs: number } {
   try {
     if (fs.existsSync(PROFILE_FILE)) {
+      const stat = fs.statSync(PROFILE_FILE);
       const res = parseJsonWithRepair<Record<string, UserProfileExtra>>(fs.readFileSync(PROFILE_FILE, 'utf-8'));
       if (res?.value) {
-        g.__hddUserProfiles = res.value;
-        return g.__hddUserProfiles;
+        return { data: res.value, mtimeMs: stat.mtimeMs };
       }
     }
   } catch {}
-  g.__hddUserProfiles = {};
+  return { data: {}, mtimeMs: 0 };
+}
+
+function loadProfiles(): Record<string, UserProfileExtra> {
+  const now = Date.now();
+  if (g.__hddUserProfiles) {
+    if (!g.__hddUserProfilesStatAt || now - g.__hddUserProfilesStatAt >= 5000) {
+      g.__hddUserProfilesStatAt = now;
+      try {
+        if (fs.existsSync(PROFILE_FILE)) {
+          const stat = fs.statSync(PROFILE_FILE);
+          if (stat.mtimeMs !== g.__hddUserProfilesMtime) {
+            const disk = readProfilesFromDisk();
+            const dirty = g.__hddDirtyUserProfiles || {};
+            g.__hddUserProfiles = { ...disk.data, ...dirty };
+            g.__hddUserProfilesMtime = disk.mtimeMs;
+          }
+        }
+      } catch {}
+    }
+    return g.__hddUserProfiles;
+  }
+  const disk = readProfilesFromDisk();
+  g.__hddUserProfiles = { ...disk.data, ...(g.__hddDirtyUserProfiles || {}) };
+  g.__hddUserProfilesMtime = disk.mtimeMs;
+  g.__hddUserProfilesStatAt = now;
   return g.__hddUserProfiles;
 }
 
@@ -81,7 +113,20 @@ function saveProfiles(data: Record<string, UserProfileExtra>) {
   if (profileWriteTimer) return;
   profileWriteTimer = setTimeout(() => {
     profileWriteTimer = null;
-    writeJsonFileAtomic(PROFILE_FILE, g.__hddUserProfiles || data).catch(() => {});
+    const dirty = g.__hddDirtyUserProfiles || {};
+    g.__hddDirtyUserProfiles = {};
+    const disk = readProfilesFromDisk();
+    const merged = { ...disk.data, ...dirty };
+    g.__hddUserProfiles = merged;
+    writeJsonFileAtomic(PROFILE_FILE, merged)
+      .then(() => {
+        try {
+          if (fs.existsSync(PROFILE_FILE)) {
+            g.__hddUserProfilesMtime = fs.statSync(PROFILE_FILE).mtimeMs;
+          }
+        } catch {}
+      })
+      .catch(() => {});
   }, 300);
   if (typeof profileWriteTimer === 'object' && profileWriteTimer && 'unref' in profileWriteTimer && typeof profileWriteTimer.unref === 'function') {
     profileWriteTimer.unref();
@@ -122,7 +167,8 @@ export function getUserProfileExtra(key: string): UserProfileExtra | null {
 export async function getUserProfileExtraWithFallback(
   supabase: any,
   email: string,
-  mssv?: string
+  mssv?: string,
+  bypassMissingCache = false
 ): Promise<UserProfileExtra | null> {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanMssv = (mssv || (cleanEmail.includes('@') ? cleanEmail.split('@')[0] : '')).trim().toUpperCase();
@@ -135,10 +181,10 @@ export async function getUserProfileExtraWithFallback(
     return fromLocal;
   }
 
-  // Check negative cache (avoid hammering system_settings twice on every page load for students without phone)
+  // Check negative cache (short 5s TTL; bypassed on write-critical paths so cross-worker saves take effect immediately)
   const missingCache = g.__hddMissingProfileKeys || (g.__hddMissingProfileKeys = new Map());
   const lookupKey = cleanEmail || cleanMssv.toLowerCase();
-  const missingUntil = lookupKey ? missingCache.get(lookupKey) : undefined;
+  const missingUntil = !bypassMissingCache && lookupKey ? missingCache.get(lookupKey) : undefined;
   if (missingUntil && missingUntil > Date.now()) {
     return fromLocal;
   }
@@ -243,6 +289,9 @@ export function saveUserProfileExtra(key: string, extra: Partial<UserProfileExtr
   };
   all[lower] = updated;
   all[upper] = updated;
+  if (!g.__hddDirtyUserProfiles) g.__hddDirtyUserProfiles = {};
+  g.__hddDirtyUserProfiles[lower] = updated;
+  g.__hddDirtyUserProfiles[upper] = updated;
   saveProfiles(all);
 }
 

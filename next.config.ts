@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     formats: ['image/avif', 'image/webp'],
@@ -31,11 +31,13 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://static.cloudflareinsights.com",
-              "style-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
               "img-src 'self' data: blob: https://*.googleusercontent.com https://accounts.google.com https://ptithcm.com https://*.ptithcm.edu.vn",
-              "font-src 'self'",
+              "font-src 'self' https://fonts.gstatic.com data:",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://ptithcm.com https://cloudflareinsights.com",
               "frame-src 'self' https://accounts.google.com",
+              "frame-ancestors 'self'",
+              "worker-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self' https://accounts.google.com",
@@ -56,7 +58,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=self, microphone=(), geolocation=()',
+            value: 'camera=(self), microphone=(), geolocation=()',
           },
           {
             key: 'Cross-Origin-Opener-Policy',
@@ -64,8 +66,14 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      {
-        source: '/admin/(.*)',
+      ...[
+        '/admin/(.*)',
+        '/super-admin(.*)',
+        '/office/(.*)',
+        '/security(.*)',
+        '/scanner(.*)',
+      ].map((source) => ({
+        source,
         headers: [
           {
             key: 'Cache-Control',
@@ -76,7 +84,7 @@ const nextConfig: NextConfig = {
             value: 'no-store',
           },
         ],
-      },
+      })),
       {
         source: '/logos/(.*)',
         headers: [

@@ -33,7 +33,14 @@ export default function PushBroadcastManager() {
   }, []);
 
   useEffect(() => {
-    loadStats();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await loadStats();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadStats]);
 
   const handleBroadcast = async (e: React.FormEvent) => {

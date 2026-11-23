@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 
 export async function PATCH(
@@ -12,18 +12,15 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
-
-  // Verify super admin
-  const { data: superAdmin } = await supabase
-    .from('super_admins')
-    .select('email')
-    .eq('email', auth.email)
-    .single();
-
-  if (!superAdmin) {
-    return NextResponse.json({ success: false, error: 'Chỉ Super Admin mới có quyền chỉnh sửa phòng' }, { status: 403 });
+  if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'facility') {
+    return NextResponse.json(
+      { success: false, error: 'Chỉ Super Admin hoặc Phòng TC-HC-QT mới có quyền chỉnh sửa phòng' },
+      { status: 403 }
+    );
   }
+
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
   const body = await req.json();
   const { room_name, capacity, location } = body;
@@ -44,7 +41,7 @@ export async function PATCH(
     if (error.code === '23505') {
       return NextResponse.json({ success: false, error: 'Tên phòng/sân bãi này đã trùng với phòng khác' }, { status: 409 });
     }
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, data: updatedRoom, message: 'Đã cập nhật thông tin phòng thành công' });
@@ -60,18 +57,15 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
-
-  // Verify super admin
-  const { data: superAdmin } = await supabase
-    .from('super_admins')
-    .select('email')
-    .eq('email', auth.email)
-    .single();
-
-  if (!superAdmin) {
-    return NextResponse.json({ success: false, error: 'Chỉ Super Admin mới có quyền xóa phòng' }, { status: 403 });
+  if (!auth.isSuperAdmin && auth.tier !== 'super_admin' && auth.tier !== 'facility') {
+    return NextResponse.json(
+      { success: false, error: 'Chỉ Super Admin hoặc Phòng TC-HC-QT mới có quyền xóa phòng' },
+      { status: 403 }
+    );
   }
+
+  const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
+  const supabase = (await getSupabase()) || (await createClient());
 
   const { error } = await supabase
     .from('rooms')
@@ -79,7 +73,7 @@ export async function DELETE(
     .eq('id', resolvedParams.id);
 
   if (error) {
-    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại'}, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, message: 'Đã xóa phòng thành công' });

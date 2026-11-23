@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { getAuthContext, canManageEvent } from '@/lib/supabase/auth-helper';
 import { getEventMeta, saveEventMeta, invalidateEventCache } from '@/lib/constants/event-meta-store';
 import { isEventLockedPast3Days } from '@/lib/utils/event-logic';
 
@@ -19,7 +19,6 @@ export async function POST(
   const supabase = (await getSupabase()) || (await createClient());
 
   const isSuperAdmin = Boolean(auth.isSuperAdmin || auth.tier === 'super_admin');
-  const isYouthUnion = auth.tier === 'youth_union';
 
   const [{ data: event }, meta] = await Promise.all([
     supabase
@@ -30,6 +29,11 @@ export async function POST(
     getEventMeta(supabase, resolvedParams.id),
   ]);
 
+  const allowed = await canManageEvent(auth, resolvedParams.id, event?.created_by ?? null, supabase);
+  if (!allowed) {
+    return NextResponse.json({ success: false, error: 'Bạn không có quyền quản lý sự kiện này' }, { status: 403 });
+  }
+
   if (event && isEventLockedPast3Days({ ...event, sessions: meta.sessions || [] }) && !isSuperAdmin) {
     return NextResponse.json(
       {
@@ -38,21 +42,6 @@ export async function POST(
       },
       { status: 403 }
     );
-  }
-
-  if (!isSuperAdmin && !isYouthUnion && auth.tier !== 'event_admin') {
-    const { data: eventRole } = await supabase
-      .from('event_roles')
-      .select('role_type')
-      .eq('email', auth.email)
-      .eq('event_id', resolvedParams.id)
-      .maybeSingle();
-
-    const isCreator = event?.created_by && event.created_by.toLowerCase() === auth.email.toLowerCase();
-
-    if (!eventRole && !isCreator) {
-      return NextResponse.json({ success: false, error: 'Bạn không có quyền quản lý sự kiện này' }, { status: 403 });
-    }
   }
 
   try {

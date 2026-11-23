@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
+import { invalidateMeResponseCache } from '@/lib/constants/user-profile-store';
 import { sanitizeInput } from '@/lib/security/sanitizer';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 import {
   ROOT_SUPER_ADMIN,
   getStoredOfficerRoles,
@@ -75,11 +77,11 @@ export async function GET() {
       console.warn('Auto cleanup event roles error:', e);
     }
 
-    // 3, 4, 5: Fetch super_admins, event_roles, and users in parallel
+    // 3, 4, 5: Fetch super_admins, event_roles, and users in parallel (paginated)
     const [superAdminsResult, eventRolesResult, allUsersResult] = await Promise.all([
-      (async () => { try { return (await supabase.from('super_admins').select('email, created_at')).data; } catch { return null; } })(),
-      (async () => { try { return (await supabase.from('event_roles').select('id, email, role_type, created_at, event_id, events(event_name, event_date, start_time, end_time, status)')).data; } catch { return null; } })(),
-      (async () => { try { return (await supabase.from('users').select('email, full_name, mssv, class_id, tier')).data; } catch { return null; } })(),
+      (async () => { try { return (await fetchAllRows<any>(() => supabase.from('super_admins').select('email, created_at'))).data; } catch { return null; } })(),
+      (async () => { try { return (await fetchAllRows<any>(() => supabase.from('event_roles').select('id, email, role_type, created_at, event_id, events(event_name, event_date, start_time, end_time, status)'))).data; } catch { return null; } })(),
+      (async () => { try { return (await fetchAllRows<any>(() => supabase.from('users').select('email, full_name, mssv, class_id, tier'))).data; } catch { return null; } })(),
     ]);
 
     const eventSessionsMap = await fetchEventSessionsMap(
@@ -262,8 +264,8 @@ export async function POST(req: Request) {
     // 1. Save to persistent officer store
     await saveOfficerRole(newItem, supabase);
 
-    // 2. If super_admin or youth_union, sync to super_admins table for full database access
-    if (roleTier === 'super_admin' || roleTier === 'youth_union') {
+    // 2. Only super_admin belongs in super_admins table (never promote youth_union to super_admin)
+    if (roleTier === 'super_admin') {
       try {
         await supabase.from('super_admins').upsert({ email: emailRaw }, { onConflict: 'email' });
       } catch {}
@@ -275,13 +277,15 @@ export async function POST(req: Request) {
     } catch {}
 
     invalidateAuthContextCache(emailRaw);
+    invalidateMeResponseCache(emailRaw);
 
     return NextResponse.json({
       success: true,
       message: `Đã cấp quyền "${roleTier.toUpperCase()}" cho cán bộ ${officialName} (${emailRaw}) thành công!`,
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message || 'Lỗi hệ thống' }, { status: 500 });
+    console.error('POST /api/admin/officers error:', err);
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 }
 
@@ -322,8 +326,8 @@ export async function DELETE(req: Request) {
     // 1. Remove from stored officer roles
     await removeOfficerRole(emailRaw, roleTier, id, supabase);
 
-    // 2. If revoked super_admin, remove from super_admins table
-    if (roleTier === 'super_admin' || !roleTier) {
+    // 2. Remove from super_admins when revoking super_admin (or legacy youth_union rows) or all roles
+    if (roleTier === 'super_admin' || roleTier === 'youth_union' || !roleTier) {
       try {
         await supabase.from('super_admins').delete().ilike('email', emailRaw);
       } catch {}
@@ -340,18 +344,25 @@ export async function DELETE(req: Request) {
       } catch {}
     }
 
-    // 4. Reset user tier to 'user' in users table if no other officer role remains
+    // 4. Sync users table tier to highest remaining officer role (or 'user' if none remain)
     try {
-      await supabase.from('users').update({ tier: 'user' }).eq('email', emailRaw);
+      const remaining = (await getStoredOfficerRoles(supabase)).filter(
+        (r) => r.email.toLowerCase().trim() === emailRaw
+      );
+      const priority: string[] = ['super_admin', 'youth_union', 'ctsv', 'facility', 'security', 'event_admin', 'office_admin', 'checker'];
+      const nextTier = priority.find((t) => remaining.some((r) => r.role_tier === t)) || 'user';
+      await supabase.from('users').update({ tier: nextTier }).eq('email', emailRaw);
     } catch {}
 
     invalidateAuthContextCache(emailRaw);
+    invalidateMeResponseCache(emailRaw);
 
     return NextResponse.json({
       success: true,
       message: `Đã thu hồi quyền thành công của tài khoản ${emailRaw}!`,
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message || 'Lỗi hệ thống' }, { status: 500 });
+    console.error('DELETE /api/admin/officers error:', err);
+    return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
   }
 }

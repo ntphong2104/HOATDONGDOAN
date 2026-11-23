@@ -34,9 +34,14 @@ export async function POST(
     const {
       mssv_list = [],          // Array of MSSVs
       session_id = 'main',     // Which session to add attendance to
-      role_type = 'volunteer', // 'volunteer' | 'organizer'
+      role_type = 'volunteer', // 'participant' | 'volunteer' | 'organizer'
       reason = '',             // Reason for manual addition
     } = body;
+
+    const ALLOWED_ROLES = new Set(['participant', 'volunteer', 'organizer']);
+    const normalizedRole: 'participant' | 'volunteer' | 'organizer' = ALLOWED_ROLES.has(String(role_type))
+      ? (String(role_type) as 'participant' | 'volunteer' | 'organizer')
+      : 'volunteer';
 
     if (!Array.isArray(mssv_list) || mssv_list.length === 0) {
       return NextResponse.json({
@@ -61,16 +66,27 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // Fetch event, meta, users, and existing checkins in parallel
+    // Fetch event, meta, users (chunked), and existing checkins in parallel
+    const existingUsers: any[] = [];
+    const userChunks: string[][] = [];
+    for (let i = 0; i < cleanedMssvs.length; i += 200) {
+      userChunks.push(cleanedMssvs.slice(i, i + 200));
+    }
+
     const [
       { data: event, error: eventErr },
       meta,
-      { data: existingUsers },
+      ,
       existingCheckins
     ] = await Promise.all([
       supabase.from('events').select('event_id, event_name, event_date, status').eq('event_id', resolvedParams.id).single(),
       getEventMeta(supabase, resolvedParams.id),
-      supabase.from('users').select('mssv, full_name, class_id, email').in('mssv', cleanedMssvs),
+      Promise.all(
+        userChunks.map(async (chunk) => {
+          const { data } = await supabase.from('users').select('mssv, full_name, class_id, email').in('mssv', chunk);
+          if (data) existingUsers.push(...data);
+        })
+      ),
       getSessionCheckIns(supabase, resolvedParams.id)
     ]);
 
@@ -83,7 +99,7 @@ export async function POST(
     const sessionName = targetSession?.name || (session_id === 'main' ? 'Buổi chính' : session_id);
 
     const userMap = new Map<string, { full_name: string; class_id: string; email: string }>();
-    (existingUsers || []).forEach((u: any) => {
+    existingUsers.forEach((u: any) => {
       userMap.set(u.mssv.toUpperCase(), {
         full_name: u.full_name || u.mssv,
         class_id: u.class_id || 'PTIT-HCM',
@@ -122,7 +138,7 @@ export async function POST(
         } catch {}
       }
 
-      // 5. Auto-register if not registered
+      // 5. Upsert registration with attended = true and validated role_type
       try {
         await supabase.from('event_registrations').upsert({
           event_id: resolvedParams.id,
@@ -130,38 +146,29 @@ export async function POST(
           email: userInfo?.email || `${mssv.toLowerCase()}@student.ptithcm.edu.vn`,
           full_name: userInfo?.full_name || masterStudent?.full_name || mssv,
           class_id: userInfo?.class_id || masterStudent?.class_id || 'PTIT-HCM',
-          role_type,
+          role_type: normalizedRole,
           attended: true,
           created_at: now,
         }, { onConflict: 'event_id,mssv' });
       } catch {}
 
-      // 6. Update attended = true if already registered
-      try {
-        await supabase
-          .from('event_registrations')
-          .update({ attended: true, role_type })
-          .eq('event_id', resolvedParams.id)
-          .eq('mssv', mssv);
-      } catch {}
-
-      // 7. Save session checkin
+      // 6. Save session checkin (preserving participant/volunteer/organizer faithfully)
       await saveSessionCheckIn(supabase, {
         event_id: resolvedParams.id,
         mssv,
         session_id,
         session_name: sessionName,
-        participate_role: role_type === 'organizer' ? 'organizer' : 'volunteer',
+        participate_role: normalizedRole,
         checked_at: now,
         checked_by: `Bổ sung bởi SA: ${actorEmail}`,
       });
 
-      // 8. Upsert into check_ins table
+      // 7. Upsert into check_ins table
       try {
         await supabase.from('check_ins').upsert({
           event_id: resolvedParams.id,
           mssv,
-          participate_role: role_type === 'organizer' ? 'organizer' : 'volunteer',
+          participate_role: normalizedRole,
           checked_by: `Bổ sung bởi SA: ${actorEmail} | ${reason || 'Bổ sung sau CTR'}`,
           created_at: now,
         } as any, { onConflict: 'event_id,mssv' });
@@ -170,13 +177,12 @@ export async function POST(
       addedMssvs.push(mssv);
     }
 
-    // 9. Save registration extras with audit trail
+    // 8. Save registration extras with audit trail (only stamp volunteer review_status for volunteers)
     if (addedMssvs.length > 0) {
       const extrasMap: Record<string, any> = {};
       for (const mssv of addedMssvs) {
-        const userInfo = userMap.get(mssv);
         extrasMap[mssv] = {
-          review_status: 'accepted',
+          ...(normalizedRole === 'volunteer' ? { review_status: 'accepted' } : {}),
           note: `Bổ sung điểm danh ${sessionName} bởi ${actorEmail} lúc ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}${reason ? ` | Lý do: ${reason}` : ''}`,
           imported_by: actorEmail,
           imported_at: now,

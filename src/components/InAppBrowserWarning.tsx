@@ -1,21 +1,17 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { detectInAppBrowser, InAppBrowserInfo } from '@/lib/utils/detect-browser';
+import React, { useMemo, useSyncExternalStore } from 'react';
+import { detectInAppBrowser } from '@/lib/utils/detect-browser';
 import { AlertTriangleIcon } from '@/components/icons';
 import styles from './InAppBrowserWarning.module.css';
 
+const emptySubscribe = () => () => {};
+
 export default function InAppBrowserWarning() {
-  const [browserInfo, setBrowserInfo] = useState<InAppBrowserInfo | null>(null);
+  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const browserInfo = useMemo(() => (isClient ? detectInAppBrowser() : null), [isClient]);
 
-  useEffect(() => {
-    const info = detectInAppBrowser();
-    if (info.isInApp) {
-      setBrowserInfo(info);
-    }
-  }, []);
-
-  if (!browserInfo) return null;
+  if (!browserInfo || !browserInfo.isInApp) return null;
 
   return (
     <div className={styles.overlay}>

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
+import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
 import {
   MAX_MISSED_STRIKES,
   pardonEventInNotes,
@@ -61,25 +63,27 @@ export async function POST(req: Request) {
       );
     }
 
-    const eventIdentifier = `[${event_id}]`;
-    const cleanEventName = (event.event_name || '').trim();
-    const shortEventName = cleanEventName.slice(0, 30);
+    const safeEventId = sanitizePostgrestValue(String(event_id));
+    if (!safeEventId) {
+      return NextResponse.json({ success: false, error: 'event_id không hợp lệ' }, { status: 400 });
+    }
 
-    // 2. Tìm nhanh các hồ sơ phạt trong `user_penalties` có liên quan đến sự kiện này
-    // Cách 1: Ghi chú vi phạm có chứa [event_id] hoặc tên sự kiện
-    const { data: penaltiesWithNotes } = await supabase
-      .from('user_penalties')
-      .select('*')
-      .or(`notes.ilike.%${eventIdentifier}%,notes.ilike.%${shortEventName}%`)
-      .limit(1000);
-
-    // Cách 2: Tìm các SV đăng ký mà chưa điểm danh ở sự kiện này
-    const { data: absentRegs } = await supabase
-      .from('event_registrations')
-      .select('mssv')
-      .eq('event_id', event_id)
-      .or('attended.eq.false,attended.is.null')
-      .limit(1000);
+    // 2. Tìm nhanh các hồ sơ phạt trong `user_penalties` có liên quan chính xác tới tag [event_id]
+    const [{ data: penaltiesWithNotes }, { data: absentRegs }] = await Promise.all([
+      fetchAllRows<any>(() =>
+        supabase
+          .from('user_penalties')
+          .select('*')
+          .ilike('notes', `%[${safeEventId}]%`)
+      ),
+      fetchAllRows<any>(() =>
+        supabase
+          .from('event_registrations')
+          .select('mssv')
+          .eq('event_id', event_id)
+          .or('attended.eq.false,attended.is.null')
+      ),
+    ]);
 
     const absentMssvs = Array.from(
       new Set((absentRegs || []).map((r: any) => (r.mssv || '').toUpperCase().trim()).filter(Boolean))
@@ -93,21 +97,21 @@ export async function POST(req: Request) {
       }
     }
 
-    // Nếu có SV vắng mặt chưa có trong candidateMap, truy vấn bổ sung theo chunk 100
+    // Nếu có SV vắng mặt chưa có trong candidateMap, truy vấn bổ sung theo chunk 200
     const missingMssvs = absentMssvs.filter((m) => !candidateMap.has(m));
-    const CHUNK_SIZE = 100;
-    for (let i = 0; i < missingMssvs.length; i += CHUNK_SIZE) {
-      const chunk = missingMssvs.slice(i, i + CHUNK_SIZE);
-      const { data: pRows } = await supabase
-        .from('user_penalties')
-        .select('*')
-        .in('mssv', chunk);
-      if (pRows) {
-        for (const p of pRows) {
-          if (p.mssv) candidateMap.set(p.mssv.toUpperCase().trim(), p);
+    await Promise.all(
+      chunkArray(missingMssvs, 200).map(async (chunk) => {
+        const { data: pRows } = await supabase
+          .from('user_penalties')
+          .select('*')
+          .in('mssv', chunk);
+        if (pRows) {
+          for (const p of pRows) {
+            if (p.mssv) candidateMap.set(p.mssv.toUpperCase().trim(), p);
+          }
         }
-      }
-    }
+      })
+    );
 
     if (candidateMap.size === 0) {
       return NextResponse.json({
@@ -132,16 +136,14 @@ export async function POST(req: Request) {
     let unblacklisted = 0;
 
     for (const existing of candidateMap.values()) {
-      // SV chỉ được giảm vi phạm nếu họ THỰC SỰ có ghi nhận vi phạm chưa gỡ cho sự kiện này!
-      // Tuyệt đối không giảm vi phạm cho SV bị khóa thủ công hoặc SV không bị phạt vì sự kiện này!
-      if (!hasActiveStrikeForEvent(existing.notes, event_id, event.event_name)) {
+      // Khớp chính xác theo tag [event_id] để không gỡ nhầm sự kiện trùng tiền tố tên
+      if (!hasActiveStrikeForEvent(existing.notes, event_id)) {
         continue;
       }
 
       const updatedNotes = pardonEventInNotes({
         notesStr: existing.notes,
         targetEventId: event_id,
-        targetEventName: event.event_name,
         targetIndex: undefined,
         reason: `[Gỡ hàng loạt theo sự kiện "${event.event_name}"] ${cleanReason}`,
         adminEmail: auth.email,

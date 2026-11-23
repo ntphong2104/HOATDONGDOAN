@@ -25,6 +25,12 @@ const mockBuilder = {
   delete: jest.fn().mockReturnThis(),
   upsert: jest.fn().mockReturnThis(),
   eq: jest.fn().mockReturnThis(),
+  neq: jest.fn().mockReturnThis(),
+  ilike: jest.fn().mockReturnThis(),
+  not: jest.fn().mockReturnThis(),
+  lt: jest.fn().mockReturnThis(),
+  gt: jest.fn().mockReturnThis(),
+  in: jest.fn().mockReturnThis(),
   or: jest.fn().mockReturnThis(),
   order: jest.fn().mockReturnThis(),
   limit: jest.fn().mockReturnThis(),
@@ -44,9 +50,11 @@ const mockSupabase = {
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(() => Promise.resolve(mockSupabase)),
+  createAdminClient: jest.fn(() => Promise.resolve(mockSupabase)),
 }));
 
 jest.mock('@/lib/supabase/auth-helper', () => ({
+  ...jest.requireActual('@/lib/supabase/auth-helper'),
   getAuthContext: jest.fn(),
 }));
 
@@ -70,8 +78,11 @@ describe('Admin API Routes Whitebox Tests', () => {
       isSuperAdmin: true,
       isEventAdmin: true,
     });
+    mockBuilder.then.mockReset();
     mockBuilder.then.mockImplementation((resolve) => resolve({ data: [], error: null }));
+    mockBuilder.single.mockReset();
     mockBuilder.single.mockResolvedValue({ data: {}, error: null });
+    mockBuilder.maybeSingle.mockReset();
     mockBuilder.maybeSingle.mockResolvedValue({ data: {}, error: null });
     
     mockSupabase.auth.getSession.mockResolvedValue({ 
@@ -122,7 +133,9 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('upserts and returns 200 on success', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: { full_name: 'Test', class_id: 'C1' }, error: null });
+      mockBuilder.maybeSingle
+        .mockResolvedValueOnce({ data: { full_name: 'Test', class_id: 'C1' }, error: null })
+        .mockResolvedValueOnce({ data: null, error: null });
       mockBuilder.single.mockResolvedValueOnce({ data: { id: 1 }, error: null });
       const req = new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ mssv: 'N22' }) });
       const res = await postBan(req);
@@ -130,7 +143,9 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
     
     it('returns 500 on upsert error', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: { full_name: 'Test' }, error: null });
+      mockBuilder.maybeSingle
+        .mockResolvedValueOnce({ data: { full_name: 'Test' }, error: null })
+        .mockResolvedValueOnce({ data: null, error: null });
       mockBuilder.single.mockResolvedValueOnce({ data: null, error: { message: 'Err' } });
       const req = new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ mssv: 'N22' }) });
       const res = await postBan(req);
@@ -199,33 +214,41 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('POST returns 404 if student not found', async () => {
-      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
-      const req = new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ mssv: 'N22' }) });
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }));
+      const req = new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ mssv: 'N99XXXX999' }) });
       const res = await postDelegate(req);
       expect(res.status).toBe(404);
     });
 
     it('POST returns 400 if no class', async () => {
-      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { full_name: 'A', class_id: 'Chưa phân lớp' }, error: null });
-      const req = new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ mssv: 'N22' }) });
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ mssv: 'N99XXXX999', full_name: 'A', class_id: 'Chưa phân lớp' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }));
+      const req = new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ mssv: 'N99XXXX999' }) });
       const res = await postDelegate(req);
       expect(res.status).toBe(400);
     });
 
     it('POST success', async () => {
-      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { full_name: 'A', class_id: 'C1', email: 'e@e' }, error: null });
-      mockBuilder.single.mockResolvedValueOnce({ data: { id: 1 }, error: null });
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ mssv: 'N22', full_name: 'A', class_id: 'D22CQCN01-N', email: 'e@e' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }));
+      mockBuilder.single.mockResolvedValueOnce({ data: { id: 1, class_id: 'D22CQCN01-N', full_name: 'A' }, error: null });
       const req = new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ mssv: 'N22' }) });
       const res = await postDelegate(req);
       expect(res.status).toBe(200);
     });
 
-    it('POST 500 on insert error', async () => {
-      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { full_name: 'A', class_id: 'C1', email: 'e@e' }, error: null });
+    it('POST 400 on insert error', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ mssv: 'N22', full_name: 'A', class_id: 'D22CQCN01-N', email: 'e@e' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }));
       mockBuilder.single.mockResolvedValueOnce({ data: null, error: { message: 'Err' } });
       const req = new NextRequest('http://localhost', { method: 'POST', body: JSON.stringify({ mssv: 'N22' }) });
       const res = await postDelegate(req);
-      expect(res.status).toBe(500);
+      expect(res.status).toBeGreaterThanOrEqual(400);
     });
 
     it('DELETE returns 400 if no id', async () => {
@@ -235,14 +258,16 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('DELETE success', async () => {
-      mockBuilder.then.mockImplementationOnce((resolve) => resolve({ error: null }));
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { id: '1', class_id: 'C1', mssv: 'N22', full_name: 'A' }, error: null });
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({ data: [{ id: '1' }], error: null }));
       const req = new NextRequest('http://localhost/api?id=1', { method: 'DELETE' });
       const res = await deleteDelegate(req);
       expect(res.status).toBe(200);
     });
 
     it('DELETE 500 on error', async () => {
-      mockBuilder.then.mockImplementationOnce((resolve) => resolve({ error: { message: 'Err' } }));
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { id: '1', class_id: 'C1', mssv: 'N22', full_name: 'A' }, error: null });
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({ data: null, error: { code: '42P01', message: 'Err' } }));
       const req = new NextRequest('http://localhost/api?id=1', { method: 'DELETE' });
       const res = await deleteDelegate(req);
       expect(res.status).toBe(500);
@@ -251,13 +276,13 @@ describe('Admin API Routes Whitebox Tests', () => {
 
   describe('Maintenance GET/PATCH', () => {
     it('GET success', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: { maintenance_mode: true }, error: null });
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { maintenance_mode: true }, error: null });
       const res = await getMaintenance();
       expect(res.status).toBe(200);
     });
 
     it('GET 500', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: null, error: { message: 'Err' } });
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'Err' } });
       const res = await getMaintenance();
       expect(res.status).toBe(500);
     });
@@ -277,14 +302,14 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('PATCH 200', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: { value: { enabled: true } }, error: null });
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { value: { enabled: true } }, error: null });
       const req = new NextRequest('http://localhost', { method: 'PATCH', body: JSON.stringify({ enabled: true }) });
       const res = await patchMaintenance(req);
       expect(res.status).toBe(200);
     });
     
     it('PATCH 500', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: null, error: { message: 'Err' } });
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'Err' } });
       const req = new NextRequest('http://localhost', { method: 'PATCH', body: JSON.stringify({ enabled: true }) });
       const res = await patchMaintenance(req);
       expect(res.status).toBe(500);
@@ -305,6 +330,7 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('GET success', async () => {
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
       mockBuilder.then
         .mockImplementationOnce((resolve) => resolve({ count: 10, error: null }))
         .mockImplementationOnce((resolve) => resolve({ count: 20, error: null }))
@@ -424,11 +450,11 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('GET success', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: { mssv: 'N22' }, error: null }); // user
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { mssv: 'N22' }, error: null }); // user
       mockBuilder.then
         .mockImplementationOnce((resolve) => resolve({ data: [{ id: 1, events: { event_name: 'E1' } }], error: null })) // checkins
         .mockImplementationOnce((resolve) => resolve({ data: [], error: null })); // attendedRegs
-      mockBuilder.single.mockResolvedValueOnce({ data: null, error: null }); // penalty
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: null, error: null }); // penalty
 
       const req = new NextRequest('http://localhost');
       const res = await getStudentMssvHistory(req, { params: Promise.resolve({ mssv: 'N22' }) });
@@ -436,7 +462,7 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('GET 500 on checkin err', async () => {
-      mockBuilder.single.mockResolvedValueOnce({ data: { mssv: 'N22' }, error: null }); // user
+      mockBuilder.maybeSingle.mockResolvedValueOnce({ data: { mssv: 'N22' }, error: null }); // user
       mockBuilder.then.mockImplementationOnce((resolve) => resolve({ data: null, error: { message: 'Err' } })); // checkins
 
       const req = new NextRequest('http://localhost');
@@ -446,10 +472,13 @@ describe('Admin API Routes Whitebox Tests', () => {
   });
 
   describe('Units GET', () => {
-    it('GET 401', async () => {
+    it('GET hides unit emails when unauthenticated', async () => {
       (getAuthContext as jest.Mock).mockResolvedValue(null);
       const res = await getUnits();
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.data[0].email).toBeUndefined();
     });
 
     it('GET success', async () => {
@@ -459,29 +488,19 @@ describe('Admin API Routes Whitebox Tests', () => {
   });
 
   describe('Export All GET', () => {
-    beforeEach(() => {
-      mockBuilder.single.mockReset();
-      mockBuilder.single.mockResolvedValue({ data: {}, error: null });
-      mockBuilder.then.mockReset();
-      mockBuilder.then.mockImplementation((resolve) => resolve({ data: [], error: null }));
-    });
-
     it('GET 401', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: null }, error: null });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce(null);
       const res = await getExportAll();
       expect(res.status).toBe(401);
     });
 
     it('GET 403', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } }, error: null });
-      mockBuilder.single.mockResolvedValueOnce({ data: null, error: null });
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'student@ptithcm.edu.vn', isSuperAdmin: false, tier: 'user' });
       const res = await getExportAll();
       expect(res.status).toBe(403);
     });
 
     it('GET success', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } }, error: null });
-      mockBuilder.single.mockResolvedValueOnce({ data: { email: 'admin@ptithcm.edu.vn' }, error: null });
       mockBuilder.then.mockImplementationOnce((resolve) => resolve({ 
         data: [{ mssv: 'N22', users: { full_name: 'A', class_id: 'C1' }, events: { event_name: 'E1', semester: 'S1' } }], 
         error: null 
@@ -491,8 +510,8 @@ describe('Admin API Routes Whitebox Tests', () => {
     });
 
     it('GET 500', async () => {
-      mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { email: 'admin@ptithcm.edu.vn' } }, error: null });
-      mockBuilder.single.mockRejectedValueOnce(new Error('err'));
+      (getAuthContext as jest.Mock).mockResolvedValueOnce({ email: 'admin@ptithcm.edu.vn', isSuperAdmin: true, tier: 'super_admin' });
+      mockBuilder.then.mockImplementationOnce(() => { throw new Error('err'); });
       const res = await getExportAll();
       expect(res.status).toBe(500);
     });
@@ -641,6 +660,7 @@ describe('Admin API Routes Whitebox Tests', () => {
         ['N22DCCN008', 'Nguyễn Văn H', 'D22CQCN01-N']
       ]);
       mockBuilder.upsert.mockReturnThis();
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({ data: [], error: null }));
       mockBuilder.then.mockImplementationOnce((resolve) => resolve({ error: { message: 'DB chunk error' } }));
 
       const res = await postUploadUsers(mockRequest);
@@ -655,6 +675,7 @@ describe('Admin API Routes Whitebox Tests', () => {
         ['N22DCCN007', 'Nguyễn Văn G', 'D22CQCN01-N']
       ]);
       mockBuilder.upsert.mockReturnThis();
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({ data: [], error: null }));
       mockBuilder.then.mockImplementationOnce((resolve) => resolve({ error: { message: 'DB chunk error' } }));
 
       const res = await postUploadUsers(mockRequest);

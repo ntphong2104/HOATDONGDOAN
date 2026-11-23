@@ -285,6 +285,22 @@ export const EMAIL_TO_UNIT: Record<string, string> = {
   'clb.caulong@student.ptithcm.edu.vn': 'CLB Cầu Lông',
 };
 
+export const OFFICIAL_UNIT_EMAILS: ReadonlySet<string> = new Set([
+  ...ACADEMIC_FACULTIES.map((u) => u.email.toLowerCase()),
+  ...OFFICIAL_UNITS.map((u) => u.email.toLowerCase()),
+  ...Object.keys(EMAIL_TO_UNIT).map((e) => e.toLowerCase()),
+]);
+
+export function isKnownUnitEmail(email?: string | null, customUnits?: OfficialUnit[] | null): boolean {
+  if (!email || typeof email !== 'string') return false;
+  const clean = email.trim().toLowerCase();
+  if (OFFICIAL_UNIT_EMAILS.has(clean)) return true;
+  if (Array.isArray(customUnits)) {
+    return customUnits.some((u) => u?.email?.trim().toLowerCase() === clean);
+  }
+  return false;
+}
+
 // Helper to remove accents for fuzzy matching
 function stripVietnameseAccents(str: string): string {
   return (str || '')

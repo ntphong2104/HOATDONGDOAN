@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { runSerializedByKey } from '@/lib/utils/concurrency-queue';
 import { writeJsonFileAtomic, parseJsonWithRepair } from '@/lib/utils/atomic-file';
+import { fetchAllRows } from '@/lib/supabase/pagination';
 
 export interface DepartmentConfig {
   id: string;
@@ -70,16 +71,72 @@ function loadFromFile(): Record<string, EventMeta> {
   return {};
 }
 
-function saveToFile(data: Record<string, EventMeta>) {
-  writeJsonFileAtomic(META_FILE, data).catch(() => {});
+export function mergeEventMeta(
+  dbMeta: EventMeta | null | undefined,
+  fileMeta: EventMeta | null | undefined
+): EventMeta {
+  // Authoritative DB array (including empty `[]` after deleting last session/department) must NEVER be resurrected by stale local cache
+  const departments = Array.isArray(dbMeta?.departments)
+    ? dbMeta.departments
+    : fileMeta?.departments || [];
+  const sessions = Array.isArray(dbMeta?.sessions)
+    ? dbMeta.sessions
+    : fileMeta?.sessions || [];
+
+  return {
+    departments,
+    sessions,
+    is_recruitment_open: dbMeta?.is_recruitment_open ?? fileMeta?.is_recruitment_open ?? true,
+    require_registration: dbMeta?.require_registration ?? fileMeta?.require_registration ?? true,
+    target_scope: dbMeta?.target_scope ?? fileMeta?.target_scope ?? 'all',
+    allowed_lcds: Array.isArray(dbMeta?.allowed_lcds)
+      ? dbMeta.allowed_lcds
+      : Array.isArray(fileMeta?.allowed_lcds)
+      ? fileMeta.allowed_lcds
+      : [],
+    max_participants: dbMeta?.max_participants ?? fileMeta?.max_participants ?? 0,
+    max_volunteers: dbMeta?.max_volunteers ?? fileMeta?.max_volunteers ?? 0,
+    ...(dbMeta?.is_support_event !== undefined || fileMeta?.is_support_event !== undefined
+      ? { is_support_event: dbMeta?.is_support_event ?? fileMeta?.is_support_event }
+      : {}),
+    ...(dbMeta?.organization_unit !== undefined || fileMeta?.organization_unit !== undefined
+      ? { organization_unit: dbMeta?.organization_unit ?? fileMeta?.organization_unit }
+      : {}),
+    ...(dbMeta?.description !== undefined || fileMeta?.description !== undefined
+      ? { description: dbMeta?.description ?? fileMeta?.description }
+      : {}),
+    ...(dbMeta?.cancellation_policy !== undefined || fileMeta?.cancellation_policy !== undefined
+      ? { cancellation_policy: dbMeta?.cancellation_policy ?? fileMeta?.cancellation_policy }
+      : {}),
+  };
 }
 
 let metaWriteTimer: ReturnType<typeof setTimeout> | null = null;
-function scheduleSaveMetaToFile(data: Record<string, EventMeta>) {
+
+async function flushMetaToDisk(): Promise<void> {
+  if (metaWriteTimer) {
+    clearTimeout(metaWriteTimer);
+    metaWriteTimer = null;
+  }
+  await runSerializedByKey('disk_flush_event_meta', async () => {
+    const updates = dirtyMetaUpdates;
+    const keys = Object.keys(updates);
+    if (keys.length === 0) return;
+    g.__hddDirtyMetaUpdates = {};
+    dirtyMetaUpdates = g.__hddDirtyMetaUpdates;
+
+    const diskData = loadFromFile();
+    const mergedDisk = { ...diskData, ...updates };
+    await writeJsonFileAtomic(META_FILE, mergedDisk);
+  }).catch(() => {});
+}
+
+function scheduleSaveMetaToFile(eventId: string, updated: EventMeta) {
+  dirtyMetaUpdates[eventId] = updated;
   if (metaWriteTimer) return;
   metaWriteTimer = setTimeout(() => {
     metaWriteTimer = null;
-    saveToFile(data);
+    void flushMetaToDisk();
   }, 300);
   if (typeof metaWriteTimer === 'object' && metaWriteTimer && 'unref' in metaWriteTimer && typeof metaWriteTimer.unref === 'function') {
     metaWriteTimer.unref();
@@ -103,12 +160,18 @@ function evictOldest<T>(cache: Record<string, T>, maxEntries: number): void {
 const g = globalThis as unknown as {
   __hddInMemoryMeta?: Record<string, EventMeta>;
   __hddInMemoryMetaExpiry?: Record<string, number>;
+  __hddDirtyMetaUpdates?: Record<string, EventMeta>;
   __hddInflightMeta?: Map<string, Promise<EventMeta>>;
   __hddEventResponseCache?: Map<string, { data: any; ts: number }>;
   __hddInMemoryRegExtras?: Record<string, Record<string, RegistrationExtra>>;
   __hddInMemoryRegExtrasExpiry?: Record<string, number>;
+  __hddDirtyRegUpdates?: Record<string, Record<string, RegistrationExtra>>;
   __hddInflightRegExtras?: Map<string, Promise<Record<string, RegistrationExtra>>>;
 };
+
+let dirtyMetaUpdates: Record<string, EventMeta> = g.__hddDirtyMetaUpdates || (g.__hddDirtyMetaUpdates = {});
+let dirtyRegUpdates: Record<string, Record<string, RegistrationExtra>> =
+  g.__hddDirtyRegUpdates || (g.__hddDirtyRegUpdates = {});
 
 const inMemoryMeta: Record<string, EventMeta> = g.__hddInMemoryMeta || (g.__hddInMemoryMeta = loadFromFile());
 const inMemoryMetaExpiry: Record<string, number> = g.__hddInMemoryMetaExpiry || (g.__hddInMemoryMetaExpiry = {});
@@ -155,7 +218,7 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
   const fetchTask = (async (): Promise<EventMeta> => {
     try {
       const metaKey = `event_meta_${eventId}`;
-      const fileMeta = inMemoryMeta[eventId] || null;
+      let fileMeta = dirtyMetaUpdates[eventId] || inMemoryMeta[eventId] || null;
 
       // 1. Try Supabase system_settings (authoritative source of truth)
       let dbMeta: EventMeta | null = null;
@@ -176,32 +239,14 @@ export async function getEventMeta(supabase: any, eventId: string): Promise<Even
         } catch {}
       }
 
-      const merged: EventMeta = {
-        departments: (dbMeta?.departments && dbMeta.departments.length > 0)
-          ? dbMeta.departments
-          : fileMeta?.departments || [],
-        sessions: (dbMeta?.sessions && dbMeta.sessions.length > 0)
-          ? dbMeta.sessions
-          : fileMeta?.sessions || [],
-        is_recruitment_open: dbMeta?.is_recruitment_open !== undefined
-          ? dbMeta.is_recruitment_open
-          : fileMeta?.is_recruitment_open !== undefined
-          ? fileMeta.is_recruitment_open
-          : true,
-        require_registration: dbMeta?.require_registration !== undefined
-          ? dbMeta.require_registration
-          : fileMeta?.require_registration !== undefined
-          ? fileMeta.require_registration
-          : true,
-        target_scope: dbMeta?.target_scope || fileMeta?.target_scope || 'all',
-        allowed_lcds: Array.isArray(dbMeta?.allowed_lcds)
-          ? dbMeta.allowed_lcds
-          : Array.isArray(fileMeta?.allowed_lcds)
-          ? fileMeta.allowed_lcds
-          : [],
-        max_participants: dbMeta?.max_participants ?? fileMeta?.max_participants ?? 0,
-        max_volunteers: dbMeta?.max_volunteers ?? fileMeta?.max_volunteers ?? 0,
-      };
+      if (!fileMeta && !dbMeta) {
+        const disk = loadFromFile();
+        if (disk[eventId]) {
+          fileMeta = disk[eventId];
+        }
+      }
+
+      const merged = mergeEventMeta(dbMeta, fileMeta);
 
       inMemoryMeta[eventId] = merged;
       inMemoryMetaExpiry[eventId] = Date.now() + META_CACHE_TTL_MS;
@@ -245,16 +290,36 @@ function loadRegFromFile(): Record<string, Record<string, RegistrationExtra>> {
   return {};
 }
 
-function saveRegToFile(data: Record<string, Record<string, RegistrationExtra>>) {
-  writeJsonFileAtomic(REG_FILE, data).catch(() => {});
+let regWriteTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function flushRegToDisk(): Promise<void> {
+  if (regWriteTimer) {
+    clearTimeout(regWriteTimer);
+    regWriteTimer = null;
+  }
+  await runSerializedByKey('disk_flush_event_regs', async () => {
+    const updates = dirtyRegUpdates;
+    const keys = Object.keys(updates);
+    if (keys.length === 0) return;
+    g.__hddDirtyRegUpdates = {};
+    dirtyRegUpdates = g.__hddDirtyRegUpdates;
+
+    const diskData = loadRegFromFile();
+    const mergedDisk = { ...diskData, ...updates };
+    await writeJsonFileAtomic(REG_FILE, mergedDisk);
+  }).catch(() => {});
 }
 
-let regWriteTimer: ReturnType<typeof setTimeout> | null = null;
-function scheduleSaveRegToFile(data: Record<string, Record<string, RegistrationExtra>>) {
+export async function flushEventMetaStoresNow(): Promise<void> {
+  await Promise.all([flushMetaToDisk(), flushRegToDisk()]);
+}
+
+function scheduleSaveRegToFile(eventId: string, eventRegs: Record<string, RegistrationExtra>) {
+  dirtyRegUpdates[eventId] = eventRegs;
   if (regWriteTimer) return;
   regWriteTimer = setTimeout(() => {
     regWriteTimer = null;
-    saveRegToFile(data);
+    void flushRegToDisk();
   }, 300);
   if (typeof regWriteTimer === 'object' && regWriteTimer && 'unref' in regWriteTimer && typeof regWriteTimer.unref === 'function') {
     regWriteTimer.unref();
@@ -303,7 +368,11 @@ export async function getRegistrationExtras(
   const fetchTask = (async (): Promise<Record<string, RegistrationExtra>> => {
     try {
       const regKey = `event_regs_${eventId}`;
-      const localRegs = inMemoryRegExtras[eventId] || {};
+      const localRegs =
+        dirtyRegUpdates[eventId] ||
+        inMemoryRegExtras[eventId] ||
+        (!supabase ? loadRegFromFile()[eventId] : undefined) ||
+        {};
 
       if (supabase) {
         try {
@@ -316,18 +385,18 @@ export async function getRegistrationExtras(
           if (data?.value) {
             const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
             if (parsed && typeof parsed === 'object') {
-              // Merge local entries with DB entries so neither is lost
+              // DB is authoritative across PM2 workers; only keep local entries not yet present in DB
               const merged: Record<string, RegistrationExtra> = { ...localRegs, ...parsed };
-              for (const [m, localEntry] of Object.entries(localRegs)) {
-                const dbEntry = parsed[m];
+              for (const [m, dbEntry] of Object.entries(parsed as Record<string, RegistrationExtra>)) {
+                const localEntry = localRegs[m];
                 if (localEntry && dbEntry) {
                   merged[m] = {
-                    ...dbEntry,
                     ...localEntry,
-                    phone: localEntry.phone || dbEntry.phone,
-                    gender: localEntry.gender || dbEntry.gender,
-                    department_id: localEntry.department_id ?? dbEntry.department_id,
-                    department_name: localEntry.department_name ?? dbEntry.department_name,
+                    ...dbEntry,
+                    phone: dbEntry.phone || localEntry.phone,
+                    gender: dbEntry.gender || localEntry.gender,
+                    department_id: dbEntry.department_id !== undefined ? dbEntry.department_id : localEntry.department_id,
+                    department_name: dbEntry.department_name !== undefined ? dbEntry.department_name : localEntry.department_name,
                     review_status: dbEntry.review_status || localEntry.review_status,
                   };
                 }
@@ -342,6 +411,15 @@ export async function getRegistrationExtras(
       }
 
       inMemoryRegExtrasExpiry[eventId] = Date.now() + REG_EXTRAS_CACHE_TTL_MS;
+      if (Object.keys(localRegs).length > 0) {
+        inMemoryRegExtras[eventId] = localRegs;
+      } else if (!inMemoryRegExtras[eventId]) {
+        const diskEntry = loadRegFromFile()[eventId];
+        if (diskEntry) {
+          inMemoryRegExtras[eventId] = diskEntry;
+          return diskEntry;
+        }
+      }
       return localRegs;
     } finally {
       inflightRegExtras.delete(eventId);
@@ -359,6 +437,7 @@ export async function saveRegistrationExtra(
   extra: Partial<RegistrationExtra>
 ): Promise<RegistrationExtra> {
   return runSerializedByKey(`event_regs_${eventId}`, async () => {
+    delete inMemoryRegExtrasExpiry[eventId];
     const currentEventRegs = await getRegistrationExtras(supabase, eventId);
     const normalizedMssv = mssv.toUpperCase().trim();
     const existing = currentEventRegs[normalizedMssv] || { event_id: eventId, mssv: normalizedMssv };
@@ -375,8 +454,8 @@ export async function saveRegistrationExtra(
     inMemoryRegExtrasExpiry[eventId] = Date.now() + REG_EXTRAS_CACHE_TTL_MS;
     evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
 
-    // Debounced non-blocking file write (never call fs.readFileSync on hot path)
-    scheduleSaveRegToFile(inMemoryRegExtras);
+    // Debounced non-blocking file write (never clobbers evicted on-disk entries)
+    scheduleSaveRegToFile(eventId, currentEventRegs);
 
     const regKey = `event_regs_${eventId}`;
     if (supabase) {
@@ -399,6 +478,7 @@ export async function saveRegistrationExtrasBulk(
   extrasMap: Record<string, Partial<RegistrationExtra>>
 ): Promise<Record<string, RegistrationExtra>> {
   return runSerializedByKey(`event_regs_${eventId}`, async () => {
+    delete inMemoryRegExtrasExpiry[eventId];
     const currentEventRegs = await getRegistrationExtras(supabase, eventId);
 
     for (const [mssv, extra] of Object.entries(extrasMap)) {
@@ -416,7 +496,7 @@ export async function saveRegistrationExtrasBulk(
     inMemoryRegExtrasExpiry[eventId] = Date.now() + REG_EXTRAS_CACHE_TTL_MS;
     evictOldest(inMemoryRegExtras, MAX_CACHE_ENTRIES);
 
-    scheduleSaveRegToFile(inMemoryRegExtras);
+    scheduleSaveRegToFile(eventId, currentEventRegs);
 
     const regKey = `event_regs_${eventId}`;
     if (supabase) {
@@ -438,32 +518,34 @@ export async function saveEventMeta(
   eventId: string,
   metaUpdate: Partial<EventMeta>
 ): Promise<EventMeta> {
-  delete inMemoryMetaExpiry[eventId];
-  const current = await getEventMeta(supabase, eventId);
-  const updated: EventMeta = {
-    ...current,
-    ...metaUpdate,
-  };
+  return runSerializedByKey(`event_meta_${eventId}`, async () => {
+    delete inMemoryMetaExpiry[eventId];
+    const current = await getEventMeta(supabase, eventId);
+    const updated: EventMeta = {
+      ...current,
+      ...metaUpdate,
+    };
 
-  inMemoryMeta[eventId] = updated;
-  inMemoryMetaExpiry[eventId] = Date.now() + META_CACHE_TTL_MS;
-  eventResponseCache.delete(eventId);
-  evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
-  scheduleSaveMetaToFile(inMemoryMeta);
+    inMemoryMeta[eventId] = updated;
+    inMemoryMetaExpiry[eventId] = Date.now() + META_CACHE_TTL_MS;
+    eventResponseCache.delete(eventId);
+    evictOldest(inMemoryMeta, MAX_CACHE_ENTRIES);
+    scheduleSaveMetaToFile(eventId, updated);
 
-  const metaKey = `event_meta_${eventId}`;
-  if (supabase) {
-    try {
-      await supabase.from('system_settings').upsert({
-        key: metaKey,
-        value: JSON.stringify(updated),
-        updated_at: new Date().toISOString(),
-      });
-    } catch {}
-  }
+    const metaKey = `event_meta_${eventId}`;
+    if (supabase) {
+      try {
+        await supabase.from('system_settings').upsert({
+          key: metaKey,
+          value: JSON.stringify(updated),
+          updated_at: new Date().toISOString(),
+        });
+      } catch {}
+    }
 
-  eventResponseCache.delete(eventId);
-  return updated;
+    eventResponseCache.delete(eventId);
+    return updated;
+  });
 }
 
 export async function saveRegistrationMeta(
@@ -512,24 +594,26 @@ export async function saveProposalMeta(
   proposalId: string,
   metaUpdate: Partial<ProposalMeta>
 ): Promise<ProposalMeta> {
-  const current = await getProposalMeta(supabase, proposalId);
-  const updated: ProposalMeta = {
-    ...current,
-    ...metaUpdate,
-  };
+  return runSerializedByKey(`proposal_meta_${proposalId}`, async () => {
+    const current = await getProposalMeta(supabase, proposalId);
+    const updated: ProposalMeta = {
+      ...current,
+      ...metaUpdate,
+    };
 
-  const metaKey = `proposal_meta_${proposalId}`;
-  if (supabase) {
-    try {
-      await supabase.from('system_settings').upsert({
-        key: metaKey,
-        value: JSON.stringify(updated),
-        updated_at: new Date().toISOString(),
-      });
-    } catch {}
-  }
+    const metaKey = `proposal_meta_${proposalId}`;
+    if (supabase) {
+      try {
+        await supabase.from('system_settings').upsert({
+          key: metaKey,
+          value: JSON.stringify(updated),
+          updated_at: new Date().toISOString(),
+        });
+      } catch {}
+    }
 
-  return updated;
+    return updated;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -546,22 +630,27 @@ export async function getSessionCheckIns(supabase: any, eventId: string): Promis
   // Try the dedicated session_checkins table first
   if (useSessionTable) {
     try {
-      const { data, error } = await supabase
-        .from('session_checkins')
-        .select('event_id, session_id, session_name, mssv, participate_role, checked_at, checked_by')
-        .eq('event_id', eventId)
-        .order('checked_at', { ascending: false });
+      const { data, error } = await fetchAllRows<SessionCheckIn>(() =>
+        supabase
+          .from('session_checkins')
+          .select('event_id, session_id, session_name, mssv, participate_role, checked_at, checked_by')
+          .eq('event_id', eventId)
+          .order('checked_at', { ascending: false })
+      );
 
       if (!error && data) {
-        return data as SessionCheckIn[];
+        return data;
       }
 
-      // If table doesn't exist, fall back to old JSON method
-      if (error?.code === '42P01' || error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
+      const errObj = error as { code?: string; message?: string } | null;
+      // Only disable session_checkins table if Postgres explicitly reports relation missing (42P01)
+      if (errObj?.code === '42P01') {
         useSessionTable = false;
+      } else if (errObj) {
+        return [];
       }
     } catch {
-      useSessionTable = false;
+      return [];
     }
   }
 
@@ -605,21 +694,19 @@ export async function saveSessionCheckIn(supabase: any, checkIn: SessionCheckIn)
           checked_by: checkIn.checked_by,
         });
 
-      // Duplicate = already checked in, no error needed
-      if (error?.code === '23505') {
-        return await getSessionCheckIns(supabase, eventId);
+      // Duplicate or success — return immediately without scanning all session_checkins rows
+      if (!error || error?.code === '23505') {
+        return [checkIn];
       }
 
-      if (!error) {
-        return await getSessionCheckIns(supabase, eventId);
-      }
-
-      // If table doesn't exist, fall back
-      if (error?.code === '42P01' || error?.message?.includes('relation')) {
+      // Only fall back to legacy JSON when relation is missing (42P01)
+      if (error?.code === '42P01') {
         useSessionTable = false;
+      } else {
+        return [];
       }
     } catch {
-      useSessionTable = false;
+      return [];
     }
   }
 
@@ -713,59 +800,41 @@ export async function getEventMetaBatch(
     if (supabase) {
       try {
         const metaKeys = uncachedIds.map((id) => `event_meta_${id}`);
-        const { data } = await supabase
-          .from('system_settings')
-          .select('key, value')
-          .in('key', metaKeys);
-
-        if (Array.isArray(data)) {
-          for (const row of data) {
-            if (!row?.key || !row?.value) continue;
-            const eventId = String(row.key).replace(/^event_meta_/, '');
-            try {
-              const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
-              if (parsed && typeof parsed === 'object') {
-                dbMetaByEventId[eventId] = parsed;
-              }
-            } catch {}
+        const chunks = [];
+        for (let i = 0; i < metaKeys.length; i += 100) {
+          chunks.push(metaKeys.slice(i, i + 100));
+        }
+        const chunkResults = await Promise.all(
+          chunks.map((chunk) =>
+            supabase.from('system_settings').select('key, value').in('key', chunk)
+          )
+        );
+        for (const { data } of chunkResults) {
+          if (Array.isArray(data)) {
+            for (const row of data) {
+              if (!row?.key || !row?.value) continue;
+              const eventId = String(row.key).replace(/^event_meta_/, '');
+              try {
+                const parsed = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                if (parsed && typeof parsed === 'object') {
+                  dbMetaByEventId[eventId] = parsed;
+                }
+              } catch {}
+            }
           }
         }
       } catch {}
     }
 
+    let diskFallback: Record<string, EventMeta> | null = null;
     for (const eventId of uncachedIds) {
       const dbMeta = dbMetaByEventId[eventId] || null;
-      const fileMeta = inMemoryMeta[eventId] || null;
-      const merged: EventMeta = {
-        departments:
-          dbMeta?.departments && dbMeta.departments.length > 0
-            ? dbMeta.departments
-            : fileMeta?.departments || [],
-        sessions:
-          dbMeta?.sessions && dbMeta.sessions.length > 0
-            ? dbMeta.sessions
-            : fileMeta?.sessions || [],
-        is_recruitment_open:
-          dbMeta?.is_recruitment_open !== undefined
-            ? dbMeta.is_recruitment_open
-            : fileMeta?.is_recruitment_open !== undefined
-            ? fileMeta.is_recruitment_open
-            : true,
-        require_registration:
-          dbMeta?.require_registration !== undefined
-            ? dbMeta.require_registration
-            : fileMeta?.require_registration !== undefined
-            ? fileMeta.require_registration
-            : true,
-        target_scope: dbMeta?.target_scope || fileMeta?.target_scope || 'all',
-        allowed_lcds: Array.isArray(dbMeta?.allowed_lcds)
-          ? dbMeta.allowed_lcds
-          : Array.isArray(fileMeta?.allowed_lcds)
-          ? fileMeta.allowed_lcds
-          : [],
-        max_participants: dbMeta?.max_participants ?? fileMeta?.max_participants ?? 0,
-        max_volunteers: dbMeta?.max_volunteers ?? fileMeta?.max_volunteers ?? 0,
-      };
+      let fileMeta = dirtyMetaUpdates[eventId] || inMemoryMeta[eventId] || null;
+      if (!fileMeta && !dbMeta) {
+        if (!diskFallback) diskFallback = loadFromFile();
+        fileMeta = diskFallback[eventId] || null;
+      }
+      const merged = mergeEventMeta(dbMeta, fileMeta);
       inMemoryMeta[eventId] = merged;
       inMemoryMetaExpiry[eventId] = Date.now() + META_CACHE_TTL_MS;
       result[eventId] = merged;

@@ -18,12 +18,16 @@ export async function getDutyVolunteerRecord(
   email: string
 ): Promise<{ mssv: string; email: string; full_name: string | null; class_id: string | null } | null> {
   try {
-    const { data, error } = await supabase
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) return null;
+    const mssv = extractMSSV(cleanEmail);
+    const q = supabase
       .from('office_duty_volunteers')
       .select('mssv, email, full_name, class_id')
-      .ilike('email', email.trim().toLowerCase())
-      .eq('is_active', true)
-      .limit(1);
+      .eq('is_active', true);
+    const { data, error } = mssv
+      ? await q.or(`email.ilike.${cleanEmail},mssv.eq.${mssv}`).limit(1)
+      : await q.ilike('email', cleanEmail).limit(1);
     if (!error && Array.isArray(data) && data.length > 0) {
       return data[0];
     }

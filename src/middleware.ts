@@ -1,13 +1,24 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { sanitizeRedirectPath, getTrustedOrigin } from '@/lib/security/redirect';
 
-const COOKIE_SECRET = process.env.DEMO_COOKIE_SECRET || 'dev-cookie-secret';
+const ROOT_SUPER_ADMIN = 'n22dccn158@student.ptithcm.edu.vn';
+
+function getDemoCookieSecret(): string | null {
+  const envSecret = process.env.DEMO_COOKIE_SECRET;
+  if (envSecret && envSecret.length >= 32) return envSecret;
+  if (process.env.NODE_ENV === 'production') return null;
+  return envSecret || 'dev-cookie-secret';
+}
 
 async function parseDemoCookie(cookieVal: string): Promise<any | null> {
   if (!cookieVal) return null;
   // SECURITY: Only allow demo mode in development or when explicitly enabled
   const isDemoAllowed = process.env.ENABLE_DEMO_MODE === 'true' || process.env.NODE_ENV === 'development';
   if (!isDemoAllowed) return null;
+
+  const secret = getDemoCookieSecret();
+  if (!secret) return null;
 
   try {
     let str = cookieVal.trim();
@@ -24,7 +35,7 @@ async function parseDemoCookie(cookieVal: string): Promise<any | null> {
 
     // Verify HMAC-SHA256 signature using standard Web Crypto API (Edge-compatible)
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(COOKIE_SECRET);
+    const keyData = encoder.encode(secret);
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       keyData,
@@ -68,9 +79,8 @@ async function parseDemoCookie(cookieVal: string): Promise<any | null> {
 const securityHeaders = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'SAMEORIGIN',
-  'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=self, microphone=(), geolocation=()',
+  'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
 };
 
 function addSecurityHeaders(response: NextResponse): NextResponse {
@@ -80,78 +90,32 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-const PUBLIC_ROUTES = [
-  '/',
-  '/login',
-  '/auth/callback',
-  '/maintenance',
-  '/api/admin/maintenance',
-  '/api/auth/demo',
-  '/api/auth/logout',
-  '/api/events/public',
-  '/api/rooms',
-  '/api/admin/units',
-];
-
 // Routes that need exact match (not prefix)
-const PUBLIC_EXACT_ROUTES = [
-  '/privacy',
-  '/terms',
-  '/api/events/public',
-  '/api/rooms',
-  '/api/admin/units',
-];
+const PUBLIC_EXACT_ROUTES = ['/privacy', '/terms'];
 
 // Routes that allow prefix matching for public sub-paths
 const PUBLIC_PREFIX_ROUTES = [
   '/login',
   '/auth/callback',
   '/maintenance',
-  '/api/admin/maintenance',
   '/api/auth/demo',
   '/api/auth/logout',
-  '/events/',          // /events/[id]/register page (public registration)
+  '/events/', // /events/[id]/register & recruitment pages
 ];
 
-function getValidUrl(url: string | undefined): string {
-  if (!url) return 'https://placeholder.supabase.co';
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return url;
-    }
-  } catch {
-    // invalid URL fallback
-  }
-  return 'https://placeholder.supabase.co';
-}
-
-function getPublicOriginFromReq(request: NextRequest): string {
-  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
-  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
-  if (
-    forwardedHost &&
-    !forwardedHost.includes('127.0.0.1') &&
-    !forwardedHost.includes('localhost') &&
-    !forwardedHost.includes('0.0.0.0')
-  ) {
-    return `${forwardedProto}://${forwardedHost}`;
-  }
-  if (process.env.NODE_ENV === 'production') {
-    return 'https://ptithcm.com';
-  }
-  return request.nextUrl.origin;
-}
-
-// In-memory cache for maintenance mode to prevent hammering the database on every single request
-let maintenanceCache = {
-  enabled: false,
-  timestamp: 0,
-};
+const MAINTENANCE_EXEMPT_PREFIXES = [
+  '/maintenance',
+  '/login',
+  '/auth/callback',
+  '/api/auth/',
+  '/api/admin/maintenance',
+  '/api/cron/reconcile',
+  '/privacy',
+  '/terms',
+];
 
 function decodeBase64Safe(str: string): string {
   try {
-    // Pad base64 string if needed
     const padded = str.length % 4 === 0 ? str : str + '='.repeat(4 - (str.length % 4));
     const base64Standard = padded.replace(/-/g, '+').replace(/_/g, '/');
     if (typeof atob === 'function') {
@@ -163,7 +127,6 @@ function decodeBase64Safe(str: string): string {
   }
 }
 
-// Shared verified token cache + in-flight deduplication across middleware and route handlers
 interface SharedVerifiedTokenItem {
   email: string;
   id: string;
@@ -171,9 +134,16 @@ interface SharedVerifiedTokenItem {
   verifiedAt: number;
 }
 
+interface MaintenanceCacheState {
+  enabled: boolean;
+  timestamp: number;
+}
+
 const gMiddleware = globalThis as unknown as {
   __hddVerifiedTokenCache?: Map<string, SharedVerifiedTokenItem>;
   __hddInflightTokenVerify?: Map<string, Promise<{ email: string; id: string } | null>>;
+  __hddMaintenanceCache?: MaintenanceCacheState;
+  __hddInflightMaintenance?: Promise<boolean> | null;
 };
 
 const verifiedMiddlewareTokenCache =
@@ -183,6 +153,7 @@ const inflightMiddlewareVerify =
 
 const MAX_MIDDLEWARE_TOKEN_CACHE = 3000;
 const MIDDLEWARE_TOKEN_MAX_TTL_SEC = 300; // 5 minutes max
+const MAINTENANCE_CACHE_TTL_MS = 30000;
 
 function setBoundedMiddlewareToken(tokenHash: string, item: SharedVerifiedTokenItem) {
   const nowSec = Math.floor(Date.now() / 1000);
@@ -244,6 +215,10 @@ async function verifyJwtLocallyEdge(rawToken: string): Promise<{ email: string; 
     const payload = JSON.parse(decodeBase64Safe(payloadB64));
     const nowSec = Math.floor(Date.now() / 1000);
     if (!payload || typeof payload.exp !== 'number' || payload.exp <= nowSec) return null;
+    if (typeof payload.nbf === 'number' && payload.nbf > nowSec + 5) return null;
+    if (payload.role !== 'authenticated') return null;
+    if (payload.aud !== 'authenticated') return null;
+
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase().trim() : '';
     if (!email) return null;
 
@@ -257,11 +232,19 @@ async function verifyJwtLocallyEdge(rawToken: string): Promise<{ email: string; 
   }
 }
 
+const SB_AUTH_COOKIE_RE = /^sb-[^-]+-auth-token(?:\.(\d+))?$/;
+
 function extractRawTokenFromCookies(cookieList: Array<{ name: string; value: string }>): string | null {
   try {
     const authCookies = cookieList
-      .filter((c) => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .map((c) => {
+        const m = SB_AUTH_COOKIE_RE.exec(c.name);
+        if (!m) return null;
+        return { cookie: c, chunkIdx: m[1] !== undefined ? parseInt(m[1], 10) : -1 };
+      })
+      .filter((x): x is { cookie: { name: string; value: string }; chunkIdx: number } => x !== null)
+      .sort((a, b) => a.chunkIdx - b.chunkIdx)
+      .map((x) => x.cookie);
 
     if (authCookies.length === 0) return null;
 
@@ -307,109 +290,76 @@ function parseMaintenanceEnabled(val: any): boolean {
 
 async function getCachedMaintenanceMode(supabase: any): Promise<boolean> {
   const now = Date.now();
-  if (now - maintenanceCache.timestamp < 30000) {
-    return maintenanceCache.enabled;
+  const cached = gMiddleware.__hddMaintenanceCache;
+  if (cached && now - cached.timestamp < MAINTENANCE_CACHE_TTL_MS) {
+    return cached.enabled;
   }
-  try {
-    const { data } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'maintenance_mode')
-      .maybeSingle();
 
-    const isEnabled = parseMaintenanceEnabled(data?.value);
-    maintenanceCache = {
-      enabled: isEnabled,
-      timestamp: now,
-    };
-    return isEnabled;
-  } catch {
-    return maintenanceCache.enabled;
+  if (gMiddleware.__hddInflightMaintenance) {
+    return gMiddleware.__hddInflightMaintenance;
   }
+
+  const task = (async () => {
+    try {
+      const { data } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .maybeSingle();
+
+      const isEnabled = parseMaintenanceEnabled(data?.value);
+      gMiddleware.__hddMaintenanceCache = {
+        enabled: isEnabled,
+        timestamp: Date.now(),
+      };
+      return isEnabled;
+    } catch {
+      return gMiddleware.__hddMaintenanceCache?.enabled ?? false;
+    } finally {
+      gMiddleware.__hddInflightMaintenance = null;
+    }
+  })();
+
+  gMiddleware.__hddInflightMaintenance = task;
+  return task;
 }
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const isPublicRoute = pathname === '/' || 
-    PUBLIC_PREFIX_ROUTES.some((route) => pathname.startsWith(route)) ||
-    PUBLIC_EXACT_ROUTES.some((route) => pathname === route) ||
-    // Allow public event detail pages and registration pages
-    /^\/events\/[^/]+\/register/.test(pathname) ||
-    // Allow public event detail API (GET only, auth checked inside)
-    /^\/api\/events\/[^/]+$/.test(pathname) ||
-    /^\/api\/events\/[^/]+\/register$/.test(pathname) ||
-    /^\/api\/events\/[^/]+\/ratings$/.test(pathname);
-  const publicOrigin = getPublicOriginFromReq(request);
+function createAnonSupabaseForReq(request: NextRequest, supabaseUrl: string, supabaseAnonKey: string) {
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll() {},
+    },
+  });
+}
 
-  // 1. FAST-PATH FOR PUBLIC ROUTES:
-  // Under high concurrency (hundreds of students at once), public routes must NEVER
-  // block on Supabase Auth network calls.
-  // EXCEPTION: On '/' (home page), if the user has an auth cookie whose access_token is
-  // expired (or expiring within 2 min), refresh it HERE in middleware (where cookies CAN be written)
-  // so Server Components (page.tsx) don't rotate the refresh_token and lose the new cookie!
-  if (isPublicRoute) {
-    if (pathname === '/') {
-      const homeCookies = request.cookies.getAll();
-      const homeRawToken = extractRawTokenFromCookies(homeCookies);
-      if (homeRawToken && homeRawToken.includes('.')) {
-        let needsRefresh = false;
-        try {
-          const parts = homeRawToken.split('.');
-          if (parts.length >= 2) {
-            const payload = JSON.parse(decodeBase64Safe(parts[1]));
-            const nowSec = Math.floor(Date.now() / 1000);
-            if (!payload?.exp || typeof payload.exp !== 'number' || payload.exp <= nowSec + 120) {
-              needsRefresh = true;
-            }
-          }
-        } catch {
-          needsRefresh = true;
-        }
+async function resolveAuthenticatedIdentity(
+  request: NextRequest,
+  supabaseUrl: string,
+  supabaseAnonKey: string
+): Promise<{
+  email: string | null;
+  demoTier: string | null;
+  response: NextResponse;
+}> {
+  let response = NextResponse.next({ request });
 
-        if (needsRefresh) {
-          let homeResponse = NextResponse.next({ request });
-          try {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-            const supabaseAnonKey =
-              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-              process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-              'placeholder-anon-key';
-            const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-              cookies: {
-                getAll() {
-                  return request.cookies.getAll();
-                },
-                setAll(cookiesToSet) {
-                  cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-                  homeResponse = NextResponse.next({ request });
-                  cookiesToSet.forEach(({ name, value, options }) =>
-                    homeResponse.cookies.set(name, value, options)
-                  );
-                },
-              },
-            });
-            await supabase.auth.getUser();
-          } catch {}
-          return addSecurityHeaders(homeResponse);
-        }
-      }
-    }
-    return addSecurityHeaders(NextResponse.next());
-  }
-
-  // 2. Check Demo Session Cookie (Instant cryptographically verified check)
   const demoCookie = request.cookies.get('demo_session');
   if (demoCookie?.value) {
     const demoUser = await parseDemoCookie(demoCookie.value);
     if (demoUser?.email) {
-      return addSecurityHeaders(NextResponse.next());
+      return {
+        email: String(demoUser.email).toLowerCase().trim(),
+        demoTier: typeof demoUser.tier === 'string' ? demoUser.tier : null,
+        response,
+      };
     }
   }
 
-  // 3. CRYPTOGRAPHIC TOKEN VERIFICATION WITH IN-MEMORY VERIFIED TOKEN CACHE:
   const allCookies = request.cookies.getAll();
   const rawToken = extractRawTokenFromCookies(allCookies);
-
   let authenticatedEmail: string | null = null;
   let tokenHash: string | null = null;
 
@@ -419,13 +369,11 @@ export async function middleware(request: NextRequest) {
       const cached = verifiedMiddlewareTokenCache.get(tokenHash);
       const nowSec = Math.floor(Date.now() / 1000);
       if (cached && cached.exp > nowSec + 5) {
-        // Fast-path: Token signature was ALREADY cryptographically verified! Sub-millisecond return!
         authenticatedEmail = cached.email;
       } else {
         if (cached) {
           verifiedMiddlewareTokenCache.delete(tokenHash);
         }
-        // Try local HMAC-SHA256 verification when SUPABASE_JWT_SECRET is configured (0 network calls!)
         const localVerified = await verifyJwtLocallyEdge(rawToken);
         if (localVerified) {
           authenticatedEmail = localVerified.email;
@@ -441,17 +389,6 @@ export async function middleware(request: NextRequest) {
     } catch {}
   }
 
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    'placeholder-anon-key';
-
-  // 4. Cache-miss: Cryptographically verify token with Supabase Auth SDK (with in-flight deduplication)
   if (!authenticatedEmail) {
     try {
       const existingInflight = tokenHash ? inflightMiddlewareVerify.get(tokenHash) : null;
@@ -459,33 +396,24 @@ export async function middleware(request: NextRequest) {
         const res = await existingInflight;
         if (res?.email) authenticatedEmail = res.email;
       } else {
-        const supabase = createServerClient(
-          supabaseUrl,
-          supabaseAnonKey,
-          {
-            cookies: {
-              getAll() {
-                return request.cookies.getAll();
-              },
-              setAll(cookiesToSet) {
-                cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-                supabaseResponse = NextResponse.next({
-                  request,
-                });
-                cookiesToSet.forEach(({ name, value, options }) =>
-                  supabaseResponse.cookies.set(name, value, options)
-                );
-              },
+        const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
             },
-          }
-        );
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+              response = NextResponse.next({ request });
+              cookiesToSet.forEach(({ name, value, options }) =>
+                response.cookies.set(name, value, options)
+              );
+            },
+          },
+        });
 
         const verifyTask = (async (): Promise<{ email: string; id: string } | null> => {
           try {
-            // IMPORTANT: Call getUser() WITHOUT passing rawToken so @supabase/ssr
-            // can automatically refresh expired 1-hour access_tokens using the refresh_token cookie!
             const { data, error } = await supabase.auth.getUser();
-
             if (!error && data?.user?.email) {
               const email = data.user.email.toLowerCase().trim();
               const id = data.user.id || '';
@@ -503,7 +431,6 @@ export async function middleware(request: NextRequest) {
                   }
                 } catch {}
 
-                // Only cache if the incoming token itself is still unexpired
                 if (exp > nowSec + 5) {
                   const ttlSec = Math.min(exp - nowSec, MIDDLEWARE_TOKEN_MAX_TTL_SEC);
                   setBoundedMiddlewareToken(tokenHash, {
@@ -534,10 +461,158 @@ export async function middleware(request: NextRequest) {
     } catch {}
   }
 
-  // 4. UNATHENTICATED ON PROTECTED ROUTE:
+  return { email: authenticatedEmail, demoTier: null, response };
+}
+
+async function isSuperAdminInMaintenance(
+  supabase: any,
+  email: string | null,
+  demoTier: string | null
+): Promise<boolean> {
+  if (!email) return false;
+  const cleanEmail = email.toLowerCase().trim();
+  if (cleanEmail === ROOT_SUPER_ADMIN || demoTier === 'super_admin') {
+    return true;
+  }
+  try {
+    const [{ data: superAdmin }, { data: officerSuper }] = await Promise.all([
+      supabase.from('super_admins').select('email').eq('email', cleanEmail).maybeSingle(),
+      supabase
+        .from('officer_roles')
+        .select('email')
+        .eq('email', cleanEmail)
+        .eq('role_tier', 'super_admin')
+        .maybeSingle(),
+    ]);
+    return Boolean(superAdmin || officerSuper);
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const isGet = request.method === 'GET' || request.method === 'HEAD';
+  const publicOrigin = getTrustedOrigin(request);
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    'placeholder-anon-key';
+
+  // Cron endpoint verifies Bearer CRON_SECRET directly inside handler
+  if (pathname === '/api/cron/reconcile') {
+    return addSecurityHeaders(NextResponse.next());
+  }
+
+  const isMaintenanceExempt = MAINTENANCE_EXEMPT_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix)
+  );
+
+  const isPublicRoute =
+    pathname === '/' ||
+    PUBLIC_PREFIX_ROUTES.some((route) => pathname.startsWith(route)) ||
+    PUBLIC_EXACT_ROUTES.some((route) => pathname === route) ||
+    (isGet &&
+      (pathname === '/api/events/public' ||
+        pathname === '/api/rooms' ||
+        pathname === '/api/admin/maintenance' ||
+        pathname === '/api/admin/units' ||
+        /^\/api\/events\/[^/]+$/.test(pathname) ||
+        /^\/api\/events\/[^/]+\/ratings$/.test(pathname))) ||
+    /^\/events\/[^/]+\/register/.test(pathname) ||
+    /^\/api\/events\/[^/]+\/register$/.test(pathname);
+
+  // Check cached maintenance mode (coalesced across concurrent requests; 30s TTL)
+  const anonSupabase = createAnonSupabaseForReq(request, supabaseUrl, supabaseAnonKey);
+  const isMaintenance = isMaintenanceExempt ? false : await getCachedMaintenanceMode(anonSupabase);
+
+  // 1. FAST-PATH FOR PUBLIC ROUTES (when NOT in maintenance mode)
+  if (isPublicRoute && !isMaintenance) {
+    if (pathname === '/') {
+      const homeCookies = request.cookies.getAll();
+      const homeRawToken = extractRawTokenFromCookies(homeCookies);
+      if (homeRawToken && homeRawToken.includes('.')) {
+        let needsRefresh = false;
+        try {
+          const parts = homeRawToken.split('.');
+          if (parts.length >= 2) {
+            const payload = JSON.parse(decodeBase64Safe(parts[1]));
+            const nowSec = Math.floor(Date.now() / 1000);
+            if (!payload?.exp || typeof payload.exp !== 'number' || payload.exp <= nowSec + 120) {
+              needsRefresh = true;
+            }
+          }
+        } catch {
+          needsRefresh = true;
+        }
+
+        if (needsRefresh) {
+          let homeResponse = NextResponse.next({ request });
+          try {
+            const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+              cookies: {
+                getAll() {
+                  return request.cookies.getAll();
+                },
+                setAll(cookiesToSet) {
+                  cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+                  homeResponse = NextResponse.next({ request });
+                  cookiesToSet.forEach(({ name, value, options }) =>
+                    homeResponse.cookies.set(name, value, options)
+                  );
+                },
+              },
+            });
+            await supabase.auth.getUser();
+          } catch {}
+          return addSecurityHeaders(homeResponse);
+        }
+      }
+    }
+    return addSecurityHeaders(NextResponse.next());
+  }
+
+  // 2. Resolve identity (Demo cookie OR cryptographically verified Supabase JWT)
+  const {
+    email: authenticatedEmail,
+    demoTier,
+    response: supabaseResponse,
+  } = await resolveAuthenticatedIdentity(request, supabaseUrl, supabaseAnonKey);
+
+  // 3. Enforce Maintenance Mode BEFORE allowing access (for both protected and student-facing public routes)
+  if (isMaintenance && !isMaintenanceExempt) {
+    const authSupabase = createAnonSupabaseForReq(request, supabaseUrl, supabaseAnonKey);
+    const allowedSuperAdmin = await isSuperAdminInMaintenance(
+      authSupabase,
+      authenticatedEmail,
+      demoTier
+    );
+    if (!allowedSuperAdmin) {
+      if (pathname.startsWith('/api/')) {
+        return addSecurityHeaders(
+          NextResponse.json(
+            {
+              success: false,
+              error: 'Maintenance',
+              message: 'Hệ thống đang bảo trì, vui lòng quay lại sau.',
+            },
+            { status: 503 }
+          )
+        );
+      }
+      return addSecurityHeaders(NextResponse.redirect(new URL('/maintenance', publicOrigin)));
+    }
+  }
+
+  // If this was a public route during maintenance and user IS Super Admin, let them through
+  if (isPublicRoute) {
+    return addSecurityHeaders(supabaseResponse);
+  }
+
+  // 4. UNAUTHENTICATED ON PROTECTED ROUTE:
   if (!authenticatedEmail) {
-    // If request is an API call, return JSON 401 instead of HTML 307 redirect
-    // (Redirecting API calls breaks fetch clients and causes syntax errors)
     if (pathname.startsWith('/api/')) {
       return addSecurityHeaders(
         NextResponse.json(
@@ -547,56 +622,22 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    // For web pages, redirect to login
     const loginUrl = new URL('/login', publicOrigin);
     if (pathname && pathname !== '/' && pathname !== '/login') {
       const fullTarget = request.nextUrl.search ? `${pathname}${request.nextUrl.search}` : pathname;
-      loginUrl.searchParams.set('redirect', fullTarget);
+      const safeTarget = sanitizeRedirectPath(fullTarget, '');
+      if (safeTarget) {
+        loginUrl.searchParams.set('redirect', safeTarget);
+      }
     }
     return addSecurityHeaders(NextResponse.redirect(loginUrl));
   }
-
-  // 5. CACHED MAINTENANCE MODE CHECK:
-  // Only check database once every 30 seconds instead of on every request
-  try {
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() { return request.cookies.getAll(); },
-        setAll() {},
-      },
-    });
-
-    const isMaintenance = await getCachedMaintenanceMode(supabase);
-
-    // If maintenance mode is ON, verify if user is Super Admin
-    if (isMaintenance && pathname !== '/maintenance' && !pathname.startsWith('/api/admin/maintenance')) {
-      const isRootSuper = authenticatedEmail === 'n22dccn158@student.ptithcm.edu.vn';
-      if (!isRootSuper) {
-        const { data: superAdmin } = await supabase
-          .from('super_admins')
-          .select('email')
-          .eq('email', authenticatedEmail)
-          .maybeSingle();
-
-        if (!superAdmin) {
-          return addSecurityHeaders(NextResponse.redirect(new URL('/maintenance', publicOrigin)));
-        }
-      }
-    }
-  } catch {}
 
   return addSecurityHeaders(supabaseResponse);
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - images, icons, manifest etc
-     */
     '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|llms\\.txt|llms-full\\.txt|robots\\.txt|sitemap\\.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

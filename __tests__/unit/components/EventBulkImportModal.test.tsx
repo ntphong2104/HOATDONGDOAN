@@ -23,9 +23,47 @@ describe('EventBulkImportModal - Preview and Exclusion Tests', () => {
         warnings_count: 1,
         rejected: 0,
         rejected_mssvs: [],
+        summary: {
+          total_valid: 2,
+          already_checked_in: 0,
+          in_file_duplicates: 0,
+          not_in_system: 1,
+          not_registered: 0,
+          capacity: {
+            max_participants: 0,
+            current_count: 0,
+            new_add_count: 2,
+            projected_total: 2,
+            remaining_slots: 0,
+            is_overflow: false,
+            overflow_count: 0,
+          },
+        },
         students: [
-          { mssv: 'N21DCCN001', full_name: 'Nguyen Van A', class_id: 'D21CQCN01-N', in_system: true, from_excel: false, warnings: [] },
-          { mssv: 'N21DCCN999', full_name: 'N21DCCN999', class_id: 'PTIT-HCM', in_system: false, from_excel: false, warnings: ['Chưa có trong hệ thống'] },
+          {
+            mssv: 'N21DCCN001',
+            full_name: 'Nguyen Van A',
+            class_id: 'D21CQCN01-N',
+            in_system: true,
+            is_registered: true,
+            is_already_checked_in: false,
+            is_duplicate_in_file: false,
+            from_excel: false,
+            warnings: [],
+            badges: [{ type: 'success', text: 'Hợp lệ' }],
+          },
+          {
+            mssv: 'N21DCCN999',
+            full_name: 'N21DCCN999',
+            class_id: 'PTIT-HCM',
+            in_system: false,
+            is_registered: false,
+            is_already_checked_in: false,
+            is_duplicate_in_file: false,
+            from_excel: false,
+            warnings: ['Chưa có trong hệ thống'],
+            badges: [{ type: 'warning', text: 'Chưa có trong hệ thống' }],
+          },
         ],
       }),
     });
@@ -45,20 +83,20 @@ describe('EventBulkImportModal - Preview and Exclusion Tests', () => {
     fireEvent.change(textarea, { target: { value: 'N21DCCN001\nN21DCCN999' } });
 
     // Submit for validation
-    const submitBtn = screen.getByRole('button', { name: /Xác nhận nạp/i });
+    const submitBtn = screen.getByRole('button', { name: /Kiểm tra danh sách/i });
     fireEvent.click(submitBtn);
 
     // Wait for preview modal to appear
     await waitFor(() => {
-      expect(screen.getByText(/⚠️ Kiểm tra trước khi nạp/i)).toBeInTheDocument();
+      expect(screen.getByText(/Kiểm tra danh sách trước khi nạp/i)).toBeInTheDocument();
     });
 
     // Check that warning student is displayed
     expect(screen.getByText('N21DCCN999')).toBeInTheDocument();
     expect(screen.getByText('Chưa có trong hệ thống')).toBeInTheDocument();
 
-    // Test filter tabs: "Chỉ xem cảnh báo (1)"
-    const warningTab = screen.getByRole('button', { name: /Chỉ xem cảnh báo \(1\)/i });
+    // Test filter tabs: "Cần lưu ý (1)"
+    const warningTab = screen.getByRole('button', { name: /Cần lưu ý \(1\)/i });
     fireEvent.click(warningTab);
     expect(screen.getByText('N21DCCN999')).toBeInTheDocument();
 
@@ -67,15 +105,13 @@ describe('EventBulkImportModal - Preview and Exclusion Tests', () => {
     fireEvent.click(allTab);
 
     // Test individual row deletion: Delete warning student
-    const deleteButtons = screen.getAllByRole('button', { name: /Xóa/i });
-    // Find the one for N21DCCN999 and click it
-    fireEvent.click(deleteButtons[1]);
+    const deleteBtn = screen.getByTitle('Xóa N21DCCN999');
+    fireEvent.click(deleteBtn);
 
-    // Now warnings_count should be 0, header changes to "Danh sách hợp lệ"
+    // Now warnings_count should be 0 and N21DCCN999 removed
     await waitFor(() => {
-      expect(screen.getByText(/Danh sách hợp lệ/i)).toBeInTheDocument();
       expect(screen.queryByText('N21DCCN999')).not.toBeInTheDocument();
-      expect(screen.getByText(/Tất cả sinh viên đã sẵn sàng nạp/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Cần lưu ý \(0\)/i })).toBeInTheDocument();
     });
   });
 
@@ -93,9 +129,47 @@ describe('EventBulkImportModal - Preview and Exclusion Tests', () => {
           warnings_count: 1,
           rejected: 0,
           rejected_mssvs: [],
+          summary: {
+            total_valid: 2,
+            already_checked_in: 0,
+            in_file_duplicates: 0,
+            not_in_system: 1,
+            not_registered: 0,
+            capacity: {
+              max_participants: 0,
+              current_count: 0,
+              new_add_count: 2,
+              projected_total: 2,
+              remaining_slots: 0,
+              is_overflow: false,
+              overflow_count: 0,
+            },
+          },
           students: [
-            { mssv: 'N21DCCN001', full_name: 'Nguyen Van A', class_id: 'D21CQCN01-N', in_system: true, from_excel: false, warnings: [] },
-            { mssv: 'N21DCCN999', full_name: 'N21DCCN999', class_id: 'PTIT-HCM', in_system: false, from_excel: false, warnings: ['Chưa có trong hồ sơ sinh viên'] },
+            {
+              mssv: 'N21DCCN001',
+              full_name: 'Nguyen Van A',
+              class_id: 'D21CQCN01-N',
+              in_system: true,
+              is_registered: true,
+              is_already_checked_in: false,
+              is_duplicate_in_file: false,
+              from_excel: false,
+              warnings: [],
+              badges: [{ type: 'success', text: 'Hợp lệ' }],
+            },
+            {
+              mssv: 'N21DCCN999',
+              full_name: 'N21DCCN999',
+              class_id: 'PTIT-HCM',
+              in_system: false,
+              is_registered: false,
+              is_already_checked_in: false,
+              is_duplicate_in_file: false,
+              from_excel: false,
+              warnings: ['Chưa có trong hồ sơ sinh viên'],
+              badges: [{ type: 'warning', text: 'Chưa có trong hồ sơ sinh viên' }],
+            },
           ],
         }),
       })
@@ -120,16 +194,19 @@ describe('EventBulkImportModal - Preview and Exclusion Tests', () => {
     const textarea = screen.getByPlaceholderText(/Dán danh sách MSSV vào đây/i);
     fireEvent.change(textarea, { target: { value: 'N21DCCN001\nN21DCCN999' } });
 
-    const submitBtn = screen.getByRole('button', { name: /Xác nhận nạp/i });
+    const submitBtn = screen.getByRole('button', { name: /Kiểm tra danh sách/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/⚠️ Kiểm tra trước khi nạp/i)).toBeInTheDocument();
+      expect(screen.getByText(/Kiểm tra danh sách trước khi nạp/i)).toBeInTheDocument();
     });
 
-    // Click "✓ Bỏ lỗi & Nạp 1 SV hợp lệ"
-    const skipErrorBtn = screen.getByRole('button', { name: /Bỏ lỗi & Nạp 1 SV hợp lệ/i });
-    fireEvent.click(skipErrorBtn);
+    // Click "Loại bỏ tất cả cảnh báo" then confirm import of the 1 valid student
+    const removeWarningsBtn = screen.getByRole('button', { name: /Loại bỏ tất cả cảnh báo/i });
+    fireEvent.click(removeWarningsBtn);
+
+    const confirmBtn = await screen.findByRole('button', { name: /Xác nhận nạp \(1 sinh viên\)/i });
+    fireEvent.click(confirmBtn);
 
     // Verify import API call only contains valid MSSV
     await waitFor(() => {

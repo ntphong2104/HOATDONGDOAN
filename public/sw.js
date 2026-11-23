@@ -57,8 +57,17 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetPath = (event.notification.data && event.notification.data.url) || '/';
-  const targetUrl = new URL(targetPath, self.location.origin).href;
+  const rawTarget = (event.notification.data && event.notification.data.url) || '/';
+  let targetUrl = self.location.origin + '/';
+  try {
+    const candidate = typeof rawTarget === 'string' && rawTarget.startsWith('/') && !rawTarget.startsWith('//') && !rawTarget.startsWith('/\\')
+      ? rawTarget
+      : '/';
+    const parsed = new URL(candidate, self.location.origin);
+    if (parsed.origin === self.location.origin) {
+      targetUrl = parsed.href;
+    }
+  } catch {}
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

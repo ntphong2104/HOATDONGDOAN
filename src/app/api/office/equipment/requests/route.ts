@@ -12,6 +12,7 @@ import {
 } from '@/lib/utils/office-duty';
 import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
 import { notifyUsersByEmail } from '@/lib/utils/web-push';
+import { runSerializedByKey } from '@/lib/utils/concurrency-queue';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -145,7 +146,7 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (activeBan && !isOfficeAdminAuth(auth)) {
-      const untilStr = new Date(activeBan.banned_until).toLocaleDateString('vi-VN');
+      const untilStr = new Date(activeBan.banned_until).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
       return NextResponse.json(
         {
           success: false,
@@ -310,157 +311,232 @@ export async function PATCH(req: Request) {
     }
 
     const supabase = (await createAdminClient()) || (await createClient());
-    const { data: existing } = await supabase
-      .from('office_borrow_requests')
-      .select('*, office_borrow_items(*)')
-      .eq('id', id)
-      .maybeSingle();
 
-    if (!existing) {
-      return NextResponse.json({ success: false, error: 'Không tìm thấy đơn mượn.' }, { status: 404 });
-    }
+    return await runSerializedByKey('office_equipment_inventory', async () => {
+      const { data: existing } = await supabase
+        .from('office_borrow_requests')
+        .select('*, office_borrow_items(*)')
+        .eq('id', id)
+        .maybeSingle();
 
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const reqItems = existing.office_borrow_items || [];
+      if (!existing) {
+        return NextResponse.json({ success: false, error: 'Không tìm thấy đơn mượn.' }, { status: 404 });
+      }
 
-    const adjustInventory = async (deltaSign: -1 | 1) => {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const reqItems = existing.office_borrow_items || [];
+
+      const aggregatedItems = new Map<string, { item_id: string; item_name: string; quantity: number }>();
       for (const it of reqItems) {
         if (!it.item_id) continue;
-        const { data: inv } = await supabase
-          .from('office_items')
-          .select('available_qty, total_qty')
-          .eq('id', it.item_id)
-          .maybeSingle();
-        if (!inv) continue;
-        const nextAvail = Math.min(
-          inv.total_qty,
-          Math.max(0, (inv.available_qty || 0) + deltaSign * (it.quantity || 1))
+        const qty = Math.max(1, Number(it.quantity) || 1);
+        const cur = aggregatedItems.get(it.item_id);
+        if (cur) {
+          cur.quantity += qty;
+        } else {
+          aggregatedItems.set(it.item_id, {
+            item_id: it.item_id,
+            item_name: it.item_name || it.item_id,
+            quantity: qty,
+          });
+        }
+      }
+
+      const validateAvailableStock = async (): Promise<string | null> => {
+        for (const it of aggregatedItems.values()) {
+          const { data: inv } = await supabase
+            .from('office_items')
+            .select('name, available_qty, total_qty')
+            .eq('id', it.item_id)
+            .maybeSingle();
+          if (!inv) {
+            return `Vật phẩm "${it.item_name}" không còn tồn tại trong kho.`;
+          }
+          if ((inv.available_qty || 0) < it.quantity) {
+            return `Kho không đủ "${inv.name || it.item_name}": còn ${inv.available_qty || 0}, yêu cầu ${it.quantity}.`;
+          }
+        }
+        return null;
+      };
+
+      const adjustInventory = async (deltaSign: -1 | 1) => {
+        for (const it of aggregatedItems.values()) {
+          const { data: inv } = await supabase
+            .from('office_items')
+            .select('available_qty, total_qty')
+            .eq('id', it.item_id)
+            .maybeSingle();
+          if (!inv) continue;
+          const nextAvail = Math.min(
+            inv.total_qty,
+            Math.max(0, (inv.available_qty || 0) + deltaSign * it.quantity)
+          );
+          await supabase
+            .from('office_items')
+            .update({ available_qty: nextAvail, updated_at: nowIso })
+            .eq('id', it.item_id);
+        }
+      };
+
+      if (action === 'approve') {
+        if (existing.status !== 'pending') {
+          return NextResponse.json({ success: false, error: 'Chỉ đơn đang chờ duyệt mới có thể phê duyệt.' }, { status: 400 });
+        }
+        const stockErr = await validateAvailableStock();
+        if (stockErr) {
+          return NextResponse.json({ success: false, error: stockErr }, { status: 400 });
+        }
+        const { data: claimed, error } = await supabase
+          .from('office_borrow_requests')
+          .update({
+            status: 'approved',
+            approved_by: auth!.email,
+            approved_at: nowIso,
+            admin_note: admin_note || existing.admin_note,
+            updated_at: nowIso,
+          })
+          .eq('id', id)
+          .eq('status', 'pending')
+          .select('id');
+        if (error) return NextResponse.json({ success: false, error: 'Lỗi cập nhật đơn mượn.' }, { status: 500 });
+        if (!claimed || claimed.length === 0) {
+          return NextResponse.json({ success: false, error: 'Đơn mượn đã được xử lý bởi thao tác khác.' }, { status: 409 });
+        }
+        const pendingCache = (globalThis as unknown as { __hddAdminPendingCounts?: { expiresAt: number } })
+          .__hddAdminPendingCounts;
+        if (pendingCache) pendingCache.expiresAt = 0;
+        void notifyUsersByEmail(supabase, [existing.requester_email], {
+          title: '✅ Đơn mượn dụng cụ đã được duyệt',
+          body: `Đơn mượn "${existing.purpose}" đã được Admin VPĐ phê duyệt. Vui lòng đến Văn phòng Đoàn nhận vật phẩm đúng lịch.`,
+          url: '/office/borrow',
+          tag: `office-borrow-${id}`,
+        }).catch(() => {});
+        return NextResponse.json({ success: true, message: 'Đã duyệt đơn mượn dụng cụ.' });
+      }
+
+      if (action === 'handover') {
+        if (existing.status !== 'pending' && existing.status !== 'approved') {
+          return NextResponse.json({ success: false, error: 'Đơn này đã được bàn giao, bị từ chối hoặc đã hoàn tất.' }, { status: 400 });
+        }
+        const stockErr = await validateAvailableStock();
+        if (stockErr) {
+          return NextResponse.json({ success: false, error: stockErr }, { status: 400 });
+        }
+        // Claim state transition via CAS BEFORE deducting stock to prevent cross-worker double deduction
+        const { data: claimed, error } = await supabase
+          .from('office_borrow_requests')
+          .update({
+            status: 'borrowed',
+            approved_by: existing.approved_by || auth!.email,
+            approved_at: existing.approved_at || nowIso,
+            handed_over_at: nowIso,
+            admin_note: admin_note || existing.admin_note,
+            updated_at: nowIso,
+          })
+          .eq('id', id)
+          .in('status', ['pending', 'approved'])
+          .select('id');
+        if (error) return NextResponse.json({ success: false, error: 'Lỗi cập nhật trạng thái bàn giao.' }, { status: 500 });
+        if (!claimed || claimed.length === 0) {
+          return NextResponse.json({ success: false, error: 'Đơn mượn đã được bàn giao hoặc thay đổi trạng thái.' }, { status: 409 });
+        }
+        await adjustInventory(-1);
+        return NextResponse.json({ success: true, message: 'Đã xác nhận bàn giao vật phẩm cho đơn vị.' });
+      }
+
+      if (action === 'reject') {
+        if (existing.status !== 'pending' && existing.status !== 'approved') {
+          return NextResponse.json(
+            { success: false, error: 'Chỉ có thể từ chối đơn ở trạng thái chờ duyệt hoặc đã duyệt (chưa bàn giao).' },
+            { status: 400 }
+          );
+        }
+        const { data: claimed, error } = await supabase
+          .from('office_borrow_requests')
+          .update({
+            status: 'rejected',
+            approved_by: auth!.email,
+            approved_at: nowIso,
+            admin_note: admin_note || 'Từ chối bởi Admin VPĐ',
+            updated_at: nowIso,
+          })
+          .eq('id', id)
+          .in('status', ['pending', 'approved'])
+          .select('id');
+        if (error) return NextResponse.json({ success: false, error: 'Lỗi cập nhật trạng thái từ chối.' }, { status: 500 });
+        if (!claimed || claimed.length === 0) {
+          return NextResponse.json({ success: false, error: 'Đơn mượn đã được xử lý bởi thao tác khác.' }, { status: 409 });
+        }
+        const pendingCache = (globalThis as unknown as { __hddAdminPendingCounts?: { expiresAt: number } })
+          .__hddAdminPendingCounts;
+        if (pendingCache) pendingCache.expiresAt = 0;
+        void notifyUsersByEmail(supabase, [existing.requester_email], {
+          title: '❌ Đơn mượn dụng cụ bị từ chối',
+          body: `Đơn mượn "${existing.purpose}" không được duyệt. Ghi chú: ${admin_note || 'Liên hệ Văn phòng Đoàn'}.`,
+          url: '/office/borrow',
+          tag: `office-borrow-${id}`,
+        }).catch(() => {});
+        return NextResponse.json({ success: true, message: 'Đã từ chối đơn mượn.' });
+      }
+
+      // action === 'return': Chỉ cho phép xác nhận trả đối với đơn đang ở trạng thái 'borrowed'
+      if (existing.status !== 'borrowed') {
+        return NextResponse.json(
+          { success: false, error: 'Chỉ đơn đang mượn (đã bàn giao) mới có thể xác nhận trả đồ.' },
+          { status: 400 }
         );
-        await supabase
-          .from('office_items')
-          .update({ available_qty: nextAvail, updated_at: nowIso })
-          .eq('id', it.item_id);
       }
-    };
 
-    if (action === 'approve') {
-      const { error } = await supabase
+      const lateDays = computeBorrowLateDays(existing.due_date, now);
+      const { data: claimed, error } = await supabase
         .from('office_borrow_requests')
         .update({
-          status: 'approved',
-          approved_by: auth!.email,
-          approved_at: nowIso,
+          status: 'returned',
+          returned_at: nowIso,
+          return_confirmed_by: auth!.email,
+          late_days: lateDays,
           admin_note: admin_note || existing.admin_note,
           updated_at: nowIso,
         })
-        .eq('id', id);
-      if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-      const pendingCache = (globalThis as unknown as { __hddAdminPendingCounts?: { expiresAt: number } })
-        .__hddAdminPendingCounts;
-      if (pendingCache) pendingCache.expiresAt = 0;
-      void notifyUsersByEmail(supabase, [existing.requester_email], {
-        title: '✅ Đơn mượn dụng cụ đã được duyệt',
-        body: `Đơn mượn "${existing.purpose}" đã được Admin VPĐ phê duyệt. Vui lòng đến Văn phòng Đoàn nhận vật phẩm đúng lịch.`,
-        url: '/office/borrow',
-        tag: `office-borrow-${id}`,
-      }).catch(() => {});
-      return NextResponse.json({ success: true, message: 'Đã duyệt đơn mượn dụng cụ.' });
-    }
+        .eq('id', id)
+        .eq('status', 'borrowed')
+        .select('id');
 
-    if (action === 'handover') {
-      if (existing.status === 'borrowed' || existing.status === 'returned') {
-        return NextResponse.json({ success: false, error: 'Đơn này đã được bàn giao hoặc đã hoàn tất.' }, { status: 400 });
+      if (error) return NextResponse.json({ success: false, error: 'Lỗi cập nhật trạng thái trả đồ.' }, { status: 500 });
+      if (!claimed || claimed.length === 0) {
+        return NextResponse.json({ success: false, error: 'Đơn này đã được xác nhận trả trước đó.' }, { status: 409 });
       }
-      await adjustInventory(-1);
-      const { error } = await supabase
-        .from('office_borrow_requests')
-        .update({
-          status: 'borrowed',
-          approved_by: existing.approved_by || auth!.email,
-          approved_at: existing.approved_at || nowIso,
-          handed_over_at: nowIso,
-          admin_note: admin_note || existing.admin_note,
-          updated_at: nowIso,
-        })
-        .eq('id', id);
-      if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-      return NextResponse.json({ success: true, message: 'Đã xác nhận bàn giao vật phẩm cho đơn vị.' });
-    }
 
-    if (action === 'reject') {
-      const { error } = await supabase
-        .from('office_borrow_requests')
-        .update({
-          status: 'rejected',
-          approved_by: auth!.email,
-          approved_at: nowIso,
-          admin_note: admin_note || 'Từ chối bởi Admin VPĐ',
-          updated_at: nowIso,
-        })
-        .eq('id', id);
-      if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-      const pendingCache = (globalThis as unknown as { __hddAdminPendingCounts?: { expiresAt: number } })
-        .__hddAdminPendingCounts;
-      if (pendingCache) pendingCache.expiresAt = 0;
-      void notifyUsersByEmail(supabase, [existing.requester_email], {
-        title: '❌ Đơn mượn dụng cụ bị từ chối',
-        body: `Đơn mượn "${existing.purpose}" không được duyệt. Ghi chú: ${admin_note || 'Liên hệ Văn phòng Đoàn'}.`,
-        url: '/office/borrow',
-        tag: `office-borrow-${id}`,
-      }).catch(() => {});
-      return NextResponse.json({ success: true, message: 'Đã từ chối đơn mượn.' });
-    }
-
-    // action === 'return': Xác nhận đã trả trên web -> kiểm tra trễ >= 1 ngày -> TỰ ĐỘNG CẤM MƯỢN!
-    if (existing.status === 'returned') {
-      return NextResponse.json({ success: false, error: 'Đơn này đã được xác nhận trả trước đó.' }, { status: 400 });
-    }
-    if (existing.status === 'borrowed') {
       await adjustInventory(1);
-    }
 
-    const lateDays = computeBorrowLateDays(existing.due_date, now);
-    const { error } = await supabase
-      .from('office_borrow_requests')
-      .update({
-        status: 'returned',
-        returned_at: nowIso,
-        return_confirmed_by: auth!.email,
-        late_days: lateDays,
-        admin_note: admin_note || existing.admin_note,
-        updated_at: nowIso,
-      })
-      .eq('id', id);
+      let autoBanned = false;
+      let appliedBanDays = 30;
+      if (lateDays >= 1) {
+        const config = await getOfficeDutyConfig(supabase);
+        appliedBanDays = Math.max(1, Number(config.ban_days_on_late_return) || 30);
+        const bannedUntil = new Date(now.getTime() + appliedBanDays * 86_400_000).toISOString();
 
-    if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        await supabase.from('office_borrow_bans').insert({
+          unit_code: existing.unit_code,
+          unit_name: existing.unit_name,
+          request_id: existing.id,
+          reason: `Trả dụng cụ trễ ${lateDays} ngày so với hạn ${existing.due_date} (Đơn: ${existing.purpose})`,
+          banned_at: nowIso,
+          banned_until: bannedUntil,
+          is_active: true,
+          created_by: auth!.email,
+        });
+        autoBanned = true;
+      }
 
-    let autoBanned = false;
-    let appliedBanDays = 30;
-    if (lateDays >= 1) {
-      const config = await getOfficeDutyConfig(supabase);
-      appliedBanDays = Math.max(1, Number(config.ban_days_on_late_return) || 30);
-      const bannedUntil = new Date(now.getTime() + appliedBanDays * 86_400_000).toISOString();
-
-      await supabase.from('office_borrow_bans').insert({
-        unit_code: existing.unit_code,
-        unit_name: existing.unit_name,
-        request_id: existing.id,
-        reason: `Trả dụng cụ trễ ${lateDays} ngày so với hạn ${existing.due_date} (Đơn: ${existing.purpose})`,
-        banned_at: nowIso,
-        banned_until: bannedUntil,
-        is_active: true,
-        created_by: auth!.email,
+      return NextResponse.json({
+        success: true,
+        message: autoBanned
+          ? `Đã xác nhận trả đồ. Do trễ ${lateDays} ngày, hệ thống đã TỰ ĐỘNG CẤM MƯỢN "${existing.unit_name}" trong ${appliedBanDays} ngày!`
+          : 'Đã xác nhận đơn vị trả đầy đủ dụng cụ đúng hạn.',
+        data: { late_days: lateDays, auto_banned: autoBanned, ban_days: autoBanned ? appliedBanDays : 0 },
       });
-      autoBanned = true;
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: autoBanned
-        ? `Đã xác nhận trả đồ. Do trễ ${lateDays} ngày, hệ thống đã TỰ ĐỘNG CẤM MƯỢN "${existing.unit_name}" trong ${appliedBanDays} ngày!`
-        : 'Đã xác nhận đơn vị trả đầy đủ dụng cụ đúng hạn.',
-      data: { late_days: lateDays, auto_banned: autoBanned, ban_days: autoBanned ? appliedBanDays : 0 },
     });
   } catch (err: any) {
     return NextResponse.json(

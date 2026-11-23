@@ -15,6 +15,7 @@ import RankingBoard from '@/components/RankingBoard';
 import SemesterManagerSection from '@/components/SemesterManagerSection';
 import GraduatedCohortsManager from '@/components/GraduatedCohortsManager';
 import PushBroadcastManager from '@/components/PushBroadcastManager';
+import AdminOverviewDashboard from '@/components/AdminOverviewDashboard';
 import {
   UsersIcon,
   CalendarIcon,
@@ -43,30 +44,50 @@ import {
 } from '@/components/icons';
 import { OFFICIAL_UNITS, ACADEMIC_FACULTIES, type OfficialUnit } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
+import { isSafeExternalUrl } from '@/lib/security/redirect';
 import { isSameUnit } from '@/lib/utils/rating-logic';
 import { getEffectiveEventStatus, isEventPastDeadline, getEventLifecycleState, getEarliestCheckinTime } from '@/lib/utils/event-logic';
 import { parsePenaltyNotes, type ParsedPenaltyItem, hasActiveManualBan } from '@/lib/utils/blacklist-logic';
 import type { Event, User, EventProposal, Room, UserPenalty, UserTier } from '@/lib/types';
 import styles from './page.module.css';
 
-type SuperAdminTab = 'events' | 'proposals' | 'officers' | 'rooms' | 'units' | 'students' | 'delegates' | 'blacklist' | 'ranking' | 'settings';
+type SuperAdminTab = 'overview' | 'events' | 'proposals' | 'officers' | 'rooms' | 'units' | 'students' | 'delegates' | 'blacklist' | 'ranking' | 'settings';
+
+const VALID_SUPER_ADMIN_TABS = new Set<SuperAdminTab>([
+  'overview',
+  'events',
+  'proposals',
+  'officers',
+  'rooms',
+  'units',
+  'students',
+  'delegates',
+  'blacklist',
+  'ranking',
+  'settings',
+]);
+
+function parseValidSuperAdminTab(raw: string | null): SuperAdminTab | null {
+  if (!raw) return null;
+  return VALID_SUPER_ADMIN_TABS.has(raw as SuperAdminTab) ? (raw as SuperAdminTab) : null;
+}
+
+const createToastId = () => Math.random().toString(36).substring(2, 9);
+const createPasteRowId = (i: number) => `paste_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`;
 
 function SuperAdminContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get('tab') as SuperAdminTab | null;
+  const tabParam = parseValidSuperAdminTab(searchParams.get('tab'));
 
-  const [activeTab, setActiveTab] = useState<SuperAdminTab>(tabParam || 'events');
+  const [activeTab, setActiveTab] = useState<SuperAdminTab>(tabParam || 'overview');
   const [selectedUnitFilter, setSelectedUnitFilter] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (tabParam && tabParam !== activeTab) {
-      setActiveTab(tabParam);
-    }
-  }, [tabParam]);
 
   const switchTab = (tab: SuperAdminTab) => {
     setActiveTab(tab);
+    if (tab !== 'overview') {
+      ensureSecondaryDataLoaded();
+    }
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('superadmin_active_tab', tab);
@@ -198,7 +219,7 @@ function SuperAdminContent() {
   }, [displayedPenalties, currentBlacklistPage]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
+    const id = createToastId();
     setToasts((prev) => [...prev, { id, type, message }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -287,27 +308,29 @@ function SuperAdminContent() {
   const [quickPasteText, setQuickPasteText] = useState('');
 
   useEffect(() => {
-    if (tabParam) {
-      setActiveTab(tabParam);
-      try {
-        localStorage.setItem('superadmin_active_tab', tabParam);
-      } catch {}
-    } else if (typeof window !== 'undefined') {
-      try {
-        const savedTab = localStorage.getItem('superadmin_active_tab') as SuperAdminTab | null;
-        if (
-          savedTab &&
-          ['events', 'proposals', 'officers', 'rooms', 'units', 'students', 'delegates', 'blacklist', 'ranking', 'settings'].includes(
-            savedTab
-          )
-        ) {
-          setActiveTab(savedTab);
-          const url = new URL(window.location.href);
-          url.searchParams.set('tab', savedTab);
-          window.history.replaceState(null, '', url.toString());
-        }
-      } catch {}
-    }
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (tabParam) {
+        setActiveTab(tabParam);
+        try {
+          localStorage.setItem('superadmin_active_tab', tabParam);
+        } catch {}
+      } else if (typeof window !== 'undefined') {
+        try {
+          const savedTab = parseValidSuperAdminTab(localStorage.getItem('superadmin_active_tab'));
+          if (savedTab) {
+            setActiveTab(savedTab);
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', savedTab);
+            window.history.replaceState(null, '', url.toString());
+          }
+        } catch {}
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [tabParam]);
 
   useEffect(() => {
@@ -333,18 +356,62 @@ function SuperAdminContent() {
 
     verifySuperAdmin();
 
-    const handlePageShow = () => {
-      verifySuperAdmin();
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        verifySuperAdmin();
+      }
     };
 
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, []);
 
-  useEffect(() => {
-    // Primary critical data (load first for instant UI response)
-    Promise.all([fetchStats(), fetchEvents(), fetchProposals()]).catch((e) => console.error(e));
-    // Secondary data
+  const fetchStats = async () => {
+    try {
+      const statsRes = await fetch('/api/admin/stats');
+      const statsData = await statsRes.json();
+      if (statsData.success) {
+        setStats(statsData.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const fetchEvents = async () => {
+    try {
+      const eventsRes = await fetch('/api/events');
+      const eventsData = await eventsRes.json();
+      if (eventsData.success) {
+        setEvents(Array.isArray(eventsData.data) ? eventsData.data : []);
+      }
+    } catch (err) {
+      console.error('fetchEvents error:', err);
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  const fetchProposals = async () => {
+    try {
+      const res = await fetch('/api/proposals');
+      const data = await res.json();
+      if (data.success && data.data) {
+        setProposals(Array.isArray(data.data) ? data.data : []);
+      }
+    } catch (err) {
+      console.error('fetchProposals error:', err);
+    } finally {
+      setProposalsLoading(false);
+    }
+  };
+
+  const secondaryLoadedRef = React.useRef(false);
+  const ensureSecondaryDataLoaded = () => {
+    if (secondaryLoadedRef.current) return;
+    secondaryLoadedRef.current = true;
     Promise.all([
       fetchStudents(),
       fetchOfficers(),
@@ -353,6 +420,41 @@ function SuperAdminContent() {
       fetchPenalties(),
       fetchDelegates(),
     ]).catch((e) => console.error(e));
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    // Primary critical data (load first for instant UI response)
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      Promise.all([fetchStats(), fetchEvents(), fetchProposals()]).catch((e) => console.error(e));
+    })();
+
+    let initialSavedTab: string | null = tabParam;
+    if (!initialSavedTab && typeof window !== 'undefined') {
+      try {
+        initialSavedTab = localStorage.getItem('superadmin_active_tab');
+      } catch {}
+    }
+
+    if (initialSavedTab && initialSavedTab !== 'overview') {
+      queueMicrotask(() => {
+        if (!cancelled) ensureSecondaryDataLoaded();
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Defer secondary fetches when landing on Overview so initial dashboard APIs finish cleanly first
+    const timer = setTimeout(() => {
+      if (!cancelled) ensureSecondaryDataLoaded();
+    }, 900);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, []);
 
   const fetchUnits = async () => {
@@ -1000,48 +1102,6 @@ function SuperAdminContent() {
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      const statsRes = await fetch('/api/admin/stats');
-      const statsData = await statsRes.json();
-      if (statsData.success) {
-        setStats(statsData.data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
-
-  const fetchEvents = async () => {
-    try {
-      const eventsRes = await fetch('/api/events');
-      const eventsData = await eventsRes.json();
-      if (eventsData.success) {
-        setEvents(Array.isArray(eventsData.data) ? eventsData.data : []);
-      }
-    } catch (err) {
-      console.error('fetchEvents error:', err);
-    } finally {
-      setEventsLoading(false);
-    }
-  };
-
-  const fetchProposals = async () => {
-    try {
-      const res = await fetch('/api/proposals');
-      const data = await res.json();
-      if (data.success && data.data) {
-        setProposals(Array.isArray(data.data) ? data.data : []);
-      }
-    } catch (err) {
-      console.error('fetchProposals error:', err);
-    } finally {
-      setProposalsLoading(false);
-    }
-  };
-
   const fetchRooms = async () => {
     try {
       const res = await fetch('/api/rooms');
@@ -1261,7 +1321,7 @@ function SuperAdminContent() {
         const finalClass = classId || inferPTITClass(mssv) || 'D24CQCN01-N';
         const finalEmail = formatStudentEmail(email, mssv);
         newRows.push({
-          id: `paste_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+          id: createPasteRowId(i),
           mssv,
           full_name: fullName,
           class_id: finalClass,
@@ -1641,17 +1701,21 @@ function SuperAdminContent() {
   const toggleEventStatus = async (eventId: string, currentStatus?: string) => {
     const nextStatus = currentStatus === 'active' ? 'closed' : 'active';
     try {
-      const res = await fetch(`/api/events/${eventId}/status`, {
+      const res = await fetch(`/api/events/${eventId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus }),
       });
-      if (res.ok) {
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success !== false) {
         showToast(`Đã ${nextStatus === 'active' ? 'mở' : 'đóng'} sự kiện thành công!`, 'success');
         fetchEvents();
+      } else {
+        showToast(json?.error || 'Không thể cập nhật trạng thái sự kiện', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('Lỗi kết nối máy chủ khi cập nhật sự kiện', 'error');
     }
   };
 
@@ -1853,39 +1917,48 @@ function SuperAdminContent() {
               </div>
             </div>
 
-            {/* Global Statistics Cards */}
-            <section className={styles.statsGrid}>
-              <StatCard
-                title="Tổng sinh viên"
-                value={stats.students || students.length}
-                loading={statsLoading}
-                color="primary"
-                icon={<UsersIcon size={20} />}
-                subtitle="Dữ liệu sinh viên toàn trường"
-                onClick={() => switchTab('students')}
-                isActive={activeTab === 'students'}
-              />
-              <StatCard
-                title="Tổng sự kiện"
-                value={stats.events || events.length}
-                loading={statsLoading}
-                color="warning"
-                icon={<CalendarIcon size={20} />}
-                subtitle="Sự kiện Đoàn Thanh Niên hoạt động"
-                onClick={() => switchTab('events')}
-                isActive={activeTab === 'events'}
-              />
-              <StatCard
-                title="Lượt điểm danh"
-                value={stats.checkins}
-                loading={statsLoading}
-                color="success"
-                icon={<CheckCircleIcon size={20} />}
-                subtitle="Lượt quét minh chứng hợp lệ"
-                onClick={() => switchTab('events')}
-                isActive={activeTab === 'events'}
-              />
-            </section>
+            {/* Global Statistics Cards (shown on operational sub-tabs; Overview has its own executive KPIs) */}
+            {activeTab !== 'overview' && (
+              <section className={styles.statsGrid}>
+                <StatCard
+                  title="Tổng sinh viên"
+                  value={stats.students || students.length}
+                  loading={statsLoading}
+                  color="primary"
+                  icon={<UsersIcon size={20} />}
+                  subtitle="Dữ liệu sinh viên toàn trường"
+                  onClick={() => switchTab('students')}
+                  isActive={activeTab === 'students'}
+                />
+                <StatCard
+                  title="Tổng sự kiện"
+                  value={stats.events || events.length}
+                  loading={statsLoading}
+                  color="warning"
+                  icon={<CalendarIcon size={20} />}
+                  subtitle="Sự kiện Đoàn Thanh Niên hoạt động"
+                  onClick={() => switchTab('events')}
+                  isActive={activeTab === 'events'}
+                />
+                <StatCard
+                  title="Lượt điểm danh"
+                  value={stats.checkins}
+                  loading={statsLoading}
+                  color="success"
+                  icon={<CheckCircleIcon size={20} />}
+                  subtitle="Lượt quét minh chứng hợp lệ"
+                  onClick={() => switchTab('events')}
+                  isActive={activeTab === 'events'}
+                />
+              </section>
+            )}
+
+        {/* TAB 0: TỔNG QUAN ĐIỀU HÀNH */}
+        {activeTab === 'overview' && (
+          <div className={styles.tabContent}>
+            <AdminOverviewDashboard onNavigateTab={switchTab} />
+          </div>
+        )}
 
         {/* TAB 1: QUẢN LÝ SỰ KIỆN */}
         {activeTab === 'events' && (
@@ -2688,11 +2761,11 @@ function SuperAdminContent() {
                                   <span style={{ fontWeight: 600, color: '#334155' }}>{p.organization_unit}</span>
                                   <span style={{ color: '#cbd5e1' }}>•</span>
                                   <span>{p.created_by}</span>
-                                  {p.plan_url && (
+                                  {isSafeExternalUrl(p.plan_url) && (
                                     <>
                                       <span style={{ color: '#cbd5e1' }}>•</span>
                                       <a
-                                        href={p.plan_url}
+                                        href={p.plan_url!}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={(e) => e.stopPropagation()}
@@ -3722,6 +3795,9 @@ function SuperAdminContent() {
                     }))}
                     filename="danh-sach-don-vi-doan-hoi-ptit.xlsx"
                     label="Xuất Excel Đơn Vị"
+                    reportTitle="DANH BẠ ĐƠN VỊ ĐOÀN – HỘI & CÂU LẠC BỘ TRỰC THUỘC"
+                    reportSubtitle="Danh sách tài khoản quản trị cấp Liên Chi Đoàn và CLB / Đội / Nhóm"
+                    sheetName="DanhBa_DonVi"
                   />
                 </div>
               </div>
@@ -4755,6 +4831,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   }))}
                   filename="danh-sach-sinh-vien-ptit.xlsx"
                   label="Xuất Excel danh sách"
+                  reportTitle="DANH SÁCH ĐOÀN VIÊN – SINH VIÊN ĐANG THEO HỌC"
+                  reportSubtitle="Dữ liệu đồng bộ từ hệ thống quản lý Đoàn viên PTIT HCM"
+                  sheetName="DanhSach_SinhVien"
                 />
               </div>
               <DataTable
