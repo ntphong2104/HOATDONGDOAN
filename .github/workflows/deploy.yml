@@ -53,9 +53,11 @@ jobs:
           script: |
             set -e
             cd /var/www/hoatdongdoan
+            git checkout -- tsconfig.json || true
             git pull origin main
             rm -rf .next-staging
             NEXT_DIST_DIR=.next-staging npx next build --webpack
+            git checkout -- tsconfig.json || true
             rm -rf .next-old
             [ -d .next ] && mv .next .next-old
             mv .next-staging .next
