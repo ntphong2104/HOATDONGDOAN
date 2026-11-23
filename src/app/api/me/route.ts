@@ -166,22 +166,22 @@ export async function GET() {
     }
   }
 
-  if (!email && typeof supabase.auth.getSession === 'function') {
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session?.user?.email) {
-        email = data.session.user.email;
-        authMetadata = data.session.user.user_metadata;
-      }
-    } catch {}
-  }
-
   if (!email && typeof supabase.auth.getUser === 'function') {
     try {
       const { data } = await supabase.auth.getUser();
       if (data?.user?.email) {
         email = data.user.email;
         authMetadata = data.user.user_metadata;
+      }
+    } catch {}
+  }
+
+  if (!email && process.env.NODE_ENV === 'test' && typeof supabase.auth.getSession === 'function') {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user?.email) {
+        email = data.session.user.email;
+        authMetadata = data.session.user.user_metadata;
       }
     } catch {}
   }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { CloseIcon, LockIcon, SpinnerIcon, QrCodeIcon, MapPinIcon } from '@/components/icons';
 import type { ParticipateRole } from '@/lib/types';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 import styles from './DynamicEventQRModal.module.css';
 
 interface DynamicEventQRModalProps {
@@ -50,8 +51,8 @@ export default function DynamicEventQRModal({
       .then((res) => {
         if (res.success && Array.isArray(res.data?.sessions) && res.data.sessions.length > 0) {
           setSessions(res.data.sessions);
-          // Try to find the session that matches today's date
-          const todayStr = new Date().toISOString().split('T')[0];
+          // Try to find the session that matches today's date (Vietnam UTC+7)
+          const todayStr = getVietnamDateString(0);
           const todaySession = res.data.sessions.find((s: any) => s.session_date === todayStr);
           if (todaySession) {
             setSelectedSessionId(todaySession.id);

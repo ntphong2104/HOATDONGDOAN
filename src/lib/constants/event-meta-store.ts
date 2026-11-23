@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { runSerializedByKey } from '@/lib/utils/concurrency-queue';
+import { writeJsonFileAtomic, parseJsonWithRepair } from '@/lib/utils/atomic-file';
 
 export interface DepartmentConfig {
   id: string;
@@ -62,20 +63,15 @@ function loadFromFile(): Record<string, EventMeta> {
   try {
     if (fs.existsSync(META_FILE)) {
       const raw = fs.readFileSync(META_FILE, 'utf-8');
-      return JSON.parse(raw);
+      const res = parseJsonWithRepair<Record<string, EventMeta>>(raw);
+      if (res?.value) return res.value;
     }
   } catch {}
   return {};
 }
 
 function saveToFile(data: Record<string, EventMeta>) {
-  try {
-    if (!fs.existsSync(META_DIR)) {
-      fs.mkdirSync(META_DIR, { recursive: true });
-    }
-    // Non-blocking write to prevent blocking event loop
-    fs.promises.writeFile(META_FILE, JSON.stringify(data, null, 2), 'utf-8').catch(() => {});
-  } catch {}
+  writeJsonFileAtomic(META_FILE, data).catch(() => {});
 }
 
 let metaWriteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -242,19 +238,15 @@ function loadRegFromFile(): Record<string, Record<string, RegistrationExtra>> {
   try {
     if (fs.existsSync(REG_FILE)) {
       const raw = fs.readFileSync(REG_FILE, 'utf-8');
-      return JSON.parse(raw);
+      const res = parseJsonWithRepair<Record<string, Record<string, RegistrationExtra>>>(raw);
+      if (res?.value) return res.value;
     }
   } catch {}
   return {};
 }
 
 function saveRegToFile(data: Record<string, Record<string, RegistrationExtra>>) {
-  try {
-    if (!fs.existsSync(META_DIR)) {
-      fs.mkdirSync(META_DIR, { recursive: true });
-    }
-    fs.promises.writeFile(REG_FILE, JSON.stringify(data, null, 2), 'utf-8').catch(() => {});
-  } catch {}
+  writeJsonFileAtomic(REG_FILE, data).catch(() => {});
 }
 
 let regWriteTimer: ReturnType<typeof setTimeout> | null = null;

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 
 export async function GET() {
   const auth = await getAuthContext();
@@ -102,7 +103,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Tên sự kiện không được để trống' }, { status: 400 });
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getVietnamDateString(0);
   if (event_date && event_date < todayStr) {
     return NextResponse.json({ success: false, error: '🚫 Ngày tổ chức sự kiện không thể ở trong quá khứ! Vui lòng chọn ngày hiện tại hoặc tương lai.' }, { status: 400 });
   }

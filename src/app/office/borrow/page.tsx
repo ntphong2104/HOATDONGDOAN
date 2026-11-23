@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import { useToast } from '@/components/ToastProvider';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 import {
   BuildingIcon,
   AlertTriangleIcon,
@@ -64,8 +65,8 @@ export default function OfficeBorrowPage() {
   const [purpose, setPurpose] = useState('');
   const [requesterName, setRequesterName] = useState('');
   const [requesterPhone, setRequesterPhone] = useState('');
-  const [borrowDate, setBorrowDate] = useState(new Date().toISOString().slice(0, 10));
-  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [borrowDate, setBorrowDate] = useState(() => getVietnamDateString(0));
+  const [dueDate, setDueDate] = useState(() => getVietnamDateString(0));
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
 

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { findUserProfileFromRegExtras } from '@/lib/constants/event-meta-store';
+import { writeJsonFileAtomic, parseJsonWithRepair } from '@/lib/utils/atomic-file';
 
 const PROFILE_DIR = path.join(process.cwd(), 'data');
 const PROFILE_FILE = path.join(PROFILE_DIR, 'user-profiles.json');
@@ -61,8 +62,11 @@ function loadProfiles(): Record<string, UserProfileExtra> {
   if (g.__hddUserProfiles) return g.__hddUserProfiles;
   try {
     if (fs.existsSync(PROFILE_FILE)) {
-      g.__hddUserProfiles = JSON.parse(fs.readFileSync(PROFILE_FILE, 'utf-8'));
-      return g.__hddUserProfiles!;
+      const res = parseJsonWithRepair<Record<string, UserProfileExtra>>(fs.readFileSync(PROFILE_FILE, 'utf-8'));
+      if (res?.value) {
+        g.__hddUserProfiles = res.value;
+        return g.__hddUserProfiles;
+      }
     }
   } catch {}
   g.__hddUserProfiles = {};
@@ -77,12 +81,7 @@ function saveProfiles(data: Record<string, UserProfileExtra>) {
   if (profileWriteTimer) return;
   profileWriteTimer = setTimeout(() => {
     profileWriteTimer = null;
-    try {
-      if (!fs.existsSync(PROFILE_DIR)) {
-        fs.mkdirSync(PROFILE_DIR, { recursive: true });
-      }
-      fs.promises.writeFile(PROFILE_FILE, JSON.stringify(g.__hddUserProfiles || data, null, 2), 'utf-8').catch(() => {});
-    } catch {}
+    writeJsonFileAtomic(PROFILE_FILE, g.__hddUserProfiles || data).catch(() => {});
   }, 300);
   if (typeof profileWriteTimer === 'object' && profileWriteTimer && 'unref' in profileWriteTimer && typeof profileWriteTimer.unref === 'function') {
     profileWriteTimer.unref();

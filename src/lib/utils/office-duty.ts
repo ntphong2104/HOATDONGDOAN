@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { writeJsonFileAtomicSync } from '@/lib/utils/atomic-file';
 
 export type DutyShift = 'morning' | 'afternoon';
 
@@ -112,9 +113,8 @@ export async function saveOfficeDutyConfig(
       .upsert(
         {
           key: OFFICE_DUTY_CONFIG_KEY,
-          value: config,
+          value: JSON.stringify(config),
           updated_at: new Date().toISOString(),
-          updated_by: updatedBy,
         },
         { onConflict: 'key' }
       );
@@ -123,9 +123,7 @@ export async function saveOfficeDutyConfig(
 
   let localSaved = false;
   try {
-    const dir = path.dirname(LOCAL_CONFIG_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(LOCAL_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+    writeJsonFileAtomicSync(LOCAL_CONFIG_FILE, config);
     localSaved = true;
   } catch {}
 

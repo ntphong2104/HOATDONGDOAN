@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import type { AcademicSemester } from '@/lib/types';
+import { writeJsonFileAtomicSync } from '@/lib/utils/atomic-file';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 
 export const DEFAULT_ACADEMIC_SEMESTERS: AcademicSemester[] = [
   {
@@ -69,11 +71,7 @@ function readLocalSemestersFallback(): AcademicSemester[] | null {
 
 function writeLocalSemestersFallback(semesters: AcademicSemester[]): boolean {
   try {
-    const dir = path.dirname(LOCAL_SEMESTERS_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(LOCAL_SEMESTERS_FILE, JSON.stringify(semesters, null, 2), 'utf8');
+    writeJsonFileAtomicSync(LOCAL_SEMESTERS_FILE, semesters);
     return true;
   } catch {
     return false;
@@ -158,7 +156,7 @@ export function getActiveSemester(semesters: AcademicSemester[]): AcademicSemest
   const active = semesters.find((s) => s.is_active);
   if (active) return active;
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getVietnamDateString(0);
   const currentByDate = semesters.find(
     (s) => s.start_date <= todayStr && s.end_date >= todayStr
   );

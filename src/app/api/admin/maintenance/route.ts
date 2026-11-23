@@ -38,9 +38,9 @@ export async function GET() {
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
     const q = supabase.from('system_settings').select('key, value').eq('key', 'maintenance_mode');
-    const { data, error } = typeof q.single === 'function' ? await q.single() : await q.maybeSingle();
+    const { data, error } = typeof q.maybeSingle === 'function' ? await q.maybeSingle() : await q.single();
 
-    if (error) {
+    if (error && error.code !== 'PGRST116') {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
     return NextResponse.json({
@@ -67,6 +67,7 @@ export async function PATCH(req: Request) {
   const payloadValue = {
     enabled: Boolean(enabled),
     message: typeof message === 'string' ? message : '',
+    updated_by: auth.email,
   };
 
   const upsertQuery = supabase
@@ -74,17 +75,16 @@ export async function PATCH(req: Request) {
     .upsert(
       {
         key: 'maintenance_mode',
-        value: payloadValue,
+        value: JSON.stringify(payloadValue),
         updated_at: new Date().toISOString(),
-        updated_by: auth.email,
       },
       { onConflict: 'key' }
     )
     .select();
 
-  const { data, error } = typeof upsertQuery.single === 'function'
-    ? await upsertQuery.single()
-    : await upsertQuery.maybeSingle();
+  const { data, error } = typeof upsertQuery.maybeSingle === 'function'
+    ? await upsertQuery.maybeSingle()
+    : await upsertQuery.single();
 
   if (error) return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
 

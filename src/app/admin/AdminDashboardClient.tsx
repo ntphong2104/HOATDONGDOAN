@@ -7,6 +7,7 @@ import LcdManagementSection from './LcdManagementSection';
 import RankingBoard from '@/components/RankingBoard';
 import SupportEventCreator from '@/components/SupportEventCreator';
 import { getEffectiveEventStatus } from '@/lib/utils/event-logic';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 import {
   CalendarIcon,
   ScanCameraIcon,
@@ -45,7 +46,7 @@ export default function AdminDashboardClient({
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [showSupportCreator, setShowSupportCreator] = useState(false);
   const [eventName, setEventName] = useState('');
-  const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+  const [eventDate, setEventDate] = useState(() => getVietnamDateString(0));
   const [startTime, setStartTime] = useState('07:30');
   const [endTime, setEndTime] = useState('22:00');
   const [submitting, setSubmitting] = useState(false);

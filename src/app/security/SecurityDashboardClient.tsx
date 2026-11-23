@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { getVietnamDateString } from '@/lib/utils/vn-date';
 import {
   CalendarIcon,
   ClockIcon,
@@ -32,15 +33,13 @@ export default function SecurityDashboardClient({
 }: SecurityDashboardClientProps) {
   const [proposals, setProposals] = useState<EventProposal[]>(initialProposals);
   const [dateFilter, setDateFilter] = useState<'today' | 'tomorrow' | 'all' | 'custom'>('today');
-  const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [customDate, setCustomDate] = useState<string>(() => getVietnamDateString(0));
   const [searchQuery, setSearchQuery] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // Helper date strings (YYYY-MM-DD)
-  const todayStr = new Date().toISOString().split('T')[0];
-  const tomorrowObj = new Date();
-  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
-  const tomorrowStr = tomorrowObj.toISOString().split('T')[0];
+  // Helper date strings (YYYY-MM-DD in Vietnam UTC+7)
+  const todayStr = getVietnamDateString(0);
+  const tomorrowStr = getVietnamDateString(1);
 
   const fetchProposals = async () => {
     try {

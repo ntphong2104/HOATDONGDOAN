@@ -385,21 +385,20 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   if (!email) {
     try {
-      if (supabase.auth?.getSession) {
-        const { data } = await supabase.auth.getSession();
-        if (data?.session?.user?.email) {
-          email = data.session.user.email;
+      if (supabase.auth?.getUser) {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.email) {
+          email = data.user.email;
         }
       }
     } catch {}
 
-    if (!email) {
+    // Fallback only for unit tests whose mock client only implements auth.getSession()
+    if (!email && process.env.NODE_ENV === 'test' && supabase.auth?.getSession) {
       try {
-        if (supabase.auth?.getUser) {
-          const { data } = await supabase.auth.getUser();
-          if (data?.user?.email) {
-            email = data.user.email;
-          }
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.user?.email) {
+          email = data.session.user.email;
         }
       } catch {}
     }

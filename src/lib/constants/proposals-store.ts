@@ -1,8 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import type { EventProposal, ProposalLog } from '@/lib/types';
+import { writeJsonFileAtomic, parseJsonWithRepair } from '@/lib/utils/atomic-file';
 
 const STORE_PATH = path.join(process.cwd(), '.proposals_store.json');
+const READ_TTL_MS = 5000;
 
 const INITIAL_PROPOSALS: EventProposal[] = [];
 const INITIAL_LOGS: ProposalLog[] = [];
@@ -13,15 +15,27 @@ interface ProposalStoreData {
 }
 
 let inMemoryData: ProposalStoreData | null = null;
+let lastReadTs = 0;
 
 function loadStore(): ProposalStoreData {
+  const now = Date.now();
+  if (inMemoryData && now - lastReadTs < READ_TTL_MS) {
+    return inMemoryData;
+  }
   try {
     if (fs.existsSync(STORE_PATH)) {
       const content = fs.readFileSync(STORE_PATH, 'utf8');
-      const parsed = JSON.parse(content);
-      if (parsed && Array.isArray(parsed.proposals)) {
-        inMemoryData = parsed;
-        return parsed;
+      const res = parseJsonWithRepair<ProposalStoreData>(content);
+      if (res?.value && Array.isArray(res.value.proposals)) {
+        inMemoryData = {
+          proposals: res.value.proposals,
+          logs: Array.isArray(res.value.logs) ? res.value.logs : [],
+        };
+        lastReadTs = now;
+        if (res.repaired) {
+          saveStore(inMemoryData);
+        }
+        return inMemoryData;
       }
     }
   } catch (e) {
@@ -29,17 +43,15 @@ function loadStore(): ProposalStoreData {
   }
   if (inMemoryData) return inMemoryData;
   inMemoryData = { proposals: INITIAL_PROPOSALS, logs: INITIAL_LOGS };
+  lastReadTs = now;
   saveStore(inMemoryData);
   return inMemoryData;
 }
 
 function saveStore(data: ProposalStoreData) {
   inMemoryData = data;
-  try {
-    fs.promises.writeFile(STORE_PATH, JSON.stringify(data, null, 2), 'utf8').catch(() => {});
-  } catch (e) {
-    console.warn('Failed to write .proposals_store.json:', e);
-  }
+  lastReadTs = Date.now();
+  writeJsonFileAtomic(STORE_PATH, data).catch(() => {});
 }
 
 export function getStoredProposals(): EventProposal[] {

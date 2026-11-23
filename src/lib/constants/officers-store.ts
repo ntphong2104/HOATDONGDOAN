@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { writeJsonFileAtomic, parseJsonWithRepair } from '@/lib/utils/atomic-file';
 import type { UserTier } from '@/lib/types';
 
 export const ROOT_SUPER_ADMIN = 'n22dccn158@student.ptithcm.edu.vn';
@@ -346,9 +347,9 @@ function loadFromFile(): OfficerRoleItem[] | null {
     const filePath = getStoreFilePath();
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath, 'utf8');
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed)) {
-        return parsed;
+      const res = parseJsonWithRepair<OfficerRoleItem[]>(content);
+      if (Array.isArray(res?.value)) {
+        return res.value;
       }
     }
   } catch {}
@@ -359,11 +360,7 @@ function saveToFile(list: OfficerRoleItem[]) {
   if (process.env.NODE_ENV === 'test') return;
   try {
     const filePath = getStoreFilePath();
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.promises.writeFile(filePath, JSON.stringify(list, null, 2), 'utf8').catch(() => {});
+    writeJsonFileAtomic(filePath, list).catch(() => {});
   } catch {}
 }
 
