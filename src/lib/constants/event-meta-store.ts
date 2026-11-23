@@ -351,6 +351,33 @@ export function findUserProfileFromRegExtras(mssv: string): { phone?: string; ge
   return null;
 }
 
+/**
+ * Xây dựng Map<MSSV, { phone, gender }> từ toàn bộ registration-extras để tra cứu hàng loạt.
+ */
+export function getAllRegExtrasProfilesMap(): Map<string, { phone?: string; gender?: string }> {
+  const result = new Map<string, { phone?: string; gender?: string }>();
+  const source =
+    Object.keys(inMemoryRegExtras).length > 0 ? inMemoryRegExtras : loadRegFromFile();
+  for (const eventRegs of Object.values(source)) {
+    if (!eventRegs || typeof eventRegs !== 'object') continue;
+    for (const [rawMssv, entry] of Object.entries(eventRegs)) {
+      if (!entry || typeof entry !== 'object') continue;
+      const phone = entry.phone ? String(entry.phone).trim() : '';
+      const gender = entry.gender ? String(entry.gender).trim() : '';
+      if (phone.length < 8 && !gender) continue;
+      const key = rawMssv.trim().toUpperCase();
+      const prev = result.get(key);
+      if (!prev || (!prev.phone && phone.length >= 8)) {
+        result.set(key, {
+          ...(phone.length >= 8 ? { phone } : prev?.phone ? { phone: prev.phone } : {}),
+          ...(gender ? { gender } : prev?.gender ? { gender: prev.gender } : {}),
+        });
+      }
+    }
+  }
+  return result;
+}
+
 export async function getRegistrationExtras(
   supabase: any,
   eventId: string

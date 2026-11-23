@@ -15,9 +15,13 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
   const [cohorts, setCohorts] = useState<string[]>([]);
   const [deletedCohorts, setDeletedCohorts] = useState<string[]>([]);
   const [selectedSet, setSelectedSet] = useState<Set<string>>(new Set());
+  const [savedSelectedSet, setSavedSelectedSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingCohort, setDeletingCohort] = useState<string | null>(null);
+  const [deleteModalCohort, setDeleteModalCohort] = useState<string | null>(null);
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState<1 | 2>(1);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
 
   const applyResponseData = useCallback((data: any) => {
     setCohorts(data.cohorts || []);
@@ -27,6 +31,7 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
       nextSet.add(`${r.lcd_code}::${r.cohort}`);
     }
     setSelectedSet(nextSet);
+    setSavedSelectedSet(new Set(nextSet));
   }, []);
 
   const loadConfig = useCallback(async () => {
@@ -107,22 +112,44 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
     }
   };
 
-  const handleDeleteCohort = async (cohort: string) => {
-    const confirmed = window.confirm(
-      `Xác nhận XÓA toàn bộ sinh viên khóa ${cohort} khỏi Danh sách Sinh viên hệ thống?\n\n` +
-        `• Toàn bộ hồ sơ khóa ${cohort} sẽ bị xóa khỏi danh sách quản lý & Tổng sinh viên.\n` +
-        `• Lịch sử số lượt điểm danh của các sự kiện cũ vẫn được giữ nguyên.`
-    );
-    if (!confirmed) return;
+  const openDeleteModal = (cohort: string) => {
+    setDeleteModalCohort(cohort);
+    setDeleteConfirmStep(1);
+    setDeleteConfirmInput('');
+  };
+
+  const closeDeleteModal = () => {
+    if (deletingCohort) return;
+    setDeleteModalCohort(null);
+    setDeleteConfirmStep(1);
+    setDeleteConfirmInput('');
+  };
+
+  const handleConfirmDeleteCohort = async () => {
+    if (!deleteModalCohort) return;
+    const cohort = deleteModalCohort;
+    const expectedConfirm = `XOA ${cohort}`;
+    const normalizedInput = deleteConfirmInput
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+    if (normalizedInput !== expectedConfirm) {
+      toast.error(`Vui lòng nhập chính xác "${expectedConfirm}" để xác nhận.`);
+      return;
+    }
 
     setDeletingCohort(cohort);
     try {
-      const res = await fetch(`/api/admin/graduated-cohorts?cohort=${encodeURIComponent(cohort)}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch(
+        `/api/admin/graduated-cohorts?cohort=${encodeURIComponent(cohort)}&confirm=${encodeURIComponent(expectedConfirm)}`,
+        { method: 'DELETE' }
+      );
       const json = await res.json();
       if (json.success) {
         if (json.data) applyResponseData(json.data);
+        setDeleteModalCohort(null);
+        setDeleteConfirmStep(1);
+        setDeleteConfirmInput('');
         toast.success(json.message || `Đã xóa khóa ${cohort} khỏi danh sách hệ thống!`);
         onCohortChanged?.();
       } else {
@@ -134,6 +161,10 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
       setDeletingCohort(null);
     }
   };
+
+  const hasUnsavedChanges =
+    selectedSet.size !== savedSelectedSet.size ||
+    Array.from(selectedSet).some((key) => !savedSelectedSet.has(key));
 
   const activeMatrixRuleCount = Array.from(selectedSet).filter((key) => {
     const [, cohort] = key.split('::');
@@ -177,12 +208,28 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
             <span>Quản lý Khóa Đã Tốt Nghiệp theo từng Liên Chi Đoàn</span>
           </h3>
           <p style={{ margin: '0.3rem 0 0', fontSize: '0.84rem', color: '#64748b', lineHeight: 1.45 }}>
-            Đánh dấu từng cặp <strong>LCĐ + Khóa</strong> đã ra trường (VD: khối Kinh tế 4 năm tốt nghiệp sớm hơn khối Kỹ thuật 4.5–5 năm), hoặc bấm{' '}
-            <strong style={{ color: '#dc2626' }}>✕ Xóa DS</strong> dưới tên khóa để xóa hẳn sinh viên khóa cũ khỏi Danh sách Sinh viên hệ thống (vẫn giữ nguyên số lượt sự kiện cũ).
+            Đánh dấu từng cặp <strong>LCĐ + Khóa</strong> đã ra trường (VD: khối Kinh tế 4 năm tốt nghiệp sớm hơn khối Kỹ thuật 4.5–5 năm). Sau khi{' '}
+            <strong>toàn bộ {LCD_DEFINITIONS.length}/{LCD_DEFINITIONS.length} LCĐ của một khóa đã tốt nghiệp và được lưu cấu hình</strong>, nút{' '}
+            <strong style={{ color: '#dc2626' }}>✕ Xóa DS</strong> mới xuất hiện để xóa khóa cũ khỏi Danh sách Sinh viên (kèm xác nhận 2 bước, vẫn giữ nguyên lịch sử sự kiện cũ).
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {hasUnsavedChanges && (
+            <span
+              style={{
+                padding: '0.28rem 0.6rem',
+                borderRadius: 999,
+                background: '#fef3c7',
+                border: '1px solid #fcd34d',
+                color: '#b45309',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+              }}
+            >
+              Chưa lưu thay đổi
+            </span>
+          )}
           <button
             type="button"
             onClick={loadConfig}
@@ -210,12 +257,13 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
             style={{
               padding: '0.48rem 1.05rem',
               borderRadius: 9,
-              border: 'none',
+              border: hasUnsavedChanges ? '2px solid #f59e0b' : 'none',
               background: '#1d4ed8',
               color: '#ffffff',
               fontSize: '0.82rem',
               fontWeight: 800,
               cursor: saving ? 'not-allowed' : 'pointer',
+              boxShadow: hasUnsavedChanges ? '0 0 0 3px rgba(245, 158, 11, 0.2)' : 'none',
             }}
           >
             {saving ? 'Đang lưu...' : `Lưu cấu hình (${activeMatrixRuleCount} nhóm)`}
@@ -234,20 +282,25 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                   <th style={{ padding: '0.65rem 0.85rem', textAlign: 'left', fontWeight: 800, color: '#334155', minWidth: 210 }}>
-                    Liên Chi Đoàn (8 LCĐ)
+                    Liên Chi Đoàn ({LCD_DEFINITIONS.length} LCĐ)
                   </th>
                   {cohorts.map((cohort) => {
-                    const allChecked = LCD_DEFINITIONS.every((lcd) =>
+                    const graduatedCount = LCD_DEFINITIONS.filter((lcd) =>
                       selectedSet.has(`${lcd.code}::${cohort}`)
+                    ).length;
+                    const allChecked = graduatedCount === LCD_DEFINITIONS.length;
+                    const savedAllChecked = LCD_DEFINITIONS.every((lcd) =>
+                      savedSelectedSet.has(`${lcd.code}::${cohort}`)
                     );
+                    const canDeleteCohort = allChecked && savedAllChecked;
                     const isDeleting = deletingCohort === cohort;
                     return (
-                      <th key={cohort} style={{ padding: '0.5rem 0.45rem', textAlign: 'center', minWidth: 80 }}>
+                      <th key={cohort} style={{ padding: '0.5rem 0.45rem', textAlign: 'center', minWidth: 86 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                           <button
                             type="button"
                             onClick={() => toggleWholeCohort(cohort)}
-                            title={`Bấm để chọn / bỏ chọn toàn bộ 8 LCĐ khóa ${cohort}`}
+                            title={`Bấm để chọn / bỏ chọn toàn bộ ${LCD_DEFINITIONS.length} LCĐ khóa ${cohort}`}
                             style={{
                               padding: '0.25rem 0.55rem',
                               borderRadius: 7,
@@ -261,25 +314,62 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                           >
                             {cohort}
                           </button>
-                          <button
-                            type="button"
-                            disabled={Boolean(deletingCohort)}
-                            onClick={() => handleDeleteCohort(cohort)}
-                            title={`Xóa toàn bộ sinh viên khóa ${cohort} khỏi Danh sách Sinh viên hệ thống`}
-                            style={{
-                              padding: '2px 6px',
-                              borderRadius: 5,
-                              border: '1px solid #fecaca',
-                              background: '#fef2f2',
-                              color: '#dc2626',
-                              fontWeight: 700,
-                              fontSize: '0.66rem',
-                              cursor: deletingCohort ? 'not-allowed' : 'pointer',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {isDeleting ? 'Đang xóa...' : '✕ Xóa DS'}
-                          </button>
+                          {canDeleteCohort ? (
+                            <button
+                              type="button"
+                              disabled={Boolean(deletingCohort)}
+                              onClick={() => openDeleteModal(cohort)}
+                              title={`Khóa ${cohort} đã tốt nghiệp đủ ${LCD_DEFINITIONS.length}/${LCD_DEFINITIONS.length} LCĐ — bấm để mở xác nhận xóa 2 bước`}
+                              style={{
+                                marginTop: 2,
+                                padding: '2px 6px',
+                                borderRadius: 5,
+                                border: '1px solid #fecaca',
+                                background: '#fef2f2',
+                                color: '#dc2626',
+                                fontWeight: 700,
+                                fontSize: '0.66rem',
+                                cursor: deletingCohort ? 'not-allowed' : 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {isDeleting ? 'Đang xóa...' : '✕ Xóa DS'}
+                            </button>
+                          ) : allChecked && !savedAllChecked ? (
+                            <span
+                              title="Bấm 'Lưu cấu hình' ở góc trên để lưu trạng thái tốt nghiệp trước khi xóa DS"
+                              style={{
+                                marginTop: 2,
+                                padding: '2px 6px',
+                                borderRadius: 5,
+                                border: '1px solid #fde68a',
+                                background: '#fffbeb',
+                                color: '#b45309',
+                                fontWeight: 700,
+                                fontSize: '0.64rem',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {LCD_DEFINITIONS.length}/{LCD_DEFINITIONS.length} · Chưa lưu
+                            </span>
+                          ) : (
+                            <span
+                              title={`Chỉ được xóa DS sau khi toàn bộ ${LCD_DEFINITIONS.length} LCĐ khóa ${cohort} đã tốt nghiệp và được lưu`}
+                              style={{
+                                marginTop: 2,
+                                padding: '2px 6px',
+                                borderRadius: 5,
+                                border: `1px solid ${graduatedCount > 0 ? '#fde68a' : '#e2e8f0'}`,
+                                background: graduatedCount > 0 ? '#fffbeb' : '#f8fafc',
+                                color: graduatedCount > 0 ? '#b45309' : '#94a3b8',
+                                fontWeight: 700,
+                                fontSize: '0.65rem',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {graduatedCount}/{LCD_DEFINITIONS.length} TN
+                            </span>
+                          )}
                         </div>
                       </th>
                     );
@@ -367,6 +457,282 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
           )}
         </>
       )}
+
+      {deleteModalCohort && (() => {
+        const expectedPhrase = `XOA ${deleteModalCohort}`;
+        const normalizedTyped = deleteConfirmInput.trim().replace(/\s+/g, ' ').toUpperCase();
+        const isConfirmMatched = normalizedTyped === expectedPhrase;
+        const isSubmittingDelete = deletingCohort === deleteModalCohort;
+
+        return (
+          <div
+            onClick={closeDeleteModal}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.58)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#ffffff',
+                borderRadius: 16,
+                width: '100%',
+                maxWidth: 480,
+                boxShadow: '0 24px 64px rgba(15, 23, 42, 0.28)',
+                overflow: 'hidden',
+                border: '1px solid #fecaca',
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)',
+                  color: '#ffffff',
+                  padding: '1rem 1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>
+                    Xóa toàn bộ sinh viên khóa {deleteModalCohort}
+                  </h4>
+                  <span
+                    style={{
+                      padding: '0.15rem 0.55rem',
+                      borderRadius: 999,
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                    }}
+                  >
+                    Bước {deleteConfirmStep}/2
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeDeleteModal}
+                  disabled={Boolean(deletingCohort)}
+                  aria-label="Đóng"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    color: '#ffffff',
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    cursor: deletingCohort ? 'not-allowed' : 'pointer',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '1.2rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                {deleteConfirmStep === 1 ? (
+                  <>
+                    <div
+                      style={{
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: 10,
+                        background: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        color: '#15803d',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      ✓ Toàn bộ {LCD_DEFINITIONS.length}/{LCD_DEFINITIONS.length} Liên Chi Đoàn khóa {deleteModalCohort} đã tốt nghiệp và đã lưu cấu hình
+                    </div>
+
+                    <div
+                      style={{
+                        padding: '0.85rem 1rem',
+                        borderRadius: 10,
+                        background: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        color: '#7f1d1d',
+                        fontSize: '0.82rem',
+                        lineHeight: 1.55,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, marginBottom: '0.4rem', color: '#991b1b' }}>
+                        Vui lòng kiểm tra kỹ ảnh hưởng trước khi xóa:
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <li>
+                          Xóa toàn bộ hồ sơ sinh viên khóa <strong>{deleteModalCohort}</strong> khỏi <strong>Danh sách Sinh viên</strong> &amp; <strong>Tổng sinh viên</strong> toàn trường.
+                        </li>
+                        <li>
+                          Gỡ bỏ các phân quyền BCH Chi đoàn &amp; đăng ký thông báo đẩy thuộc khóa <strong>{deleteModalCohort}</strong>.
+                        </li>
+                        <li>
+                          <strong>Lịch sử điểm danh, đăng ký sự kiện và thống kê sự kiện cũ vẫn được bảo lưu nguyên vẹn.</strong>
+                        </li>
+                        <li>
+                          <strong>Thao tác không thể hoàn tác trên giao diện.</strong>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '0.25rem' }}>
+                      <button
+                        type="button"
+                        onClick={closeDeleteModal}
+                        style={{
+                          padding: '0.5rem 0.95rem',
+                          borderRadius: 9,
+                          border: '1px solid #cbd5e1',
+                          background: '#f8fafc',
+                          color: '#334155',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteConfirmStep(2);
+                          setDeleteConfirmInput('');
+                        }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          borderRadius: 9,
+                          border: 'none',
+                          background: '#dc2626',
+                          color: '#ffffff',
+                          fontWeight: 800,
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Tiếp tục xác nhận (Bước 2/2) →
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '0.84rem', color: '#334155', lineHeight: 1.5 }}>
+                      Để chắc chắn không ấn nhầm, vui lòng nhập chính xác{' '}
+                      <code
+                        style={{
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: 6,
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          color: '#b91c1c',
+                          fontWeight: 800,
+                        }}
+                      >
+                        {expectedPhrase}
+                      </code>{' '}
+                      vào ô bên dưới:
+                    </div>
+
+                    <div>
+                      <input
+                        type="text"
+                        autoFocus
+                        value={deleteConfirmInput}
+                        disabled={isSubmittingDelete}
+                        onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && isConfirmMatched && !isSubmittingDelete) {
+                            void handleConfirmDeleteCohort();
+                          }
+                        }}
+                        placeholder={`Nhập ${expectedPhrase}`}
+                        style={{
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          padding: '0.62rem 0.85rem',
+                          borderRadius: 10,
+                          border: `2px solid ${isConfirmMatched ? '#16a34a' : '#cbd5e1'}`,
+                          outline: 'none',
+                          fontSize: '0.9rem',
+                          fontWeight: 700,
+                          color: '#0f172a',
+                          background: isSubmittingDelete ? '#f8fafc' : '#ffffff',
+                        }}
+                      />
+                      <div
+                        style={{
+                          marginTop: '0.35rem',
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          color: isConfirmMatched ? '#15803d' : '#64748b',
+                        }}
+                      >
+                        {isConfirmMatched
+                          ? '✓ Mã xác nhận hợp lệ'
+                          : `Cần nhập chính xác: ${expectedPhrase}`}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={isSubmittingDelete}
+                        onClick={() => setDeleteConfirmStep(1)}
+                        style={{
+                          padding: '0.5rem 0.9rem',
+                          borderRadius: 9,
+                          border: '1px solid #cbd5e1',
+                          background: '#f8fafc',
+                          color: '#334155',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          cursor: isSubmittingDelete ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        ← Quay lại
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!isConfirmMatched || isSubmittingDelete}
+                        onClick={handleConfirmDeleteCohort}
+                        style={{
+                          padding: '0.52rem 1.05rem',
+                          borderRadius: 9,
+                          border: 'none',
+                          background: isConfirmMatched && !isSubmittingDelete ? '#dc2626' : '#fca5a5',
+                          color: '#ffffff',
+                          fontWeight: 800,
+                          fontSize: '0.82rem',
+                          cursor: isConfirmMatched && !isSubmittingDelete ? 'pointer' : 'not-allowed',
+                        }}
+                      >
+                        {isSubmittingDelete
+                          ? 'Đang xóa...'
+                          : `Xác nhận XÓA DS khóa ${deleteModalCohort}`}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </section>
   );
 }

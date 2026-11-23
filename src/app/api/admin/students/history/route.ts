@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
+import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
 import { resolveActorLcdScope } from '@/lib/utils/lcd-auth';
 import { resolveStudentLcd } from '@/lib/utils/lcd';
-import { getMasterStudentByMssv, isPlaceholderClass } from '@/lib/utils/student-profile';
+import { getCohortFromMssv } from '@/lib/utils/cohort';
+import {
+  getMasterStudentByMssv,
+  isPlaceholderClass,
+  isPlaceholderName,
+} from '@/lib/utils/student-profile';
 
 export async function GET(request: Request) {
   try {
@@ -25,6 +31,7 @@ export async function GET(request: Request) {
     }
 
     const cleanMssv = decodeURIComponent(mssv).trim().toUpperCase();
+    const userEmailGuess = `${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn`;
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
 
@@ -34,7 +41,16 @@ export async function GET(request: Request) {
       auth.tier === 'youth_union' ||
       auth.tier === 'ctsv';
 
-    const [scope, userResult, checkInsResult, attendedRegsResult, penaltyResult] = await Promise.all([
+    const [
+      scope,
+      userResult,
+      checkInsResult,
+      attendedRegsResult,
+      penaltyResult,
+      profileExtra,
+      dutyVol,
+      delegateRow,
+    ] = await Promise.all([
       isFullViewer ? Promise.resolve({ role: 'all' as const, lcd: null }) : resolveActorLcdScope(supabase, auth),
       supabase.from('users').select('*').eq('mssv', cleanMssv).maybeSingle(),
       supabase.from('check_ins').select(`
@@ -46,25 +62,61 @@ export async function GET(request: Request) {
         events ( event_id, event_name, event_date, start_time, end_time, semester, created_by )
       `).eq('mssv', cleanMssv).eq('attended', true),
       supabase.from('user_penalties').select('*').eq('mssv', cleanMssv).maybeSingle(),
+      getUserProfileExtraWithFallback(supabase, userEmailGuess, cleanMssv).catch(() => null),
+      Promise.resolve(
+        supabase
+          .from('office_duty_volunteers')
+          .select('mssv, is_active')
+          .eq('mssv', cleanMssv)
+          .eq('is_active', true)
+          .maybeSingle()
+      )
+        .then((r: any) => r?.data || null)
+        .catch(() => null),
+      Promise.resolve(
+        supabase
+          .from('class_delegates')
+          .select('class_id, role_title, valid_until, is_active')
+          .eq('mssv', cleanMssv)
+          .eq('is_active', true)
+          .maybeSingle()
+      )
+        .then((r: any) => r?.data || null)
+        .catch(() => null),
     ]);
 
     const user = userResult.data;
+    const master = getMasterStudentByMssv(cleanMssv);
+    const resolvedFullName =
+      user?.full_name && !isPlaceholderName(user.full_name, cleanMssv)
+        ? user.full_name
+        : master?.full_name || user?.full_name || 'Sinh viên PTIT';
+    const cls =
+      user?.class_id && !isPlaceholderClass(user.class_id)
+        ? String(user.class_id).trim().toUpperCase()
+        : master?.class_id || null;
+    const targetLcd = resolveStudentLcd(cls, cleanMssv);
+
     if (!isFullViewer) {
       if (scope.role === 'none' || !scope.lcd) {
         return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
       }
-      const master = getMasterStudentByMssv(cleanMssv);
-      const cls =
-        user?.class_id && !isPlaceholderClass(user.class_id)
-          ? String(user.class_id).trim().toUpperCase()
-          : master?.class_id || null;
-      const targetLcd = resolveStudentLcd(cls, cleanMssv);
       if (!targetLcd || targetLcd.code !== scope.lcd.code) {
         return NextResponse.json(
           { success: false, error: 'Bạn chỉ có quyền tra cứu sinh viên thuộc Liên Chi Đoàn của mình.' },
           { status: 403 }
         );
       }
+    }
+
+    let resolvedExtra = profileExtra;
+    if (user?.email && String(user.email).trim().toLowerCase() !== userEmailGuess) {
+      const altExtra = await getUserProfileExtraWithFallback(
+        supabase,
+        String(user.email).trim().toLowerCase(),
+        cleanMssv
+      ).catch(() => null);
+      if (altExtra?.phone) resolvedExtra = altExtra;
     }
     const checkIns = checkInsResult.data;
     if (checkInsResult.error) console.error('Check-in fetch error:', checkInsResult.error);
@@ -109,11 +161,23 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        user: user || {
+        user: {
+          ...(user || {}),
           mssv: cleanMssv,
-          full_name: 'Sinh viên PTIT',
-          class_id: 'N/A',
-          email: `${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn`,
+          full_name: resolvedFullName,
+          class_id: cls || user?.class_id || 'N/A',
+          email: user?.email || userEmailGuess,
+          phone: resolvedExtra?.phone || user?.phone || '',
+          gender: resolvedExtra?.gender || user?.gender || '',
+          cohort: getCohortFromMssv(cleanMssv) || '',
+          lcd_code: targetLcd?.code || null,
+          lcd_name: targetLcd?.name || null,
+          lcd_short_name: targetLcd?.shortName || null,
+          lcd_color: targetLcd?.color || null,
+        },
+        roles: {
+          is_duty_volunteer: Boolean(dutyVol),
+          delegate: delegateRow || null,
         },
         total_attended: formattedHistory.length,
         penalty: penalty || { missed_count: 0, is_blacklisted: false },

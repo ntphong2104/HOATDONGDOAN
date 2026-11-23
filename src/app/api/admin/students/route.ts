@@ -6,9 +6,15 @@ import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
 import { getMasterStudentByMssv, isPlaceholderName, isPlaceholderClass } from '@/lib/utils/student-profile';
 import { getGraduatedCohortsConfig, isStudentInDeletedCohort } from '@/lib/utils/graduated-cohorts';
+import {
+  getAllUserProfilesMap,
+  saveUserProfileExtraWithSync,
+  type UserProfileExtra,
+} from '@/lib/constants/user-profile-store';
 
-function normalizeStudentRow(u: any) {
+function normalizeStudentRow(u: any, profilesMap?: Map<string, UserProfileExtra>) {
   const mssv = String(u.mssv || '').trim().toUpperCase();
+  const email = String(u.email || '').trim().toLowerCase();
   const master = mssv ? getMasterStudentByMssv(mssv) : null;
   const rawName = String(u.full_name || '').trim();
   const rawClass = String(u.class_id || '').trim();
@@ -23,10 +29,16 @@ function normalizeStudentRow(u: any) {
       ? rawClass
       : master?.class_id || '';
 
+  const extra =
+    (mssv ? profilesMap?.get(mssv) : undefined) ||
+    (email ? profilesMap?.get(email) : undefined);
+
   return {
     ...u,
     full_name: resolvedName,
     class_id: resolvedClass,
+    phone: String(u.phone || extra?.phone || '').trim(),
+    gender: String(u.gender || extra?.gender || '').trim(),
   };
 }
 
@@ -42,7 +54,10 @@ export async function GET(req: Request) {
     }
 
     const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
-    const { deleted_cohorts } = await getGraduatedCohortsConfig(supabase);
+    const [{ deleted_cohorts }, profilesMap] = await Promise.all([
+      getGraduatedCohortsConfig(supabase),
+      getAllUserProfilesMap(supabase),
+    ]);
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q')?.trim();
 
@@ -82,9 +97,46 @@ export async function GET(req: Request) {
         return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
       }
 
-      const filtered = (searchResults || [])
+      const combinedResults = Array.isArray(searchResults) ? [...searchResults] : [];
+      const seenMssvs = new Set(
+        combinedResults.map((u) => String(u.mssv || '').trim().toUpperCase()).filter(Boolean)
+      );
+
+      // Reverse lookup by phone digits inside profilesMap
+      const queryDigits = query.replace(/\D/g, '');
+      if (queryDigits.length >= 3 && profilesMap.size > 0) {
+        const matchedMssvs = new Set<string>();
+        for (const [key, entry] of profilesMap.entries()) {
+          if (!entry?.phone) continue;
+          const phoneDigits = String(entry.phone).replace(/\D/g, '');
+          if (!phoneDigits || !phoneDigits.includes(queryDigits)) continue;
+          const rawMssv = key.includes('@') ? key.split('@')[0].trim().toUpperCase() : key.trim().toUpperCase();
+          if (isValidMSSV(rawMssv) && !seenMssvs.has(rawMssv)) {
+            matchedMssvs.add(rawMssv);
+          }
+        }
+        if (matchedMssvs.size > 0) {
+          try {
+            const { data: phoneUsers } = await supabase
+              .from('users')
+              .select('*')
+              .in('mssv', Array.from(matchedMssvs).slice(0, 100));
+            if (Array.isArray(phoneUsers)) {
+              for (const pu of phoneUsers) {
+                const pm = String(pu.mssv || '').trim().toUpperCase();
+                if (pm && !seenMssvs.has(pm)) {
+                  seenMssvs.add(pm);
+                  combinedResults.push(pu);
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      const filtered = combinedResults
         .filter((u) => !isUnitAccount(u) && !isStudentInDeletedCohort(u.mssv, u.class_id, deleted_cohorts))
-        .map(normalizeStudentRow);
+        .map((u) => normalizeStudentRow(u, profilesMap));
       return NextResponse.json({ success: true, data: filtered });
     }
 
@@ -123,7 +175,7 @@ export async function GET(req: Request) {
 
     const studentsOnly = allUsers
       .filter((u) => !isUnitAccount(u) && !isStudentInDeletedCohort(u.mssv, u.class_id, deleted_cohorts))
-      .map(normalizeStudentRow);
+      .map((u) => normalizeStudentRow(u, profilesMap));
     return NextResponse.json({ success: true, data: studentsOnly });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
@@ -242,11 +294,17 @@ export async function POST(req: Request) {
       uniqueMap.set(rec.mssv, rec);
     }
     const finalRecords = Array.from(uniqueMap.values());
+    const dbRecords = finalRecords.map(({ mssv, full_name, class_id, email }) => ({
+      mssv,
+      full_name,
+      class_id,
+      email,
+    }));
 
     const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
     const { data, error } = await supabase
       .from('users')
-      .upsert(finalRecords, { onConflict: 'mssv' })
+      .upsert(dbRecords, { onConflict: 'mssv' })
       .select('mssv, full_name, class_id, email');
 
     if (error) {
@@ -255,6 +313,17 @@ export async function POST(req: Request) {
         { success: false, error: 'Lỗi máy chủ khi lưu thông tin sinh viên: ' + error.message },
         { status: 500 }
       );
+    }
+
+    for (const rec of finalRecords) {
+      if (rec.phone || rec.gender) {
+        try {
+          await saveUserProfileExtraWithSync(supabase, rec.email, rec.mssv, {
+            ...(rec.phone ? { phone: rec.phone } : {}),
+            ...(rec.gender ? { gender: rec.gender } : {}),
+          });
+        } catch {}
+      }
     }
 
     return NextResponse.json({
@@ -338,8 +407,7 @@ export async function DELETE(req: Request) {
 
 /**
  * PATCH /api/admin/students
- * Cập nhật thông tin SV (full_name, class_id)
- * Body: { mssv: string, full_name?: string, class_id?: string }
+ * Cập nhật thông tin SV (full_name, class_id, phone, gender)
  */
 export async function PATCH(req: Request) {
   try {
@@ -348,34 +416,75 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, error: 'Chỉ Super Admin mới có quyền sửa thông tin SV' }, { status: 403 });
     }
 
-    const { mssv, full_name, class_id } = await req.json();
+    const { mssv, full_name, class_id, phone, gender } = await req.json();
     if (!mssv) {
       return NextResponse.json({ success: false, error: 'Thiếu MSSV' }, { status: 400 });
     }
+    const cleanMssv = String(mssv).trim().toUpperCase();
+
+    if (phone !== undefined) {
+      const trimmedPhone = String(phone).trim();
+      const digits = trimmedPhone.replace(/\D/g, '');
+      if (trimmedPhone && (digits.length < 8 || digits.length > 15)) {
+        return NextResponse.json(
+          { success: false, error: 'Số điện thoại không hợp lệ (cần 8–15 chữ số)' },
+          { status: 400 }
+        );
+      }
+    }
 
     const updatePayload: Record<string, any> = {};
-    if (full_name !== undefined) updatePayload.full_name = full_name.trim();
-    if (class_id !== undefined) updatePayload.class_id = class_id.trim();
+    if (full_name !== undefined) updatePayload.full_name = String(full_name).trim();
+    if (class_id !== undefined) updatePayload.class_id = String(class_id).trim().toUpperCase();
 
-    if (Object.keys(updatePayload).length === 0) {
+    const hasProfileExtra = phone !== undefined || gender !== undefined;
+    if (Object.keys(updatePayload).length === 0 && !hasProfileExtra) {
       return NextResponse.json({ success: false, error: 'Không có thông tin cần cập nhật' }, { status: 400 });
     }
 
-    const supabase = typeof createAdminClient === 'function' ? await createAdminClient() : await createClient();
+    const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
 
-    const { data, error } = await supabase
-      .from('users')
-      .update(updatePayload)
-      .eq('mssv', mssv)
-      .select()
-      .maybeSingle();
+    let userData: any = null;
+    if (Object.keys(updatePayload).length > 0) {
+      const { data, error } = await supabase
+        .from('users')
+        .update(updatePayload)
+        .eq('mssv', cleanMssv)
+        .select()
+        .maybeSingle();
 
-    if (error) {
-      console.error('Update student error:', error);
-      return NextResponse.json({ success: false, error: 'Lỗi cập nhật: ' + error.message }, { status: 500 });
+      if (error) {
+        console.error('Update student error:', error);
+        return NextResponse.json({ success: false, error: 'Lỗi cập nhật: ' + error.message }, { status: 500 });
+      }
+      userData = data;
+    } else {
+      const { data } = await supabase
+        .from('users')
+        .select('mssv, email, full_name, class_id')
+        .eq('mssv', cleanMssv)
+        .maybeSingle();
+      userData = data;
     }
 
-    return NextResponse.json({ success: true, data });
+    let syncedExtra: UserProfileExtra | null = null;
+    if (hasProfileExtra) {
+      const targetEmail =
+        userData?.email || `${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn`;
+      syncedExtra = await saveUserProfileExtraWithSync(supabase, targetEmail, cleanMssv, {
+        ...(phone !== undefined ? { phone: String(phone).trim() } : {}),
+        ...(gender !== undefined && String(gender).trim() ? { gender: String(gender).trim() } : {}),
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...(userData || { mssv: cleanMssv }),
+        ...(phone !== undefined ? { phone: String(phone).trim() } : syncedExtra?.phone ? { phone: syncedExtra.phone } : {}),
+        ...(gender !== undefined ? { gender: String(gender).trim() } : syncedExtra?.gender ? { gender: syncedExtra.gender } : {}),
+      },
+    });
   } catch (err: any) {
     console.error('API /api/admin/students PATCH error:', err);
     return NextResponse.json({ success: false, error: 'Đã xảy ra lỗi hệ thống' }, { status: 500 });

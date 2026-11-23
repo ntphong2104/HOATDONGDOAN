@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { findUserProfileFromRegExtras } from '@/lib/constants/event-meta-store';
+import {
+  findUserProfileFromRegExtras,
+  getAllRegExtrasProfilesMap,
+} from '@/lib/constants/event-meta-store';
 import { writeJsonFileAtomic, parseJsonWithRepair } from '@/lib/utils/atomic-file';
 
 const PROFILE_DIR = path.join(process.cwd(), 'data');
@@ -23,6 +26,8 @@ const g = globalThis as unknown as {
   __hddMeResponseCache?: Map<string, { data: any; expiresAt: number }>;
   __hddMissingProfileKeys?: Map<string, number>;
   __hddInflightProfileLookup?: Map<string, Promise<UserProfileExtra | null>>;
+  __hddAllProfilesMapCache?: { map: Map<string, UserProfileExtra>; expiresAt: number };
+  __hddInflightAllProfiles?: Promise<Map<string, UserProfileExtra>>;
 };
 
 export function getMeResponseCache(): Map<string, { data: any; expiresAt: number }> {
@@ -280,8 +285,10 @@ export function saveUserProfileExtra(key: string, extra: Partial<UserProfileExtr
   const updated: UserProfileExtra = {
     ...current,
     ...(extra.gender ? { gender: extra.gender } : {}),
-    ...(extra.phone !== undefined && String(extra.phone).trim() !== ''
-      ? { phone: String(extra.phone).trim() }
+    ...(extra.phone !== undefined
+      ? String(extra.phone).trim() !== ''
+        ? { phone: String(extra.phone).trim() }
+        : { phone: '' }
       : current.phone
       ? { phone: current.phone }
       : {}),
@@ -292,6 +299,7 @@ export function saveUserProfileExtra(key: string, extra: Partial<UserProfileExtr
   if (!g.__hddDirtyUserProfiles) g.__hddDirtyUserProfiles = {};
   g.__hddDirtyUserProfiles[lower] = updated;
   g.__hddDirtyUserProfiles[upper] = updated;
+  g.__hddAllProfilesMapCache = undefined;
   saveProfiles(all);
 }
 
@@ -314,16 +322,17 @@ export async function saveUserProfileExtraWithSync(
   if (cleanMssv) saveUserProfileExtra(cleanMssv, extra);
   if (studentEmail && studentEmail !== cleanEmail) saveUserProfileExtra(studentEmail, extra);
   invalidateMeResponseCache(cleanEmail, cleanMssv);
+  g.__hddAllProfilesMapCache = undefined;
 
   const merged =
     (cleanEmail ? getUserProfileExtra(cleanEmail) : null) ||
     (cleanMssv ? getUserProfileExtra(cleanMssv) : null) ||
     extra;
 
-  if (supabase && merged?.phone) {
+  if (supabase && (merged?.phone !== undefined || merged?.gender)) {
     const payload = {
       gender: merged.gender || 'Nam',
-      phone: String(merged.phone).trim(),
+      phone: merged.phone !== undefined ? String(merged.phone).trim() : '',
       updated_at: new Date().toISOString(),
     };
     const keysToSync = Array.from(
@@ -347,4 +356,146 @@ export async function saveUserProfileExtraWithSync(
   }
 
   return merged;
+}
+
+const ALL_PROFILES_CACHE_TTL_MS = 30_000;
+
+function mergeProfileEntry(
+  map: Map<string, UserProfileExtra>,
+  key: string,
+  incoming: UserProfileExtra
+) {
+  if (!key) return;
+  const prev = map.get(key) || {};
+  const nextPhone =
+    incoming.phone !== undefined ? String(incoming.phone).trim() : prev.phone;
+  const nextGender = incoming.gender ? String(incoming.gender).trim() : prev.gender;
+  map.set(key, {
+    ...prev,
+    ...(nextPhone !== undefined ? { phone: nextPhone } : {}),
+    ...(nextGender ? { gender: nextGender } : {}),
+    ...(incoming.updated_at ? { updated_at: incoming.updated_at } : {}),
+  });
+}
+
+/**
+ * Tải toàn bộ hồ sơ phụ (SĐT, giới tính) từ reg_extras, file user-profiles.json và
+ * Supabase system_settings (`user_profile_%`), cache 30 giây để phục vụ bảng Quản lý SV & tìm ngược theo SĐT.
+ */
+export async function getAllUserProfilesMap(supabase: any): Promise<Map<string, UserProfileExtra>> {
+  const now = Date.now();
+  if (g.__hddAllProfilesMapCache && g.__hddAllProfilesMapCache.expiresAt > now) {
+    return g.__hddAllProfilesMapCache.map;
+  }
+  if (g.__hddInflightAllProfiles) {
+    return g.__hddInflightAllProfiles;
+  }
+
+  const task = (async (): Promise<Map<string, UserProfileExtra>> => {
+    try {
+      const map = new Map<string, UserProfileExtra>();
+
+      // 1. Nguồn registration-extras (SĐT SV từng điền khi ĐK sự kiện / CTV)
+      try {
+        const regMap = getAllRegExtrasProfilesMap();
+        for (const [mssv, entry] of regMap.entries()) {
+          mergeProfileEntry(map, mssv, entry);
+          mergeProfileEntry(map, `${mssv.toLowerCase()}@student.ptithcm.edu.vn`, entry);
+        }
+      } catch {}
+
+      // 2. Nguồn RAM + data/user-profiles.json
+      try {
+        const localAll = loadProfiles();
+        for (const [rawKey, entry] of Object.entries(localAll)) {
+          if (!entry || typeof entry !== 'object') continue;
+          const k = rawKey.trim();
+          if (!k) continue;
+          if (k.includes('@')) {
+            const lower = k.toLowerCase();
+            mergeProfileEntry(map, lower, entry);
+            const prefix = lower.split('@')[0]?.toUpperCase();
+            if (prefix) mergeProfileEntry(map, prefix, entry);
+          } else {
+            const upper = k.toUpperCase();
+            mergeProfileEntry(map, upper, entry);
+            mergeProfileEntry(map, `${upper.toLowerCase()}@student.ptithcm.edu.vn`, entry);
+          }
+        }
+      } catch {}
+
+      // 3. Nguồn Supabase system_settings (`user_profile_%`) — quyền tác giả cao nhất
+      if (supabase && typeof supabase.from === 'function') {
+        try {
+          const settingsTable = supabase.from('system_settings');
+          const selectRes =
+            settingsTable && typeof settingsTable.select === 'function'
+              ? settingsTable.select('key, value')
+              : null;
+
+          if (selectRes && typeof selectRes.like === 'function') {
+            const pageSize = 1000;
+            let page = 0;
+            while (page < 20) {
+              const start = page * pageSize;
+              const end = start + pageSize - 1;
+              let q = supabase
+                .from('system_settings')
+                .select('key, value')
+                .like('key', 'user_profile_%');
+              if (typeof q.order === 'function') q = q.order('key', { ascending: true });
+              if (typeof q.range === 'function') q = q.range(start, end);
+              const { data: rows, error } = await q;
+              if (error || !Array.isArray(rows) || rows.length === 0) break;
+
+              for (const row of rows) {
+                const rawKey = String(row?.key || '');
+                if (!rawKey.startsWith('user_profile_') || !row?.value) continue;
+                let parsed: any = row.value;
+                if (typeof parsed === 'string') {
+                  try {
+                    parsed = JSON.parse(parsed);
+                  } catch {
+                    continue;
+                  }
+                }
+                if (!parsed || typeof parsed !== 'object') continue;
+                const cleanKey = rawKey.slice('user_profile_'.length).trim();
+                if (!cleanKey) continue;
+                const entry: UserProfileExtra = {
+                  ...(parsed.phone !== undefined ? { phone: String(parsed.phone).trim() } : {}),
+                  ...(parsed.gender ? { gender: String(parsed.gender).trim() } : {}),
+                  ...(parsed.updated_at ? { updated_at: String(parsed.updated_at) } : {}),
+                };
+                if (cleanKey.includes('@')) {
+                  const lower = cleanKey.toLowerCase();
+                  mergeProfileEntry(map, lower, entry);
+                  const prefix = lower.split('@')[0]?.toUpperCase();
+                  if (prefix) mergeProfileEntry(map, prefix, entry);
+                } else {
+                  const upper = cleanKey.toUpperCase();
+                  mergeProfileEntry(map, upper, entry);
+                  mergeProfileEntry(map, `${upper.toLowerCase()}@student.ptithcm.edu.vn`, entry);
+                }
+              }
+
+              if (rows.length < pageSize) break;
+              page++;
+            }
+          }
+        } catch {}
+      }
+
+      g.__hddAllProfilesMapCache = {
+        map,
+        expiresAt: Date.now() + ALL_PROFILES_CACHE_TTL_MS,
+      };
+      return map;
+    } finally {
+      g.__hddInflightAllProfiles = undefined;
+    }
+  })();
+
+  g.__hddInflightAllProfiles = task;
+  return task;
 }

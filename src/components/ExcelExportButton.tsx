@@ -160,6 +160,9 @@ export default function ExcelExportButton({
       }
 
       // Format student / check-in records into full, readable Vietnamese structure
+      const hasAnyPhone = exportData.some((r: any) => r?.phone !== undefined);
+      const hasAnyGender = exportData.some((r: any) => r?.gender !== undefined);
+
       const formattedRows = exportData.map((row: any, index: number) => {
         const formatted: Record<string, any> = {
           'STT': row.stt || index + 1,
@@ -170,6 +173,14 @@ export default function ExcelExportButton({
 
         if (row.khoa !== undefined) {
           formatted['Khóa'] = sanitizeForExcel(row.khoa || '');
+        }
+
+        if (hasAnyPhone) {
+          formatted['Số Điện Thoại'] = sanitizeForExcel(row.phone || '');
+        }
+
+        if (hasAnyGender) {
+          formatted['Giới Tính'] = sanitizeForExcel(row.gender || '');
         }
 
         if (row.email || row.mssv) {

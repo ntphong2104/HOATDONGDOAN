@@ -10,6 +10,7 @@ import {
   getGraduationMatrixCohorts,
   normalizeGraduatedRules,
   resolveStudentCohort,
+  getCohortGraduationStatus,
 } from '@/lib/utils/graduated-cohorts';
 
 export const dynamic = 'force-dynamic';
@@ -113,18 +114,49 @@ export async function DELETE(req: Request) {
 
     const { searchParams } = new URL(req.url);
     let rawCohort = searchParams.get('cohort');
-    if (!rawCohort) {
+    let rawConfirm = searchParams.get('confirm');
+    if (!rawCohort || !rawConfirm) {
       const body = await req.json().catch(() => ({}));
-      rawCohort = body?.cohort;
+      rawCohort = rawCohort || body?.cohort;
+      rawConfirm = rawConfirm || body?.confirm;
     }
     const cohort = normalizeCohort(rawCohort);
     if (!cohort) {
       return NextResponse.json({ success: false, error: 'Mã khóa không hợp lệ (VD: D19, D20)' }, { status: 400 });
     }
 
-    const yy = cohort.slice(1); // '19', '20', ...
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
+
+    // Enforce full-cohort graduation (all LCĐs marked and saved) & explicit confirmation phrase before deleting
+    const currentCfg = await getGraduatedCohortsConfig(supabase, true);
+    const gradStatus = getCohortGraduationStatus(cohort, currentCfg.rules);
+    if (!gradStatus.isFullyGraduated) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Khóa ${cohort} mới chỉ tốt nghiệp ${gradStatus.graduatedCount}/${gradStatus.totalLcds} Liên Chi Đoàn (chưa tốt nghiệp: ${gradStatus.missingLcds.join(', ')}). Chỉ được xóa danh sách sau khi toàn bộ ${gradStatus.totalLcds} LCĐ của khóa đã tốt nghiệp và được lưu cấu hình.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const expectedConfirm = `XOA ${cohort}`;
+    const normalizedConfirm = String(rawConfirm || '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+    if (normalizedConfirm !== expectedConfirm) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Thiếu hoặc sai mã xác nhận xóa. Vui lòng nhập chính xác "${expectedConfirm}" để xác nhận.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const yy = cohort.slice(1); // '19', '20', ...
 
     // 1. Collect all users belonging to this cohort in public.users
     const matchedMssvs: string[] = [];
@@ -184,7 +216,6 @@ export async function DELETE(req: Request) {
     }
 
     // 3. Persist cohort in deleted_cohorts (hides preserved-history rows from Student List & KPI stats, and removes column from matrix)
-    const currentCfg = await getGraduatedCohortsConfig(supabase, true);
     const nextDeleted = Array.from(new Set([...currentCfg.deleted_cohorts, cohort])).sort();
     const saved = await saveGraduatedCohorts(supabase, currentCfg.rules, nextDeleted);
     if (!saved.success) {

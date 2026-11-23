@@ -202,6 +202,58 @@ export function isStudentInDeletedCohort(
   return deletedCohorts.includes(cohort);
 }
 
+export interface CohortGraduationStatus {
+  isFullyGraduated: boolean;
+  graduatedCount: number;
+  totalLcds: number;
+  missingLcds: string[];
+}
+
+/**
+ * Checks whether every LCĐ in LCD_DEFINITIONS has been marked graduated for a cohort.
+ */
+export function getCohortGraduationStatus(
+  cohort: string,
+  rules: GraduatedCohortRule[]
+): CohortGraduationStatus {
+  const totalLcds = LCD_DEFINITIONS.length;
+  const normalized = normalizeCohort(cohort);
+  if (!normalized || totalLcds === 0) {
+    return {
+      isFullyGraduated: false,
+      graduatedCount: 0,
+      totalLcds,
+      missingLcds: LCD_DEFINITIONS.map((lcd) => lcd.shortName),
+    };
+  }
+
+  const graduatedLcds = new Set<LcdCode>();
+  for (const r of rules || []) {
+    if (normalizeCohort(r.cohort) === normalized) {
+      graduatedLcds.add(r.lcd_code);
+    }
+  }
+
+  const missingLcds = LCD_DEFINITIONS.filter((lcd) => !graduatedLcds.has(lcd.code)).map(
+    (lcd) => lcd.shortName
+  );
+  const graduatedCount = totalLcds - missingLcds.length;
+
+  return {
+    isFullyGraduated: missingLcds.length === 0 && totalLcds > 0,
+    graduatedCount,
+    totalLcds,
+    missingLcds,
+  };
+}
+
+export function isCohortFullyGraduated(
+  cohort: string,
+  rules: GraduatedCohortRule[]
+): boolean {
+  return getCohortGraduationStatus(cohort, rules).isFullyGraduated;
+}
+
 /**
  * Returns default list of cohorts to show in the Super Admin graduation matrix
  * (e.g., D19 through latest cohort), excluding cohorts deleted from the system.

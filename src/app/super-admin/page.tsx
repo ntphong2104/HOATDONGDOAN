@@ -302,8 +302,24 @@ function SuperAdminContent() {
   ]);
   const [submittingManualStudent, setSubmittingManualStudent] = useState(false);
   const [deletingStudentMssv, setDeletingStudentMssv] = useState<string | null>(null);
-  const [editStudent, setEditStudent] = useState<{ mssv: string; full_name: string; class_id: string } | null>(null);
+  const [editStudent, setEditStudent] = useState<{
+    mssv: string;
+    full_name: string;
+    class_id: string;
+    phone: string;
+    gender: string;
+  } | null>(null);
   const [editStudentSaving, setEditStudentSaving] = useState(false);
+  const [detailStudent, setDetailStudent] = useState<{
+    mssv: string;
+    full_name: string;
+    class_id: string;
+    email: string;
+    phone?: string;
+    gender?: string;
+  } | null>(null);
+  const [detailStudentExtra, setDetailStudentExtra] = useState<any>(null);
+  const [detailStudentLoading, setDetailStudentLoading] = useState(false);
   const [showQuickPaste, setShowQuickPaste] = useState(false);
   const [quickPasteText, setQuickPasteText] = useState('');
 
@@ -1158,6 +1174,53 @@ function SuperAdminContent() {
     }
   };
 
+  const openStudentDetail = async (student: {
+    mssv: string;
+    full_name?: string;
+    class_id?: string;
+    email?: string;
+    phone?: string;
+    gender?: string;
+  }) => {
+    const cleanMssv = String(student.mssv || '').trim().toUpperCase();
+    setDetailStudent({
+      mssv: cleanMssv,
+      full_name: student.full_name || cleanMssv,
+      class_id: student.class_id || 'N/A',
+      email: student.email || `${cleanMssv.toLowerCase()}@student.ptithcm.edu.vn`,
+      phone: student.phone || '',
+      gender: student.gender || '',
+    });
+    setDetailStudentExtra(null);
+    setDetailStudentLoading(true);
+
+    try {
+      const res = await fetch(`/api/admin/students/history?mssv=${encodeURIComponent(cleanMssv)}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setDetailStudentExtra(data.data);
+        if (data.data.user) {
+          setDetailStudent((prev) =>
+            prev && prev.mssv === cleanMssv
+              ? {
+                  ...prev,
+                  full_name: data.data.user.full_name || prev.full_name,
+                  class_id: data.data.user.class_id || prev.class_id,
+                  email: data.data.user.email || prev.email,
+                  phone: data.data.user.phone || prev.phone || '',
+                  gender: data.data.user.gender || prev.gender || '',
+                }
+              : prev
+          );
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDetailStudentLoading(false);
+    }
+  };
+
   const handleAddTableRow = (count = 1) => {
     const newRows = Array.from({ length: count }, () => ({
       id: Math.random().toString(36).substring(2, 9),
@@ -1474,6 +1537,7 @@ function SuperAdminContent() {
       if (data.success) {
         showToast(data.message || `Đã xóa sinh viên ${mssvToDelete}!`, 'success');
         setStudents((prev) => prev.filter((s: any) => s.mssv !== mssvToDelete));
+        setDetailStudent((prev) => (prev?.mssv === mssvToDelete ? null : prev));
         fetchStudents();
         fetchStats();
       } else {
@@ -1498,6 +1562,8 @@ function SuperAdminContent() {
           mssv: editStudent.mssv,
           full_name: editStudent.full_name,
           class_id: editStudent.class_id,
+          phone: editStudent.phone,
+          gender: editStudent.gender,
         }),
       });
       const json = await res.json();
@@ -1508,12 +1574,29 @@ function SuperAdminContent() {
       setStudents((prev) =>
         prev.map((s: any) =>
           s.mssv === editStudent.mssv
-            ? { ...s, full_name: editStudent.full_name, class_id: editStudent.class_id }
+            ? {
+                ...s,
+                full_name: editStudent.full_name,
+                class_id: editStudent.class_id,
+                phone: editStudent.phone.trim(),
+                gender: editStudent.gender.trim(),
+              }
             : s
         )
       );
+      setDetailStudent((prev) =>
+        prev && prev.mssv === editStudent.mssv
+          ? {
+              ...prev,
+              full_name: editStudent.full_name,
+              class_id: editStudent.class_id,
+              phone: editStudent.phone.trim(),
+              gender: editStudent.gender.trim(),
+            }
+          : prev
+      );
       setEditStudent(null);
-      showToast('Đã cập nhật thông tin sinh viên', 'success');
+      showToast('Đã cập nhật thông tin & SĐT sinh viên', 'success');
     } catch {
       alert('Lỗi kết nối');
     } finally {
@@ -4827,6 +4910,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     mssv: s.mssv,
                     full_name: s.full_name,
                     class_id: s.class_id,
+                    phone: (s as any).phone || '',
+                    gender: (s as any).gender || '',
                     email: s.email,
                   }))}
                   filename="danh-sach-sinh-vien-ptit.xlsx"
@@ -4853,86 +4938,56 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     render: (val) => <span style={{ fontWeight: 700, color: '#0f172a' }}>{val}</span>,
                   },
                   { key: 'class_id', label: 'Lớp' },
+                  {
+                    key: 'phone',
+                    label: 'SĐT',
+                    render: (val) =>
+                      val ? (
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a', fontSize: '0.84rem' }}>
+                          {val}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>—</span>
+                      ),
+                  },
                   { key: 'email', label: 'Email', render: (val) => <span style={{ color: '#64748b' }}>{val}</span> },
                   {
                     key: 'actions',
                     label: 'Thao Tác',
                     render: (_, row) => (
-                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => setEditStudent({ mssv: (row as any).mssv, full_name: (row as any).full_name || '', class_id: (row as any).class_id || '' })}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            padding: '0.4rem 0.65rem',
-                            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-                            border: '1px solid #bbf7d0',
-                            color: '#15803d',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            fontSize: '0.8rem',
-                            cursor: 'pointer',
-                          }}
-                          title="Sửa thông tin sinh viên"
-                        >
-                          <PencilIcon size={13} color="#15803d" />
-                          <span>Sửa</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openStudentHistory(row as any)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.35rem',
-                            padding: '0.4rem 0.85rem',
-                            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                            border: '1px solid #bfdbfe',
-                            color: '#1e40af',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            fontSize: '0.8rem',
-                            cursor: 'pointer',
-                            boxShadow: '0 1px 3px rgba(37, 99, 235, 0.1)',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          <CheckCircleIcon size={14} />
-                          <span>Lịch Sử</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteStudent((row as any).mssv)}
-                          disabled={deletingStudentMssv === (row as any).mssv}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            padding: '0.4rem 0.65rem',
-                            background: '#fee2e2',
-                            border: '1px solid #fecaca',
-                            color: '#dc2626',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            fontSize: '0.8rem',
-                            cursor: 'pointer',
-                            opacity: deletingStudentMssv === (row as any).mssv ? 0.6 : 1,
-                          }}
-                          title="Xóa sinh viên khỏi hệ thống"
-                        >
-                          <TrashIcon size={13} color="#dc2626" />
-                          <span>{deletingStudentMssv === (row as any).mssv ? 'Đang xóa...' : 'Xóa'}</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openStudentDetail(row as any)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          padding: '0.4rem 0.72rem',
+                          background: '#f8fafc',
+                          border: '1px solid #cbd5e1',
+                          color: '#334155',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title="Xem thông tin chi tiết & thao tác sinh viên"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 16v-4" />
+                          <path d="M12 8h.01" />
+                        </svg>
+                        <span>Chi tiết</span>
+                      </button>
                     ),
                   },
                 ]}
                 data={students}
                 loading={studentsLoading}
                 searchable={true}
-                searchPlaceholder="Tìm kiếm theo MSSV, họ tên, lớp, email..."
+                searchPlaceholder="Tìm kiếm theo MSSV, họ tên, lớp, SĐT, email..."
                 emptyMessage="Không tìm thấy sinh viên nào phù hợp."
                 onSearchChange={(query) => {
                   fetchStudents(query);
@@ -5926,7 +5981,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     {studentHistoryData?.user?.full_name || selectedStudentMssv}
                   </h3>
                   <div style={{ fontSize: '0.85rem', color: '#e0e7ff', marginTop: '0.2rem' }}>
-                    MSSV: <strong>{selectedStudentMssv}</strong> • Lớp: <strong>{studentHistoryData?.user?.class_id || 'Chưa rõ'}</strong> • Email: <strong>{studentHistoryData?.user?.email || 'N/A'}</strong>
+                    MSSV: <strong>{selectedStudentMssv}</strong> • Lớp: <strong>{studentHistoryData?.user?.class_id || 'Chưa rõ'}</strong> • SĐT: <strong>{studentHistoryData?.user?.phone || 'Chưa có'}</strong> • Email: <strong>{studentHistoryData?.user?.email || 'N/A'}</strong>
                   </div>
                 </div>
                 <button
@@ -6862,6 +6917,540 @@ Phạm Cao Huyền Trinh N24DCQT083`}
         )}
         </div>
       </main>
+      {/* MODAL: Chi tiết thông tin sinh viên */}
+      {detailStudent && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.55)',
+            zIndex: 9998,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={() => setDetailStudent(null)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '580px',
+              boxShadow: '0 24px 64px rgba(15, 23, 42, 0.25)',
+              overflow: 'hidden',
+              border: '1px solid #e2e8f0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)',
+                padding: '1.25rem 1.5rem',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: '1rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', minWidth: 0 }}>
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: '12px',
+                    background: 'rgba(255,255,255,0.18)',
+                    border: '1px solid rgba(255,255,255,0.28)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.15rem',
+                    fontWeight: 800,
+                    flexShrink: 0,
+                  }}
+                >
+                  {(detailStudent.full_name || detailStudent.mssv).trim().charAt(0).toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      color: '#bfdbfe',
+                    }}
+                  >
+                    Hồ Sơ Chi Tiết Đoàn Viên
+                  </div>
+                  <h3 style={{ margin: '0.15rem 0 0.35rem', fontSize: '1.15rem', fontWeight: 800, wordBreak: 'break-word' }}>
+                    {detailStudent.full_name}
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                    <span
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: '0.76rem',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: 'rgba(255,255,255,0.2)',
+                      }}
+                    >
+                      {detailStudent.mssv}
+                    </span>
+                    {detailStudentExtra?.user?.cohort && (
+                      <span
+                        style={{
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: 'rgba(255,255,255,0.15)',
+                        }}
+                      >
+                        Khóa {detailStudentExtra.user.cohort}
+                      </span>
+                    )}
+                    {detailStudentExtra?.user?.lcd_short_name && (
+                      <span
+                        style={{
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: '#ffffff',
+                          color: '#1e3a8a',
+                        }}
+                      >
+                        {detailStudentExtra.user.lcd_short_name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailStudent(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.18)',
+                  border: 'none',
+                  color: '#ffffff',
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+                aria-label="Đóng"
+              >
+                <CloseIcon size={17} color="#ffffff" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              {(() => {
+                const phoneVal = detailStudentExtra?.user?.phone || detailStudent.phone || '';
+                const phoneDigits = String(phoneVal).replace(/\D/g, '');
+                const genderVal = detailStudentExtra?.user?.gender || detailStudent.gender || '';
+                const lcdName = detailStudentExtra?.user?.lcd_name || 'Chưa phân Liên Chi Đoàn';
+                const isDutyVol = Boolean(detailStudentExtra?.roles?.is_duty_volunteer);
+                const delegateRole = detailStudentExtra?.roles?.delegate;
+                const penaltyInfo = detailStudentExtra?.penalty;
+                const totalAttended = detailStudentExtra?.total_attended ?? 0;
+
+                return (
+                  <>
+                    {/* Phone highlight card */}
+                    <div
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '0.9rem 1rem',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.75rem',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                          Số Điện Thoại Liên Hệ
+                        </div>
+                        <div
+                          style={{
+                            marginTop: '0.2rem',
+                            fontFamily: 'monospace',
+                            fontSize: '1.1rem',
+                            fontWeight: 800,
+                            color: phoneVal ? '#0f172a' : '#94a3b8',
+                          }}
+                        >
+                          {detailStudentLoading && !phoneVal ? 'Đang kiểm tra...' : phoneVal || 'Chưa cập nhật SĐT'}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', alignItems: 'center' }}>
+                        {phoneDigits.length >= 8 ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(phoneVal);
+                                showToast('Đã sao chép số điện thoại', 'success');
+                              }}
+                              style={{
+                                padding: '0.4rem 0.75rem',
+                                borderRadius: '8px',
+                                border: '1px solid #cbd5e1',
+                                background: '#ffffff',
+                                color: '#334155',
+                                fontWeight: 700,
+                                fontSize: '0.78rem',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Copy SĐT
+                            </button>
+                            <a
+                              href={`https://zalo.me/${phoneDigits}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                padding: '0.4rem 0.75rem',
+                                borderRadius: '8px',
+                                border: '1px solid #bfdbfe',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                fontWeight: 700,
+                                fontSize: '0.78rem',
+                                textDecoration: 'none',
+                              }}
+                            >
+                              Mở Zalo
+                            </a>
+                            <a
+                              href={`tel:${phoneDigits}`}
+                              style={{
+                                padding: '0.4rem 0.75rem',
+                                borderRadius: '8px',
+                                border: '1px solid #bbf7d0',
+                                background: '#f0fdf4',
+                                color: '#15803d',
+                                fontWeight: 700,
+                                fontSize: '0.78rem',
+                                textDecoration: 'none',
+                              }}
+                            >
+                              Gọi ngay
+                            </a>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditStudent({
+                                mssv: detailStudent.mssv,
+                                full_name: detailStudent.full_name,
+                                class_id: detailStudent.class_id,
+                                phone: '',
+                                gender: genderVal,
+                              });
+                            }}
+                            style={{
+                              padding: '0.4rem 0.8rem',
+                              borderRadius: '8px',
+                              border: '1px solid #bfdbfe',
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            + Nhập SĐT ngay
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 2-Column Info Grid */}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                        gap: '0.75rem',
+                      }}
+                    >
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                          Lớp Niên Chế
+                        </div>
+                        <div style={{ marginTop: '0.2rem', fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
+                          {detailStudent.class_id || 'Chưa rõ'}
+                        </div>
+                      </div>
+
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                          Giới Tính
+                        </div>
+                        <div style={{ marginTop: '0.2rem', fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
+                          {genderVal || 'Chưa cập nhật'}
+                        </div>
+                      </div>
+
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                          Liên Chi Đoàn
+                        </div>
+                        <div style={{ marginTop: '0.2rem', fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
+                          {detailStudentLoading && !detailStudentExtra ? 'Đang tải...' : lcdName}
+                        </div>
+                      </div>
+
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                            Email Học Viện
+                          </div>
+                          <div style={{ marginTop: '0.2rem', fontWeight: 600, color: '#334155', fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {detailStudent.email}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(detailStudent.email);
+                            showToast('Đã sao chép email', 'success');
+                          }}
+                          style={{
+                            padding: '0.28rem 0.55rem',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: '#475569',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Roles & Status Badges */}
+                    <div
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        padding: '0.75rem 0.9rem',
+                      }}
+                    >
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.45rem' }}>
+                        Vai Trò &amp; Hoạt Động Trong Hệ Thống
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+                        <span
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: '999px',
+                            fontSize: '0.76rem',
+                            fontWeight: 700,
+                            background: '#dbeafe',
+                            color: '#1e40af',
+                          }}
+                        >
+                          {detailStudentLoading ? 'Đang tải minh chứng...' : `${totalAttended} minh chứng ĐRL`}
+                        </span>
+                        {isDutyVol && (
+                          <span
+                            style={{
+                              padding: '3px 10px',
+                              borderRadius: '999px',
+                              fontSize: '0.76rem',
+                              fontWeight: 700,
+                              background: '#dcfce7',
+                              color: '#15803d',
+                            }}
+                          >
+                            CTV Trực VPĐ
+                          </span>
+                        )}
+                        {delegateRole && (
+                          <span
+                            style={{
+                              padding: '3px 10px',
+                              borderRadius: '999px',
+                              fontSize: '0.76rem',
+                              fontWeight: 700,
+                              background: '#fef3c7',
+                              color: '#b45309',
+                            }}
+                          >
+                            {delegateRole.role_title || 'BCH Chi đoàn'} ({delegateRole.class_id})
+                          </span>
+                        )}
+                        {penaltyInfo?.is_blacklisted ? (
+                          <span
+                            style={{
+                              padding: '3px 10px',
+                              borderRadius: '999px',
+                              fontSize: '0.76rem',
+                              fontWeight: 700,
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                            }}
+                          >
+                            Danh sách đen ({penaltyInfo.missed_count || 0} lần vắng)
+                          </span>
+                        ) : (
+                          !detailStudentLoading && (
+                            <span
+                              style={{
+                                padding: '3px 10px',
+                                borderRadius: '999px',
+                                fontSize: '0.76rem',
+                                fontWeight: 700,
+                                background: '#f0fdf4',
+                                color: '#15803d',
+                              }}
+                            >
+                              Hồ sơ sạch (Vắng: {penaltyInfo?.missed_count || 0})
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+
+              {/* Footer Actions */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid #e2e8f0',
+                }}
+              >
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = detailStudent;
+                      setDetailStudent(null);
+                      openStudentHistory(target);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.48rem 0.9rem',
+                      borderRadius: '9px',
+                      border: '1px solid #bfdbfe',
+                      background: '#eff6ff',
+                      color: '#1e40af',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <CheckCircleIcon size={14} />
+                    <span>Lịch Sử</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditStudent({
+                        mssv: detailStudent.mssv,
+                        full_name: detailStudent.full_name,
+                        class_id: detailStudent.class_id,
+                        phone: detailStudent.phone || '',
+                        gender: detailStudent.gender || '',
+                      });
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.48rem 0.9rem',
+                      borderRadius: '9px',
+                      border: '1px solid #bbf7d0',
+                      background: '#f0fdf4',
+                      color: '#15803d',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <PencilIcon size={13} color="#15803d" />
+                    <span>Sửa Thông Tin</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteStudent(detailStudent.mssv)}
+                    disabled={deletingStudentMssv === detailStudent.mssv}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.48rem 0.85rem',
+                      borderRadius: '9px',
+                      border: '1px solid #fecaca',
+                      background: '#fee2e2',
+                      color: '#dc2626',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: deletingStudentMssv === detailStudent.mssv ? 'not-allowed' : 'pointer',
+                      opacity: deletingStudentMssv === detailStudent.mssv ? 0.6 : 1,
+                    }}
+                    title="Xóa sinh viên khỏi hệ thống"
+                  >
+                    <TrashIcon size={13} color="#dc2626" />
+                    <span>{deletingStudentMssv === detailStudent.mssv ? 'Đang xóa...' : 'Xóa'}</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDetailStudent(null)}
+                  style={{
+                    padding: '0.48rem 1.1rem',
+                    borderRadius: '9px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f1f5f9',
+                    color: '#334155',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: Sửa thông tin sinh viên */}
       {editStudent && (
         <div
@@ -6875,14 +7464,14 @@ Phạm Cao Huyền Trinh N24DCQT083`}
           <div
             style={{
               background: 'white', borderRadius: '16px', padding: '2rem',
-              width: '90%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              width: '90%', maxWidth: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 1.5rem', fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>
+            <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>
               ✏️ Sửa thông tin: {editStudent.mssv}
             </h3>
-            <div style={{ marginBottom: '1rem' }}>
+            <div style={{ marginBottom: '0.9rem' }}>
               <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Họ và tên</label>
               <input
                 type="text"
@@ -6895,7 +7484,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 placeholder="Nhập họ và tên"
               />
             </div>
-            <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ marginBottom: '0.9rem' }}>
               <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Lớp</label>
               <input
                 type="text"
@@ -6907,6 +7496,36 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 }}
                 placeholder="Nhập mã lớp"
               />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Số điện thoại</label>
+                <input
+                  type="text"
+                  value={editStudent.phone}
+                  onChange={(e) => setEditStudent({ ...editStudent, phone: e.target.value })}
+                  style={{
+                    width: '100%', padding: '0.6rem 0.8rem', border: '1.5px solid #d1d5db',
+                    borderRadius: '10px', fontSize: '0.9rem', outline: 'none', fontFamily: 'monospace',
+                  }}
+                  placeholder="09xxxxxxxx"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Giới tính</label>
+                <select
+                  value={editStudent.gender}
+                  onChange={(e) => setEditStudent({ ...editStudent, gender: e.target.value })}
+                  style={{
+                    width: '100%', padding: '0.6rem 0.7rem', border: '1.5px solid #d1d5db',
+                    borderRadius: '10px', fontSize: '0.9rem', outline: 'none', background: '#fff',
+                  }}
+                >
+                  <option value="">Chưa rõ</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                </select>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button

@@ -2,6 +2,9 @@ import {
   normalizeGraduatedRules,
   isStudentGraduated,
   getGraduatedBlockReason,
+  getCohortGraduationStatus,
+  isCohortFullyGraduated,
+  LCD_DEFINITIONS,
   type GraduatedCohortRule,
 } from '@/lib/utils/graduated-cohorts';
 
@@ -32,5 +35,37 @@ describe('graduated-cohorts', () => {
       { lcd_code: 'INVALID', cohort: 'D21' },
     ]);
     expect(normalized).toEqual([{ lcd_code: 'LCD_QTKD', cohort: 'D21' }]);
+  });
+
+  test('checks full cohort graduation status across all LCDs (0/8, partial, full, invalid)', () => {
+    const emptyStatus = getCohortGraduationStatus('D22', []);
+    expect(emptyStatus.isFullyGraduated).toBe(false);
+    expect(emptyStatus.graduatedCount).toBe(0);
+    expect(emptyStatus.totalLcds).toBe(LCD_DEFINITIONS.length);
+    expect(emptyStatus.missingLcds).toHaveLength(LCD_DEFINITIONS.length);
+    expect(isCohortFullyGraduated('D22', [])).toBe(false);
+
+    const partialStatus = getCohortGraduationStatus('D21', rules);
+    expect(partialStatus.isFullyGraduated).toBe(false);
+    expect(partialStatus.graduatedCount).toBe(3);
+    expect(partialStatus.totalLcds).toBe(LCD_DEFINITIONS.length);
+    expect(partialStatus.missingLcds).toHaveLength(LCD_DEFINITIONS.length - 3);
+    expect(isCohortFullyGraduated('D21', rules)).toBe(false);
+
+    const fullRules: GraduatedCohortRule[] = LCD_DEFINITIONS.map((lcd) => ({
+      lcd_code: lcd.code,
+      cohort: 'D21',
+    }));
+    const fullStatus = getCohortGraduationStatus('d21', fullRules);
+    expect(fullStatus.isFullyGraduated).toBe(true);
+    expect(fullStatus.graduatedCount).toBe(LCD_DEFINITIONS.length);
+    expect(fullStatus.missingLcds).toEqual([]);
+    expect(isCohortFullyGraduated('D21', fullRules)).toBe(true);
+
+    const invalidStatus = getCohortGraduationStatus('invalid', fullRules);
+    expect(invalidStatus.isFullyGraduated).toBe(false);
+    expect(invalidStatus.graduatedCount).toBe(0);
+    expect(invalidStatus.missingLcds).toHaveLength(LCD_DEFINITIONS.length);
+    expect(isCohortFullyGraduated('invalid', fullRules)).toBe(false);
   });
 });
