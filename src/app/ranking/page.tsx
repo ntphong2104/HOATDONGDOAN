@@ -44,9 +44,9 @@ export default function RankingPage() {
       <Header user={user} title="BẢNG XẾP HẠNG SỰ KIỆN" />
       <main
         style={{
-          maxWidth: 1200,
+          maxWidth: 1360,
           margin: '0 auto',
-          padding: '1.5rem 1.25rem 3rem',
+          padding: '1.25rem 1.5rem 3rem',
         }}
       >
         <RankingBoard highlightLcdCode={highlightLcd} canExport={canExport} />

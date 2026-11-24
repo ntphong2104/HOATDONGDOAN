@@ -71,11 +71,19 @@
   border-radius: 16px;
   overflow: hidden;
   aspect-ratio: 4/5;
+  max-height: 440px;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
   border: 2px solid #1e293b;
+}
+
+@media (min-width: 640px) {
+  .scannerWrapper {
+    aspect-ratio: 4/3;
+  }
 }
 
 .noEvent {

@@ -587,14 +587,17 @@ export default function OfficeAdminPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
       <Header title="QUẢN TRỊ VĂN PHÒNG ĐOÀN" />
-      <main style={{ maxWidth: 1220, margin: '0 auto', padding: '1.5rem 1.25rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+      <main style={{ maxWidth: 1360, margin: '0 auto', padding: '1.25rem 1.5rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
         {/* Hero */}
         <section
           style={{
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 65%, #0369a1 100%)',
-            borderRadius: 18,
-            padding: '1.35rem 1.6rem',
-            color: '#fff',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderLeft: '3px solid #1d4ed8',
+            borderRadius: 16,
+            padding: '1.25rem 1.5rem',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            color: '#0f172a',
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'space-between',
@@ -603,28 +606,36 @@ export default function OfficeAdminPage() {
           }}
         >
           <div>
-            <div style={{ fontSize: '0.73rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#fde047' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1d4ed8' }}>
               Bàn làm việc Admin Văn phòng Đoàn
             </div>
-            <h1 style={{ margin: '0.2rem 0', fontSize: '1.45rem', fontWeight: 800 }}>
+            <h1 style={{ margin: '0.2rem 0', fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
               Quản Lý Trực Văn Phòng &amp; Mượn Dụng Cụ
             </h1>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#dbeafe' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
               Quản lý danh sách CTV trực, mở đợt đăng ký, kiểm soát chấm công qua WiFi VPĐ, duyệt mượn và tự động cấm mượn khi trả trễ.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <div style={{ background: 'rgba(255,255,255,0.14)', borderRadius: 10, padding: '0.55rem 0.9rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{volunteers.length}</div>
-              <div style={{ fontSize: '0.72rem', color: '#dbeafe' }}>CTV trực</div>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '0.55rem 0.9rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>{volunteers.length}</div>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>CTV trực</div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.14)', borderRadius: 10, padding: '0.55rem 0.9rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{requests.filter((r) => r.status === 'pending' || r.status === 'borrowed').length}</div>
-              <div style={{ fontSize: '0.72rem', color: '#dbeafe' }}>Đơn đang xử lý</div>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '0.55rem 0.9rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>{requests.filter((r) => r.status === 'pending' || r.status === 'borrowed').length}</div>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Đơn đang xử lý</div>
             </div>
-            <div style={{ background: activeBans.length > 0 ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.14)', borderRadius: 10, padding: '0.55rem 0.9rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{activeBans.length}</div>
-              <div style={{ fontSize: '0.72rem', color: '#dbeafe' }}>Đơn vị bị cấm</div>
+            <div
+              style={{
+                background: activeBans.length > 0 ? '#fef2f2' : '#f8fafc',
+                border: activeBans.length > 0 ? '1px solid #fecaca' : '1px solid #e2e8f0',
+                borderRadius: 12,
+                padding: '0.55rem 0.9rem',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: activeBans.length > 0 ? '#b91c1c' : '#0f172a', fontVariantNumeric: 'tabular-nums' }}>{activeBans.length}</div>
+              <div style={{ fontSize: '0.72rem', color: activeBans.length > 0 ? '#b91c1c' : '#64748b', fontWeight: 600 }}>Đơn vị bị cấm</div>
             </div>
           </div>
         </section>

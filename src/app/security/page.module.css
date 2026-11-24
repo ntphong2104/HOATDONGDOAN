@@ -7,19 +7,21 @@
 
 .main {
   flex: 1;
-  max-width: 1200px;
+  max-width: var(--page-max-standard, 1360px);
   width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  padding: 1.25rem 1.5rem 3rem;
 }
 
 .banner {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  color: #ffffff;
-  padding: 1.5rem;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #1d4ed8;
   border-radius: 16px;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15);
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -40,23 +42,24 @@
   gap: 0.6rem;
   margin: 0 0 0.4rem;
   letter-spacing: -0.01em;
+  color: #0f172a;
 }
 
 .bannerSubtitle {
   font-size: 0.875rem;
-  color: #94a3b8;
+  color: #64748b;
   margin: 0;
   line-height: 1.45;
 }
 
 .refreshButton {
-  background: #334155;
-  color: #f1f5f9;
-  border: 1px solid #475569;
-  padding: 0.6rem 1.1rem;
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 0.55rem 1rem;
   border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.85rem;
+  font-weight: 700;
+  font-size: 0.84rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -65,8 +68,9 @@
 }
 
 .refreshButton:hover {
-  background: #475569;
-  color: #ffffff;
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
 }
 
 .statsGrid {

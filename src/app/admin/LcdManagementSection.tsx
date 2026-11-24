@@ -398,7 +398,7 @@ export default function LcdManagementSection({
       <div className={styles.banner}>
         <div className={styles.bannerLeft}>
           <span className={styles.bannerEyebrow}>
-            <BuildingIcon size={14} color="#bfdbfe" />
+            <BuildingIcon size={14} color="#1d4ed8" />
             <span>Quản trị Liên Chi Đoàn trực thuộc</span>
           </span>
           <h2 className={styles.bannerTitle}>{currentLcdName}</h2>

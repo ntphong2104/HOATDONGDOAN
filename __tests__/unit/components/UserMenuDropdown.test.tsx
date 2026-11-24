@@ -1,7 +1,8 @@
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import UserMenuDropdown from '@/components/UserMenuDropdown';
+import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
 import { useRouter } from 'next/navigation';
 
 jest.mock('next/navigation', () => ({
@@ -193,5 +194,70 @@ describe('UserMenuDropdown', () => {
     
     // dropdown should close
     expect(screen.queryByText('Đăng Xuất Khỏi Hệ Thống')).not.toBeInTheDocument();
+  });
+
+  it('renders Google avatar with referrerPolicy="no-referrer" and falls back to initial on image error', async () => {
+    const avatarUrl = 'https://lh3.googleusercontent.com/a/test-photo=s96-c';
+    const user = {
+      tier: 'super_admin',
+      full_name: 'NGUYỄN THANH PHONG',
+      email: 'n22dccn158@student.ptithcm.edu.vn',
+      avatar_url: avatarUrl,
+    };
+
+    render(<UserMenuDropdown user={user as any} />);
+
+    // Trigger avatar <img> renders with referrerPolicy="no-referrer"
+    const triggerImgs = screen.getAllByAltText('NGUYỄN THANH PHONG');
+    expect(triggerImgs).toHaveLength(1);
+    expect(triggerImgs[0]).toHaveAttribute('src', avatarUrl);
+    expect(triggerImgs[0]).toHaveAttribute('referrerpolicy', 'no-referrer');
+
+    // Opening dropdown renders large profile card <img> with referrerPolicy="no-referrer"
+    const trigger = screen.getByTitle('Bấm để mở danh mục chức năng cá nhân');
+    await userEvent.click(trigger);
+
+    const allAvatarImgs = screen.getAllByAltText('NGUYỄN THANH PHONG');
+    expect(allAvatarImgs).toHaveLength(2);
+    for (const img of allAvatarImgs) {
+      expect(img).toHaveAttribute('src', avatarUrl);
+      expect(img).toHaveAttribute('referrerpolicy', 'no-referrer');
+    }
+
+    // Failing to load Google avatar falls back to initial letter "N"
+    fireEvent.error(allAvatarImgs[0]);
+    expect(screen.queryAllByAltText('NGUYỄN THANH PHONG')).toHaveLength(0);
+    expect(screen.getAllByText('N').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('does not poison global fetchMeCached cache when rendered with partial SSR propUser', async () => {
+    invalidateClientMeCache();
+    const partialSsrUser = {
+      mssv: 'TO-BAOVE',
+      tier: 'super_admin',
+      full_name: 'Tổ Bảo Vệ (Quản Lý Chìa Khóa)',
+      email: 'n22dccn158@student.ptithcm.edu.vn',
+      managed_events: [],
+    };
+    const fullApiUser = {
+      mssv: 'N22DCCN158',
+      tier: 'super_admin',
+      full_name: 'NGUYỄN THANH PHONG',
+      email: 'n22dccn158@student.ptithcm.edu.vn',
+      managed_events: [{ event_id: 'ev1', event_name: 'Sự kiện Live', status: 'active' }],
+    };
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ success: true, data: fullApiUser }),
+    });
+
+    render(<UserMenuDropdown user={partialSsrUser as any} />);
+    expect(screen.getByText('Tổ Bảo Vệ (Quản Lý Chìa Khóa)')).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    const cachedResult = await fetchMeCached();
+    expect(global.fetch).toHaveBeenCalledWith('/api/me');
+    expect(cachedResult.json.data).toEqual(fullApiUser);
   });
 });

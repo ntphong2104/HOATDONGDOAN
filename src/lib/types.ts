@@ -195,6 +195,10 @@ export interface SessionUser {
   isOfficeAdmin?: boolean;
   /** CTV nằm trong danh sách trực văn phòng — được thấy menu "Trực văn phòng". */
   isDutyVolunteer?: boolean;
+  /** Cán bộ lớp (BCH Chi Đoàn) được cấp quyền tra cứu minh chứng ĐRL lớp. */
+  isClassDelegate?: boolean;
+  delegate_class_id?: string;
+  delegate_days_left?: number;
   avatar_url?: string;
   gender?: string;
   phone?: string;

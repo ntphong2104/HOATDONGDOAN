@@ -185,14 +185,17 @@ export default function OfficeDutyPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
       <Header title="TRỰC VĂN PHÒNG ĐOÀN" />
-      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '1.5rem 1.25rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <main style={{ maxWidth: 1360, margin: '0 auto', padding: '1.25rem 1.5rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {/* Hero */}
         <section
           style={{
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #0369a1 100%)',
-            borderRadius: 18,
-            padding: '1.4rem 1.6rem',
-            color: '#fff',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderLeft: '3px solid #1d4ed8',
+            borderRadius: 16,
+            padding: '1.25rem 1.5rem',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            color: '#0f172a',
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'space-between',
@@ -201,13 +204,13 @@ export default function OfficeDutyPage() {
           }}
         >
           <div>
-            <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bfdbfe' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1d4ed8' }}>
               Văn phòng Đoàn • Giờ hành chính Thứ 2 – Thứ 6
             </div>
-            <h1 style={{ margin: '0.25rem 0', fontSize: '1.45rem', fontWeight: 800 }}>
+            <h1 style={{ margin: '0.2rem 0', fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
               Đăng Ký &amp; Chấm Công Trực Văn Phòng
             </h1>
-            <p style={{ margin: 0, fontSize: '0.86rem', color: '#dbeafe' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
               Ca Sáng ({data?.config?.shifts?.morning?.start || '07:30'}–{data?.config?.shifts?.morning?.end || '11:30'}) &amp; Ca Chiều ({data?.config?.shifts?.afternoon?.start || '13:00'}–{data?.config?.shifts?.afternoon?.end || '17:00'}) • Tối đa {maxPerShift} người/ca • Check-in sớm 30p, Check-out trễ 30p qua WiFi VPĐ.
             </p>
           </div>
@@ -215,8 +218,9 @@ export default function OfficeDutyPage() {
           {data?.network && (
             <div
               style={{
-                background: data.network.allowed ? 'rgba(22, 163, 74, 0.25)' : 'rgba(220, 38, 38, 0.28)',
-                border: `1px solid ${data.network.allowed ? 'rgba(134, 239, 172, 0.6)' : 'rgba(252, 165, 165, 0.7)'}`,
+                background: data.network.allowed ? '#f0fdf4' : '#fef2f2',
+                border: `1px solid ${data.network.allowed ? '#bbf7d0' : '#fecaca'}`,
+                color: data.network.allowed ? '#15803d' : '#b91c1c',
                 borderRadius: 12,
                 padding: '0.65rem 0.95rem',
                 fontSize: '0.8rem',

@@ -7,12 +7,14 @@ import styles from './DualLogos.module.css';
 interface DualLogosProps {
   size?: 'sm' | 'md' | 'lg';
   showText?: boolean;
+  hideTitles?: boolean;
   className?: string;
 }
 
 export default function DualLogos({
   size = 'md',
   showText = false,
+  hideTitles = false,
   className = '',
 }: DualLogosProps) {
   const pixelSize = size === 'sm' ? 28 : size === 'lg' ? 52 : 38;
@@ -21,7 +23,7 @@ export default function DualLogos({
     <div className={`${styles.container} ${styles[size]} ${className}`}>
       <div className={styles.logosGroup}>
         {/* Logo PTIT */}
-        <div className={styles.logoWrapper} title="Học viện Công nghệ Bưu chính Viễn thông">
+        <div className={styles.logoWrapper} title={hideTitles ? undefined : 'Học viện Công nghệ Bưu chính Viễn thông'}>
           <Image
             src="/logos/logo-ptit.png"
             alt="Logo Học viện Công nghệ Bưu chính Viễn thông Cơ sở tại TP. Hồ Chí Minh"
@@ -35,7 +37,7 @@ export default function DualLogos({
         </div>
 
         {/* Logo Đoàn Thanh Niên */}
-        <div className={styles.logoWrapper} title="Đoàn TNCS Hồ Chí Minh">
+        <div className={styles.logoWrapper} title={hideTitles ? undefined : 'Đoàn TNCS Hồ Chí Minh'}>
           <Image
             src="/logos/logo-doan.png"
             alt="Logo Đoàn TNCS Hồ Chí Minh Học viện Công nghệ Bưu chính Viễn thông"

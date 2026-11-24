@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { fetchMeCached, primeClientMeCache, invalidateClientMeCache } from '@/lib/client/me-cache';
+import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
 import {
   UserIcon,
   ShieldCheckIcon,
@@ -41,15 +41,17 @@ export default function UserMenuDropdown({
 
   useEffect(() => {
     let cancelled = false;
-    // Use propUser as initial state immediately for fast render (no redundant /api/me fetch when SSR provided rich user)
+    // Use propUser as initial state immediately for fast render (no redundant /api/me fetch when SSR provided user),
+    // without overwriting the global me-cache (which pages like /scanner rely on for full managed_events).
     if (propUser && propUser.full_name) {
       queueMicrotask(() => {
         if (!cancelled) setCurrentUser(propUser);
       });
-      primeClientMeCache(propUser);
-      try {
-        sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(propUser));
-      } catch {}
+      if (propUser.mssv !== 'TO-BAOVE') {
+        try {
+          sessionStorage.setItem('ptit_user_session_cache', JSON.stringify(propUser));
+        } catch {}
+      }
       return () => {
         cancelled = true;
       };
@@ -183,6 +185,7 @@ export default function UserMenuDropdown({
             src={rawAvatar}
             alt={displayName}
             className={styles.avatar}
+            referrerPolicy="no-referrer"
             onError={() => setFailedAvatarUrl(rawAvatar || null)}
           />
         ) : (
@@ -217,6 +220,7 @@ export default function UserMenuDropdown({
                 src={rawAvatar}
                 alt={displayName}
                 className={styles.largeAvatar}
+                referrerPolicy="no-referrer"
                 onError={() => setFailedAvatarUrl(rawAvatar || null)}
               />
             ) : (

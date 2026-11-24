@@ -223,7 +223,7 @@ export default function SecurityDashboardClient({
       <div className={styles.banner}>
         <div className={styles.bannerLeft}>
           <h1 className={styles.bannerTitle}>
-            <ShieldCheckIcon size={26} color="#ffffff" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px' }} />
+            <ShieldCheckIcon size={24} color="#1d4ed8" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px' }} />
             SỔ TRỰC BÀN GIAO CHÌA KHÓA PHÒNG
           </h1>
           <p className={styles.bannerSubtitle}>

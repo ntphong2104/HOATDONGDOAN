@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getStoredOfficerRoles, ROOT_SUPER_ADMIN } from '@/lib/constants/officers-store';
-import { parseDemoCookie, getVerifiedUserFromCookies, invalidateAuthContextCache } from '@/lib/supabase/auth-helper';
+import {
+  parseDemoCookie,
+  getVerifiedUserFromCookies,
+  invalidateAuthContextCache,
+  extractAvatarUrlFromMetadata,
+} from '@/lib/supabase/auth-helper';
 import {
   getUserProfileExtra,
   getUserProfileExtraWithFallback,
@@ -163,12 +168,15 @@ export async function GET() {
   // Cryptographic Fast-path: Check verified token cache
   let email: string | null = null;
   let authMetadata: any = null;
+  let verifiedAvatarUrl: string | undefined = undefined;
 
   try {
     const cookieStore = await cookies();
     const verifiedUser = await getVerifiedUserFromCookies(supabase, cookieStore.getAll());
     if (verifiedUser?.email) {
       email = verifiedUser.email;
+      authMetadata = verifiedUser.userMetadata || null;
+      verifiedAvatarUrl = verifiedUser.avatarUrl;
     }
   } catch {}
 
@@ -176,6 +184,12 @@ export async function GET() {
   if (email) {
     const cached = meResponseCache.get(email.toLowerCase());
     if (cached && cached.expiresAt > Date.now()) {
+      const candidateAvatar = verifiedAvatarUrl || extractAvatarUrlFromMetadata(authMetadata);
+      if (candidateAvatar && !cached.data.avatar_url) {
+        const healedData: SessionUser = { ...cached.data, avatar_url: candidateAvatar };
+        setBoundedMeResponseCache(email.toLowerCase(), healedData, 15000);
+        return NextResponse.json({ success: true, data: healedData }, { headers: noCacheHeaders });
+      }
       return NextResponse.json({ success: true, data: cached.data }, { headers: noCacheHeaders });
     }
   }
@@ -186,6 +200,7 @@ export async function GET() {
       if (data?.user?.email) {
         email = data.user.email;
         authMetadata = data.user.user_metadata;
+        verifiedAvatarUrl = extractAvatarUrlFromMetadata(authMetadata, (data.user as any).identities);
       }
     } catch {}
   }
@@ -196,6 +211,7 @@ export async function GET() {
       if (data?.session?.user?.email) {
         email = data.session.user.email;
         authMetadata = data.session.user.user_metadata;
+        verifiedAvatarUrl = extractAvatarUrlFromMetadata(authMetadata, (data.session.user as any).identities);
       }
     } catch {}
   }
@@ -207,6 +223,12 @@ export async function GET() {
   // Check cache again after fallback retrieval
   const cached = meResponseCache.get(email.toLowerCase());
   if (cached && cached.expiresAt > Date.now()) {
+    const candidateAvatar = verifiedAvatarUrl || extractAvatarUrlFromMetadata(authMetadata);
+    if (candidateAvatar && !cached.data.avatar_url) {
+      const healedData: SessionUser = { ...cached.data, avatar_url: candidateAvatar };
+      setBoundedMeResponseCache(email.toLowerCase(), healedData, 15000);
+      return NextResponse.json({ success: true, data: healedData }, { headers: noCacheHeaders });
+    }
     return NextResponse.json({ success: true, data: cached.data }, { headers: noCacheHeaders });
   }
   
@@ -369,8 +391,36 @@ export async function GET() {
       isDutyVolunteer = false;
     }
 
+    // BCH Chi Đoàn: quyền tra cứu minh chứng ĐRL theo lớp (còn hạn & đang active)
+    let isClassDelegate = false;
+    let delegateClassId: string | undefined = undefined;
+    let delegateDaysLeft: number | undefined = undefined;
+    try {
+      const { data: delegateRow } = await adminClient
+        .from('class_delegates')
+        .select('class_id, expires_at')
+        .or(`email.eq.${lowerEmail},mssv.eq.${username}`)
+        .eq('is_active', true)
+        .gt('expires_at', new Date().toISOString())
+        .order('expires_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (delegateRow) {
+        isClassDelegate = true;
+        delegateClassId = delegateRow.class_id || undefined;
+        if (delegateRow.expires_at) {
+          delegateDaysLeft = Math.max(
+            0,
+            Math.ceil((new Date(delegateRow.expires_at).getTime() - Date.now()) / 86_400_000)
+          );
+        }
+      }
+    } catch {
+      isClassDelegate = false;
+    }
+
     const googleName = authMetadata?.full_name || authMetadata?.name;
-    const avatarUrl = authMetadata?.avatar_url || authMetadata?.picture;
+    const avatarUrl = verifiedAvatarUrl || extractAvatarUrlFromMetadata(authMetadata) || undefined;
 
     let userRecord = user;
 
@@ -553,6 +603,9 @@ export async function GET() {
       isChecker,
       isOfficeAdmin,
       isDutyVolunteer,
+      isClassDelegate,
+      delegate_class_id: delegateClassId,
+      delegate_days_left: delegateDaysLeft,
       avatar_url: avatarUrl,
       unit_name: assignedOfficerRole?.unit_name,
       unit_code: assignedOfficerRole?.unit_code,

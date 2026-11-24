@@ -6,6 +6,9 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { getStoredProposals } from '@/lib/constants/proposals-store';
 import { getHandoverRegistryFromDb } from '@/lib/constants/handover-store';
+import { extractMSSV } from '@/lib/utils/extract-mssv';
+import { getMasterStudentByMssv } from '@/lib/utils/student-profile';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import Header from '@/components/Header';
 import SecurityDashboardClient from './SecurityDashboardClient';
 import type { SessionUser, EventProposal } from '@/lib/types';
@@ -103,24 +106,58 @@ export default async function SecurityPage() {
     });
   }
 
+  const lowerEmail = auth.email.toLowerCase().trim();
+  const extractedMssv = extractMSSV(lowerEmail);
+  let resolvedMssv =
+    extractedMssv || (auth.tier === 'security' ? 'TO-BAOVE' : lowerEmail.split('@')[0].toUpperCase());
+  let resolvedName =
+    auth.tier === 'security'
+      ? 'Tổ Bảo Vệ (Quản Lý Chìa Khóa)'
+      : extractedMssv || lowerEmail.split('@')[0].toUpperCase();
+  let resolvedClass = auth.tier === 'security' ? 'TO-BAO-VE' : 'CANBO';
+
+  try {
+    const safeEmail = sanitizePostgrestValue(lowerEmail, 120);
+    const safeMssv = sanitizePostgrestValue(resolvedMssv, 40);
+    const { data: dbUser } = await supabase
+      .from('users')
+      .select('mssv, full_name, class_id')
+      .or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`)
+      .maybeSingle();
+    const master = extractedMssv ? getMasterStudentByMssv(extractedMssv) : null;
+    if (dbUser?.mssv) resolvedMssv = dbUser.mssv;
+    if (dbUser?.full_name && !dbUser.full_name.includes('@')) {
+      resolvedName = dbUser.full_name;
+    } else if (master?.full_name) {
+      resolvedName = master.full_name;
+    } else if (auth.tier !== 'security' && auth.user_metadata?.full_name) {
+      resolvedName = String(auth.user_metadata.full_name);
+    }
+    if (dbUser?.class_id && dbUser.class_id !== 'PTIT-HCM') {
+      resolvedClass = dbUser.class_id;
+    } else if (master?.class_id) {
+      resolvedClass = master.class_id;
+    }
+  } catch {}
+
   const sessionUser: SessionUser = {
-    mssv: 'TO-BAOVE',
+    mssv: resolvedMssv,
     email: auth.email,
-    full_name: 'Tổ Bảo Vệ (Quản Lý Chìa Khóa)',
-    class_id: 'TO-BAO-VE',
+    full_name: resolvedName,
+    class_id: resolvedClass,
+    avatar_url: auth.avatarUrl || undefined,
     tier: auth.tier,
     isSuperAdmin: auth.isSuperAdmin,
-    isSecurity: true,
+    isSecurity: auth.tier === 'security' || Boolean(auth.isSecurity),
     managed_events: [],
   };
 
   return (
     <div className={styles.container}>
       <Header
-        showBack={auth.isSuperAdmin}
         backHref={auth.isSuperAdmin ? '/super-admin' : '/'}
-        user={sessionUser}
-        userName={sessionUser.full_name}
+        avatarUrl={auth.avatarUrl}
+        title="SỔ TRỰC BÀN GIAO CHÌA KHÓA"
       />
       <main className={styles.main}>
         <SecurityDashboardClient

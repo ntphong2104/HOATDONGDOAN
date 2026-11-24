@@ -82,6 +82,8 @@ export interface AuthContext {
   isOfficeAdmin?: boolean;
   tier: UserTier;
   managed_events?: any[];
+  avatarUrl?: string;
+  user_metadata?: Record<string, any>;
 }
 
 // In-memory cache for AuthContext to avoid redundant DB queries on every request (TTL: 60s)
@@ -89,18 +91,27 @@ const MAX_AUTH_CTX_CACHE = 2000;
 const MAX_VERIFIED_TOKEN_CACHE = 3000;
 const VERIFIED_TOKEN_MAX_TTL_SEC = 300; // 5 minutes max (capped by JWT exp)
 
+export interface VerifiedUser {
+  email: string;
+  id: string;
+  avatarUrl?: string;
+  userMetadata?: Record<string, any> | null;
+}
+
 export interface VerifiedTokenCacheItem {
   email: string;
   id: string;
   exp: number; // Unix timestamp in seconds
   verifiedAt: number; // ms
+  avatarUrl?: string;
+  userMetadata?: Record<string, any> | null;
 }
 
 const gAuth = globalThis as unknown as {
   __hddAuthContextCache?: Map<string, { ctx: AuthContext; expiresAt: number }>;
   __hddInflightAuthContext?: Map<string, Promise<AuthContext>>;
   __hddVerifiedTokenCache?: Map<string, VerifiedTokenCacheItem>;
-  __hddInflightTokenVerify?: Map<string, Promise<{ email: string; id: string } | null>>;
+  __hddInflightTokenVerify?: Map<string, Promise<VerifiedUser | null>>;
 };
 
 const authContextCache =
@@ -177,20 +188,60 @@ function decodeBase64Safe(str: string): string {
   try {
     const padded = str.length % 4 === 0 ? str : str + '='.repeat(4 - (str.length % 4));
     const base64Standard = padded.replace(/-/g, '+').replace(/_/g, '/');
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(base64Standard, 'base64').toString('utf-8');
+    }
     if (typeof atob === 'function') {
       return atob(base64Standard);
     }
-    return Buffer.from(base64Standard, 'base64').toString('utf-8');
   } catch {
     return '';
   }
+  return '';
+}
+
+export function extractAvatarUrlFromMetadata(
+  meta?: Record<string, any> | null,
+  identities?: any[]
+): string | undefined {
+  const candidates = [
+    meta?.avatar_url,
+    meta?.picture,
+    ...(Array.isArray(identities)
+      ? identities.flatMap((id) => [id?.identity_data?.avatar_url, id?.identity_data?.picture])
+      : []),
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string') {
+      const trimmed = candidate.trim();
+      if (trimmed.startsWith('https://') || trimmed.startsWith('http://') || trimmed.startsWith('/')) {
+        return trimmed;
+      }
+    }
+  }
+  return undefined;
+}
+
+// Call only after cryptographic JWT/session verification
+function extractUserMetadataFromJwt(rawToken: string): Record<string, any> | null {
+  try {
+    const parts = rawToken.split('.');
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(decodeBase64Safe(parts[1]));
+    if (payload?.user_metadata && typeof payload.user_metadata === 'object' && !Array.isArray(payload.user_metadata)) {
+      return payload.user_metadata as Record<string, any>;
+    }
+  } catch {}
+  return null;
 }
 
 /**
  * Local HMAC-SHA256 JWT verification when SUPABASE_JWT_SECRET is configured.
  * Eliminates network round-trips to Supabase GoTrue under high concurrency.
  */
-function verifySupabaseJwtLocally(rawToken: string): { email: string; id: string; exp: number } | null {
+function verifySupabaseJwtLocally(
+  rawToken: string
+): { email: string; id: string; exp: number; avatarUrl?: string; userMetadata?: Record<string, any> | null } | null {
   const jwtSecret = process.env.SUPABASE_JWT_SECRET;
   if (!jwtSecret) return null;
 
@@ -234,10 +285,18 @@ function verifySupabaseJwtLocally(rawToken: string): { email: string; id: string
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase().trim() : '';
     if (!email) return null;
 
+    const userMetadata =
+      payload.user_metadata && typeof payload.user_metadata === 'object' && !Array.isArray(payload.user_metadata)
+        ? (payload.user_metadata as Record<string, any>)
+        : null;
+    const avatarUrl = extractAvatarUrlFromMetadata(userMetadata);
+
     return {
       email,
       id: typeof payload.sub === 'string' ? payload.sub : '',
       exp: payload.exp,
+      avatarUrl,
+      userMetadata,
     };
   } catch {
     return null;
@@ -289,7 +348,7 @@ export function extractRawTokenFromCookies(cookieList: Array<{ name: string; val
 export async function getVerifiedUserFromCookies(
   supabase: any,
   cookieList: Array<{ name: string; value: string }>
-): Promise<{ email: string; id: string } | null> {
+): Promise<VerifiedUser | null> {
   const rawToken = extractRawTokenFromCookies(cookieList);
   if (!rawToken || !rawToken.includes('.')) return null;
 
@@ -300,7 +359,12 @@ export async function getVerifiedUserFromCookies(
   const cached = verifiedTokenCache.get(tokenHash);
   if (cached) {
     if (cached.exp > nowSec + 5) {
-      return { email: cached.email, id: cached.id };
+      return {
+        email: cached.email,
+        id: cached.id,
+        avatarUrl: cached.avatarUrl,
+        userMetadata: cached.userMetadata,
+      };
     }
     verifiedTokenCache.delete(tokenHash);
   }
@@ -314,8 +378,15 @@ export async function getVerifiedUserFromCookies(
       id: localVerified.id,
       exp: nowSec + ttlSec,
       verifiedAt: Date.now(),
+      avatarUrl: localVerified.avatarUrl,
+      userMetadata: localVerified.userMetadata,
     });
-    return { email: localVerified.email, id: localVerified.id };
+    return {
+      email: localVerified.email,
+      id: localVerified.id,
+      avatarUrl: localVerified.avatarUrl,
+      userMetadata: localVerified.userMetadata,
+    };
   }
 
   // 3. IN-FLIGHT DEDUPLICATION: Coalesce concurrent verifications of the same token
@@ -325,12 +396,19 @@ export async function getVerifiedUserFromCookies(
   }
 
   // 4. CACHE-MISS: Verify session with Supabase Auth (auto-refreshes expired 1h access_token via refresh_token)
-  const verifyPromise = (async (): Promise<{ email: string; id: string } | null> => {
+  const verifyPromise = (async (): Promise<VerifiedUser | null> => {
     try {
       const { data, error } = await supabase.auth.getUser();
       if (!error && data?.user?.email) {
         const email = data.user.email.toLowerCase().trim();
         const id = data.user.id || '';
+        const jwtMeta = extractUserMetadataFromJwt(rawToken);
+        const rawMeta =
+          data.user.user_metadata && typeof data.user.user_metadata === 'object' && !Array.isArray(data.user.user_metadata)
+            ? (data.user.user_metadata as Record<string, any>)
+            : null;
+        const userMetadata = rawMeta || jwtMeta ? { ...(jwtMeta || {}), ...(rawMeta || {}) } : null;
+        const avatarUrl = extractAvatarUrlFromMetadata(userMetadata, (data.user as any).identities);
 
         let exp = nowSec + VERIFIED_TOKEN_MAX_TTL_SEC;
         try {
@@ -350,10 +428,12 @@ export async function getVerifiedUserFromCookies(
             id,
             exp: nowSec + ttlSec,
             verifiedAt: Date.now(),
+            avatarUrl,
+            userMetadata,
           });
         }
 
-        return { email, id };
+        return { email, id, avatarUrl, userMetadata };
       }
     } catch (err) {
       console.error('Cryptographic token verification error:', err);
@@ -383,6 +463,8 @@ export function extractUserFromCookies(cookieList: Array<{ name: string; value: 
 
 export async function getAuthContext(): Promise<AuthContext | null> {
   let email: string | null = null;
+  let avatarUrl: string | undefined = undefined;
+  let userMetadata: Record<string, any> | null = null;
 
   const supabase = await createClient();
 
@@ -411,6 +493,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
           isOfficeAdmin,
           tier: explicitTier,
           managed_events: Array.isArray(demoUser.managed_events) ? demoUser.managed_events : undefined,
+          avatarUrl: extractAvatarUrlFromMetadata({ avatar_url: demoUser.avatar_url }),
         };
       }
     }
@@ -419,6 +502,8 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     const verifiedUser = await getVerifiedUserFromCookies(supabase, cookieStore.getAll());
     if (verifiedUser?.email) {
       email = verifiedUser.email;
+      avatarUrl = verifiedUser.avatarUrl;
+      userMetadata = verifiedUser.userMetadata || null;
     }
   } catch {}
 
@@ -426,6 +511,13 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   if (email) {
     const cached = authContextCache.get(email.toLowerCase());
     if (cached && cached.expiresAt > Date.now()) {
+      if (avatarUrl && !cached.ctx.avatarUrl) {
+        return {
+          ...cached.ctx,
+          avatarUrl,
+          user_metadata: userMetadata || cached.ctx.user_metadata,
+        };
+      }
       return cached.ctx;
     }
   }
@@ -436,6 +528,11 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         const { data } = await supabase.auth.getUser();
         if (data?.user?.email) {
           email = data.user.email;
+          userMetadata =
+            data.user.user_metadata && typeof data.user.user_metadata === 'object'
+              ? (data.user.user_metadata as Record<string, any>)
+              : null;
+          avatarUrl = extractAvatarUrlFromMetadata(userMetadata, (data.user as any).identities);
         }
       }
     } catch {}
@@ -446,6 +543,11 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         const { data } = await supabase.auth.getSession();
         if (data?.session?.user?.email) {
           email = data.session.user.email;
+          userMetadata =
+            data.session.user.user_metadata && typeof data.session.user.user_metadata === 'object'
+              ? (data.session.user.user_metadata as Record<string, any>)
+              : null;
+          avatarUrl = extractAvatarUrlFromMetadata(userMetadata, (data.session.user as any).identities);
         }
       } catch {}
     }
@@ -458,6 +560,13 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   // Check cache again after fallback retrieval
   const cached = authContextCache.get(email.toLowerCase());
   if (cached && cached.expiresAt > Date.now()) {
+    if (avatarUrl && !cached.ctx.avatarUrl) {
+      return {
+        ...cached.ctx,
+        avatarUrl,
+        user_metadata: userMetadata || cached.ctx.user_metadata,
+      };
+    }
     return cached.ctx;
   }
 
@@ -602,6 +711,8 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         isOfficeAdmin,
         tier,
         managed_events,
+        avatarUrl,
+        user_metadata: userMetadata || undefined,
       };
 
       setBoundedAuthContext(lowerEmail, ctx, 60000);

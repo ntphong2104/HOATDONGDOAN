@@ -4,7 +4,14 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, parseDemoCookie } from '@/lib/supabase/auth-helper';
 import { extractMSSV, isStudentPersonalAccount } from '@/lib/utils/extract-mssv';
 import { getUserProfileExtraWithFallback } from '@/lib/constants/user-profile-store';
-import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
+import { enrichHistoryWithSessionCounts, getEventMetaBatch } from '@/lib/constants/event-meta-store';
+import { getOfficeDutyConfig, getTodayVN } from '@/lib/utils/office-duty';
+import {
+  shiftDateVN,
+  type BorrowRequestInput,
+  type DutyShiftHours,
+  type DutyShiftInput,
+} from '@/lib/utils/student-schedule';
 import {
   isPlaceholderName,
   isPlaceholderClass,
@@ -109,8 +116,19 @@ export default async function HomePage({
     }
   } catch {}
 
+  const todayVN = getTodayVN();
+  const lookbackDate = shiftDateVN(todayVN, -14);
   let history: HistoryItem[] = [];
   let initialRegistrations: any[] = [];
+  let initialDutyShifts: DutyShiftInput[] = [];
+  let initialBorrowRequests: BorrowRequestInput[] = [];
+  let dutyShiftConfig: DutyShiftHours | undefined = undefined;
+  let initialDelegateInfo: {
+    isDelegate: boolean;
+    class_id?: string;
+    daysLeft?: number;
+    expires_at?: string;
+  } | null = null;
   let isDutyVolunteer = false;
 
   try {
@@ -125,6 +143,11 @@ export default async function HomePage({
       { data: historyData },
       { data: regData },
       dutyVolRows,
+      dutyRegRows,
+      dutyAttRows,
+      borrowRows,
+      officeConfig,
+      delegateRow,
     ] = await Promise.all([
       supabase
         .from('users')
@@ -175,9 +198,106 @@ export default async function HomePage({
       )
         .then((r: any) => (Array.isArray(r?.data) ? r.data : []))
         .catch(() => []),
+      Promise.resolve(
+        supabase
+          .from('office_duty_registrations')
+          .select('id, duty_date, shift')
+          .or(`email.ilike.${lowerEmail},mssv.eq.${rawMssv}`)
+          .gte('duty_date', lookbackDate)
+          .order('duty_date', { ascending: true })
+      )
+        .then((r: any) => (Array.isArray(r?.data) ? r.data : []))
+        .catch(() => []),
+      Promise.resolve(
+        supabase
+          .from('office_duty_attendance')
+          .select('registration_id, duty_date, shift, status, check_in_at, check_out_at')
+          .or(`email.ilike.${lowerEmail},mssv.eq.${rawMssv}`)
+          .gte('duty_date', lookbackDate)
+      )
+        .then((r: any) => (Array.isArray(r?.data) ? r.data : []))
+        .catch(() => []),
+      Promise.resolve(
+        supabase
+          .from('office_borrow_requests')
+          .select('id, purpose, borrow_date, due_date, status, office_borrow_items(item_name, quantity)')
+          .ilike('requester_email', lowerEmail)
+          .in('status', ['pending', 'approved', 'borrowed'])
+          .order('borrow_date', { ascending: true })
+      )
+        .then((r: any) => (Array.isArray(r?.data) ? r.data : []))
+        .catch(() => []),
+      getOfficeDutyConfig(supabase).catch(() => null),
+      Promise.resolve(
+        supabase
+          .from('class_delegates')
+          .select('class_id, granted_at, expires_at')
+          .or(`email.eq.${lowerEmail},mssv.eq.${rawMssv}`)
+          .eq('is_active', true)
+          .gt('expires_at', new Date().toISOString())
+          .order('expires_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      )
+        .then((r: any) => r?.data || null)
+        .catch(() => null),
     ]);
 
+    if (delegateRow) {
+      const daysLeft = delegateRow.expires_at
+        ? Math.max(
+            0,
+            Math.ceil((new Date(delegateRow.expires_at).getTime() - Date.now()) / 86_400_000)
+          )
+        : 0;
+      initialDelegateInfo = {
+        isDelegate: true,
+        class_id: delegateRow.class_id || undefined,
+        daysLeft,
+        expires_at: delegateRow.expires_at || undefined,
+      };
+    }
+
     isDutyVolunteer = Array.isArray(dutyVolRows) && dutyVolRows.length > 0;
+    if (officeConfig?.shifts) {
+      dutyShiftConfig = {
+        morning: {
+          start: officeConfig.shifts.morning.start,
+          end: officeConfig.shifts.morning.end,
+        },
+        afternoon: {
+          start: officeConfig.shifts.afternoon.start,
+          end: officeConfig.shifts.afternoon.end,
+        },
+      };
+    }
+
+    const attByRegId = new Map<string, any>();
+    for (const a of dutyAttRows || []) {
+      if (a?.registration_id) {
+        attByRegId.set(String(a.registration_id), a);
+      }
+    }
+    initialDutyShifts = (dutyRegRows || []).map((d: any) => {
+      const att = attByRegId.get(String(d.id));
+      return {
+        id: String(d.id),
+        duty_date: String(d.duty_date || ''),
+        shift: d.shift === 'afternoon' ? 'afternoon' : 'morning',
+        status: att?.status || null,
+        check_in_at: att?.check_in_at || null,
+        check_out_at: att?.check_out_at || null,
+      };
+    });
+
+    initialBorrowRequests = (borrowRows || []).map((b: any) => ({
+      id: String(b.id),
+      purpose: String(b.purpose || ''),
+      borrow_date: String(b.borrow_date || ''),
+      due_date: String(b.due_date || ''),
+      status: String(b.status || ''),
+      items: Array.isArray(b.office_borrow_items) ? b.office_borrow_items : [],
+    }));
 
     if (dbUser) {
       const realName = (dbUser.full_name && !dbUser.full_name.includes('@')) ? dbUser.full_name : user.full_name;
@@ -234,6 +354,15 @@ export default async function HomePage({
       const checkedInEventIds = new Set(
         history.map((h) => h.event_id).filter((id): id is string => Boolean(id))
       );
+      const uniqueRegEventIds = Array.from(
+        new Set(regData.map((r: any) => r.event_id).filter((id): id is string => Boolean(id)))
+      );
+      let metaMap: Record<string, any> = {};
+      if (uniqueRegEventIds.length > 0) {
+        try {
+          metaMap = await getEventMetaBatch(supabase, uniqueRegEventIds);
+        } catch {}
+      }
       initialRegistrations = regData.map((r: any) => ({
         id: r.id,
         event_id: r.event_id,
@@ -246,6 +375,7 @@ export default async function HomePage({
         role_type: r.role_type || 'participant',
         attended: Boolean(r.attended || checkedInEventIds.has(r.event_id)),
         registered_at: r.created_at,
+        sessions: Array.isArray(metaMap[r.event_id]?.sessions) ? metaMap[r.event_id].sessions : [],
       }));
     }
   } catch {}
@@ -263,12 +393,16 @@ export default async function HomePage({
     gender: user.gender,
     phone: user.phone,
     email: auth.email,
+    avatar_url: auth.avatarUrl || undefined,
     tier: auth.tier,
     isSuperAdmin: auth.isSuperAdmin,
     isEventAdmin: auth.isEventAdmin,
     isChecker: auth.isChecker,
     isOfficeAdmin: Boolean(auth.isOfficeAdmin || auth.isSuperAdmin || auth.tier === 'office_admin'),
     isDutyVolunteer,
+    isClassDelegate: Boolean(initialDelegateInfo?.isDelegate),
+    delegate_class_id: initialDelegateInfo?.class_id,
+    delegate_days_left: initialDelegateInfo?.daysLeft,
     managed_events: auth.managed_events || [],
     profile_incomplete: profileMissingFields.length > 0,
     profile_missing_fields: profileMissingFields,
@@ -285,6 +419,7 @@ export default async function HomePage({
       <Header
         user={sessionUser}
         userName={sessionUser.full_name}
+        avatarUrl={sessionUser.avatar_url}
         activeStudentTab={activeStudentTab}
       />
       <main className={styles.main}>
@@ -293,6 +428,11 @@ export default async function HomePage({
           tier={auth.isSuperAdmin ? 'super_admin' : auth.tier}
           initialHistory={history}
           initialRegistrations={initialRegistrations}
+          initialDutyShifts={initialDutyShifts}
+          initialBorrowRequests={initialBorrowRequests}
+          dutyShiftConfig={dutyShiftConfig}
+          initialDelegateInfo={initialDelegateInfo}
+          todayVN={todayVN}
           activeSection={activeStudentTab}
           isDutyVolunteer={isDutyVolunteer}
         />

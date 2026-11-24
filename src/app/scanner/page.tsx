@@ -80,7 +80,7 @@ export default function ScannerPage() {
   const [scanCount, setScanCount] = useState(0);
 
   useEffect(() => {
-    fetchMeCached()
+    fetchMeCached({ force: true })
       .then(({ json: data }) => {
         if (data?.success && data?.data) {
           setUser(data.data);

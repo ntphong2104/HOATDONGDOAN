@@ -58,6 +58,24 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
 
+  /* ──── Semantic Surface, Border & Text Tokens ──── */
+  --bg-primary: var(--neutral-50);
+  --bg-surface: #ffffff;
+  --bg-subtle: var(--neutral-100);
+  --border-color: var(--neutral-200);
+  --border-strong: var(--neutral-300);
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-600);
+  --text-muted: var(--neutral-500);
+
+  /* ──── Unified Page Container & Card Geometry Tokens ──── */
+  --page-max-wide: 1600px;
+  --page-max-standard: 1360px;
+  --page-max-detail: 960px;
+  --page-max-form: 680px;
+  --card-radius: 16px;
+  --card-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+
   /* ──── Motion Design Tokens (Smooth GPU-Accelerated Curves) ──── */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);

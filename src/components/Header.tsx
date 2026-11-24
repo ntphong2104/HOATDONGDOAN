@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fetchMeCached } from '@/lib/client/me-cache';
 import { resolveStudentLcd } from '@/lib/utils/lcd';
@@ -105,7 +105,7 @@ export default function Header({
   avatarUrl,
   onLogout,
   showBack,
-  backHref = '/',
+  backHref,
   title,
   showSidebarToggle,
   onToggleSidebar,
@@ -117,6 +117,7 @@ export default function Header({
   superAdminBadges,
 }: HeaderProps = {}) {
   const pathname = usePathname() || '';
+  const router = useRouter();
   const [resolvedUser, setResolvedUser] = useState<SessionUser | null>(user || null);
   const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [desktopHovered, setDesktopHovered] = useState(false);
@@ -251,6 +252,7 @@ export default function Header({
   const isOverviewActive = pathname === '/' && activeStudentTab === 'overview';
   const isRegisteredActive = pathname === '/' && activeStudentTab === 'registered';
   const isHistoryActive = pathname === '/' && activeStudentTab === 'history';
+  const isDelegateActive = pathname === '/' && activeStudentTab === 'delegate';
   const isSuperAdminPage = pathname.startsWith('/super-admin');
   const isProposalsPage = pathname.startsWith('/admin/proposals');
   const isAdminHome = pathname === '/admin' || (pathname.startsWith('/admin/events') && !isProposalsPage);
@@ -283,7 +285,8 @@ export default function Header({
   });
   const canOfficeBorrow = Boolean(effectiveUser);
   const isStudentAccount = !isUnit;
-  const needsMobileMenu = isOfficer || canOfficeDuty || canOfficeBorrow || !isStudentAccount;
+  const isClassDelegate = Boolean(effectiveUser?.isClassDelegate);
+  const needsMobileMenu = isOfficer || canOfficeDuty || canOfficeBorrow || isClassDelegate || !isStudentAccount;
 
   const shouldTrackPending = Boolean(effectiveUser && (isSuperAdmin || isOfficeAdmin || canViewProposals));
   const [adminPending, setAdminPending] = useState<AdminPendingCounts>(
@@ -326,16 +329,91 @@ export default function Header({
 
   const studentLcd = effectiveUser ? resolveStudentLcd(effectiveUser.class_id, effectiveUser.mssv) : null;
   const homeHref = isSuperAdmin
-    ? '/super-admin'
+    ? '/super-admin?tab=overview'
     : isStudentAccount
     ? '/'
     : canManageEvents
     ? '/admin'
     : canViewProposals
     ? '/admin/proposals'
+    : isOfficeAdmin
+    ? '/office/admin'
     : canSecurity
     ? '/security'
     : '/admin';
+
+  // Track recent in-app route history so the Back button knows whether router.back() stays inside the app
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+      const raw = window.sessionStorage.getItem('hdd_nav_stack');
+      const parsed = raw ? JSON.parse(raw) : [];
+      const stack: string[] = Array.isArray(parsed)
+        ? parsed.filter((x): x is string => typeof x === 'string')
+        : [];
+      const top = stack[stack.length - 1];
+      if (top === currentUrl) return;
+      if (stack.length >= 2 && stack[stack.length - 2] === currentUrl) {
+        stack.pop();
+      } else {
+        stack.push(currentUrl);
+        if (stack.length > 30) stack.shift();
+      }
+      window.sessionStorage.setItem('hdd_nav_stack', JSON.stringify(stack));
+    } catch {}
+  }, [pathname, activeSuperAdminTab, activeStudentTab]);
+
+  const homePathname = homeHref.split('?')[0];
+  const isOnDefaultHome = isSuperAdmin
+    ? pathname === '/super-admin' && (!activeSuperAdminTab || activeSuperAdminTab === 'overview')
+    : isStudentAccount
+    ? pathname === '/' && activeStudentTab === 'overview'
+    : pathname === homePathname;
+
+  const shouldShowBack =
+    showBack === true
+      ? true
+      : showBack === false
+      ? false
+      : Boolean(pathname && !isOnDefaultHome && pathname !== '/login' && pathname !== '/maintenance');
+
+  const fallbackBackHref = backHref || homeHref;
+
+  const handleGoBack = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    closeSidebar();
+    if (typeof window === 'undefined') return;
+    let hasInAppHistory = false;
+    try {
+      const raw = window.sessionStorage.getItem('hdd_nav_stack');
+      const stack = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(stack) && stack.length > 1) {
+        hasInAppHistory = true;
+      }
+    } catch {}
+    if (!hasInAppHistory) {
+      hasInAppHistory =
+        window.history.length > 1 &&
+        Boolean(document.referrer) &&
+        document.referrer.startsWith(window.location.origin);
+    }
+    if (hasInAppHistory) {
+      e.preventDefault();
+      if (typeof router?.back === 'function') {
+        router.back();
+      } else {
+        window.history.back();
+      }
+    }
+  };
+
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    closeSidebar();
+    if (isSuperAdminPage && onSelectSuperAdminTab) {
+      e.preventDefault();
+      onSelectSuperAdminTab('overview');
+    }
+  };
 
   const handleLogout = async () => {
     if (onLogout) {
@@ -404,13 +482,24 @@ export default function Header({
             </button>
           ) : null}
 
-          {showBack && (
-            <Link href={backHref} className={styles.backButton} aria-label="Quay lại">
-              <ArrowLeftIcon size={20} />
+          {shouldShowBack && (
+            <Link
+              href={fallbackBackHref}
+              onClick={handleGoBack}
+              className={styles.backButton}
+              aria-label="Quay lại"
+              title="Quay lại trang trước"
+            >
+              <ArrowLeftIcon size={19} />
             </Link>
           )}
-          <Link href={homeHref} className={styles.logoLink} title="Về trang chủ">
-            <DualLogos size="sm" />
+          <Link
+            href={homeHref}
+            onClick={handleLogoClick}
+            className={styles.logoLink}
+            title="Về trang mặc định"
+          >
+            <DualLogos size="sm" hideTitles />
             <div className={styles.branding}>
               <span className={styles.appTitle}>{title || 'HOẠT ĐỘNG ĐOÀN'}</span>
               <span className={styles.appSubtitle}>Học Viện Công Nghệ Bưu Chính Viễn Thông Cơ Sở Tại TP. Hồ Chí Minh</span>
@@ -516,6 +605,30 @@ export default function Header({
                     </span>
                     <span className={styles.sidebarLabel}>Lịch sử minh chứng</span>
                   </Link>
+
+                  {isClassDelegate && (
+                    <Link
+                      href="/?view=student&tab=delegate"
+                      title={
+                        effectiveUser?.delegate_class_id
+                          ? `BCH Chi Đoàn ${effectiveUser.delegate_class_id}${
+                              typeof effectiveUser.delegate_days_left === 'number'
+                                ? ` · còn ${effectiveUser.delegate_days_left} ngày`
+                                : ''
+                            }`
+                          : 'Tra cứu minh chứng Chi Đoàn'
+                      }
+                      className={`${styles.sidebarItem} ${isDelegateActive ? styles.sidebarItemActive : ''}`}
+                      onClick={closeSidebar}
+                    >
+                      <span className={styles.sidebarIcon}>
+                        <ShieldCheckIcon size={17} />
+                      </span>
+                      <span className={styles.sidebarLabel}>
+                        BCH Chi Đoàn{effectiveUser?.delegate_class_id ? ` (${effectiveUser.delegate_class_id})` : ''}
+                      </span>
+                    </Link>
+                  )}
 
                   {canOfficeDuty && (
                     <Link

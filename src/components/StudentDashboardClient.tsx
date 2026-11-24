@@ -6,9 +6,18 @@ import dynamic from 'next/dynamic';
 import QRCodeDisplay from '@/components/QRCodeDisplay';
 import RoleBadge from '@/components/RoleBadge';
 import DataTable from '@/components/DataTable';
+import StudentWeeklyTimetable from '@/components/StudentWeeklyTimetable';
+import {
+  getTodayDateVN,
+  type BorrowRequestInput,
+  type DutyShiftHours,
+  type DutyShiftInput,
+} from '@/lib/utils/student-schedule';
 
 const StudentSelfScannerModal = dynamic(() => import('@/components/StudentSelfScannerModal'), { ssr: false });
 const EMPTY_REGISTRATIONS: any[] = [];
+const EMPTY_DUTY_SHIFTS: DutyShiftInput[] = [];
+const EMPTY_BORROW_REQUESTS: BorrowRequestInput[] = [];
 import ExcelExportButton from '@/components/ExcelExportButton';
 import { useToast } from '@/components/ToastProvider';
 import { fetchMeCached, invalidateClientMeCache } from '@/lib/client/me-cache';
@@ -45,6 +54,16 @@ interface StudentDashboardClientProps {
   tier: string;
   initialHistory: HistoryItem[];
   initialRegistrations?: any[];
+  initialDutyShifts?: DutyShiftInput[];
+  initialBorrowRequests?: BorrowRequestInput[];
+  dutyShiftConfig?: DutyShiftHours;
+  initialDelegateInfo?: {
+    isDelegate: boolean;
+    class_id?: string;
+    daysLeft?: number;
+    expires_at?: string;
+  } | null;
+  todayVN?: string;
   activeSection?: 'overview' | 'registered' | 'history' | 'delegate';
   isDutyVolunteer?: boolean;
 }
@@ -64,9 +83,14 @@ export default function StudentDashboardClient({
   tier,
   initialHistory,
   initialRegistrations = EMPTY_REGISTRATIONS,
+  initialDutyShifts = EMPTY_DUTY_SHIFTS,
+  initialBorrowRequests = EMPTY_BORROW_REQUESTS,
+  dutyShiftConfig,
+  initialDelegateInfo = null,
+  todayVN,
   activeSection = 'overview',
-  isDutyVolunteer = false,
 }: StudentDashboardClientProps) {
+  const resolvedTodayVN = useMemo(() => todayVN || getTodayDateVN(), [todayVN]);
   const toast = useToast();
   const [currentUser, setCurrentUser] = useState(user);
   const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
@@ -89,7 +113,7 @@ export default function StudentDashboardClient({
     class_id?: string;
     daysLeft?: number;
     expires_at?: string;
-  } | null>(null);
+  } | null>(initialDelegateInfo);
   const [classStudents, setClassStudents] = useState<any[]>([]);
   const [loadingClass, setLoadingClass] = useState(false);
 
@@ -106,7 +130,7 @@ export default function StudentDashboardClient({
   const myCohort = useMemo(() => getCohortFromMssv(currentUser.mssv), [currentUser.mssv]);
 
   const checkedInEventIdSet = useMemo(
-    () => new Set(history.map((h) => h.event_id).filter(Boolean)),
+    () => new Set(history.map((h) => h.event_id).filter((id): id is string => Boolean(id))),
     [history]
   );
 
@@ -527,9 +551,27 @@ export default function StudentDashboardClient({
               </p>
             </div>
           </div>
+
+          {/* Compact 3-Stat Summary Card (balances Left Column with Timetable) */}
+          <div className={styles.sideStatsCard}>
+            <Link href="/?view=student&tab=history" className={styles.sideStatItem}>
+              <span className={styles.sideStatValue}>{history.length}</span>
+              <span className={styles.sideStatLabel}>Hoạt động ĐRL</span>
+            </Link>
+
+            <div className={`${styles.sideStatItem} ${styles.sideStatMid}`}>
+              <span className={styles.sideStatValue}>{volunteerOrOrganizerCount}</span>
+              <span className={styles.sideStatLabel}>CTV / BTC</span>
+            </div>
+
+            <Link href="/?view=student&tab=registered" className={styles.sideStatItem}>
+              <span className={styles.sideStatValue}>{pendingRegistrations.length}</span>
+              <span className={styles.sideStatLabel}>Chờ điểm danh</span>
+            </Link>
+          </div>
         </aside>
 
-        {/* ── RIGHT MAIN COLUMN: Alerts + Unified Stat Strip + Discovery + Delegate + Recent Proofs ── */}
+        {/* ── RIGHT MAIN COLUMN: Alerts + Weekly Timetable + Discovery + Recent Proofs ── */}
         <div className={styles.rightColumn}>
           {/* Missing Phone Alert */}
           {isPhoneMissing && (
@@ -555,28 +597,18 @@ export default function StudentDashboardClient({
             </div>
           )}
 
-          {/* Unified Neutral 3-Stat KPI Strip (Anti-AI: tabular dark slate, no rainbow) */}
-          <div className={styles.kpiGrid}>
-            <Link href="/?view=student&tab=history" className={styles.kpiCard}>
-              <span className={styles.kpiLabel}>Hoạt động ĐRL</span>
-              <span className={styles.kpiValue}>{history.length}</span>
-              <span className={styles.kpiSub}>Xem lịch sử minh chứng</span>
-            </Link>
+          {/* Merged Weekly Timetable (Events + Office Duty + Borrow Requests) */}
+          <StudentWeeklyTimetable
+            registrations={registeredEvents}
+            checkedInEventIds={checkedInEventIdSet}
+            dutyShifts={initialDutyShifts}
+            borrowRequests={initialBorrowRequests}
+            shiftHours={dutyShiftConfig}
+            todayVN={resolvedTodayVN}
+            onOpenScanner={() => setShowScanner(true)}
+          />
 
-            <div className={styles.kpiCard}>
-              <span className={styles.kpiLabel}>Vai trò CTV / BTC</span>
-              <span className={styles.kpiValue}>{volunteerOrOrganizerCount}</span>
-              <span className={styles.kpiSub}>Hỗ trợ &amp; điều hành</span>
-            </div>
-
-            <Link href="/?view=student&tab=registered" className={styles.kpiCard}>
-              <span className={styles.kpiLabel}>Chờ điểm danh</span>
-              <span className={styles.kpiValue}>{pendingRegistrations.length}</span>
-              <span className={styles.kpiSub}>Xem sự kiện đã đăng ký</span>
-            </Link>
-          </div>
-
-          {/* Clean Discovery CTA Bar */}
+          {/* Calm Light-Institutional Discovery Strip */}
           <div className={styles.discoverCta}>
             <div>
               <div className={styles.discoverEyebrow}>
@@ -589,54 +621,14 @@ export default function StudentDashboardClient({
               </div>
             </div>
             <Link href="/events" className={styles.discoverCtaBtn}>
-              <CalendarIcon size={15} color="#1e3a8a" />
-              <span>Xem sự kiện</span>
+              <CalendarIcon size={15} color="#ffffff" />
+              <span>Xem sự kiện →</span>
             </Link>
           </div>
 
-          {/* BCH Chi Đoàn Shortcut Card (if student is an active Class Delegate) */}
-          {delegateInfo?.isDelegate && (
-            <div className={styles.delegateBanner}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <ShieldCheckIcon size={19} color="#1d4ed8" />
-                <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
-                    BCH Chi Đoàn {delegateInfo.class_id} · còn {delegateInfo.daysLeft} ngày nhiệm kỳ
-                  </div>
-                  <div style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 500 }}>
-                    Tra cứu minh chứng &amp; xuất Excel ĐRL cho toàn bộ đoàn viên trong lớp.
-                  </div>
-                </div>
-              </div>
-              <Link href="/?view=student&tab=delegate" className={styles.delegateBtn}>
-                Mở Tra Cứu Lớp
-              </Link>
-            </div>
-          )}
-
-          {/* CTV Trực Văn Phòng Đoàn Shortcut Card */}
-          {isDutyVolunteer && (
-            <div className={styles.delegateBanner}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <ClockIcon size={19} color="#1d4ed8" />
-                <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
-                    CTV Trực Văn Phòng Đoàn
-                  </div>
-                  <div style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 500 }}>
-                    Đăng ký lịch trực tuần (Thứ 2 – Thứ 6) &amp; chấm công qua WiFi Văn phòng Đoàn.
-                  </div>
-                </div>
-              </div>
-              <Link href="/office/duty" className={styles.delegateBtn}>
-                Vào Trực Văn Phòng
-              </Link>
-            </div>
-          )}
-
           {/* Compact Recent 3 Attendance Proofs Preview */}
           <section className={styles.profileCard}>
-            <div className={styles.profileHeader} style={{ marginBottom: '0.75rem', paddingBottom: '0.75rem' }}>
+            <div className={styles.profileHeader} style={{ marginBottom: '0.65rem', paddingBottom: '0.65rem' }}>
               <h3 className={styles.historyTitle}>
                 <CheckCircleIcon size={17} color="#15803d" />
                 <span>Minh chứng gần nhất</span>
@@ -650,18 +642,21 @@ export default function StudentDashboardClient({
             </div>
 
             {history.length === 0 ? (
-              <div className={styles.emptyHistory} style={{ padding: '1.25rem' }}>
+              <div className={styles.emptyHistory} style={{ padding: '1.1rem' }}>
                 Bạn chưa có lượt điểm danh minh chứng nào.
               </div>
             ) : (
-              <ul className={styles.historyList}>
+              <ul className={`${styles.historyList} ${styles.recentHistoryList}`}>
                 {history.slice(0, 3).map((item, idx) => (
-                  <li key={item.event_id ? `${item.event_id}-${idx}` : idx} className={styles.historyItem} style={{ padding: '0.8rem 1rem' }}>
+                  <li
+                    key={item.event_id ? `${item.event_id}-${idx}` : idx}
+                    className={`${styles.historyItem} ${styles.recentHistoryItem}`}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span className={styles.eventName} style={{ fontSize: '0.92rem' }}>{item.event_name}</span>
+                      <span className={styles.eventName} style={{ fontSize: '0.9rem' }}>{item.event_name}</span>
                       <RoleBadge role={item.participate_role} />
                     </div>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <div style={{ fontSize: '0.76rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <ClockIcon size={13} />
                       <span>
                         {item.event_date

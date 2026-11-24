@@ -5,16 +5,18 @@
 }
 
 .banner {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
-  color: #ffffff;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #1d4ed8;
   border-radius: 16px;
-  padding: 1.35rem 1.5rem;
+  padding: 1.25rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  box-shadow: 0 8px 20px -8px rgba(30, 64, 175, 0.35);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 .bannerLeft {
@@ -27,33 +29,34 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.74rem;
-  font-weight: 800;
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #bfdbfe;
+  color: #1d4ed8;
 }
 
 .bannerTitle {
   margin: 0;
   font-size: 1.35rem;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.015em;
+  color: #0f172a;
 }
 
 .bannerSub {
   margin: 0;
   font-size: 0.85rem;
-  color: rgba(239, 246, 255, 0.9);
+  color: #64748b;
 }
 
 .lcdSelect {
   height: 38px;
   padding: 0 0.85rem;
   border-radius: 10px;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.14);
-  color: #ffffff;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
   font-size: 0.84rem;
   font-weight: 700;
   outline: none;

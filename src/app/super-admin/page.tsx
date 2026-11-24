@@ -83,21 +83,6 @@ function SuperAdminContent() {
   const [activeTab, setActiveTab] = useState<SuperAdminTab>(tabParam || 'overview');
   const [selectedUnitFilter, setSelectedUnitFilter] = useState<string | null>(null);
 
-  const switchTab = (tab: SuperAdminTab) => {
-    setActiveTab(tab);
-    if (tab !== 'overview') {
-      ensureSecondaryDataLoaded();
-    }
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('superadmin_active_tab', tab);
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', tab);
-        window.history.replaceState(null, '', url.toString());
-      } catch {}
-    }
-  };
-
   const [stats, setStats] = useState({ events: 0, checkins: 0, students: 0 });
   const [events, setEvents] = useState<Event[]>([]);
   const [proposals, setProposals] = useState<EventProposal[]>([]);
@@ -423,55 +408,6 @@ function SuperAdminContent() {
       setProposalsLoading(false);
     }
   };
-
-  const secondaryLoadedRef = React.useRef(false);
-  const ensureSecondaryDataLoaded = () => {
-    if (secondaryLoadedRef.current) return;
-    secondaryLoadedRef.current = true;
-    Promise.all([
-      fetchStudents(),
-      fetchOfficers(),
-      fetchUnits(),
-      fetchRooms(),
-      fetchPenalties(),
-      fetchDelegates(),
-    ]).catch((e) => console.error(e));
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    // Primary critical data (load first for instant UI response)
-    void (async () => {
-      await Promise.resolve();
-      if (cancelled) return;
-      Promise.all([fetchStats(), fetchEvents(), fetchProposals()]).catch((e) => console.error(e));
-    })();
-
-    let initialSavedTab: string | null = tabParam;
-    if (!initialSavedTab && typeof window !== 'undefined') {
-      try {
-        initialSavedTab = localStorage.getItem('superadmin_active_tab');
-      } catch {}
-    }
-
-    if (initialSavedTab && initialSavedTab !== 'overview') {
-      queueMicrotask(() => {
-        if (!cancelled) ensureSecondaryDataLoaded();
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    // Defer secondary fetches when landing on Overview so initial dashboard APIs finish cleanly first
-    const timer = setTimeout(() => {
-      if (!cancelled) ensureSecondaryDataLoaded();
-    }, 900);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, []);
 
   const fetchUnits = async () => {
     setUnitsLoading(true);
@@ -1648,6 +1584,93 @@ function SuperAdminContent() {
     }
   };
 
+  const secondaryLoadedRef = React.useRef(false);
+  const ensureSecondaryDataLoaded = () => {
+    if (secondaryLoadedRef.current) return;
+    secondaryLoadedRef.current = true;
+    Promise.all([
+      fetchStudents(),
+      fetchOfficers(),
+      fetchUnits(),
+      fetchRooms(),
+      fetchPenalties(),
+      fetchDelegates(),
+    ]).catch((e) => console.error(e));
+  };
+
+  const switchTab = (tab: SuperAdminTab) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('superadmin_active_tab', tab);
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        if (tab !== activeTab) {
+          window.history.pushState({ superAdminTab: tab }, '', url.toString());
+        } else {
+          window.history.replaceState({ superAdminTab: tab }, '', url.toString());
+        }
+      } catch {}
+    }
+    setActiveTab(tab);
+    if (tab !== 'overview') {
+      ensureSecondaryDataLoaded();
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePopState = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const nextTab = parseValidSuperAdminTab(params.get('tab')) || 'overview';
+        setActiveTab(nextTab);
+        if (nextTab !== 'overview') {
+          ensureSecondaryDataLoaded();
+        }
+        localStorage.setItem('superadmin_active_tab', nextTab);
+      } catch {}
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Primary critical data (load first for instant UI response)
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      Promise.all([fetchStats(), fetchEvents(), fetchProposals()]).catch((e) => console.error(e));
+    })();
+
+    let initialSavedTab: string | null = tabParam;
+    if (!initialSavedTab && typeof window !== 'undefined') {
+      try {
+        initialSavedTab = localStorage.getItem('superadmin_active_tab');
+      } catch {}
+    }
+
+    if (initialSavedTab && initialSavedTab !== 'overview') {
+      queueMicrotask(() => {
+        if (!cancelled) ensureSecondaryDataLoaded();
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Defer secondary fetches when landing on Overview so initial dashboard APIs finish cleanly first
+    const timer = setTimeout(() => {
+      if (!cancelled) ensureSecondaryDataLoaded();
+    }, 900);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const grantPermission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!grantMssv || granting) return;
@@ -1991,7 +2014,6 @@ function SuperAdminContent() {
       )}
 
       <Header
-        showBack={false}
         title="HOẠT ĐỘNG ĐOÀN"
         activeSuperAdminTab={activeTab}
         onSelectSuperAdminTab={switchTab}
