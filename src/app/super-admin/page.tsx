@@ -586,6 +586,32 @@ function SuperAdminContent() {
   const grantOfficerRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!officerEmail || grantingOfficer) return;
+    const rawEmailInput = officerEmail.trim().toLowerCase();
+    const targetEmailNormalized = rawEmailInput.includes('@')
+      ? rawEmailInput
+      : `${rawEmailInput}@student.ptithcm.edu.vn`;
+
+    let revokeSuperAdmin = false;
+    if (officerRoleTier === 'super_admin') {
+      const ok = window.confirm(
+        `CẢNH BÁO: Bạn đang cấp TOÀN QUYỀN Super Admin cho ${targetEmailNormalized}. Tài khoản này sẽ truy cập được toàn bộ các mục Quản Trị Toàn Trường. Bạn chắc chắn muốn tiếp tục?`
+      );
+      if (!ok) return;
+    } else if (
+      targetEmailNormalized !== 'n22dccn158@student.ptithcm.edu.vn' &&
+      officers.some(
+        (o) =>
+          o.email?.toLowerCase().trim() === targetEmailNormalized &&
+          o.role_tier === 'super_admin'
+      )
+    ) {
+      revokeSuperAdmin = window.confirm(
+        `Tài khoản ${targetEmailNormalized} hiện đang có quyền Super Admin (toàn quyền hệ thống).\n\n` +
+          `• Bấm OK để GỠ quyền Super Admin cũ và chuyển sang quyền mới.\n` +
+          `• Bấm Hủy (Cancel) để GIỮ NGUYÊN Super Admin và chỉ cấp thêm quyền mới.`
+      );
+    }
+
     setGrantingOfficer(true);
     try {
       let finalUnitCode = officerUnitCode;
@@ -635,13 +661,14 @@ function SuperAdminContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: officerEmail,
+          email: targetEmailNormalized,
           full_name: officerFullName,
           role_tier: officerRoleTier,
           unit_code: finalUnitCode,
           unit_name: finalUnitName,
           notes: officerNotes,
           custom_unit: customUnitPayload,
+          revoke_super_admin: revokeSuperAdmin,
         }),
       });
       const data = await res.json();
@@ -653,6 +680,9 @@ function SuperAdminContent() {
         setCustomUnitCode('');
         setCustomUnitName('');
         setCustomUnitEmail('');
+        if (officerRoleTier === 'super_admin') {
+          setOfficerRoleTier('event_admin');
+        }
         if (officerUnitCode === '__NEW_CUSTOM__') {
           setOfficerUnitCode(finalUnitCode);
         }

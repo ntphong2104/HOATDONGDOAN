@@ -15,9 +15,15 @@ jest.mock('@/lib/supabase/server', () => ({
 describe('Whitebox Tests: /api/admin/officers (Role Management & Security Rules)', () => {
   let mockSupabase: any;
   let mockOfficersList: any[];
+  let mockSuperAdminsList: any[];
+  let superAdminsUpsertSpy: jest.Mock;
+  let superAdminsDeleteIlikeSpy: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSuperAdminsList = [];
+    superAdminsUpsertSpy = jest.fn().mockResolvedValue({ data: null, error: null });
+    superAdminsDeleteIlikeSpy = jest.fn().mockResolvedValue({ data: null, error: null });
     mockOfficersList = [
       {
         id: '1',
@@ -88,9 +94,13 @@ describe('Whitebox Tests: /api/admin/officers (Role Management & Security Rules)
         }
         if (table === 'super_admins') {
           return {
-            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-            delete: jest.fn().mockReturnThis(),
-            ilike: jest.fn().mockResolvedValue({ data: null, error: null }),
+            select: jest.fn().mockImplementation(() =>
+              Promise.resolve({ data: mockSuperAdminsList, error: null })
+            ),
+            upsert: superAdminsUpsertSpy,
+            delete: jest.fn().mockReturnValue({
+              ilike: superAdminsDeleteIlikeSpy,
+            }),
           };
         }
         return {
@@ -196,5 +206,52 @@ describe('Whitebox Tests: /api/admin/officers (Role Management & Security Rules)
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.message).toContain('Đã cấp quyền');
+  });
+
+  test('Granting office_admin does NOT upsert super_admins and cleans stale super_admins rows', async () => {
+    (getAuthContext as jest.Mock).mockResolvedValue({
+      email: 'n22dccn158@student.ptithcm.edu.vn',
+      isSuperAdmin: true,
+      tier: 'super_admin',
+    });
+
+    const req = new Request('http://localhost/api/admin/officers', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: 'n23dcvt109@student.ptithcm.edu.vn',
+        full_name: 'VÕ VĂN LUẬT',
+        role_tier: 'office_admin',
+        unit_code: 'VAN_PHONG_DOAN',
+        unit_name: 'Văn phòng Đoàn (Trực VP & Mượn dụng cụ)',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(superAdminsUpsertSpy).not.toHaveBeenCalled();
+    expect(superAdminsDeleteIlikeSpy).toHaveBeenCalledWith('email', 'n23dcvt109@student.ptithcm.edu.vn');
+  });
+
+  test('GET auto-heals stale super_admins rows for non-super_admin officers and hides fake super_admin badge', async () => {
+    (getAuthContext as jest.Mock).mockResolvedValue({
+      email: 'n22dccn158@student.ptithcm.edu.vn',
+      isSuperAdmin: true,
+      tier: 'super_admin',
+    });
+    mockSuperAdminsList = [
+      { email: 'canbo1@ptithcm.edu.vn', created_at: '2026-08-19T00:00:00.000Z' },
+    ];
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(superAdminsDeleteIlikeSpy).toHaveBeenCalledWith('email', 'canbo1@ptithcm.edu.vn');
+    const leakedSuperAdmin = body.data.find(
+      (o: any) => o.email === 'canbo1@ptithcm.edu.vn' && o.role_tier === 'super_admin'
+    );
+    expect(leakedSuperAdmin).toBeUndefined();
   });
 });

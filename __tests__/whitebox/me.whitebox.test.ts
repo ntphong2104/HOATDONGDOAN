@@ -14,6 +14,7 @@ jest.mock('@/lib/constants/officers-store', () => ({
     { email: 'doanthanhnien@ptithcm.edu.vn', role_tier: 'youth_union', role_title: 'Đoàn Học Viện' },
     { email: 'phongctsv@ptithcm.edu.vn', role_tier: 'ctsv', role_title: 'Phòng CTSV' },
     { email: 'phongquantri@ptithcm.edu.vn', role_tier: 'facility', role_title: 'Phòng CSVC' },
+    { email: 'n23dcvt109@student.ptithcm.edu.vn', role_tier: 'office_admin', role_title: 'Admin Văn phòng Đoàn' },
   ]),
 }));
 
@@ -250,5 +251,38 @@ describe('Whitebox Tests: GET /api/me (Role Tier Resolution & Error Paths)', () 
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.data.tier).toBe('facility');
+  });
+
+  test('Branch 12: office_admin officer is NOT escalated by stale super_admins row', async () => {
+    setupMockSupabase({
+      sessionUser: { email: 'n23dcvt109@student.ptithcm.edu.vn' },
+      dbUser: { mssv: 'N23DCVT109', full_name: 'VÕ VĂN LUẬT', class_id: 'D23CQVT02-N' },
+      superAdmin: { email: 'n23dcvt109@student.ptithcm.edu.vn' },
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tier).toBe('office_admin');
+    expect(body.data.isOfficeAdmin).toBe(true);
+    expect(body.data.isSuperAdmin).toBe(false);
+    expect(body.data.isEventAdmin).toBe(false);
+    expect(body.data.isChecker).toBe(false);
+  });
+
+  test('Branch 13: youth_union officer is NOT escalated by stale super_admins row', async () => {
+    setupMockSupabase({
+      sessionUser: { email: 'doanthanhnien@ptithcm.edu.vn' },
+      dbUser: { mssv: 'CANBO', full_name: 'Đoàn Học Viện', class_id: 'BCH' },
+      superAdmin: { email: 'doanthanhnien@ptithcm.edu.vn' },
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.tier).toBe('youth_union');
+    expect(body.data.isSuperAdmin).toBe(false);
   });
 });

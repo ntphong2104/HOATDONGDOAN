@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     const adminSupabase = (typeof createAdminClient === 'function' ? await createAdminClient() : supabase) || supabase;
 
     // Run all auth checks in parallel (using B-tree indexes via .eq instead of .ilike)
-    const [superAdminResult, existingUser, eventRolesResult] = await Promise.all([
+    const [superAdminResult, assignedOfficerRolesResult, existingUser, eventRolesResult] = await Promise.all([
       // 1. Check super admin
       (async () => {
         try {
@@ -52,6 +52,13 @@ export async function GET(request: Request) {
             .maybeSingle();
           return res.data;
         } catch { return null; }
+      })(),
+      // 1b. Check explicit officer roles (prevents stale super_admins rows from escalating non-super officers)
+      (async () => {
+        try {
+          const roles = await getStoredOfficerRoles(adminSupabase);
+          return roles.filter((r) => r.email.toLowerCase().trim() === email);
+        } catch { return []; }
       })(),
       // 2. Check registered student or unit in users table (single query reused for upsert decision)
       (async () => {
@@ -80,10 +87,15 @@ export async function GET(request: Request) {
     ]);
 
     const superAdmin = superAdminResult;
+    const assignedOfficerRoles = Array.isArray(assignedOfficerRolesResult) ? assignedOfficerRolesResult : [];
     const registeredUser = existingUser;
     const eventRoles = eventRolesResult;
 
-    const isSuperAdmin = !!superAdmin || email === 'n22dccn158@student.ptithcm.edu.vn';
+    const hasExplicitOfficerRoles = assignedOfficerRoles.length > 0;
+    const isSuperAdmin =
+      email === 'n22dccn158@student.ptithcm.edu.vn' ||
+      assignedOfficerRoles.some((r) => r.role_tier === 'super_admin') ||
+      (!hasExplicitOfficerRoles && !!superAdmin);
     const isEventAdmin = eventRoles?.some((r) => r.role_type === 'event_admin');
     const isChecker = eventRoles?.some((r) => r.role_type === 'checker');
 
@@ -160,14 +172,18 @@ export async function GET(request: Request) {
 
     // Tài khoản đơn vị / phòng ban (không có MSSV) vào thẳng Bàn làm việc tương ứng
     let departmentTier: string | null = getOfficialTierForEmail(email);
-    if (!departmentTier) {
-      try {
-        const stored = await getStoredOfficerRoles(await createAdminClient());
-        departmentTier = stored.find((o) => o.email.toLowerCase().trim() === email)?.role_tier || null;
-      } catch {}
+    if (!departmentTier && assignedOfficerRoles.length > 0) {
+      const priority: string[] = ['super_admin', 'youth_union', 'ctsv', 'facility', 'security', 'event_admin', 'office_admin', 'checker'];
+      departmentTier =
+        priority.find((t) => assignedOfficerRoles.some((r) => r.role_tier === t)) ||
+        assignedOfficerRoles[0]?.role_tier ||
+        null;
     }
     if (departmentTier === 'ctsv' || departmentTier === 'facility') {
       return NextResponse.redirect(`${origin}/admin/proposals`);
+    }
+    if (departmentTier === 'office_admin') {
+      return NextResponse.redirect(`${origin}/office/admin`);
     }
     if (departmentTier === 'security') {
       return NextResponse.redirect(`${origin}/security`);

@@ -523,11 +523,13 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
       const hasOfficerTier = (t: UserTier) =>
         Array.isArray(assignedOfficerRole) && assignedOfficerRole.some((r) => r.role_tier === t);
+      const hasExplicitOfficerRoles =
+        Array.isArray(assignedOfficerRole) && assignedOfficerRole.length > 0;
 
       const isSuperAdmin =
         lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
-        !!superAdmin ||
-        hasOfficerTier('super_admin');
+        hasOfficerTier('super_admin') ||
+        (!hasExplicitOfficerRoles && !!superAdmin);
 
       const isYouthUnion =
         officialTier === 'youth_union' ||

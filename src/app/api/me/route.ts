@@ -50,11 +50,12 @@ export async function GET() {
         try {
           const supabase = (typeof createAdminClient === 'function' ? await createAdminClient() : await createClient()) || (await createClient());
 
-          let assignedOfficerRole: any = null;
+          let assignedOfficerRoles: any[] = [];
           try {
             const roles = await getStoredOfficerRoles(supabase);
-            assignedOfficerRole = roles.find((r) => r.email.toLowerCase() === demoUser.email.toLowerCase());
+            assignedOfficerRoles = roles.filter((r) => r.email.toLowerCase() === demoUser.email.toLowerCase());
           } catch {}
+          const assignedOfficerRole = assignedOfficerRoles[0] || null;
 
           let eventRoles: any = [];
           try {
@@ -113,7 +114,16 @@ export async function GET() {
           }
 
           const tier: UserTier = assignedOfficerRole?.role_tier || demoUser.tier || 'user';
-          const isSuperAdmin = tier === 'super_admin' || demoUser.isSuperAdmin || demoUser.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn';
+          const isSuperAdmin =
+            tier === 'super_admin' ||
+            assignedOfficerRoles.some((r) => r.role_tier === 'super_admin') ||
+            demoUser.isSuperAdmin ||
+            demoUser.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn';
+          const isOfficeAdmin =
+            isSuperAdmin ||
+            demoUser.isOfficeAdmin ||
+            tier === 'office_admin' ||
+            assignedOfficerRoles.some((r) => r.role_tier === 'office_admin');
           const isEventAdmin = isSuperAdmin || tier === 'youth_union' || tier === 'ctsv' || tier === 'facility' || tier === 'event_admin' || managed_events.length > 0;
           const isChecker = isEventAdmin || tier === 'checker' || demoUser.isChecker;
 
@@ -130,6 +140,7 @@ export async function GET() {
               phone: pExtra?.phone !== undefined ? pExtra.phone : (demoUser.phone || ''),
               tier,
               isSuperAdmin,
+              isOfficeAdmin,
               isEventAdmin,
               isChecker,
               unit_name: assignedOfficerRole?.unit_name || demoUser.unit_name,
@@ -275,6 +286,7 @@ export async function GET() {
     const assignedOfficerRoles = Array.isArray(officerRolesResult) ? officerRolesResult : [];
     const assignedOfficerRole = assignedOfficerRoles[0] || null;
     const hasOfficerTier = (t: UserTier) => assignedOfficerRoles.some((r) => r.role_tier === t);
+    const hasExplicitOfficerRoles = assignedOfficerRoles.length > 0;
     const eventRoles = eventRolesResult;
     const createdEvents = createdEventsResult;
 
@@ -284,8 +296,8 @@ export async function GET() {
 
     const isSuperAdmin =
       lowerEmail === ROOT_SUPER_ADMIN.toLowerCase() ||
-      !!superAdmin ||
-      hasOfficerTier('super_admin');
+      hasOfficerTier('super_admin') ||
+      (!hasExplicitOfficerRoles && !!superAdmin);
 
     const isYouthUnion =
       officialTier === 'youth_union' ||
@@ -450,6 +462,7 @@ export async function GET() {
       ctsv: { mssv: 'PHONG-CTSV', name: 'Phòng Công Tác Sinh Viên (CTSV)', classId: 'PHONG-BAN' },
       facility: { mssv: 'PHONG-TCHCQT', name: 'Phòng. TC-HC-QT', classId: 'PHONG-BAN' },
       security: { mssv: 'TO-BAOVE', name: 'Tổ Bảo Vệ (Bàn Giao Chìa Khóa)', classId: 'TO-BAO-VE' },
+      office_admin: { mssv: 'VP-DOAN', name: 'Admin Văn phòng Đoàn', classId: 'VP-DOAN' },
       super_admin: { mssv: 'SUPER_ADMIN', name: 'Super Admin Đoàn Trường', classId: 'SUPER-ADMIN' },
       event_admin: { mssv: 'EVENT_ADMIN', name: 'Admin Sự Kiện', classId: 'BAN-TO-CHUC' },
     };

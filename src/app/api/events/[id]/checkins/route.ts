@@ -20,13 +20,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const isSuperAdmin = auth.isSuperAdmin || auth.tier === 'super_admin';
   const isPrivileged = isSuperAdmin || auth.tier === 'youth_union';
 
-  // Only sync existing Super Admins to the lookup table — NOT youth_union users
-  if (isSuperAdmin) {
-    try {
-      await supabase.from('super_admins').upsert({ email: auth.email.toLowerCase() }, { onConflict: 'email' });
-    } catch {}
-  }
-
   if (!isPrivileged) {
     const allowed = await canScanEvent(auth, resolvedParams.id, undefined, supabase);
     if (!allowed) {

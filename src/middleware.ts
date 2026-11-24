@@ -475,16 +475,18 @@ async function isSuperAdminInMaintenance(
     return true;
   }
   try {
-    const [{ data: superAdmin }, { data: officerSuper }] = await Promise.all([
+    const [{ data: superAdmin }, { data: officerRows }] = await Promise.all([
       supabase.from('super_admins').select('email').eq('email', cleanEmail).maybeSingle(),
       supabase
         .from('officer_roles')
-        .select('email')
-        .eq('email', cleanEmail)
-        .eq('role_tier', 'super_admin')
-        .maybeSingle(),
+        .select('role_tier')
+        .eq('email', cleanEmail),
     ]);
-    return Boolean(superAdmin || officerSuper);
+    const rows = Array.isArray(officerRows) ? officerRows : [];
+    if (rows.length > 0) {
+      return rows.some((r: any) => r?.role_tier === 'super_admin');
+    }
+    return Boolean(superAdmin);
   } catch {
     return false;
   }

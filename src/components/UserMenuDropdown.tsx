@@ -143,6 +143,8 @@ export default function UserMenuDropdown({
       ? 'Phòng. TC-HC-QT (Phê Duyệt)'
       : tier === 'security'
       ? 'Tổ Bảo Vệ (Bàn Giao Chìa Khóa)'
+      : tier === 'office_admin'
+      ? 'Admin Văn phòng Đoàn'
       : tier === 'event_admin'
       ? 'Admin Sự Kiện (LCĐ / CLB)'
       : tier === 'checker'
@@ -321,6 +323,22 @@ export default function UserMenuDropdown({
                     <ShieldCheckIcon size={16} />
                   </div>
                   <span>Bảng Quản Trị Toàn Trường</span>
+                </Link>
+              </li>
+            )}
+
+            {/* If Office Admin or Super Admin */}
+            {(tier === 'office_admin' || Boolean(currentUser?.isOfficeAdmin)) && (
+              <li>
+                <Link
+                  href="/office/admin"
+                  className={styles.menuItem}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <div className={styles.menuItemIcon} style={{ color: '#b45309' }}>
+                    <BuildingIcon size={16} />
+                  </div>
+                  <span>Quản Trị Văn Phòng Đoàn</span>
                 </Link>
               </li>
             )}

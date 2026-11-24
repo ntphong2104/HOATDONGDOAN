@@ -45,9 +45,10 @@ export async function GET() {
     });
 
     // 2. Fetch Stored Officer Roles
+    let storedRoles: OfficerRoleItem[] = [];
     try {
-      const stored = await getStoredOfficerRoles(supabase);
-      for (const r of stored) {
+      storedRoles = await getStoredOfficerRoles(supabase);
+      for (const r of storedRoles) {
         const key = makeKey(r.email, r.role_tier, r.unit_code || 'BCH_DOAN');
         if (r.email.toLowerCase() === ROOT_SUPER_ADMIN.toLowerCase()) {
           officerMap.set(rootKey, {
@@ -89,11 +90,18 @@ export async function GET() {
       (eventRolesResult || []).map((er: any) => er.event_id)
     );
 
-    // Process super_admins
+    // Process super_admins (auto-heal stale/poisoned rows for officers who do not hold super_admin role)
     if (superAdminsResult) {
       for (const sa of superAdminsResult) {
         const emailLower = sa.email.toLowerCase().trim();
         if (emailLower === ROOT_SUPER_ADMIN.toLowerCase()) continue;
+        const storedForEmail = storedRoles.filter((r) => r.email.toLowerCase().trim() === emailLower);
+        if (storedForEmail.length > 0 && !storedForEmail.some((r) => r.role_tier === 'super_admin')) {
+          try {
+            await supabase.from('super_admins').delete().ilike('email', emailLower);
+          } catch {}
+          continue;
+        }
         const key = makeKey(emailLower, 'super_admin', 'BCH_DOAN');
         if (!officerMap.has(key)) {
           officerMap.set(key, {
@@ -261,19 +269,40 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     };
 
+    // Optional safe replacement when transferring an officer off super_admin
+    if (body.revoke_super_admin === true && roleTier !== 'super_admin' && emailRaw !== ROOT_SUPER_ADMIN.toLowerCase()) {
+      await removeOfficerRole(emailRaw, 'super_admin', undefined, supabase);
+    }
+
     // 1. Save to persistent officer store
     await saveOfficerRole(newItem, supabase);
 
-    // 2. Only super_admin belongs in super_admins table (never promote youth_union to super_admin)
+    let updatedRolesForEmail: OfficerRoleItem[] = [];
+    try {
+      updatedRolesForEmail = (await getStoredOfficerRoles(supabase)).filter(
+        (r) => r.email.toLowerCase().trim() === emailRaw
+      );
+    } catch {}
+    const stillSuperAdmin =
+      emailRaw === ROOT_SUPER_ADMIN.toLowerCase() ||
+      updatedRolesForEmail.some((r) => r.role_tier === 'super_admin');
+
+    // 2. Only super_admin belongs in super_admins table (auto-clean stale rows when granting non-super roles)
     if (roleTier === 'super_admin') {
       try {
         await supabase.from('super_admins').upsert({ email: emailRaw }, { onConflict: 'email' });
       } catch {}
+    } else if (!stillSuperAdmin) {
+      try {
+        await supabase.from('super_admins').delete().ilike('email', emailRaw);
+      } catch {}
     }
 
-    // 3. Update users table tier so the user immediately has the new permissions
+    // 3. Sync users table tier to highest remaining officer role so the user immediately has accurate permissions
     try {
-      await supabase.from('users').update({ tier: roleTier }).eq('email', emailRaw);
+      const priority: string[] = ['super_admin', 'youth_union', 'ctsv', 'facility', 'security', 'event_admin', 'office_admin', 'checker'];
+      const syncedTier = priority.find((t) => updatedRolesForEmail.some((r) => r.role_tier === t)) || roleTier;
+      await supabase.from('users').update({ tier: syncedTier }).eq('email', emailRaw);
     } catch {}
 
     invalidateAuthContextCache(emailRaw);
@@ -326,8 +355,21 @@ export async function DELETE(req: Request) {
     // 1. Remove from stored officer roles
     await removeOfficerRole(emailRaw, roleTier, id, supabase);
 
-    // 2. Remove from super_admins when revoking super_admin (or legacy youth_union rows) or all roles
-    if (roleTier === 'super_admin' || roleTier === 'youth_union' || !roleTier) {
+    let remaining: OfficerRoleItem[] = [];
+    try {
+      remaining = (await getStoredOfficerRoles(supabase)).filter(
+        (r) => r.email.toLowerCase().trim() === emailRaw
+      );
+    } catch {}
+
+    // 2. Remove from super_admins when revoking super_admin (or legacy youth_union rows), all roles, or when no super_admin role remains
+    const shouldCleanSuperAdmins =
+      emailRaw !== ROOT_SUPER_ADMIN.toLowerCase() &&
+      (roleTier === 'super_admin' ||
+        roleTier === 'youth_union' ||
+        !roleTier ||
+        !remaining.some((r) => r.role_tier === 'super_admin'));
+    if (shouldCleanSuperAdmins) {
       try {
         await supabase.from('super_admins').delete().ilike('email', emailRaw);
       } catch {}
@@ -346,9 +388,6 @@ export async function DELETE(req: Request) {
 
     // 4. Sync users table tier to highest remaining officer role (or 'user' if none remain)
     try {
-      const remaining = (await getStoredOfficerRoles(supabase)).filter(
-        (r) => r.email.toLowerCase().trim() === emailRaw
-      );
       const priority: string[] = ['super_admin', 'youth_union', 'ctsv', 'facility', 'security', 'event_admin', 'office_admin', 'checker'];
       const nextTier = priority.find((t) => remaining.some((r) => r.role_tier === t)) || 'user';
       await supabase.from('users').update({ tier: nextTier }).eq('email', emailRaw);
