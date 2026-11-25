@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { getEventMetaBatch } from '@/lib/constants/event-meta-store';
+import { getEffectiveEndDate, resolveEventDisplayLocation } from '@/lib/utils/event-logic';
 import { resolveActorLcdScope } from '@/lib/utils/lcd-auth';
 import Header from '@/components/Header';
 import AdminDashboardClient from './AdminDashboardClient';
@@ -73,14 +74,23 @@ export default async function AdminEventsPage() {
     resolveActorLcdScope(supabase, auth),
   ]);
 
-  // Attach sessions from event_meta so multi-session events compute deadline & display date range accurately
+  // Attach sessions, location & end_date from event_meta so multi-session/multi-day events display accurately
   const eventList = (events || []) as Event[];
   const eventIds = eventList.map((ev) => ev.event_id).filter(Boolean);
   const metaMap = eventIds.length > 0 ? await getEventMetaBatch(supabase, eventIds) : {};
-  const enrichedEvents: Event[] = eventList.map((ev) => ({
-    ...ev,
-    sessions: metaMap[ev.event_id]?.sessions || [],
-  }));
+  const enrichedEvents: Event[] = eventList.map((ev) => {
+    const meta = metaMap[ev.event_id] || {};
+    const sessions = meta.sessions || [];
+    const effectiveEnd = getEffectiveEndDate({ ...ev, sessions, end_date: meta.end_date || null });
+    const location = resolveEventDisplayLocation({ location: meta.location, sessions });
+    return {
+      ...ev,
+      sessions,
+      end_date: effectiveEnd?.date || meta.end_date || ev.event_date || null,
+      location,
+      room_name: location,
+    };
+  });
 
   return (
     <div className={styles.container}>

@@ -49,6 +49,10 @@ export interface EventMeta {
   sessions?: EventSession[];
   max_participants?: number;
   max_volunteers?: number;
+  /** Địa điểm tổ chức hiển thị thống nhất (ưu tiên hơn tên phòng kế hoạch gốc nếu đã cập nhật) */
+  location?: string;
+  /** Ngày kết thúc sự kiện (YYYY-MM-DD) cho sự kiện nhiều ngày hoặc cập nhật nhanh */
+  end_date?: string;
   /** Sự kiện hỗ trợ tạo nhanh bởi VPĐ/Đoàn HVCS (không mượn phòng, không qua CTSV) */
   is_support_event?: boolean;
   organization_unit?: string;
@@ -104,6 +108,12 @@ export function mergeEventMeta(
       : {}),
     ...(dbMeta?.description !== undefined || fileMeta?.description !== undefined
       ? { description: dbMeta?.description ?? fileMeta?.description }
+      : {}),
+    ...(dbMeta?.location !== undefined || fileMeta?.location !== undefined
+      ? { location: dbMeta?.location ?? fileMeta?.location }
+      : {}),
+    ...(dbMeta?.end_date !== undefined || fileMeta?.end_date !== undefined
+      ? { end_date: dbMeta?.end_date ?? fileMeta?.end_date }
       : {}),
     ...(dbMeta?.cancellation_policy !== undefined || fileMeta?.cancellation_policy !== undefined
       ? { cancellation_policy: dbMeta?.cancellation_policy ?? fileMeta?.cancellation_policy }

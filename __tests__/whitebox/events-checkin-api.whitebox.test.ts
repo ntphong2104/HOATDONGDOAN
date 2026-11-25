@@ -233,6 +233,38 @@ describe('Events API', () => {
       expect(json.success).toBe(true);
     });
 
+    it('PATCH persists end_date and location and rejects end_date earlier than event_date', async () => {
+      (getAuthContext as jest.Mock).mockResolvedValue({ isSuperAdmin: true, email: 'sa@ptithcm.edu.vn' });
+      getBuilder('events').mockData = {
+        event_id: '1',
+        event_date: '2026-11-25',
+        start_time: '08:00:00',
+        end_time: '21:00:00',
+        status: 'active',
+      };
+
+      const badRes = await EventIdPATCH(
+        mockReqPATCH({ event_date: '2026-11-25', end_date: '2026-11-20' }),
+        { params: mockParams }
+      );
+      expect(badRes.status).toBe(400);
+
+      const okRes = await EventIdPATCH(
+        mockReqPATCH({
+          event_date: '2026-11-25',
+          end_date: '2026-11-28',
+          end_time: '20:30',
+          location: 'Hội trường A - Cơ sở Q9',
+        }),
+        { params: mockParams }
+      );
+      const okJson = await okRes.json();
+      expect(okRes.status).toBe(200);
+      expect(okJson.success).toBe(true);
+      expect(okJson.data.location).toBe('Hội trường A - Cơ sở Q9');
+      expect(okJson.data.end_date).toBe('2026-11-28');
+    });
+
     it('PATCH 401/403', async () => {
       (getAuthContext as jest.Mock).mockResolvedValue(null);
       const res = await EventIdPATCH(mockReqPATCH({}), { params: mockParams });

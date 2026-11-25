@@ -16,10 +16,55 @@ export interface EventSessionSchedule {
 
 export interface EventScheduleInfo {
   event_date?: string | null;
+  end_date?: string | null;
   end_time?: string | null;
   start_time?: string | null;
   status?: string | null;
   sessions?: EventSessionSchedule[] | null;
+}
+
+function isMeaningfulLocation(val?: string | null): string | null {
+  const trimmed = typeof val === 'string' ? val.trim() : '';
+  if (!trimmed || trimmed.toLowerCase() === 'không mượn') return null;
+  return trimmed;
+}
+
+/**
+ * Resolves the best human-readable location for an event:
+ * 1) Explicit `event.location`
+ * 2) Proposal/event `event.room_name`
+ * 3) Unique `sessions[].room_name` entries (up to 2 listed + "+N")
+ */
+export function resolveEventDisplayLocation(
+  event?: {
+    location?: string | null;
+    room_name?: string | null;
+    sessions?: EventSessionSchedule[] | null;
+  } | null
+): string | null {
+  if (!event) return null;
+  const explicit = isMeaningfulLocation(event.location);
+  if (explicit) return explicit;
+  const fallbackRoom = isMeaningfulLocation(event.room_name);
+  if (fallbackRoom) return fallbackRoom;
+
+  if (Array.isArray(event.sessions) && event.sessions.length > 0) {
+    const seen = new Set<string>();
+    const uniqueRooms: string[] = [];
+    for (const s of event.sessions) {
+      const r = isMeaningfulLocation(s?.room_name);
+      if (r && !seen.has(r.toLowerCase())) {
+        seen.add(r.toLowerCase());
+        uniqueRooms.push(r);
+      }
+    }
+    if (uniqueRooms.length > 0) {
+      if (uniqueRooms.length <= 2) return uniqueRooms.join(', ');
+      return `${uniqueRooms.slice(0, 2).join(', ')} (+${uniqueRooms.length - 2})`;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -33,11 +78,14 @@ export function parseDateStringToTime(dateStr?: string | null, timeStr?: string 
 
 /**
  * Returns the effective end date for an event.
- * If event has sessions with dates, uses the LAST session by true chronological timestamp.
- * Otherwise falls back to event_date.
+ * If event has sessions with dates, uses the LAST session by true chronological timestamp
+ * unless `event.end_date` is on a strictly later calendar day.
+ * Otherwise falls back to `event.end_date || event.event_date`.
  */
 export function getEffectiveEndDate(event: EventScheduleInfo): { date: string; endTime: string } | null {
-  const fallbackDate = event.event_date || null;
+  const explicitEndDate =
+    event.end_date && String(event.end_date).trim() ? String(event.end_date).trim() : null;
+  const fallbackDate = explicitEndDate || event.event_date || null;
   const fallbackEndTime = event.end_time || '22:00';
 
   if (event.sessions && event.sessions.length > 0) {
@@ -55,6 +103,16 @@ export function getEffectiveEndDate(event: EventScheduleInfo): { date: string; e
     }
 
     if (latestSession && latestSession.session_date) {
+      if (explicitEndDate) {
+        const explicitDayMs = parseDateStringToTime(explicitEndDate, '00:00');
+        const sessionDayMs = parseDateStringToTime(latestSession.session_date, '00:00');
+        if (explicitDayMs !== null && sessionDayMs !== null && explicitDayMs > sessionDayMs) {
+          return {
+            date: explicitEndDate,
+            endTime: fallbackEndTime,
+          };
+        }
+      }
       return {
         date: latestSession.session_date,
         endTime: latestSession.end_time || event.end_time || '23:59',

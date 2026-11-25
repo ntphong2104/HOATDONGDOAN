@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext, canManageEvent } from '@/lib/supabase/auth-helper';
-import { isEventLockedPast3Days, normalizeCancellationPolicy } from '@/lib/utils/event-logic';
+import {
+  isEventLockedPast3Days,
+  normalizeCancellationPolicy,
+  getEffectiveEndDate,
+  resolveEventDisplayLocation,
+} from '@/lib/utils/event-logic';
 import { normalizeAllowedLcds } from '@/lib/utils/lcd';
 import { normalizeAllowedCohorts } from '@/lib/utils/cohort';
 import {
@@ -43,28 +48,47 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   
   if (error || !data) return NextResponse.json({ success: false, error: 'Không tìm thấy sự kiện'}, { status: 404 });
 
-  // Ca cũ / ca tự sinh khi duyệt có thể thiếu phòng → lấy phòng từ kế hoạch gốc
+  // Ca cũ / ca tự sinh khi duyệt hoặc sự kiện chưa có meta có thể cần thông tin từ kế hoạch gốc
   let sessions: any[] = meta.sessions || [];
-  if (sessions.some((s: any) => !s?.room_name)) {
+  let propData: { room_id?: string | null; room_name?: string | null; end_date?: string | null; end_time?: string | null } | null = null;
+  if (sessions.length === 0 || sessions.some((s: any) => !s?.room_name) || !meta.location || !meta.end_date) {
     try {
       const { data: prop } = await supabase
         .from('event_proposals')
-        .select('room_id, room_name')
+        .select('room_id, room_name, end_date, end_time')
         .eq('created_event_id', eventId)
         .limit(1)
         .maybeSingle();
-      if (prop?.room_name && prop.room_name !== 'Không mượn') {
-        sessions = sessions.map((s: any) =>
-          s?.room_name ? s : { ...s, room_id: s?.room_id || prop.room_id || null, room_name: prop.room_name }
-        );
+      if (prop) {
+        propData = prop;
+        if (prop.room_name && prop.room_name !== 'Không mượn' && sessions.length > 0) {
+          sessions = sessions.map((s: any) =>
+            s?.room_name ? s : { ...s, room_id: s?.room_id || prop.room_id || null, room_name: prop.room_name }
+          );
+        }
       }
     } catch {
       // bỏ qua – chỉ là thông tin hiển thị
     }
   }
-  
+
+  const effectiveEnd = getEffectiveEndDate({
+    ...data,
+    sessions,
+    end_date: meta.end_date || propData?.end_date || null,
+  });
+  const endDate = effectiveEnd?.date || meta.end_date || propData?.end_date || data.event_date || null;
+  const resolvedLocation = resolveEventDisplayLocation({
+    location: meta.location,
+    room_name: propData?.room_name,
+    sessions,
+  });
+
   const enriched = {
     ...data,
+    end_date: endDate,
+    location: resolvedLocation,
+    room_name: resolvedLocation,
     departments: meta.departments || [],
     sessions,
     is_recruitment_open: meta.is_recruitment_open !== false,
@@ -74,7 +98,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     max_participants: meta.max_participants || 0,
     max_volunteers: meta.max_volunteers || 0,
     cancellation_policy: normalizeCancellationPolicy(meta.cancellation_policy),
-    is_locked_past_3_days: isEventLockedPast3Days({ ...data, sessions: meta.sessions || [] }),
+    is_locked_past_3_days: isEventLockedPast3Days({ ...data, sessions, end_date: endDate }),
   };
 
   setCachedEventResponse(eventId, enriched);
@@ -134,8 +158,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     status,
     event_name,
     event_date,
+    end_date,
     start_time,
     end_time,
+    location,
     semester,
     departments,
     target_scope,
@@ -182,7 +208,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
-  // Save departments, max_participants & recruitment custom metadata safely
+  const normalizedEndDateInput = end_date !== undefined ? String(end_date || '').trim() : undefined;
+  const effectiveStartDate =
+    event_date !== undefined
+      ? String(event_date || '').trim()
+      : String(currentEvent.event_date || '').trim();
+  if (normalizedEndDateInput && effectiveStartDate && normalizedEndDateInput < effectiveStartDate) {
+    return NextResponse.json(
+      { success: false, error: 'Ngày kết thúc không được nhỏ hơn ngày bắt đầu' },
+      { status: 400 }
+    );
+  }
+
+  // Save departments, max_participants, location, end_date & recruitment custom metadata safely
   const metaUpdates: Partial<EventMeta> = {};
   if (departments !== undefined) metaUpdates.departments = departments;
   if (target_scope !== undefined) metaUpdates.target_scope = target_scope;
@@ -190,6 +228,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (is_recruitment_open !== undefined) metaUpdates.is_recruitment_open = is_recruitment_open;
   if (require_registration !== undefined) metaUpdates.require_registration = require_registration;
   if (cancellation_policy !== undefined) metaUpdates.cancellation_policy = normalizeCancellationPolicy(cancellation_policy);
+  if (location !== undefined) metaUpdates.location = String(location || '').trim();
+  if (normalizedEndDateInput !== undefined) metaUpdates.end_date = normalizedEndDateInput;
   if (max_participants !== undefined && isSuperAdmin) metaUpdates.max_participants = Math.max(0, Number(max_participants));
   if (max_volunteers !== undefined && isSuperAdmin) metaUpdates.max_volunteers = Math.max(0, Number(max_volunteers));
 
@@ -230,8 +270,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const latestMeta = await getEventMeta(supabase, resolvedParams.id);
+  const latestEffectiveEnd = getEffectiveEndDate({
+    ...updatedEvent,
+    sessions: latestMeta.sessions || [],
+    end_date: latestMeta.end_date || null,
+  });
+  const latestLocation = resolveEventDisplayLocation({
+    location: latestMeta.location,
+    sessions: latestMeta.sessions || [],
+  });
   const result = {
     ...updatedEvent,
+    end_date: latestEffectiveEnd?.date || latestMeta.end_date || updatedEvent.event_date || null,
+    location: latestLocation,
+    room_name: latestLocation,
+    sessions: latestMeta.sessions || [],
     departments: latestMeta.departments || [],
     is_recruitment_open: latestMeta.is_recruitment_open !== false,
     require_registration: latestMeta.require_registration !== false,
@@ -243,6 +296,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   };
 
   invalidateEventCache(resolvedParams.id);
+  (globalThis as unknown as { __hddAdminDashboardCache?: Map<string, unknown> }).__hddAdminDashboardCache?.clear?.();
   return NextResponse.json({ success: true, data: result });
 }
 
@@ -313,5 +367,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ success: false, error: error.message || 'Lỗi xóa sự kiện' }, { status: 500 });
   }
 
+  (globalThis as unknown as { __hddAdminDashboardCache?: Map<string, unknown> }).__hddAdminDashboardCache?.clear?.();
   return NextResponse.json({ success: true, message: 'Đã xóa sự kiện thành công' });
 }

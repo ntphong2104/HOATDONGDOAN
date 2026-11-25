@@ -160,6 +160,7 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
 
         const isExpired = isEventScheduleExpired({
           event_date: raw.event_date,
+          end_date: meta.end_date || null,
           start_time: raw.start_time,
           end_time: raw.end_time,
           status: raw.status,
@@ -180,7 +181,11 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
         const displayStart = nextSession?.start_time || mainSession?.start_time || raw.start_time || null;
         const displayEnd = nextSession?.end_time || mainSession?.end_time || raw.end_time || null;
         const eventStartDate = earliestDate || raw.event_date || displayDate;
-        const eventEndDate = latestDate || raw.event_date || displayDate;
+        const metaEndDate = meta.end_date && String(meta.end_date).trim() ? String(meta.end_date).trim() : null;
+        const eventEndDate =
+          metaEndDate && (!latestDate || metaEndDate > latestDate)
+            ? metaEndDate
+            : latestDate || metaEndDate || raw.event_date || displayDate;
         const totalSessionsCount = scheduleSessions.length || 1;
         const remainingSessionsCount =
           scheduleSessions.length > 0 ? Math.max(0, remainingCount) : 1;
@@ -257,6 +262,12 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
           (mainSession?.room_name && mainSession.room_name !== 'Không mượn'
             ? mainSession.room_name
             : null);
+        const explicitLocation =
+          typeof meta.location === 'string' &&
+          meta.location.trim() &&
+          meta.location.trim().toLowerCase() !== 'không mượn'
+            ? meta.location.trim()
+            : null;
         const roomFromProp =
           prop?.room_name && prop.room_name !== 'Không mượn' ? prop.room_name : null;
 
@@ -285,7 +296,7 @@ async function loadSharedActiveEvents(supabase: any): Promise<SharedDiscoverEven
           participant_count: participantCount,
           departments_count: departments.length,
           sessions_count: totalSessionsCount,
-          room_name: roomFromSession || roomFromProp || null,
+          room_name: explicitLocation || roomFromSession || roomFromProp || null,
           organizer_unit: organizerUnit,
           organizer_lcd_code: organizerLcdCode,
           description: prop?.description ? String(prop.description).slice(0, 260) : null,

@@ -32,11 +32,21 @@ import {
   PlusIcon,
   MapPinIcon,
   BuildingIcon,
+  PencilIcon,
 } from '@/components/icons';
 import { getSelectableCohorts, normalizeAllowedCohorts } from '@/lib/utils/cohort';
 import { LCD_DEFINITIONS, normalizeAllowedLcds, formatLcdsLabel } from '@/lib/utils/lcd';
 import type { Event, EventRole, CheckinExportRow, EventRegistration, EventDepartment } from '@/lib/types';
-import { isEventPastDeadline, isEventScheduleExpired, getEventLifecycleState, getEarliestCheckinTime, isEventTooEarlyForCheckin, isEventLockedPast3Days } from '@/lib/utils/event-logic';
+import {
+  isEventPastDeadline,
+  isEventScheduleExpired,
+  getEventLifecycleState,
+  getEarliestCheckinTime,
+  isEventTooEarlyForCheckin,
+  isEventLockedPast3Days,
+  getEffectiveEndDate,
+  resolveEventDisplayLocation,
+} from '@/lib/utils/event-logic';
 import { isRegistrationWindowOpen } from '@/lib/utils/blacklist-logic';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
 import { getVietnamDateString } from '@/lib/utils/vn-date';
@@ -118,6 +128,16 @@ export default function EventDetailPage({ params }: { params?: any }) {
   const [supplementResult, setSupplementResult] = useState<any>(null);
   const [requireRegistration, setRequireRegistration] = useState<boolean>(true);
   const [cancellationPolicy, setCancellationPolicy] = useState<'before_2h' | 'disabled'>('before_2h');
+  const [showEditMetaModal, setShowEditMetaModal] = useState(false);
+  const [editEventForm, setEditEventForm] = useState({
+    event_name: '',
+    event_date: '',
+    end_date: '',
+    start_time: '07:30',
+    end_time: '22:00',
+    location: '',
+  });
+  const [savingEventMeta, setSavingEventMeta] = useState(false);
   const [savingCancelPolicy, setSavingCancelPolicy] = useState(false);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1115,11 +1135,32 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
         <div className={styles.headerArea}>
           <h1 className={styles.title}>{event.event_name}</h1>
-          <p className={styles.subtitle}>
-            <ClockIcon size={16} />
-            {event.event_date ? new Date(event.event_date).toLocaleDateString('vi-VN') : 'Hôm nay'}
-            {event.start_time && ` (${event.start_time.slice(0, 5)} - ${event.end_time ? event.end_time.slice(0, 5) : '22:00'})`}
-          </p>
+          {(() => {
+            const effectiveEnd = getEffectiveEndDate(eventWithSessions || event);
+            const startStr = (event.event_date || '').split('T')[0];
+            const endStr = (effectiveEnd?.date || event.end_date || startStr || '').split('T')[0];
+            const fmtVN = (d?: string) => {
+              if (!d) return 'Hôm nay';
+              const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+              return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
+            };
+            const endTimeStr = (effectiveEnd?.endTime || event.end_time)?.slice(0, 5) || '22:00';
+            const displayLoc = resolveEventDisplayLocation(eventWithSessions || event);
+            return (
+              <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <ClockIcon size={16} />
+                  {startStr && endStr && endStr !== startStr ? `${fmtVN(startStr)} → ${fmtVN(endStr)}` : fmtVN(startStr)}
+                  {event.start_time && ` (${event.start_time.slice(0, 5)} – ${endTimeStr})`}
+                </span>
+                <span style={{ color: '#cbd5e1' }}>•</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: displayLoc ? '#334155' : '#94a3b8', fontWeight: displayLoc ? 600 : 400 }}>
+                  <MapPinIcon size={15} color={displayLoc ? '#1d4ed8' : '#94a3b8'} />
+                  <span>{displayLoc || 'Chưa cập nhật địa điểm'}</span>
+                </span>
+              </p>
+            );
+          })()}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
             {(() => {
@@ -1259,6 +1300,40 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </span>
             )}
             <EventPushNotifyButton eventId={event.event_id} eventName={event.event_name} />
+            {(!isLockedPast3Days || isSuperAdmin) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const eff = getEffectiveEndDate(eventWithSessions || event);
+                  const loc = resolveEventDisplayLocation(eventWithSessions || event) || '';
+                  setEditEventForm({
+                    event_name: event.event_name || '',
+                    event_date: (event.event_date || '').split('T')[0],
+                    end_date: (eff?.date || event.end_date || event.event_date || '').split('T')[0],
+                    start_time: event.start_time?.slice(0, 5) || '07:30',
+                    end_time: (eff?.endTime || event.end_time)?.slice(0, 5) || '22:00',
+                    location: loc,
+                  });
+                  setShowEditMetaModal(true);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1.5px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#334155',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
+              >
+                <PencilIcon size={14} />
+                <span>Sửa thời gian / địa điểm</span>
+              </button>
+            )}
           </div>
 
           {isLockedPast3Days && (
@@ -4800,6 +4875,223 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   }}
                 >
                   {savingCapacity ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditMetaModal && event && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.55)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={() => !savingEventMeta && setShowEditMetaModal(false)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '520px',
+              width: '100%',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.25)',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '1rem 1.35rem',
+                borderBottom: '1px solid #e2e8f0',
+                borderLeft: '3px solid #1d4ed8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#1d4ed8' }}>
+                  Điều chỉnh thông tin sự kiện
+                </div>
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                  Thời gian kết thúc &amp; Địa điểm
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !savingEventMeta && setShowEditMetaModal(false)}
+                style={{
+                  background: '#f1f5f9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 30,
+                  height: 30,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  color: '#475569',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!editEventForm.event_name.trim()) {
+                  alert('Tên sự kiện không được để trống');
+                  return;
+                }
+                if (editEventForm.end_date && editEventForm.event_date && editEventForm.end_date < editEventForm.event_date) {
+                  alert('Ngày kết thúc không được nhỏ hơn ngày bắt đầu');
+                  return;
+                }
+                setSavingEventMeta(true);
+                try {
+                  const res = await fetch(`/api/events/${resolvedParams.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      event_name: editEventForm.event_name.trim(),
+                      event_date: editEventForm.event_date || undefined,
+                      end_date: editEventForm.end_date || '',
+                      start_time: editEventForm.start_time || undefined,
+                      end_time: editEventForm.end_time || undefined,
+                      location: editEventForm.location.trim(),
+                    }),
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (!res.ok || !json.success) {
+                    alert(json?.error || 'Không thể cập nhật thông tin sự kiện');
+                    return;
+                  }
+                  setEvent((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          event_name: editEventForm.event_name.trim(),
+                          event_date: editEventForm.event_date || prev.event_date,
+                          end_date: json.data?.end_date ?? (editEventForm.end_date || null),
+                          start_time: editEventForm.start_time || prev.start_time,
+                          end_time: editEventForm.end_time || prev.end_time,
+                          location: json.data?.location ?? (editEventForm.location.trim() || null),
+                          room_name: json.data?.room_name ?? (editEventForm.location.trim() || null),
+                        }
+                      : prev
+                  );
+                  notifyEventSync(resolvedParams.id);
+                  setShowEditMetaModal(false);
+                  fetchData();
+                } catch {
+                  alert('Lỗi kết nối khi cập nhật thông tin sự kiện');
+                } finally {
+                  setSavingEventMeta(false);
+                }
+              }}
+              style={{ padding: '1.25rem 1.35rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+            >
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  Tên sự kiện *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editEventForm.event_name}
+                  onChange={(e) => setEditEventForm({ ...editEventForm, event_name: e.target.value })}
+                  style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.88rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                    Ngày bắt đầu
+                  </label>
+                  <input
+                    type="date"
+                    value={editEventForm.event_date}
+                    onChange={(e) => setEditEventForm({ ...editEventForm, event_date: e.target.value })}
+                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.86rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                    Giờ bắt đầu
+                  </label>
+                  <input
+                    type="time"
+                    value={editEventForm.start_time}
+                    onChange={(e) => setEditEventForm({ ...editEventForm, start_time: e.target.value })}
+                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.86rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                    Ngày kết thúc
+                  </label>
+                  <input
+                    type="date"
+                    value={editEventForm.end_date}
+                    min={editEventForm.event_date || undefined}
+                    onChange={(e) => setEditEventForm({ ...editEventForm, end_date: e.target.value })}
+                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.86rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                    Giờ kết thúc
+                  </label>
+                  <input
+                    type="time"
+                    value={editEventForm.end_time}
+                    onChange={(e) => setEditEventForm({ ...editEventForm, end_time: e.target.value })}
+                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.86rem' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  Địa điểm tổ chức
+                </label>
+                <input
+                  type="text"
+                  value={editEventForm.location}
+                  onChange={(e) => setEditEventForm({ ...editEventForm, location: e.target.value })}
+                  placeholder="VD: Hội trường A, Sân bóng PTIT..."
+                  style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.88rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.35rem' }}>
+                <button
+                  type="button"
+                  disabled={savingEventMeta}
+                  onClick={() => setShowEditMetaModal(false)}
+                  style={{ padding: '0.5rem 0.95rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 8, fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer' }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEventMeta}
+                  style={{ padding: '0.5rem 1.15rem', background: '#1d4ed8', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: '0.84rem', cursor: savingEventMeta ? 'not-allowed' : 'pointer' }}
+                >
+                  {savingEventMeta ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
               </div>
             </form>

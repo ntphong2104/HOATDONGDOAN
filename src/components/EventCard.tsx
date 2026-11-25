@@ -1,8 +1,22 @@
 import React from 'react';
 import styles from './EventCard.module.css';
-import { CalendarIcon, ClockIcon, UsersIcon } from '@/components/icons';
-import { isEventPastDeadline, getEventLifecycleState, getEffectiveEndDate } from '@/lib/utils/event-logic';
+import { CalendarIcon, ClockIcon, MapPinIcon, UsersIcon } from '@/components/icons';
+import {
+  isEventPastDeadline,
+  getEventLifecycleState,
+  getEffectiveEndDate,
+  resolveEventDisplayLocation,
+} from '@/lib/utils/event-logic';
 import { Event } from '@/lib/types';
+
+function formatEventCardDate(dateStr?: string | null): string | null {
+  if (!dateStr) return null;
+  const clean = String(dateStr).split('T')[0].trim();
+  const match = clean.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+  const dt = new Date(dateStr);
+  return Number.isNaN(dt.getTime()) ? String(dateStr) : dt.toLocaleDateString('vi-VN');
+}
 
 interface EventCardProps {
   event: Event & { checkin_count?: number };
@@ -42,27 +56,36 @@ export default function EventCard({ event, onClick }: EventCardProps) {
       : styles.closed;
 
   const sessionCount = Array.isArray(event.sessions) ? event.sessions.length : 0;
-  const effectiveEnd = sessionCount > 1 ? getEffectiveEndDate(event) : null;
-  const startDateFormatted = event.event_date
-    ? new Date(event.event_date).toLocaleDateString('vi-VN')
-    : 'Hôm nay';
-  const endDateFormatted = effectiveEnd?.date
-    ? new Date(effectiveEnd.date).toLocaleDateString('vi-VN')
-    : null;
+  const effectiveEnd =
+    typeof getEffectiveEndDate === 'function'
+      ? getEffectiveEndDate(event)
+      : event.end_date
+      ? { date: event.end_date, endTime: event.end_time || '22:00' }
+      : null;
+  const startDateFormatted = formatEventCardDate(event.event_date) || 'Hôm nay';
+  const endDateFormatted = effectiveEnd?.date ? formatEventCardDate(effectiveEnd.date) : null;
 
   const dateStr =
     endDateFormatted && endDateFormatted !== startDateFormatted
-      ? `${startDateFormatted} – ${endDateFormatted} (${sessionCount} ca)`
+      ? sessionCount > 1
+        ? `${startDateFormatted} – ${endDateFormatted} (${sessionCount} ca)`
+        : `${startDateFormatted} – ${endDateFormatted}`
       : sessionCount > 1
       ? `${startDateFormatted} (${sessionCount} ca)`
       : startDateFormatted;
 
+  const endTimeDisplay = (effectiveEnd?.endTime || event.end_time)?.slice(0, 5) || null;
   const timeStr =
-    event.start_time && event.end_time
-      ? `${event.start_time.slice(0, 5)} - ${event.end_time.slice(0, 5)}`
+    event.start_time && endTimeDisplay
+      ? `${event.start_time.slice(0, 5)} - ${endTimeDisplay}`
       : event.start_time
       ? `${event.start_time.slice(0, 5)}`
       : null;
+
+  const displayLocation =
+    typeof resolveEventDisplayLocation === 'function'
+      ? resolveEventDisplayLocation(event)
+      : event.location || event.room_name || null;
 
   return (
     <div
@@ -91,6 +114,12 @@ export default function EventCard({ event, onClick }: EventCardProps) {
             <div className={styles.metaItem}>
               <ClockIcon size={14} />
               <span>{timeStr}</span>
+            </div>
+          )}
+          {displayLocation && (
+            <div className={styles.metaItem} title={displayLocation}>
+              <MapPinIcon size={14} />
+              <span>{displayLocation}</span>
             </div>
           )}
         </div>

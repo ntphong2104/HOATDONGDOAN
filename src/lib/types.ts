@@ -25,8 +25,11 @@ export interface Event {
   event_id: string;
   event_name: string;
   event_date?: string;
+  end_date?: string | null;
   start_time?: string;
   end_time?: string;
+  location?: string | null;
+  room_name?: string | null;
   semester?: string;
   is_active?: boolean;
   is_registration_open?: boolean;

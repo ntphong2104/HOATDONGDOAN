@@ -41,12 +41,20 @@ import {
   SearchIcon,
   AlertTriangleIcon,
   PencilIcon,
+  MapPinIcon,
 } from '@/components/icons';
 import { OFFICIAL_UNITS, ACADEMIC_FACULTIES, type OfficialUnit } from '@/lib/constants/units';
 import { getStageLabel } from '@/lib/utils/proposal-logic';
 import { isSafeExternalUrl } from '@/lib/security/redirect';
 import { isSameUnit } from '@/lib/utils/rating-logic';
-import { getEffectiveEventStatus, isEventPastDeadline, getEventLifecycleState, getEarliestCheckinTime } from '@/lib/utils/event-logic';
+import {
+  getEffectiveEventStatus,
+  isEventPastDeadline,
+  getEventLifecycleState,
+  getEarliestCheckinTime,
+  getEffectiveEndDate,
+  resolveEventDisplayLocation,
+} from '@/lib/utils/event-logic';
 import { parsePenaltyNotes, type ParsedPenaltyItem, hasActiveManualBan } from '@/lib/utils/blacklist-logic';
 import type { Event, User, EventProposal, Room, UserPenalty, UserTier } from '@/lib/types';
 import styles from './page.module.css';
@@ -256,6 +264,19 @@ function SuperAdminContent() {
   const [customEmail, setCustomEmail] = useState<string>('lcdcntt@student.ptithcm.edu.vn');
   const [selectedRoleType, setSelectedRoleType] = useState<'event_admin' | 'checker'>('event_admin');
   const [submittingRole, setSubmittingRole] = useState(false);
+
+  // Modal for quick-editing event location & end date/time
+  const [editEventModal, setEditEventModal] = useState<{
+    event_id: string;
+    event_name: string;
+    event_date: string;
+    end_date: string;
+    start_time: string;
+    end_time: string;
+    location: string;
+    sessionsCount: number;
+  } | null>(null);
+  const [editEventSaving, setEditEventSaving] = useState(false);
 
   // Student activity history lookup modal
   const [selectedStudentMssv, setSelectedStudentMssv] = useState<string | null>(null);
@@ -722,6 +743,15 @@ function SuperAdminContent() {
       .trim();
   }, []);
 
+  const formatVNDateStr = (dateStr?: string | null): string => {
+    if (!dateStr) return '';
+    const clean = String(dateStr).split('T')[0].trim();
+    const m = clean.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    const dt = new Date(dateStr);
+    return Number.isNaN(dt.getTime()) ? String(dateStr) : dt.toLocaleDateString('vi-VN');
+  };
+
   const filteredEvents = React.useMemo(() => {
     let list = events;
     if (selectedUnitFilter) {
@@ -740,7 +770,7 @@ function SuperAdminContent() {
           ? ev.event_roles.map((r: any) => r?.email || '').join(' ')
           : '';
         const haystack = normalizeForSearch(
-          `${ev.event_name || ''} ${ev.created_by || ''} ${ev.semester || ''} ${ev.event_date || ''} ${dateStr} ${roleEmails}`
+          `${ev.event_name || ''} ${ev.created_by || ''} ${ev.semester || ''} ${ev.event_date || ''} ${ev.end_date || ''} ${ev.location || ev.room_name || ''} ${dateStr} ${roleEmails}`
         );
         return haystack.includes(q);
       });
@@ -2358,12 +2388,16 @@ function SuperAdminContent() {
                                 </div>
                               </td>
                               <td>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.825rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.825rem' }}>
                                   <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                                    {new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time?.slice(0, 5)} - {p.end_time?.slice(0, 5)})
+                                    {p.end_date && p.end_date !== p.start_date
+                                      ? `${formatVNDateStr(p.start_date)} → ${formatVNDateStr(p.end_date)}`
+                                      : formatVNDateStr(p.start_date)}
+                                    {` (${p.start_time?.slice(0, 5) || '07:30'} – ${p.end_time?.slice(0, 5) || '11:30'})`}
                                   </span>
-                                  <span style={{ color: '#475569', fontSize: '0.8rem' }}>
-                                    {p.room_name || 'Hội trường / Phòng họp'} • {p.total_count} người
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#475569', fontSize: '0.8rem' }}>
+                                    <MapPinIcon size={13} color="#64748b" />
+                                    <span>{p.room_name && p.room_name !== 'Không mượn' ? p.room_name : 'Chưa chọn địa điểm'} • {p.total_count} người</span>
                                   </span>
                                 </div>
                               </td>
@@ -2470,7 +2504,25 @@ function SuperAdminContent() {
                               if (eventStatusFilter === 'closed') return getEffectiveEventStatus(event) === 'closed';
                               return true;
                             })
-                            .map((event) => (
+                            .map((event) => {
+                              const startDate = event.event_date ? String(event.event_date).split('T')[0] : '';
+                              const effectiveEnd = getEffectiveEndDate(event);
+                              const endDate = effectiveEnd?.date
+                                ? String(effectiveEnd.date).split('T')[0]
+                                : event.end_date
+                                ? String(event.end_date).split('T')[0]
+                                : '';
+                              const displayStartTime = event.start_time?.slice(0, 5) || '08:00';
+                              const displayEndTime = (effectiveEnd?.endTime || event.end_time)?.slice(0, 5) || '22:00';
+                              const sessionCount = Array.isArray(event.sessions) ? event.sessions.length : 0;
+                              const linkedProp = proposals.find((p) => (p as any).created_event_id === event.event_id);
+                              const displayLocation = resolveEventDisplayLocation({
+                                location: event.location,
+                                room_name: event.room_name || linkedProp?.room_name,
+                                sessions: event.sessions,
+                              });
+
+                              return (
                               <tr
                                 key={event.event_id}
                                 onClick={() => router.push(`/admin/events/${event.event_id}`)}
@@ -2504,13 +2556,30 @@ function SuperAdminContent() {
                                   </div>
                                 </td>
                                 <td>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.825rem' }}>
-                                    <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                                      {event.event_date ? new Date(event.event_date).toLocaleDateString('vi-VN') : 'Hôm nay'}
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.825rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', fontWeight: 700, color: '#0f172a' }}>
+                                      <span>
+                                        {startDate && endDate && endDate !== startDate
+                                          ? `${formatVNDateStr(startDate)} → ${formatVNDateStr(endDate)}`
+                                          : startDate
+                                          ? formatVNDateStr(startDate)
+                                          : 'Hôm nay'}
+                                      </span>
+                                      {sessionCount > 1 && (
+                                        <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '999px', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700 }}>
+                                          {sessionCount} ca
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                                      {displayStartTime} – {displayEndTime}
                                     </span>
-                                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                      {event.start_time?.slice(0, 5) || '08:00'} - {event.end_time?.slice(0, 5) || '22:00'}
-                                    </span>
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: displayLocation ? '#334155' : '#94a3b8' }}>
+                                      <MapPinIcon size={13} color={displayLocation ? '#2563eb' : '#94a3b8'} />
+                                      <span style={{ fontWeight: displayLocation ? 600 : 400, fontStyle: displayLocation ? 'normal' : 'italic' }}>
+                                        {displayLocation || 'Chưa cập nhật địa điểm'}
+                                      </span>
+                                    </div>
                                   </div>
                                 </td>
                                 <td onClick={(e) => e.stopPropagation()}>
@@ -2607,6 +2676,41 @@ function SuperAdminContent() {
                                     </div>
 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setEditEventModal({
+                                            event_id: event.event_id,
+                                            event_name: event.event_name || '',
+                                            event_date: startDate,
+                                            end_date: endDate || startDate,
+                                            start_time: displayStartTime,
+                                            end_time: displayEndTime,
+                                            location: displayLocation || '',
+                                            sessionsCount: sessionCount,
+                                          })
+                                        }
+                                        style={{
+                                          padding: '0.45rem 0.75rem',
+                                          borderRadius: '8px',
+                                          border: '1.5px solid #cbd5e1',
+                                          background: '#ffffff',
+                                          color: '#334155',
+                                          fontSize: '0.8rem',
+                                          fontWeight: 700,
+                                          cursor: 'pointer',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.3rem',
+                                          whiteSpace: 'nowrap',
+                                          transition: 'all 0.15s ease',
+                                        }}
+                                        title="Cập nhật nhanh thời gian kết thúc & địa điểm"
+                                      >
+                                        <PencilIcon size={13} />
+                                        <span>Sửa</span>
+                                      </button>
+
                                       <Link
                                         href={`/admin/events/${event.event_id}`}
                                         style={{
@@ -2657,7 +2761,8 @@ function SuperAdminContent() {
                                   </div>
                                 </td>
                               </tr>
-                            ))}
+                              );
+                            })}
 
                         {/* Empty state check across both pendingProposals and filteredEvents */}
                         {((eventStatusFilter === 'pending' && pendingProposals.length === 0) ||
@@ -6188,6 +6293,247 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   Đóng
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: CẬP NHẬT NHANH THỜI GIAN & ĐỊA ĐIỂM SỰ KIỆN */}
+        {editEventModal && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem',
+            }}
+            onClick={() => !editEventSaving && setEditEventModal(null)}
+          >
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                maxWidth: '540px',
+                width: '100%',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                border: '1px solid #e2e8f0',
+                overflow: 'hidden',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  padding: '1.1rem 1.4rem',
+                  borderBottom: '1px solid #e2e8f0',
+                  borderLeft: '3px solid #1d4ed8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1d4ed8' }}>
+                    Cập nhật nhanh thông tin sự kiện
+                  </div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginTop: '0.15rem' }}>
+                    {editEventModal.event_name}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => !editEventSaving && setEditEventModal(null)}
+                  style={{
+                    background: '#f1f5f9',
+                    border: 'none',
+                    color: '#475569',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.15rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!editEventModal.event_name.trim()) {
+                    showToast('Tên sự kiện không được để trống', 'error');
+                    return;
+                  }
+                  if (
+                    editEventModal.end_date &&
+                    editEventModal.event_date &&
+                    editEventModal.end_date < editEventModal.event_date
+                  ) {
+                    showToast('Ngày kết thúc không được nhỏ hơn ngày bắt đầu', 'error');
+                    return;
+                  }
+
+                  setEditEventSaving(true);
+                  try {
+                    const res = await fetch(`/api/events/${editEventModal.event_id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        event_name: editEventModal.event_name.trim(),
+                        event_date: editEventModal.event_date || undefined,
+                        end_date: editEventModal.end_date || '',
+                        start_time: editEventModal.start_time || undefined,
+                        end_time: editEventModal.end_time || undefined,
+                        location: editEventModal.location.trim(),
+                      }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok || !json.success) {
+                      showToast(json?.error || 'Không thể cập nhật sự kiện', 'error');
+                      return;
+                    }
+                    setEvents((prev) =>
+                      prev.map((ev) =>
+                        ev.event_id === editEventModal.event_id
+                          ? {
+                              ...ev,
+                              event_name: editEventModal.event_name.trim(),
+                              event_date: editEventModal.event_date || ev.event_date,
+                              end_date: json.data?.end_date ?? (editEventModal.end_date || null),
+                              start_time: editEventModal.start_time || ev.start_time,
+                              end_time: editEventModal.end_time || ev.end_time,
+                              location: json.data?.location ?? (editEventModal.location.trim() || null),
+                              room_name: json.data?.room_name ?? (editEventModal.location.trim() || null),
+                            }
+                          : ev
+                      )
+                    );
+                    showToast('Đã cập nhật thời gian & địa điểm sự kiện!', 'success');
+                    setEditEventModal(null);
+                    fetchEvents();
+                  } catch {
+                    showToast('Lỗi kết nối máy chủ khi cập nhật sự kiện', 'error');
+                  } finally {
+                    setEditEventSaving(false);
+                  }
+                }}
+                style={{ padding: '1.25rem 1.4rem', display: 'flex', flexDirection: 'column', gap: '0.95rem' }}
+              >
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    Tên sự kiện *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editEventModal.event_name}
+                    onChange={(e) => setEditEventModal({ ...editEventModal, event_name: e.target.value })}
+                    style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                      Ngày bắt đầu
+                    </label>
+                    <input
+                      type="date"
+                      value={editEventModal.event_date}
+                      onChange={(e) => setEditEventModal({ ...editEventModal, event_date: e.target.value })}
+                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                      Giờ bắt đầu
+                    </label>
+                    <input
+                      type="time"
+                      value={editEventModal.start_time}
+                      onChange={(e) => setEditEventModal({ ...editEventModal, start_time: e.target.value })}
+                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                      Ngày kết thúc
+                    </label>
+                    <input
+                      type="date"
+                      value={editEventModal.end_date}
+                      min={editEventModal.event_date || undefined}
+                      onChange={(e) => setEditEventModal({ ...editEventModal, end_date: e.target.value })}
+                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                      Giờ kết thúc
+                    </label>
+                    <input
+                      type="time"
+                      value={editEventModal.end_time}
+                      onChange={(e) => setEditEventModal({ ...editEventModal, end_time: e.target.value })}
+                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    Địa điểm tổ chức
+                  </label>
+                  <input
+                    type="text"
+                    list="super-admin-event-rooms"
+                    value={editEventModal.location}
+                    onChange={(e) => setEditEventModal({ ...editEventModal, location: e.target.value })}
+                    placeholder="VD: Hội trường A, Sân bóng PTIT, Phòng 2A08..."
+                    style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a' }}
+                  />
+                  <datalist id="super-admin-event-rooms">
+                    {rooms.map((r) => (
+                      <option key={r.id} value={r.room_name} />
+                    ))}
+                  </datalist>
+                </div>
+
+                {editEventModal.sessionsCount > 1 && (
+                  <div style={{ fontSize: '0.78rem', color: '#475569', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.6rem 0.75rem' }}>
+                    Sự kiện hiện có <strong>{editEventModal.sessionsCount} ca</strong>. Cập nhật tại đây áp dụng cho thông tin tổng quan; chi tiết từng ca có thể chỉnh trong mục <strong>Vào Sự Kiện</strong>.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '0.25rem' }}>
+                  <button
+                    type="button"
+                    disabled={editEventSaving}
+                    onClick={() => setEditEventModal(null)}
+                    style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editEventSaving}
+                    style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: '#1d4ed8', color: '#ffffff', fontSize: '0.84rem', fontWeight: 700, cursor: editEventSaving ? 'not-allowed' : 'pointer' }}
+                  >
+                    {editEventSaving ? 'Đang lưu...' : 'Lưu cập nhật'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

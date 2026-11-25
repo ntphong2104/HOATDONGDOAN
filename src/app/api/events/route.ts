@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
-import { isEventPastDeadline } from '@/lib/utils/event-logic';
+import {
+  isEventPastDeadline,
+  getEffectiveEndDate,
+  resolveEventDisplayLocation,
+} from '@/lib/utils/event-logic';
 import { getVietnamDateString } from '@/lib/utils/vn-date';
 import { normalizeAllowedCohorts } from '@/lib/utils/cohort';
 import { fetchAllRows, chunkArray } from '@/lib/supabase/pagination';
@@ -64,10 +68,13 @@ export async function GET() {
 
   if (error) return NextResponse.json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại' }, { status: 500 });
 
-  // Batch-fetch all event meta (sessions) in chunks to avoid PostgREST URI length limits
-  const metaKeys = (events || []).map((ev: any) => `event_meta_${ev.event_id}`);
+  // Batch-fetch all event meta (sessions, location, end_date) & linked proposals in chunks
+  const eventIds = (events || []).map((ev: any) => ev.event_id).filter(Boolean);
+  const metaKeys = eventIds.map((id: string) => `event_meta_${id}`);
 
   const metaMap: Record<string, any> = {};
+  const proposalByEventId: Record<string, { room_name?: string | null; end_date?: string | null; end_time?: string | null }> = {};
+
   if (metaKeys.length > 0) {
     try {
       await Promise.all(
@@ -86,12 +93,48 @@ export async function GET() {
     } catch {}
   }
 
+  if (eventIds.length > 0) {
+    try {
+      await Promise.all(
+        chunkArray(eventIds, 100).map(async (idChunk) => {
+          const { data: propRows } = await supabase
+            .from('event_proposals')
+            .select('created_event_id, room_name, end_date, end_time')
+            .in('created_event_id', idChunk);
+          for (const p of propRows || []) {
+            if (p?.created_event_id && !proposalByEventId[p.created_event_id]) {
+              proposalByEventId[p.created_event_id] = p;
+            }
+          }
+        })
+      );
+    } catch {}
+  }
+
   const processedEvents = (events || []).map((ev: any) => {
-    const sessions = metaMap[ev.event_id]?.sessions || [];
-    const isPast = isEventPastDeadline({ ...ev, sessions });
-    // Include sessions so client-side lifecycle labels (EventCard, super-admin list)
-    // use the real last session instead of only event_date.
-    return { ...ev, sessions, is_past_deadline: isPast };
+    const meta = metaMap[ev.event_id] || {};
+    const sessions = meta.sessions || [];
+    const prop = proposalByEventId[ev.event_id];
+    const effectiveEnd = getEffectiveEndDate({
+      ...ev,
+      sessions,
+      end_date: meta.end_date || prop?.end_date || null,
+    });
+    const endDate = effectiveEnd?.date || meta.end_date || prop?.end_date || ev.event_date || null;
+    const resolvedLocation = resolveEventDisplayLocation({
+      location: meta.location,
+      room_name: prop?.room_name,
+      sessions,
+    });
+    const isPast = isEventPastDeadline({ ...ev, sessions, end_date: endDate });
+    return {
+      ...ev,
+      sessions,
+      end_date: endDate,
+      location: resolvedLocation,
+      room_name: resolvedLocation,
+      is_past_deadline: isPast,
+    };
   });
 
   return NextResponse.json({ success: true, data: processedEvents });

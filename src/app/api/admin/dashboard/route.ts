@@ -23,8 +23,9 @@ import {
   isStudentInDeletedCohort,
 } from '@/lib/utils/graduated-cohorts';
 import { getHandoverRegistryFromDb } from '@/lib/constants/handover-store';
+import { getEventMetaBatch } from '@/lib/constants/event-meta-store';
 import { getVietnamDateString } from '@/lib/utils/vn-date';
-import { getEffectiveEventStatus } from '@/lib/utils/event-logic';
+import { getEffectiveEventStatus, resolveEventDisplayLocation } from '@/lib/utils/event-logic';
 import type { AcademicSemester } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -321,8 +322,41 @@ async function computeDashboardPayload(
 
   const blacklistedStudents = penaltiesRows.filter((p: any) => Boolean(p.is_blacklisted)).length;
 
-  // ── 3. Filter Semester Events ──
-  const semesterEvents = eventsRows.filter((ev: any) => {
+  // ── 3. Filter Semester Events (enriched with event_meta sessions, end_date & location) ──
+  const approvedEventIds = eventsRows
+    .filter((ev: any) => ev.status !== 'rejected' && ev.status !== 'pending' && ev.event_id)
+    .map((ev: any) => String(ev.event_id));
+  let metaMap: Record<string, any> = {};
+  if (approvedEventIds.length > 0) {
+    try {
+      metaMap = await getEventMetaBatch(supabase, approvedEventIds);
+    } catch {
+      metaMap = {};
+    }
+  }
+
+  const enrichedEventsRows = eventsRows.map((ev: any) => {
+    const evId = String(ev.event_id || '');
+    const meta = metaMap[evId] || {};
+    const prop = proposalByEventId.get(evId);
+    const sessions = Array.isArray(meta.sessions) ? meta.sessions : [];
+    const endDate =
+      (meta.end_date && String(meta.end_date).trim()) ||
+      (prop?.end_date ? String(prop.end_date).slice(0, 10) : null);
+    const location = resolveEventDisplayLocation({
+      location: meta.location,
+      room_name: prop?.room_name,
+      sessions,
+    });
+    return {
+      ...ev,
+      sessions,
+      end_date: endDate,
+      location,
+    };
+  });
+
+  const semesterEvents = enrichedEventsRows.filter((ev: any) => {
     if (ev.status === 'rejected' || ev.status === 'pending') return false;
     const effDate = ev.event_date || (ev.created_at ? String(ev.created_at).slice(0, 10) : null);
     if (effDate && isEventInSemester(effDate, selectedSemester)) return true;
@@ -335,11 +369,25 @@ async function computeDashboardPayload(
   const semesterEventIds = semesterEvents.map((e: any) => String(e.event_id));
   const semesterEventIdSet = new Set(semesterEventIds);
 
-  // Also include Today/Tomorrow event IDs so live check-in progress is always populated
-  const liveScheduleEvents = eventsRows.filter((ev: any) => {
+  // Also include Today/Tomorrow event IDs (matching event_date, sessions, or multi-day span)
+  const liveScheduleEvents = enrichedEventsRows.filter((ev: any) => {
     if (ev.status === 'rejected' || ev.status === 'pending') return false;
     const d = String(ev.event_date || '').slice(0, 10);
-    return d === todayVN || d === tomorrowVN;
+    if (d === todayVN || d === tomorrowVN) return true;
+    if (
+      Array.isArray(ev.sessions) &&
+      ev.sessions.some((s: any) => {
+        const sd = String(s?.session_date || '').slice(0, 10);
+        return sd === todayVN || sd === tomorrowVN;
+      })
+    ) {
+      return true;
+    }
+    if ((!ev.sessions || ev.sessions.length === 0) && d && ev.end_date) {
+      const endD = String(ev.end_date).slice(0, 10);
+      return (d <= todayVN && todayVN <= endD) || (d <= tomorrowVN && tomorrowVN <= endD);
+    }
+    return false;
   });
 
   const queryEventIds = Array.from(
@@ -589,16 +637,32 @@ async function computeDashboardPayload(
       const evId = String(ev.event_id);
       const prop = proposalByEventId.get(evId);
       const unitInfo = classifyUnit(prop?.organization_unit, ev.created_by);
-      const roomName = prop?.room_name || 'Không mượn';
+      const sessions = Array.isArray(ev.sessions) ? ev.sessions : [];
+      const todaySession = sessions.find((s: any) => String(s?.session_date || '').slice(0, 10) === todayVN);
+      const tomorrowSession = sessions.find((s: any) => String(s?.session_date || '').slice(0, 10) === tomorrowVN);
+      const matchedSession = todaySession || tomorrowSession || null;
+
+      const roomName =
+        (matchedSession?.room_name && matchedSession.room_name !== 'Không mượn' ? matchedSession.room_name : null) ||
+        ev.location ||
+        (prop?.room_name && prop.room_name !== 'Không mượn' ? prop.room_name : null) ||
+        'Không mượn';
       const hasRoom = Boolean(roomName && roomName !== 'Không mượn');
       const handover = prop?.id ? handoverRegistry[String(prop.id)] : undefined;
       const keyStatus: 'not_needed' | 'pending' | 'handed_over' | 'returned' = !hasRoom
         ? 'not_needed'
         : handover?.key_status || 'pending';
 
-      const d = String(ev.event_date || '').slice(0, 10);
-      const st = ev.start_time ? String(ev.start_time).slice(0, 5) : '07:30';
-      const et = ev.end_time ? String(ev.end_time).slice(0, 5) : '17:00';
+      const baseDate = String(ev.event_date || '').slice(0, 10);
+      const d = matchedSession?.session_date
+        ? String(matchedSession.session_date).slice(0, 10)
+        : baseDate === todayVN || baseDate === tomorrowVN
+        ? baseDate
+        : ev.end_date && baseDate <= todayVN && todayVN <= String(ev.end_date).slice(0, 10)
+        ? todayVN
+        : tomorrowVN;
+      const st = String(matchedSession?.start_time || ev.start_time || '07:30').slice(0, 5);
+      const et = String(matchedSession?.end_time || ev.end_time || '17:00').slice(0, 5);
 
       return {
         event_id: evId,

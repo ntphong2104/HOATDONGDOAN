@@ -1,4 +1,13 @@
-import { isEventPastDeadline, getEffectiveEventStatus, getEventLifecycleState, isEventLockedPast3Days, getNextUpcomingSession, checkCancellationEligibility } from '@/lib/utils/event-logic';
+import {
+  isEventPastDeadline,
+  getEffectiveEventStatus,
+  getEventLifecycleState,
+  isEventLockedPast3Days,
+  getNextUpcomingSession,
+  checkCancellationEligibility,
+  getEffectiveEndDate,
+  resolveEventDisplayLocation,
+} from '@/lib/utils/event-logic';
 import { isEventRoleExpired } from '@/lib/constants/event-roles-cleanup';
 
 describe('event-logic unit tests', () => {
@@ -252,6 +261,76 @@ describe('event-logic unit tests', () => {
       // 07:30 on Nov 25 is 1.5h before earliest session (09:00) -> blocked
       const res = checkCancellationEligibility(multiEvent, 'before_2h', vnMs('2026-11-25', '07:30'));
       expect(res.canCancel).toBe(false);
+    });
+  });
+
+  describe('getEffectiveEndDate & resolveEventDisplayLocation', () => {
+    test('uses explicit end_date for multi-day events without sessions', () => {
+      const ev = {
+        event_date: '2026-11-25',
+        end_date: '2026-11-28',
+        end_time: '17:00',
+        status: 'active',
+      };
+      expect(getEffectiveEndDate(ev)).toEqual({ date: '2026-11-28', endTime: '17:00' });
+      expect(isEventPastDeadline(ev, vnMs('2026-11-26', '10:00'))).toBe(false);
+      expect(isEventPastDeadline(ev, vnMs('2026-11-28', '18:05'))).toBe(true);
+    });
+
+    test('preserves session end_time on same day while honoring strictly later end_date', () => {
+      const sameDayEvent = {
+        event_date: '2026-11-25',
+        end_date: '2026-11-25',
+        end_time: '22:00',
+        sessions: [{ id: 's1', session_date: '2026-11-25', start_time: '08:00', end_time: '11:30' }],
+      };
+      expect(getEffectiveEndDate(sameDayEvent)).toEqual({ date: '2026-11-25', endTime: '11:30' });
+
+      const extendedEvent = {
+        ...sameDayEvent,
+        end_date: '2026-11-27',
+        end_time: '20:30',
+      };
+      expect(getEffectiveEndDate(extendedEvent)).toEqual({ date: '2026-11-27', endTime: '20:30' });
+    });
+
+    test('resolves display location by priority and ignores "Không mượn"', () => {
+      expect(
+        resolveEventDisplayLocation({
+          location: 'Sân bóng PTIT',
+          room_name: 'Hội trường A',
+          sessions: [{ id: 's1', room_name: '2A08' }],
+        })
+      ).toBe('Sân bóng PTIT');
+
+      expect(
+        resolveEventDisplayLocation({
+          location: 'Không mượn',
+          room_name: 'Hội trường A',
+          sessions: [{ id: 's1', room_name: '2A08' }],
+        })
+      ).toBe('Hội trường A');
+
+      expect(
+        resolveEventDisplayLocation({
+          location: '',
+          room_name: 'Không mượn',
+          sessions: [
+            { id: 's1', room_name: '2A08' },
+            { id: 's2', room_name: '2A08' },
+            { id: 's3', room_name: 'Hội trường A' },
+            { id: 's4', room_name: 'Sân trường' },
+          ],
+        })
+      ).toBe('2A08, Hội trường A (+1)');
+
+      expect(
+        resolveEventDisplayLocation({
+          location: '',
+          room_name: 'Không mượn',
+          sessions: [{ id: 's1', room_name: 'Không mượn' }],
+        })
+      ).toBeNull();
     });
   });
 });
