@@ -39,7 +39,7 @@
 
 .resultBox {
   padding: 2.5rem 1.5rem;
-  background: #ffffff;
+  background: var(--bg-surface);
   border-radius: 24px;
   margin: auto 1.5rem;
   text-align: center;
@@ -65,21 +65,21 @@
 .successTitle {
   font-size: 1.35rem;
   font-weight: 800;
-  color: #16a34a;
+  color: var(--status-green-text);
   margin: 0;
 }
 
 .errorTitle {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #dc2626;
+  color: var(--status-red-text);
   margin: 0;
 }
 
 .eventInfo {
   font-size: 1rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-body);
   margin: 0;
 }
 

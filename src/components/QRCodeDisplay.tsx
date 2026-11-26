@@ -208,7 +208,15 @@ export default function QRCodeDisplay({
         /* ═══ INACTIVE STATE: Blurred QR + Button ═══ */
         <div style={{ position: 'relative' }}>
           <div className={styles.qrContainer} style={{ filter: 'blur(12px)', opacity: 0.3, pointerEvents: 'none' }}>
-            <QRCodeSVG value={value} size={size} level="M" includeMargin={false} className={styles.qrCode} />
+            <QRCodeSVG
+              value={value}
+              size={size}
+              level="M"
+              includeMargin={false}
+              bgColor="#ffffff"
+              fgColor="#000000"
+              className={styles.qrCode}
+            />
           </div>
           <div style={{
             position: 'absolute',
@@ -241,22 +249,24 @@ export default function QRCodeDisplay({
               size={size}
               level="M"
               includeMargin={false}
+              bgColor="#ffffff"
+              fgColor="#000000"
               className={styles.qrCode}
             />
             <div ref={canvasRef} style={{ display: 'none' }}>
-              <QRCodeCanvas value={currentToken} size={1024} level="M" />
+              <QRCodeCanvas value={currentToken} size={1024} level="M" bgColor="#ffffff" fgColor="#000000" />
             </div>
           </div>
 
           {clientKey && (
             <div style={{ width: '100%', maxWidth: 220, marginTop: '0.15rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>
                 <span>Mã động bảo mật</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', color: expiresIn <= 3 ? '#dc2626' : '#1d4ed8', fontWeight: 700 }}>
+                <span style={{ fontVariantNumeric: 'tabular-nums', color: expiresIn <= 3 ? 'var(--status-red-text)' : 'var(--text-brand)', fontWeight: 700 }}>
                   Đổi sau {expiresIn}s
                 </span>
               </div>
-              <div style={{ width: '100%', height: 4, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: 4, borderRadius: 999, background: 'var(--border-color)', overflow: 'hidden' }}>
                 <div
                   style={{
                     width: `${progressPercent}%`,

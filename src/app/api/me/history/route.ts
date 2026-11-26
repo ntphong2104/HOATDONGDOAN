@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { enrichHistoryWithSessionCounts } from '@/lib/constants/event-meta-store';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 
 export async function GET() {
   const auth = await getAuthContext();
@@ -14,12 +15,14 @@ export async function GET() {
   const supabase = (await getSupabase()) || (await createClient());
   const email = auth.email.toLowerCase().trim();
   const fallbackMssv = (extractMSSV(email) || email.split('@')[0]).toUpperCase();
+  const safeEmail = sanitizePostgrestValue(email, 120);
+  const safeMssv = sanitizePostgrestValue(fallbackMssv, 40);
 
   try {
     const { data: user } = await supabase
       .from('users')
       .select('mssv')
-      .or(`email.eq.${email},mssv.eq.${fallbackMssv}`)
+      .or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`)
       .maybeSingle();
 
     const targetMssv = (user?.mssv || fallbackMssv).trim().toUpperCase();

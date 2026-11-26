@@ -262,11 +262,11 @@ export default function ProposalsListPage() {
             <div className={styles.heroLeft}>
               <div className={styles.heroIconBox}>
                 {tier === 'youth_union' ? (
-                  <YouthUnionIcon size={28} color="#2563eb" />
+                  <YouthUnionIcon size={28} color="var(--text-brand)" />
                 ) : tier === 'super_admin' ? (
-                  <ShieldCheckIcon size={28} color="#2563eb" />
+                  <ShieldCheckIcon size={28} color="var(--text-brand)" />
                 ) : (
-                  <SettingsIcon size={28} color="#2563eb" />
+                  <SettingsIcon size={28} color="var(--text-brand)" />
                 )}
               </div>
               <div>
@@ -331,19 +331,19 @@ export default function ProposalsListPage() {
         {loading ? (
           <div style={{ textAlign: 'center', padding: '4rem' }}>
             <SpinnerIcon size={36} color="var(--primary-600)" />
-            <p style={{ marginTop: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+            <p style={{ marginTop: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
               Đang tải danh sách kế hoạch...
             </p>
           </div>
         ) : sortedProposals.length === 0 ? (
           <div className={styles.emptyState}>
             <CheckCircleIcon size={48} color="#10b981" />
-            <h3 style={{ margin: '1rem 0 0.5rem 0', color: '#0f172a', fontWeight: 800, fontSize: '1.2rem' }}>
+            <h3 style={{ margin: '1rem 0 0.5rem 0', color: 'var(--text-primary)', fontWeight: 800, fontSize: '1.2rem' }}>
               {isApprover && activeTab === 'pending_my_stage'
                 ? 'Không có hồ sơ nào đang chờ phòng bạn duyệt'
                 : 'Chưa có kế hoạch sự kiện nào'}
             </h3>
-            <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '460px', margin: '0 auto 1.5rem auto' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '460px', margin: '0 auto 1.5rem auto' }}>
               {isApprover
                 ? 'Các đề xuất mới từ chi đoàn sẽ tự động xuất hiện tại đây khi được chuyển đến phòng ban của bạn.'
                 : 'Bấm vào nút bên dưới để tạo đề xuất sự kiện mới lên Đoàn Học Viện.'}
@@ -388,17 +388,17 @@ export default function ProposalsListPage() {
                   <div className={styles.cardTop}>
                     <div className={styles.titleArea}>
                       <div className={styles.orgText} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
-                        <BuildingIcon size={14} color="#2563eb" />
-                        <span style={{ fontWeight: 700, color: '#1e40af' }}>{item.organization_unit || 'Liên Chi Đoàn'}</span>
+                        <BuildingIcon size={14} color="var(--text-brand)" />
+                        <span style={{ fontWeight: 700, color: 'var(--text-brand-strong)' }}>{item.organization_unit || 'Liên Chi Đoàn'}</span>
                         <span style={{ color: '#cbd5e1' }}>•</span>
                         <span>Người nộp: <strong>{item.created_by}</strong></span>
                         {item.ratingSummary?.has_low_rating_warning && (
                           <span
                             style={{
                               padding: '0.15rem 0.5rem',
-                              background: '#fef3c7',
-                              color: '#b45309',
-                              border: '1px solid #fcd34d',
+                              background: 'var(--tint-amber-strong)',
+                              color: 'var(--status-amber-text)',
+                              border: '1px solid var(--tint-amber-border)',
                               borderRadius: '6px',
                               fontSize: '0.75rem',
                               fontWeight: 800,
@@ -429,7 +429,7 @@ export default function ProposalsListPage() {
 
                   <div className={styles.metaChipsRow}>
                     <span className={styles.metaChip}>
-                      <ClockIcon size={14} color="#64748b" />
+                      <ClockIcon size={14} color="var(--text-muted)" />
                       <span>
                         {new Date(item.start_date).toLocaleDateString('vi-VN')}
                         {item.end_date && item.end_date !== item.start_date && ` → ${new Date(item.end_date).toLocaleDateString('vi-VN')}`}
@@ -438,14 +438,14 @@ export default function ProposalsListPage() {
                     </span>
 
                     <span className={styles.metaChip}>
-                      <UsersIcon size={14} color="#64748b" />
+                      <UsersIcon size={14} color="var(--text-muted)" />
                       <span>
                         {item.total_count} người ({item.participant_count} SV • {item.volunteer_count} CTV)
                       </span>
                     </span>
 
                     <span className={styles.metaChip}>
-                      <BuildingIcon size={14} color="#64748b" />
+                      <BuildingIcon size={14} color="var(--text-muted)" />
                       <span>{item.room_name || 'Hội trường / Phòng họp'}</span>
                     </span>
 
@@ -459,9 +459,9 @@ export default function ProposalsListPage() {
                         }}
                         className={styles.metaChip}
                         style={{
-                          background: '#eff6ff',
-                          color: '#2563eb',
-                          border: '1px solid #bfdbfe',
+                          background: 'var(--tint-blue-bg)',
+                          color: 'var(--text-brand)',
+                          border: '1px solid var(--tint-blue-border)',
                           fontWeight: 700,
                           cursor: 'pointer',
                         }}
@@ -474,7 +474,7 @@ export default function ProposalsListPage() {
                   <div className={styles.cardFooter}>
                     <div>
                       {isWaitingForMe && (
-                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#2563eb' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-brand)' }}>
                           Hồ sơ đang chờ phòng ban của bạn thẩm định
                         </span>
                       )}
@@ -484,7 +484,7 @@ export default function ProposalsListPage() {
                         </span>
                       )}
                       {!isWaitingForMe && !hasAlreadyPassedMyStage && (
-                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
                           Gửi ngày {new Date(item.created_at).toLocaleDateString('vi-VN')}
                         </span>
                       )}
@@ -540,9 +540,9 @@ export default function ProposalsListPage() {
                             style={{
                               padding: '0.45rem 0.75rem',
                               borderRadius: '8px',
-                              border: '1.5px solid #fecaca',
-                              background: '#fff1f2',
-                              color: '#e11d48',
+                              border: '1.5px solid var(--tint-red-border)',
+                              background: 'var(--tint-red-bg)',
+                              color: 'var(--status-red-text)',
                               fontWeight: 700,
                               fontSize: '0.8rem',
                               cursor: 'pointer',
@@ -553,7 +553,7 @@ export default function ProposalsListPage() {
                         </div>
                       )}
 
-                      <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#2563eb', marginLeft: '0.5rem' }}>
+                      <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-brand)', marginLeft: '0.5rem' }}>
                         Xem Chi Tiết ➔
                       </span>
                     </div>

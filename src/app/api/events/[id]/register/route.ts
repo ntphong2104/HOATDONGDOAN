@@ -13,6 +13,7 @@ import { getUserProfileExtraWithFallback, saveUserProfileExtraWithSync } from '@
 import { resolveStudentProfiles, isPlaceholderName, isPlaceholderClass, getMasterStudentByMssv } from '@/lib/utils/student-profile';
 import { checkCohortEligibility, describeCohortBlock } from '@/lib/utils/cohort';
 import { checkLcdEligibility, describeLcdBlock } from '@/lib/utils/lcd';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 
 export async function GET(
   req: Request,
@@ -36,8 +37,8 @@ export async function GET(
               (r?.role_type === 'event_admin' || r?.role_type === 'checker')
           )))
   );
-  const lowerAuthEmailForGet = auth?.email ? auth.email.toLowerCase().trim() : null;
-  const upperMssvForGet = mssv ? String(mssv).toUpperCase().trim() : null;
+  const lowerAuthEmailForGet = auth?.email ? sanitizePostgrestValue(auth.email.toLowerCase().trim(), 120) : null;
+  const upperMssvForGet = mssv ? sanitizePostgrestValue(String(mssv).toUpperCase().trim(), 40) : null;
 
   // Parallelize all independent queries
   const [
@@ -420,8 +421,8 @@ async function handleRegisterPost(
   }
 
   // 3. Get User Profile info (only select real columns of public.users: mssv, full_name, class_id)
-  const lowerAuthEmail = auth.email.toLowerCase().trim();
-  const upperMssv = String(mssv).toUpperCase().trim();
+  const lowerAuthEmail = sanitizePostgrestValue(auth.email.toLowerCase().trim(), 120);
+  const upperMssv = sanitizePostgrestValue(String(mssv).toUpperCase().trim(), 40);
   const { data: userProfile } = await supabase
     .from('users')
     .select('mssv, full_name, class_id')

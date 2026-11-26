@@ -1,9 +1,9 @@
 .card {
-  background: #ffffff;
+  background: var(--bg-surface);
   border-radius: 18px;
   padding: 1.35rem 1.5rem;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
-  border: 1.5px solid #e2e8f0;
+  box-shadow: var(--card-shadow);
+  border: 1.5px solid var(--border-color);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -17,9 +17,9 @@
 }
 
 .clickable:hover {
-  border-color: #93c5fd;
+  border-color: var(--tint-blue-border);
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--card-shadow);
 }
 
 .clickable:active {
@@ -28,7 +28,7 @@
 
 .active {
   border-color: #2563eb;
-  background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+  background: var(--bg-surface);
   box-shadow: 0 4px 18px rgba(37, 99, 235, 0.12);
 }
 
@@ -42,7 +42,7 @@
 .title {
   font-size: 0.775rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -59,37 +59,37 @@
 .value {
   font-size: 2.15rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   line-height: 1.1;
   letter-spacing: -0.02em;
 }
 
 .subtitle {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin-top: 0.35rem;
   font-weight: 500;
 }
 
 /* Subtle Tinted Icon Badges without clunky border stripes */
 .primary .iconCircle {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--tint-blue-bg);
+  color: var(--text-brand);
 }
 
 .success .iconCircle {
-  background: #f0fdf4;
-  color: #16a34a;
+  background: var(--tint-green-bg);
+  color: var(--status-green-text);
 }
 
 .warning .iconCircle {
-  background: #fffbeb;
-  color: #d97706;
+  background: var(--tint-amber-bg);
+  color: var(--status-amber-text);
 }
 
 .error .iconCircle {
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--tint-red-bg);
+  color: var(--status-red-text);
 }
 
 .skeletonContainer {
@@ -102,7 +102,7 @@
 .skeletonValue {
   width: 90px;
   height: 38px;
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border-color) 50%, var(--bg-muted) 75%);
   background-size: 200% 100%;
   border-radius: 8px;
   animation: shimmer 1.5s infinite;
@@ -111,7 +111,7 @@
 .skeletonSubtitle {
   width: 140px;
   height: 14px;
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border-color) 50%, var(--bg-muted) 75%);
   background-size: 200% 100%;
   border-radius: 4px;
   animation: shimmer 1.5s infinite;

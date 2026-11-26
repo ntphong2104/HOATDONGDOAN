@@ -47,7 +47,6 @@ export default async function SecurityPage() {
     auth.tier === 'youth_union';
 
   if (!isAuthorized) {
-    console.log('--- SECURITY PAGE: NOT AUTHORIZED, REDIRECTING TO / ---');
     redirect('/');
   }
 

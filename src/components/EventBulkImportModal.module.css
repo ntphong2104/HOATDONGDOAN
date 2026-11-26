@@ -11,7 +11,7 @@
 }
 
 .modal {
-  background: #ffffff;
+  background: var(--bg-surface);
   border-radius: 16px;
   width: 100%;
   max-width: 580px;
@@ -36,11 +36,11 @@
 
 .header {
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fafafa;
+  background: var(--bg-subtle);
 }
 
 .headerTitleArea {
@@ -53,8 +53,8 @@
   width: 42px;
   height: 42px;
   border-radius: 10px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--tint-blue-bg);
+  border: 1px solid var(--tint-blue-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,13 +65,13 @@
   margin: 0;
   font-size: 1.1rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .subtitle {
   margin: 0.15rem 0 0;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
   max-width: 380px;
   white-space: nowrap;
   overflow: hidden;
@@ -81,7 +81,7 @@
 .closeButton {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 0.4rem;
   border-radius: 8px;
@@ -92,8 +92,8 @@
 }
 
 .closeButton:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: var(--border-color);
+  color: var(--text-primary);
 }
 
 .body {
@@ -105,12 +105,12 @@
 }
 
 .permissionBanner {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--tint-blue-bg);
+  border: 1px solid var(--tint-blue-border);
   border-radius: 10px;
   padding: 0.75rem 1rem;
   font-size: 0.8rem;
-  color: #1e40af;
+  color: var(--text-brand-strong);
   line-height: 1.45;
   display: flex;
   flex-direction: column;
@@ -122,7 +122,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #2563eb;
+  color: var(--text-brand);
 }
 
 .configGrid {
@@ -154,16 +154,16 @@
 .label {
   font-size: 0.825rem;
   font-weight: 700;
-  color: #334155;
+  color: var(--text-body);
 }
 
 .badgeCount {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
+  background: var(--tint-blue-bg);
+  color: var(--text-brand);
+  border: 1px solid var(--tint-blue-border);
   padding: 0.15rem 0.5rem;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -173,11 +173,11 @@
 .fileName {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #16a34a;
-  background: #f0fdf4;
+  color: var(--status-green-text);
+  background: var(--tint-green-bg);
   padding: 0.15rem 0.5rem;
   border-radius: 6px;
-  border: 1px solid #bbf7d0;
+  border: 1px solid var(--tint-green-border);
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -187,12 +187,12 @@
 .select {
   width: 100%;
   padding: 0.65rem 0.85rem;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--border-strong);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-surface);
   font-size: 0.85rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary);
   outline: none;
   transition: border-color 0.15s ease;
 }
@@ -207,16 +207,16 @@
   align-items: center;
   gap: 0.85rem;
   padding: 0.85rem 1rem;
-  background: #f8fafc;
-  border: 1.5px dashed #cbd5e1;
+  background: var(--bg-subtle);
+  border: 1.5px dashed var(--border-strong);
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .dropZone:hover {
-  background: #f0fdf4;
-  border-color: #86efac;
+  background: var(--tint-green-bg);
+  border-color: var(--tint-green-border);
 }
 
 .dropZoneText {
@@ -227,12 +227,12 @@
 .dropZonePrimary {
   font-size: 0.825rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-body);
 }
 
 .dropZoneSecondary {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .hiddenFileInput {
@@ -242,11 +242,11 @@
 .textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--border-strong);
   border-radius: 8px;
   font-family: monospace;
   font-size: 0.85rem;
-  color: #0f172a;
+  color: var(--text-primary);
   outline: none;
   resize: vertical;
   box-sizing: border-box;
@@ -262,9 +262,9 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #166534;
+  background: var(--tint-green-bg);
+  border: 1px solid var(--tint-green-border);
+  color: var(--status-green-text);
   padding: 0.75rem 1rem;
   border-radius: 8px;
   font-size: 0.825rem;
@@ -275,9 +275,9 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--tint-red-bg);
+  border: 1px solid var(--tint-red-border);
+  color: var(--status-red-text);
   padding: 0.75rem 1rem;
   border-radius: 8px;
   font-size: 0.825rem;
@@ -294,8 +294,8 @@
 
 .cancelButton {
   padding: 0.65rem 1.25rem;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--bg-muted);
+  color: var(--text-secondary);
   border: none;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -305,8 +305,8 @@
 }
 
 .cancelButton:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: var(--border-color);
+  color: var(--text-primary);
 }
 
 .submitButton {
@@ -363,8 +363,8 @@
 }
 
 .capacityCard {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 0.85rem 1rem;
   display: flex;
@@ -373,8 +373,8 @@
 }
 
 .capacityCardOverflow {
-  background: #fff1f2;
-  border-color: #fecdd3;
+  background: var(--tint-red-bg);
+  border-color: var(--tint-red-border);
 }
 
 .capacityHeader {
@@ -383,13 +383,13 @@
   align-items: center;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-body);
 }
 
 .capacityProgressBar {
   width: 100%;
   height: 8px;
-  background: #e2e8f0;
+  background: var(--border-color);
   border-radius: 4px;
   overflow: hidden;
   display: flex;
@@ -417,8 +417,8 @@
 }
 
 .statCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 0.65rem 0.85rem;
   display: flex;
@@ -429,7 +429,7 @@
 .statCardTitle {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -437,7 +437,7 @@
 .statCardValue {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .filterToolbar {
@@ -447,7 +447,7 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .filterTabs {
@@ -461,17 +461,17 @@
   border-radius: 6px;
   font-size: 0.78rem;
   font-weight: 600;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #4b5563;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .filterTabBtnActive {
-  background: #eff6ff;
+  background: var(--tint-blue-bg);
   border-color: #3b82f6;
-  color: #1d4ed8;
+  color: var(--text-brand);
 }
 
 .quickActions {
@@ -489,28 +489,28 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #374151;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-body);
   transition: all 0.15s ease;
 }
 
 .quickBtnDanger {
-  border-color: #fecaca;
-  background: #fef2f2;
-  color: #b91c1c;
+  border-color: var(--tint-red-border);
+  background: var(--tint-red-bg);
+  color: var(--status-red-text);
 }
 
 .quickBtnDanger:hover {
-  background: #fee2e2;
+  background: var(--tint-red-strong);
 }
 
 .tableWrapper {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   overflow: auto;
   max-height: 380px;
-  background: #ffffff;
+  background: var(--bg-surface);
 }
 
 .previewTable {
@@ -522,20 +522,20 @@
 .previewTable th {
   position: sticky;
   top: 0;
-  background: #f8fafc;
+  background: var(--bg-subtle);
   padding: 0.55rem 0.75rem;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-secondary);
   text-align: left;
-  border-bottom: 1.5px solid #e2e8f0;
+  border-bottom: 1.5px solid var(--border-color);
   white-space: nowrap;
   z-index: 1;
 }
 
 .previewTable td {
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-body);
 }
 
 .badgePill {
@@ -549,22 +549,22 @@
 }
 
 .badgeSuccess {
-  background: #d1fae5;
+  background: var(--tint-green-strong);
   color: #065f46;
 }
 
 .badgeWarning {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--tint-amber-strong);
+  color: var(--status-amber-text);
 }
 
 .badgeDanger {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--tint-red-strong);
+  color: var(--status-red-text);
 }
 
 .badgeInfo {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--tint-blue-strong);
+  color: var(--text-brand-strong);
 }
 

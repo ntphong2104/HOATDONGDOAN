@@ -342,9 +342,9 @@ export default function StudentDashboardClient({
           maxWidth: 760,
           margin: '1.5rem auto',
           padding: '2rem',
-          background: '#ffffff',
+          background: 'var(--bg-surface)',
           borderRadius: 14,
-          border: '1px solid #e2e8f0',
+          border: '1px solid var(--border-color)',
           boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
         }}
       >
@@ -354,9 +354,9 @@ export default function StudentDashboardClient({
               width: 44,
               height: 44,
               borderRadius: 10,
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
-              color: '#1d4ed8',
+              background: 'var(--tint-blue-bg)',
+              border: '1px solid var(--tint-blue-border)',
+              color: 'var(--text-brand)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -366,16 +366,16 @@ export default function StudentDashboardClient({
             <BuildingIcon size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d4ed8' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-brand)' }}>
               Tổng quan Đơn vị / Cán bộ
             </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '0.1rem 0 0' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.1rem 0 0' }}>
               {currentUser.full_name || currentUser.mssv}
             </h2>
           </div>
         </div>
 
-        <p style={{ color: '#64748b', fontSize: '0.88rem', lineHeight: 1.55, margin: '0 0 1.5rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.55, margin: '0 0 1.5rem' }}>
           Chọn nhanh khu vực nghiệp vụ bên dưới hoặc dùng thanh điều hướng bên trái để quản lý sự kiện, duyệt kế hoạch, xem bảng xếp hạng và mượn dụng cụ Văn phòng Đoàn.
         </p>
 
@@ -397,9 +397,9 @@ export default function StudentDashboardClient({
           <Link
             href="/events"
             style={{
-              background: '#ffffff',
-              color: '#334155',
-              border: '1px solid #cbd5e1',
+              background: 'var(--bg-surface)',
+              color: 'var(--text-body)',
+              border: '1px solid var(--border-strong)',
               padding: '0.6rem 1.05rem',
               borderRadius: 9,
               fontSize: '0.85rem',
@@ -412,9 +412,9 @@ export default function StudentDashboardClient({
           <Link
             href="/ranking"
             style={{
-              background: '#ffffff',
-              color: '#334155',
-              border: '1px solid #cbd5e1',
+              background: 'var(--bg-surface)',
+              color: 'var(--text-body)',
+              border: '1px solid var(--border-strong)',
               padding: '0.6rem 1.05rem',
               borderRadius: 9,
               fontSize: '0.85rem',
@@ -427,9 +427,9 @@ export default function StudentDashboardClient({
           <Link
             href="/office/borrow"
             style={{
-              background: '#ffffff',
-              color: '#334155',
-              border: '1px solid #cbd5e1',
+              background: 'var(--bg-surface)',
+              color: 'var(--text-body)',
+              border: '1px solid var(--border-strong)',
               padding: '0.6rem 1.05rem',
               borderRadius: 9,
               fontSize: '0.85rem',
@@ -511,7 +511,7 @@ export default function StudentDashboardClient({
                 className={styles.editProfileMiniBtn}
                 title="Chỉnh sửa SĐT / Giới tính"
               >
-                <PencilIcon size={12} color="#475569" />
+                <PencilIcon size={12} color="var(--text-secondary)" />
                 <span>Sửa SĐT</span>
               </button>
             </div>
@@ -527,7 +527,7 @@ export default function StudentDashboardClient({
             <div className={styles.memberIdMetaRow}>
               <span>
                 SĐT:{' '}
-                <strong style={{ color: userPhone ? '#0f172a' : '#b45309' }}>
+                <strong style={{ color: userPhone ? 'var(--text-primary)' : 'var(--status-amber-text)' }}>
                   {userPhone || 'Chưa cập nhật'}
                 </strong>
               </span>
@@ -577,12 +577,12 @@ export default function StudentDashboardClient({
           {isPhoneMissing && (
             <div className={styles.phoneAlert}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1, minWidth: 220 }}>
-                <AlertTriangleIcon size={18} color="#b45309" />
+                <AlertTriangleIcon size={18} color="var(--status-amber-text)" />
                 <div>
-                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#92400e' }}>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--status-amber-text)' }}>
                     Chưa cập nhật Số Điện Thoại / Zalo
                   </div>
-                  <div style={{ fontSize: '0.76rem', color: '#78350f', fontWeight: 500 }}>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-body)', fontWeight: 500 }}>
                     Bắt buộc khi đăng ký sự kiện hoặc ứng tuyển CTV để Ban Tổ Chức liên hệ.
                   </div>
                 </div>
@@ -630,19 +630,22 @@ export default function StudentDashboardClient({
           <section className={styles.profileCard}>
             <div className={styles.profileHeader} style={{ marginBottom: '0.65rem', paddingBottom: '0.65rem' }}>
               <h3 className={styles.historyTitle}>
-                <CheckCircleIcon size={17} color="#15803d" />
+                <CheckCircleIcon size={17} color="var(--status-green-text)" />
                 <span>Minh chứng gần nhất</span>
               </h3>
               <Link
                 href="/?view=student&tab=history"
-                style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1d4ed8', textDecoration: 'none' }}
+                style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-brand)', textDecoration: 'none' }}
               >
                 Xem tất cả ({history.length})
               </Link>
             </div>
 
             {history.length === 0 ? (
-              <div className={styles.emptyHistory} style={{ padding: '1.1rem' }}>
+              <div
+                className={styles.emptyHistory}
+                style={{ padding: '1.1rem', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
                 Bạn chưa có lượt điểm danh minh chứng nào.
               </div>
             ) : (
@@ -656,7 +659,7 @@ export default function StudentDashboardClient({
                       <span className={styles.eventName} style={{ fontSize: '0.9rem' }}>{item.event_name}</span>
                       <RoleBadge role={item.participate_role} />
                     </div>
-                    <div style={{ fontSize: '0.76rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <ClockIcon size={13} />
                       <span>
                         {item.event_date
@@ -681,17 +684,17 @@ export default function StudentDashboardClient({
             <h2 className={styles.historyTitle}>
               {activeSection === 'history' ? (
                 <>
-                  <CheckCircleIcon size={20} color="#2563eb" />
+                  <CheckCircleIcon size={20} color="var(--text-brand)" />
                   <span>Lịch sử điểm danh minh chứng ĐRL ({history.length})</span>
                 </>
               ) : activeSection === 'registered' ? (
                 <>
-                  <CalendarIcon size={20} color="#2563eb" />
+                  <CalendarIcon size={20} color="var(--text-brand)" />
                   <span>Sự kiện đã đăng ký chờ điểm danh ({pendingRegistrations.length})</span>
                 </>
               ) : (
                 <>
-                  <ShieldCheckIcon size={20} color="#2563eb" />
+                  <ShieldCheckIcon size={20} color="var(--text-brand)" />
                   <span>Tra cứu minh chứng Chi Đoàn {delegateInfo?.class_id || ''}</span>
                 </>
               )}
@@ -703,9 +706,9 @@ export default function StudentDashboardClient({
                 style={{
                   padding: '0.45rem 0.85rem',
                   borderRadius: '10px',
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  color: '#334155',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--bg-surface)',
+                  color: 'var(--text-body)',
                   fontSize: '0.82rem',
                   fontWeight: 700,
                   textDecoration: 'none',
@@ -822,8 +825,8 @@ export default function StudentDashboardClient({
                                     marginLeft: '0.35rem',
                                     padding: '0.1rem 0.45rem',
                                     borderRadius: '6px',
-                                    background: '#e2e8f0',
-                                    color: '#334155',
+                                    background: 'var(--border-color)',
+                                    color: 'var(--text-body)',
                                     fontSize: '0.72rem',
                                     fontWeight: 700,
                                   }}
@@ -836,15 +839,15 @@ export default function StudentDashboardClient({
                               <span
                                 style={{
                                   fontSize: '0.78rem',
-                                  color: '#475569',
+                                  color: 'var(--text-secondary)',
                                   fontWeight: 600,
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '0.35rem',
                                 }}
                               >
-                                <CalendarIcon size={13} color="#2563eb" />
-                                Buổi đã tham gia: <strong style={{ color: '#1e40af' }}>{item.session_names}</strong>
+                                <CalendarIcon size={13} color="var(--text-brand)" />
+                                Buổi đã tham gia: <strong style={{ color: 'var(--text-brand-strong)' }}>{item.session_names}</strong>
                               </span>
                             )}
                           </div>
@@ -861,9 +864,9 @@ export default function StudentDashboardClient({
                                   borderRadius: '999px',
                                   fontSize: '0.76rem',
                                   fontWeight: 800,
-                                  background: isFullAttendance ? '#dcfce7' : '#fef3c7',
-                                  color: isFullAttendance ? '#15803d' : '#b45309',
-                                  border: `1px solid ${isFullAttendance ? '#bbf7d0' : '#fde68a'}`,
+                                  background: isFullAttendance ? 'var(--tint-green-strong)' : 'var(--tint-amber-strong)',
+                                  color: isFullAttendance ? 'var(--status-green-text)' : 'var(--status-amber-text)',
+                                  border: `1px solid ${isFullAttendance ? 'var(--tint-green-border)' : 'var(--tint-amber-border)'}`,
                                 }}
                               >
                                 <CalendarIcon size={12} color={isFullAttendance ? '#15803d' : '#b45309'} />
@@ -889,7 +892,7 @@ export default function StudentDashboardClient({
             {activeSection === 'registered' && (
               <div>
                 {loadingRegistrations ? (
-                  <p style={{ textAlign: 'center', padding: '1.5rem', color: '#64748b', fontSize: '0.86rem' }}>
+                  <p style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
                     Đang tải sự kiện đã đăng ký...
                   </p>
                 ) : pendingRegistrations.length === 0 ? (
@@ -921,8 +924,8 @@ export default function StudentDashboardClient({
                       <div
                         key={ev.id || ev.event_id}
                         style={{
-                          background: '#ffffff',
-                          border: '1.5px solid #e2e8f0',
+                          background: 'var(--bg-surface)',
+                          border: '1.5px solid var(--border-color)',
                           borderRadius: '14px',
                           padding: '1.1rem',
                           display: 'flex',
@@ -935,34 +938,34 @@ export default function StudentDashboardClient({
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
                             {ev.semester && ev.semester !== 'Chưa xếp kỳ' ? (
-                              <span style={{ fontSize: '0.72rem', fontWeight: 800, background: '#eff6ff', color: '#2563eb', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, background: 'var(--tint-blue-bg)', color: 'var(--text-brand)', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
                                 {ev.semester}
                               </span>
                             ) : (
                               <span />
                             )}
                             {ev.role_type === 'volunteer' && ev.review_status === 'pending' ? (
-                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--status-amber-text)', background: 'var(--tint-amber-bg)', border: '1px solid var(--tint-amber-border)', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
                                 Đang chờ duyệt CTV
                               </span>
                             ) : ev.role_type === 'volunteer' && ev.review_status === 'rejected' ? (
-                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#991b1b', background: '#fef2f2', border: '1px solid #fecaca', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--status-red-text)', background: 'var(--tint-red-bg)', border: '1px solid var(--tint-red-border)', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
                                 Chưa trúng tuyển CTV
                               </span>
                             ) : (
-                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-brand-strong)', background: 'var(--tint-blue-bg)', border: '1px solid var(--tint-blue-border)', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
                                 Đã đăng ký (Chờ điểm danh)
                               </span>
                             )}
                           </div>
 
-                          <h3 style={{ margin: '0.2rem 0 0.4rem', fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.35 }}>
+                          <h3 style={{ margin: '0.2rem 0 0.4rem', fontSize: '0.96rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.35 }}>
                             {ev.event_name}
                           </h3>
 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8rem', color: '#475569' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              <ClockIcon size={14} color="#2563eb" />
+                              <ClockIcon size={14} color="var(--text-brand)" />
                               <span>
                                 {ev.event_date ? new Date(ev.event_date).toLocaleDateString('vi-VN') : 'Chưa xếp ngày'}{' '}
                                 {ev.start_time
@@ -972,7 +975,7 @@ export default function StudentDashboardClient({
                             </div>
                             {ev.location && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <MapPinIcon size={14} color="#2563eb" />
+                                <MapPinIcon size={14} color="var(--text-brand)" />
                                 <span>{ev.location}</span>
                               </div>
                             )}
@@ -984,9 +987,9 @@ export default function StudentDashboardClient({
                                   fontSize: '0.75rem',
                                   padding: '0.15rem 0.5rem',
                                   borderRadius: '6px',
-                                  background: ev.role_type === 'volunteer' ? '#f5f3ff' : '#ecfdf5',
-                                  color: ev.role_type === 'volunteer' ? '#6d28d9' : '#047857',
-                                  border: `1px solid ${ev.role_type === 'volunteer' ? '#ddd6fe' : '#a7f3d0'}`,
+                                  background: ev.role_type === 'volunteer' ? 'var(--tint-purple-bg)' : 'var(--tint-green-bg)',
+                                  color: ev.role_type === 'volunteer' ? 'var(--status-purple-text)' : 'var(--status-green-text)',
+                                  border: `1px solid ${ev.role_type === 'volunteer' ? 'var(--tint-purple-border)' : 'var(--tint-green-border)'}`,
                                 }}
                               >
                                 {ev.role_type === 'volunteer'
@@ -1004,9 +1007,9 @@ export default function StudentDashboardClient({
                                     fontSize: '0.75rem',
                                     padding: '0.15rem 0.5rem',
                                     borderRadius: '6px',
-                                    background: ev.session_count > 0 ? '#eff6ff' : '#f8fafc',
-                                    color: ev.session_count > 0 ? '#2563eb' : '#64748b',
-                                    border: '1px solid #bfdbfe',
+                                    background: ev.session_count > 0 ? 'var(--tint-blue-bg)' : 'var(--bg-subtle)',
+                                    color: ev.session_count > 0 ? 'var(--text-brand)' : 'var(--text-muted)',
+                                    border: '1px solid var(--tint-blue-border)',
                                   }}
                                 >
                                   {ev.session_ratio} {ev.session_names?.length ? `(${ev.session_names.join(', ')})` : ''}
@@ -1028,9 +1031,9 @@ export default function StudentDashboardClient({
                             justifyContent: 'center',
                             gap: '0.4rem',
                             padding: '0.55rem 0.9rem',
-                            background: '#f8fafc',
-                            color: '#2563eb',
-                            border: '1.5px solid #cbd5e1',
+                            background: 'var(--bg-subtle)',
+                            color: 'var(--text-brand)',
+                            border: '1.5px solid var(--border-strong)',
                             borderRadius: '8px',
                             fontSize: '0.8rem',
                             fontWeight: 700,
@@ -1046,8 +1049,8 @@ export default function StudentDashboardClient({
                 )}
 
                 {pastMissedRegistrations.length > 0 && (
-                  <div style={{ marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1.5px dashed #e2e8f0' }}>
-                    <h3 style={{ margin: '0 0 0.85rem', fontSize: '0.92rem', fontWeight: 800, color: '#64748b' }}>
+                  <div style={{ marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1.5px dashed var(--border-color)' }}>
+                    <h3 style={{ margin: '0 0 0.85rem', fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-muted)' }}>
                       Sự kiện đã kết thúc — Chưa ghi nhận điểm danh ({pastMissedRegistrations.length})
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.9rem' }}>
@@ -1055,8 +1058,8 @@ export default function StudentDashboardClient({
                         <div
                           key={ev.id || ev.event_id}
                           style={{
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
+                            background: 'var(--bg-subtle)',
+                            border: '1px solid var(--border-color)',
                             borderRadius: '14px',
                             padding: '1rem',
                             display: 'flex',
@@ -1066,20 +1069,20 @@ export default function StudentDashboardClient({
                           }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', background: '#e2e8f0', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', background: 'var(--border-color)', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
                               {ev.role_type === 'volunteer'
                                 ? `Cộng tác viên${ev.department_name ? ` (${ev.department_name})` : ''}`
                                 : 'Người tham gia'}
                             </span>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--status-amber-text)', background: 'var(--tint-amber-bg)', border: '1px solid var(--tint-amber-border)', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
                               Đã kết thúc • Chưa check-in
                             </span>
                           </div>
-                          <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#334155', lineHeight: 1.35 }}>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-body)', lineHeight: 1.35 }}>
                             {ev.event_name}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: '#64748b' }}>
-                            <ClockIcon size={13} color="#64748b" />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            <ClockIcon size={13} color="var(--text-muted)" />
                             <span>
                               {ev.event_date ? new Date(ev.event_date).toLocaleDateString('vi-VN') : 'Chưa xếp ngày'}{' '}
                               {ev.start_time
@@ -1137,23 +1140,23 @@ export default function StudentDashboardClient({
                   </div>
                   <div
                     style={{
-                      background: '#ffffff',
-                      color: '#1e3a8a',
+                      background: 'var(--bg-surface)',
+                      color: 'var(--text-brand-strong)',
                       padding: '0.45rem 0.9rem',
                       borderRadius: '10px',
                       textAlign: 'center',
                       fontWeight: 800,
                     }}
                   >
-                    <div style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase' }}>Còn lại</div>
-                    <div style={{ color: '#16a34a', fontSize: '1.05rem' }}>{delegateInfo.daysLeft} ngày</div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Còn lại</div>
+                    <div style={{ color: 'var(--status-green-text)', fontSize: '1.05rem' }}>{delegateInfo.daysLeft} ngày</div>
                   </div>
                 </div>
 
                 <div className={styles.historyHeader} style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div>
-                    <h2 className={styles.historyTitle} style={{ color: '#1e40af' }}>
-                      <UsersIcon size={18} color="#2563eb" />
+                    <h2 className={styles.historyTitle} style={{ color: 'var(--text-brand-strong)' }}>
+                      <UsersIcon size={18} color="var(--text-brand)" />
                       Danh Sách Đoàn Viên Lớp {delegateInfo.class_id} ({classStudents.length})
                     </h2>
                   </div>
@@ -1185,7 +1188,7 @@ export default function StudentDashboardClient({
                     {
                       key: 'mssv',
                       label: 'MSSV',
-                      render: (val) => <strong style={{ color: '#1d4ed8', fontFamily: 'monospace' }}>{val}</strong>,
+                      render: (val) => <strong style={{ color: 'var(--text-brand)', fontFamily: 'monospace' }}>{val}</strong>,
                     },
                     {
                       key: 'full_name',
@@ -1202,8 +1205,8 @@ export default function StudentDashboardClient({
                             borderRadius: '12px',
                             fontWeight: 800,
                             fontSize: '0.82rem',
-                            background: val > 0 ? '#dcfce7' : '#f1f5f9',
-                            color: val > 0 ? '#15803d' : '#64748b',
+                            background: val > 0 ? 'var(--tint-green-strong)' : 'var(--bg-muted)',
+                            color: val > 0 ? 'var(--status-green-text)' : 'var(--text-muted)',
                           }}
                         >
                           {val} sự kiện
@@ -1219,10 +1222,10 @@ export default function StudentDashboardClient({
                           onClick={() => openClassmateHistory(row)}
                           style={{
                             padding: '0.35rem 0.75rem',
-                            background: '#eff6ff',
-                            border: '1px solid #bfdbfe',
+                            background: 'var(--tint-blue-bg)',
+                            border: '1px solid var(--tint-blue-border)',
                             borderRadius: '8px',
-                            color: '#1d4ed8',
+                            color: 'var(--text-brand)',
                             fontWeight: 700,
                             fontSize: '0.78rem',
                             cursor: 'pointer',
@@ -1273,7 +1276,7 @@ export default function StudentDashboardClient({
         >
           <div
             style={{
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
               borderRadius: '20px',
               padding: '2rem',
               width: '100%',
@@ -1283,17 +1286,17 @@ export default function StudentDashboardClient({
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 Cập Nhật Thông Tin Cá Nhân
               </h3>
               <button
                 type="button"
                 onClick={() => setShowProfileModal(false)}
                 style={{
-                  background: '#f1f5f9',
+                  background: 'var(--bg-muted)',
                   border: 'none',
                   cursor: 'pointer',
-                  color: '#64748b',
+                  color: 'var(--text-muted)',
                   width: 36,
                   height: 36,
                   borderRadius: '10px',
@@ -1338,7 +1341,7 @@ export default function StudentDashboardClient({
               style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
             >
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                   Giới tính
                 </label>
                 <select
@@ -1347,12 +1350,12 @@ export default function StudentDashboardClient({
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1.5px solid #e2e8f0',
+                    border: '1.5px solid var(--border-color)',
                     borderRadius: '12px',
-                    background: '#f8fafc',
+                    background: 'var(--bg-subtle)',
                     fontWeight: 600,
                     fontSize: '0.95rem',
-                    color: '#0f172a',
+                    color: 'var(--text-primary)',
                     boxSizing: 'border-box',
                   }}
                 >
@@ -1362,7 +1365,7 @@ export default function StudentDashboardClient({
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                   Số điện thoại / Zalo
                 </label>
                 <input
@@ -1373,12 +1376,12 @@ export default function StudentDashboardClient({
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
-                    border: '1.5px solid #e2e8f0',
+                    border: '1.5px solid var(--border-color)',
                     borderRadius: '12px',
-                    background: '#f8fafc',
+                    background: 'var(--bg-subtle)',
                     fontWeight: 600,
                     fontSize: '0.95rem',
-                    color: '#0f172a',
+                    color: 'var(--text-primary)',
                     boxSizing: 'border-box',
                   }}
                 />
@@ -1390,13 +1393,13 @@ export default function StudentDashboardClient({
                   onClick={() => setShowProfileModal(false)}
                   style={{
                     padding: '0.65rem 1.25rem',
-                    background: '#f1f5f9',
-                    border: '1.5px solid #e2e8f0',
+                    background: 'var(--bg-muted)',
+                    border: '1.5px solid var(--border-color)',
                     borderRadius: '12px',
                     fontSize: '0.9rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    color: '#475569',
+                    color: 'var(--text-secondary)',
                   }}
                 >
                   Hủy
@@ -1442,7 +1445,7 @@ export default function StudentDashboardClient({
         >
           <div
             style={{
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
               borderRadius: '20px',
               maxWidth: '720px',
               width: '100%',
@@ -1497,8 +1500,8 @@ export default function StudentDashboardClient({
 
             <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
               {loadingClassmateHistory ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.5rem' }}>
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.5rem' }}>
                     Đang tải dữ liệu minh chứng...
                   </div>
                   <div>Vui lòng chờ trong giây lát.</div>
@@ -1508,10 +1511,10 @@ export default function StudentDashboardClient({
                   style={{
                     padding: '2rem 1.5rem',
                     textAlign: 'center',
-                    background: '#fef2f2',
-                    border: '1.5px solid #fecaca',
+                    background: 'var(--tint-red-bg)',
+                    border: '1.5px solid var(--tint-red-border)',
                     borderRadius: '14px',
-                    color: '#b91c1c',
+                    color: 'var(--status-red-text)',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
@@ -1520,7 +1523,7 @@ export default function StudentDashboardClient({
                   <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.35rem' }}>
                     {classmateHistoryError}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#7f1d1d' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--status-red-text)' }}>
                     Vui lòng liên hệ Đoàn Trường nếu bạn cần cấp lại quyền Ban cán sự lớp.
                   </div>
                 </div>
@@ -1528,30 +1531,30 @@ export default function StudentDashboardClient({
                 <>
                   <div
                     style={{
-                      background: '#f0fdf4',
-                      border: '1.5px solid #bbf7d0',
+                      background: 'var(--tint-green-bg)',
+                      border: '1.5px solid var(--tint-green-border)',
                       borderRadius: '12px',
                       padding: '0.85rem 1rem',
                       marginBottom: '1.25rem',
                     }}
                   >
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--status-green-text)', textTransform: 'uppercase' }}>
                       Tổng Số Lượt Điểm Danh Hợp Lệ
                     </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#15803d', marginTop: '0.15rem' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--status-green-text)', marginTop: '0.15rem' }}>
                       {classmateHistory.total_attended} sự kiện
                     </div>
                   </div>
 
-                  <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>
+                  <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-body)' }}>
                     Chi Tiết Các Sự Kiện Đã Check-in
                   </h4>
 
                   {classmateHistory.history && classmateHistory.history.length > 0 ? (
-                    <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+                    <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
                         <thead>
-                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
+                          <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                             <th style={{ padding: '0.7rem 0.9rem' }}>Tên Sự Kiện</th>
                             <th style={{ padding: '0.7rem 0.9rem' }}>Số Buổi</th>
                             <th style={{ padding: '0.7rem 0.9rem' }}>Thời Gian Điểm Danh</th>
@@ -1564,11 +1567,11 @@ export default function StudentDashboardClient({
                             const sTotal = h.total_sessions || 1;
                             const isFull = sCount >= sTotal;
                             return (
-                              <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                <td style={{ padding: '0.7rem 0.9rem', fontWeight: 700, color: '#0f172a' }}>
+                              <tr key={h.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                <td style={{ padding: '0.7rem 0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                                   <div>{h.event_name}</div>
                                   {(sTotal > 1 || (h.session_names && h.session_names !== 'Buổi chính')) && (
-                                    <div style={{ fontSize: '0.73rem', color: '#475569', fontWeight: 600, marginTop: '0.15rem' }}>
+                                    <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '0.15rem' }}>
                                       Buổi: {h.session_names}
                                     </div>
                                   )}
@@ -1580,15 +1583,15 @@ export default function StudentDashboardClient({
                                       borderRadius: '999px',
                                       fontSize: '0.75rem',
                                       fontWeight: 800,
-                                      background: isFull ? '#dcfce7' : '#fef3c7',
-                                      color: isFull ? '#15803d' : '#b45309',
-                                      border: `1px solid ${isFull ? '#bbf7d0' : '#fde68a'}`,
+                                      background: isFull ? 'var(--tint-green-strong)' : 'var(--tint-amber-strong)',
+                                      color: isFull ? 'var(--status-green-text)' : 'var(--status-amber-text)',
+                                      border: `1px solid ${isFull ? 'var(--tint-green-border)' : 'var(--tint-amber-border)'}`,
                                     }}
                                   >
                                     {sCount}/{sTotal} buổi
                                   </span>
                                 </td>
-                                <td style={{ padding: '0.7rem 0.9rem', color: '#64748b' }}>
+                                <td style={{ padding: '0.7rem 0.9rem', color: 'var(--text-muted)' }}>
                                   {new Date(h.checkin_time).toLocaleString('vi-VN')}
                                 </td>
                                 <td style={{ padding: '0.7rem 0.9rem' }}>
@@ -1600,16 +1603,16 @@ export default function StudentDashboardClient({
                                       fontWeight: 700,
                                       background:
                                         h.participate_role === 'volunteer'
-                                          ? '#fef3c7'
+                                          ? 'var(--tint-amber-strong)'
                                           : h.participate_role === 'organizer'
-                                          ? '#f3e8ff'
-                                          : '#dcfce7',
+                                          ? 'var(--tint-purple-strong)'
+                                          : 'var(--tint-green-strong)',
                                       color:
                                         h.participate_role === 'volunteer'
-                                          ? '#b45309'
+                                          ? 'var(--status-amber-text)'
                                           : h.participate_role === 'organizer'
                                           ? '#7e22ce'
-                                          : '#15803d',
+                                          : 'var(--status-green-text)',
                                     }}
                                   >
                                     {h.participate_role === 'volunteer'
@@ -1626,7 +1629,7 @@ export default function StudentDashboardClient({
                       </table>
                     </div>
                   ) : (
-                    <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '12px', color: '#64748b' }}>
+                    <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--bg-subtle)', borderRadius: '12px', color: 'var(--text-muted)' }}>
                       Sinh viên này chưa có lượt điểm danh sự kiện nào.
                     </div>
                   )}
@@ -1634,14 +1637,14 @@ export default function StudentDashboardClient({
               ) : null}
             </div>
 
-            <div style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ padding: '0.85rem 1.25rem', background: 'var(--bg-subtle)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setSelectedClassmate(null)}
                 style={{
                   padding: '0.45rem 1rem',
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: '8px',
                   fontWeight: 700,
                   fontSize: '0.85rem',

@@ -27,6 +27,7 @@ import {
 import DualLogos from '@/components/DualLogos';
 import UserMenuDropdown from '@/components/UserMenuDropdown';
 import PushNotificationButton from '@/components/PushNotificationButton';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import type { SessionUser } from '@/lib/types';
 import styles from './Header.module.css';
@@ -508,6 +509,7 @@ export default function Header({
         </div>
 
         <div className={styles.right}>
+          <ThemeToggleButton />
           {effectiveUser && <PushNotificationButton />}
           <UserMenuDropdown user={effectiveUser} userName={userName} avatarUrl={avatarUrl} onLogout={handleLogout} />
         </div>
@@ -846,8 +848,8 @@ export default function Header({
                                       fontWeight: 700,
                                       padding: '0.08rem 0.45rem',
                                       borderRadius: '999px',
-                                      background: isAlertBadge ? '#fee2e2' : '#f1f5f9',
-                                      color: isAlertBadge ? '#b91c1c' : '#475569',
+                                      background: isAlertBadge ? 'var(--tint-red-strong)' : 'var(--bg-muted)',
+                                      color: isAlertBadge ? 'var(--status-red-text)' : 'var(--text-secondary)',
                                     }
                               }
                             >

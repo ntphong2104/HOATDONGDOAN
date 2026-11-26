@@ -2,9 +2,20 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isOfficeAdminAuth, getDutyVolunteerRecord } from '@/lib/utils/office-auth';
+import { getTodayVN } from '@/lib/utils/office-duty';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+function parseVnDateTimeInput(raw: string): Date {
+  const s = raw.trim();
+  // <input type="datetime-local"> gửi "YYYY-MM-DDTHH:mm" không kèm offset -> cố định múi giờ VN (+07:00)
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(s)) {
+    const withSec = s.length === 16 ? `${s}:00` : s;
+    return new Date(`${withSec}+07:00`);
+  }
+  return new Date(s);
+}
 
 export async function GET() {
   try {
@@ -26,10 +37,29 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Lỗi tải danh sách đợt đăng ký' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, data: data || [] });
+    const nowMs = Date.now();
+    const todayVN = getTodayVN();
+    const enriched = (data || []).map((w: any) => {
+      const openMs = new Date(w.open_at).getTime();
+      const closeMs = new Date(w.close_at).getTime();
+      const applyTo = String(w.apply_to || '').slice(0, 10);
+      let window_state: 'disabled' | 'ended' | 'closed' | 'upcoming' | 'open' = 'open';
+      if (!w.is_active) {
+        window_state = 'disabled';
+      } else if (applyTo && todayVN > applyTo) {
+        window_state = 'ended';
+      } else if (Number.isFinite(closeMs) && nowMs > closeMs) {
+        window_state = 'closed';
+      } else if (Number.isFinite(openMs) && nowMs < openMs) {
+        window_state = 'upcoming';
+      }
+      return { ...w, window_state };
+    });
+
+    return NextResponse.json({ success: true, data: enriched });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err?.message || 'Lỗi tải đợt đăng ký' }, { status: 500 });
   }
@@ -64,7 +94,15 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (new Date(open_at).getTime() >= new Date(close_at).getTime()) {
+    const openDate = parseVnDateTimeInput(open_at);
+    const closeDate = parseVnDateTimeInput(close_at);
+    if (isNaN(openDate.getTime()) || isNaN(closeDate.getTime())) {
+      return NextResponse.json(
+        { success: false, error: 'Định dạng thời gian mở/đóng đăng ký không hợp lệ.' },
+        { status: 400 }
+      );
+    }
+    if (openDate.getTime() >= closeDate.getTime()) {
       return NextResponse.json(
         { success: false, error: 'Thời điểm mở đăng ký phải trước thời điểm đóng đăng ký.' },
         { status: 400 }
@@ -78,8 +116,8 @@ export async function POST(req: Request) {
         title,
         apply_from,
         apply_to,
-        open_at: new Date(open_at).toISOString(),
-        close_at: new Date(close_at).toISOString(),
+        open_at: openDate.toISOString(),
+        close_at: closeDate.toISOString(),
         is_active: true,
         created_by: auth!.email,
       })

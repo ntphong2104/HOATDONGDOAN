@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { isOfficeAdminAuth, getDutyVolunteerRecord } from '@/lib/utils/office-auth';
+import { checkRateLimit } from '@/lib/security/rate-limiter';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import {
   extractClientIp,
   getOfficeDutyConfig,
@@ -42,7 +44,9 @@ export async function GET(req: Request) {
 
     if (!isAdmin) {
       if (vol?.mssv) {
-        q = q.or(`email.ilike.${auth.email.trim().toLowerCase()},mssv.eq.${vol.mssv}`);
+        const safeEmail = sanitizePostgrestValue(auth.email.trim().toLowerCase(), 120);
+        const safeMssv = sanitizePostgrestValue(vol.mssv, 40);
+        q = q.or(`email.ilike.${safeEmail},mssv.eq.${safeMssv}`);
       } else {
         q = q.ilike('email', auth.email);
       }
@@ -51,11 +55,15 @@ export async function GET(req: Request) {
     if (to) q = q.lte('duty_date', to);
 
     const { data, error } = await q;
-    if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    if (error) {
+      console.error('GET /api/office/duty/attendance error:', error);
+      return NextResponse.json({ success: false, error: 'Lỗi tải lịch sử chấm công' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, data: data || [] });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || 'Lỗi tải chấm công' }, { status: 500 });
+    console.error('GET /api/office/duty/attendance exception:', err);
+    return NextResponse.json({ success: false, error: 'Lỗi tải chấm công' }, { status: 500 });
   }
 }
 
@@ -64,6 +72,14 @@ export async function POST(req: Request) {
     const auth = await getAuthContext();
     if (!auth) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(`office_duty_att_${auth.email}`, 12, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: `Thao tác quá nhanh, vui lòng thử lại sau ${rl.resetInSeconds} giây.` },
+        { status: 429, headers: { 'Retry-After': String(rl.resetInSeconds) } }
+      );
     }
 
     const supabase = (await createAdminClient()) || (await createClient());
@@ -154,12 +170,13 @@ export async function POST(req: Request) {
         .single();
 
       if (error) {
+        console.error('POST /api/office/duty/attendance insert error:', error);
         return NextResponse.json(
           {
             success: false,
             error: error.message.includes('row-level security')
               ? 'Lỗi quyền RLS bảng chấm công — vui lòng cấu hình SUPABASE_SERVICE_ROLE_KEY trên server.'
-              : error.message,
+              : 'Không thể lưu chấm công vào cơ sở dữ liệu.',
           },
           { status: 500 }
         );
@@ -207,7 +224,8 @@ export async function POST(req: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      console.error('POST /api/office/duty/attendance update error:', error);
+      return NextResponse.json({ success: false, error: 'Không thể cập nhật giờ Check-out.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -216,8 +234,9 @@ export async function POST(req: Request) {
       data,
     });
   } catch (err: any) {
+    console.error('POST /api/office/duty/attendance exception:', err);
     return NextResponse.json(
-      { success: false, error: err?.message || 'Lỗi chấm công ca trực' },
+      { success: false, error: 'Lỗi chấm công ca trực' },
       { status: 500 }
     );
   }

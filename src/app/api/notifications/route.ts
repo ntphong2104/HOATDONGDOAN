@@ -6,6 +6,7 @@ import { resolveStudentLcd } from '@/lib/utils/lcd';
 import { getMasterStudentByMssv, isPlaceholderClass } from '@/lib/utils/student-profile';
 import { runSerializedByKey } from '@/lib/utils/concurrency-queue';
 import { sanitizeRedirectPath } from '@/lib/security/redirect';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import { getRegistrationExtras } from '@/lib/constants/event-meta-store';
 
 export const dynamic = 'force-dynamic';
@@ -145,6 +146,8 @@ export async function GET() {
 
     const lowerEmail = auth.email.toLowerCase().trim();
     const mssv = (extractMSSV(lowerEmail) || '').toUpperCase().trim();
+    const safeEmail = sanitizePostgrestValue(lowerEmail, 120);
+    const safeMssv = sanitizePostgrestValue(mssv, 40);
 
     const [combinedRows, { data: userRow }, { data: regs }, readSet] = await Promise.all([
       loadSharedNotificationFeed(supabase),
@@ -152,7 +155,7 @@ export async function GET() {
         ? supabase
             .from('users')
             .select('class_id')
-            .or(`email.eq.${lowerEmail},mssv.eq.${mssv}`)
+            .or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`)
             .maybeSingle()
         : Promise.resolve({ data: null }),
       mssv

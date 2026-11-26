@@ -23,6 +23,65 @@ type AdminTab = 'schedule' | 'volunteers' | 'windows_network' | 'equipment' | 's
 
 const isBanStillActive = (bannedUntil: string) => new Date(bannedUntil).getTime() > Date.now();
 
+function resolveWindowBadge(w: any): {
+  label: string;
+  bg: string;
+  color: string;
+  title: string;
+} {
+  let state: string = w?.window_state || '';
+  if (!state) {
+    const nowMs = Date.now();
+    const openMs = new Date(w?.open_at).getTime();
+    const closeMs = new Date(w?.close_at).getTime();
+    const todayStr = getVietnamDateString(0);
+    const applyTo = String(w?.apply_to || '').slice(0, 10);
+    if (!w?.is_active) state = 'disabled';
+    else if (applyTo && todayStr > applyTo) state = 'ended';
+    else if (Number.isFinite(closeMs) && nowMs > closeMs) state = 'closed';
+    else if (Number.isFinite(openMs) && nowMs < openMs) state = 'upcoming';
+    else state = 'open';
+  }
+
+  switch (state) {
+    case 'disabled':
+      return {
+        label: 'Đã tắt',
+        bg: 'var(--bg-muted)',
+        color: 'var(--text-muted)',
+        title: 'Đợt đăng ký đang tắt thủ công (bấm để bật lại)',
+      };
+    case 'ended':
+      return {
+        label: 'Đã kết thúc',
+        bg: 'var(--bg-muted)',
+        color: 'var(--text-muted)',
+        title: 'Đã qua cả thời gian mở đăng ký và tuần trực áp dụng',
+      };
+    case 'closed':
+      return {
+        label: 'Đã đóng ĐK',
+        bg: 'var(--tint-amber-bg)',
+        color: 'var(--status-amber-text)',
+        title: 'Đã hết thời hạn mở đăng ký tự động (CTV không thể đăng ký/hủy thêm)',
+      };
+    case 'upcoming':
+      return {
+        label: 'Sắp mở',
+        bg: 'var(--tint-blue-bg)',
+        color: 'var(--text-brand)',
+        title: 'Đã lên lịch, sẽ tự mở khi tới giờ (bấm để tắt)',
+      };
+    default:
+      return {
+        label: 'Đang mở ĐK',
+        bg: 'var(--tint-green-strong)',
+        color: 'var(--status-green-text)',
+        title: 'Đang trong khung giờ cho phép CTV đăng ký (bấm để tạm tắt)',
+      };
+  }
+}
+
 function fmtDateVN(d?: string | null): string {
   if (!d) return '—';
   if (d.includes('T')) {
@@ -529,13 +588,13 @@ export default function OfficeAdminPage() {
 
   if (forbidden) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
         <Header title="QUẢN TRỊ VĂN PHÒNG ĐOÀN" />
         <main style={{ maxWidth: 720, margin: '3rem auto', padding: '0 1.25rem' }}>
-          <div style={{ background: '#fff', border: '1px solid #fecaca', borderRadius: 16, padding: '2rem', textAlign: 'center' }}>
-            <AlertTriangleIcon size={36} color="#dc2626" />
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--tint-red-border)', borderRadius: 16, padding: '2rem', textAlign: 'center' }}>
+            <AlertTriangleIcon size={36} color="var(--status-red-text)" />
             <h2 style={{ marginTop: '0.75rem' }}>Không có quyền truy cập</h2>
-            <p style={{ color: '#64748b' }}>
+            <p style={{ color: 'var(--text-muted)' }}>
               Trang này chỉ dành cho tài khoản <strong>Admin Văn phòng Đoàn</strong> hoặc <strong>Super Admin</strong>.
             </p>
           </div>
@@ -585,19 +644,19 @@ export default function OfficeAdminPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       <Header title="QUẢN TRỊ VĂN PHÒNG ĐOÀN" />
       <main style={{ maxWidth: 1360, margin: '0 auto', padding: '1.25rem 1.5rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
         {/* Hero */}
         <section
           style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderLeft: '3px solid #1d4ed8',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-color)',
+            borderLeft: '3px solid var(--brand-accent)',
             borderRadius: 16,
             padding: '1.25rem 1.5rem',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
-            color: '#0f172a',
+            color: 'var(--text-primary)',
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'space-between',
@@ -606,36 +665,36 @@ export default function OfficeAdminPage() {
           }}
         >
           <div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1d4ed8' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-brand)' }}>
               Bàn làm việc Admin Văn phòng Đoàn
             </div>
-            <h1 style={{ margin: '0.2rem 0', fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+            <h1 style={{ margin: '0.2rem 0', fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
               Quản Lý Trực Văn Phòng &amp; Mượn Dụng Cụ
             </h1>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Quản lý danh sách CTV trực, mở đợt đăng ký, kiểm soát chấm công qua WiFi VPĐ, duyệt mượn và tự động cấm mượn khi trả trễ.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '0.55rem 0.9rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>{volunteers.length}</div>
-              <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>CTV trực</div>
+            <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '0.55rem 0.9rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{volunteers.length}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>CTV trực</div>
             </div>
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '0.55rem 0.9rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>{requests.filter((r) => r.status === 'pending' || r.status === 'borrowed').length}</div>
-              <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Đơn đang xử lý</div>
+            <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '0.55rem 0.9rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{requests.filter((r) => r.status === 'pending' || r.status === 'borrowed').length}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Đơn đang xử lý</div>
             </div>
             <div
               style={{
-                background: activeBans.length > 0 ? '#fef2f2' : '#f8fafc',
-                border: activeBans.length > 0 ? '1px solid #fecaca' : '1px solid #e2e8f0',
+                background: activeBans.length > 0 ? 'var(--tint-red-bg)' : 'var(--bg-subtle)',
+                border: activeBans.length > 0 ? '1px solid var(--tint-red-border)' : '1px solid var(--border-color)',
                 borderRadius: 12,
                 padding: '0.55rem 0.9rem',
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: activeBans.length > 0 ? '#b91c1c' : '#0f172a', fontVariantNumeric: 'tabular-nums' }}>{activeBans.length}</div>
-              <div style={{ fontSize: '0.72rem', color: activeBans.length > 0 ? '#b91c1c' : '#64748b', fontWeight: 600 }}>Đơn vị bị cấm</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: activeBans.length > 0 ? 'var(--status-red-text)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{activeBans.length}</div>
+              <div style={{ fontSize: '0.72rem', color: activeBans.length > 0 ? 'var(--status-red-text)' : 'var(--text-muted)', fontWeight: 600 }}>Đơn vị bị cấm</div>
             </div>
           </div>
         </section>
@@ -660,9 +719,9 @@ export default function OfficeAdminPage() {
                 gap: 6,
                 padding: '0.55rem 1rem',
                 borderRadius: 10,
-                border: activeTab === t.id ? '1px solid #1d4ed8' : '1px solid #e2e8f0',
-                background: activeTab === t.id ? '#1d4ed8' : '#fff',
-                color: activeTab === t.id ? '#fff' : '#334155',
+                border: activeTab === t.id ? '1px solid var(--brand-accent)' : '1px solid var(--border-color)',
+                background: activeTab === t.id ? '#1d4ed8' : 'var(--bg-surface)',
+                color: activeTab === t.id ? '#fff' : 'var(--text-body)',
                 fontWeight: 700,
                 fontSize: '0.84rem',
                 cursor: 'pointer',
@@ -697,19 +756,19 @@ export default function OfficeAdminPage() {
         {/* TAB 1: Lịch trực & Chấm công */}
         {activeTab === 'schedule' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
-            <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.2rem' }}>
+            <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.2rem' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>
                   Lịch trực tuần ({scheduleData?.workdays?.[0] ? `${fmtDateVN(scheduleData.workdays[0])} – ${fmtDateVN(scheduleData.workdays[4])}` : '...'})
                 </h2>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <button type="button" onClick={() => { const n = addDays(weekAnchor || scheduleData?.workdays?.[0], -7); setWeekAnchor(n); loadSchedule(n); }} style={{ padding: '0.38rem 0.7rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>← Tuần trước</button>
-                  <button type="button" onClick={() => { setWeekAnchor(''); loadSchedule(); }} style={{ padding: '0.38rem 0.7rem', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>Tuần này</button>
-                  <button type="button" onClick={() => { const n = addDays(weekAnchor || scheduleData?.workdays?.[0], 7); setWeekAnchor(n); loadSchedule(n); }} style={{ padding: '0.38rem 0.7rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>Tuần sau →</button>
+                  <button type="button" onClick={() => { const n = addDays(weekAnchor || scheduleData?.workdays?.[0], -7); setWeekAnchor(n); loadSchedule(n); }} style={{ padding: '0.38rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>← Tuần trước</button>
+                  <button type="button" onClick={() => { setWeekAnchor(''); loadSchedule(); }} style={{ padding: '0.38rem 0.7rem', borderRadius: 8, border: '1px solid var(--tint-blue-border)', background: 'var(--tint-blue-bg)', color: 'var(--text-brand)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>Tuần này</button>
+                  <button type="button" onClick={() => { const n = addDays(weekAnchor || scheduleData?.workdays?.[0], 7); setWeekAnchor(n); loadSchedule(n); }} style={{ padding: '0.38rem 0.7rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>Tuần sau →</button>
                 </div>
               </div>
 
-              <p style={{ margin: '0 0 0.85rem', fontSize: '0.82rem', color: '#64748b' }}>
+              <p style={{ margin: '0 0 0.85rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                 Bấm trực tiếp vào ô <strong>Sáng / Chiều</strong> tương ứng với từng CTV để tick ✓ xếp lịch hoặc bỏ chọn (tối đa {scheduleData?.config?.max_per_shift || 2} người/ca).
               </p>
 
@@ -727,17 +786,17 @@ export default function OfficeAdminPage() {
             </section>
 
             {/* Nhật ký chấm công */}
-            <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.2rem' }}>
+            <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: 8 }}>
                 <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Nhật ký Chấm công CTV ({attendanceList.length})</h2>
                 <button type="button" onClick={handleExportAttendance} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.45rem 0.9rem', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
                   <DownloadIcon size={15} /> Xuất Excel chấm công
                 </button>
               </div>
-              <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 10 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
                       <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Ngày</th>
                       <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Ca</th>
                       <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>CTV</th>
@@ -748,20 +807,20 @@ export default function OfficeAdminPage() {
                   </thead>
                   <tbody>
                     {attendanceList.length === 0 ? (
-                      <tr><td colSpan={6} style={{ padding: '1.2rem', textAlign: 'center', color: '#64748b' }}>Chưa có lượt chấm công nào.</td></tr>
+                      <tr><td colSpan={6} style={{ padding: '1.2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Chưa có lượt chấm công nào.</td></tr>
                     ) : attendanceList.map((a) => (
-                      <tr key={a.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr key={a.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '0.65rem 0.8rem', fontWeight: 700 }}>{fmtDateVN(a.duty_date)}</td>
                         <td style={{ padding: '0.65rem 0.8rem' }}>{a.shift === 'morning' ? 'Sáng' : 'Chiều'}</td>
-                        <td style={{ padding: '0.65rem 0.8rem' }}><strong>{a.full_name}</strong> <span style={{ color: '#64748b', fontFamily: 'monospace' }}>({a.mssv})</span></td>
+                        <td style={{ padding: '0.65rem 0.8rem' }}><strong>{a.full_name}</strong> <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>({a.mssv})</span></td>
                         <td style={{ padding: '0.65rem 0.8rem' }}>
                           {fmtDateTimeVN(a.check_in_at)}
-                          {a.late_minutes > 0 && <span style={{ color: '#dc2626', fontWeight: 700 }}> (trễ {a.late_minutes}p)</span>}
-                          <div style={{ fontSize: '0.73rem', color: '#64748b', fontFamily: 'monospace' }}>{a.check_in_ip || ''}</div>
+                          {a.late_minutes > 0 && <span style={{ color: 'var(--status-red-text)', fontWeight: 700 }}> (trễ {a.late_minutes}p)</span>}
+                          <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{a.check_in_ip || ''}</div>
                         </td>
                         <td style={{ padding: '0.65rem 0.8rem' }}>
                           {fmtDateTimeVN(a.check_out_at)}
-                          <div style={{ fontSize: '0.73rem', color: '#64748b', fontFamily: 'monospace' }}>{a.check_out_ip || ''}</div>
+                          <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{a.check_out_ip || ''}</div>
                         </td>
                         <td style={{ padding: '0.65rem 0.8rem', textAlign: 'right', fontWeight: 700 }}>{a.worked_minutes || 0}p</td>
                       </tr>
@@ -775,10 +834,10 @@ export default function OfficeAdminPage() {
 
         {/* TAB 2: Danh sách CTV trực */}
         {activeTab === 'volunteers' && (
-          <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Nạp Danh sách CTV Trực Văn phòng</h2>
-              <p style={{ margin: '0.25rem 0 0', fontSize: '0.84rem', color: '#64748b' }}>
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.84rem', color: 'var(--text-muted)' }}>
                 Chỉ các MSSV nằm trong danh sách này mới nhìn thấy mục <strong>Trực văn phòng</strong> trên menu và được đăng ký lịch trực. Bạn có thể nhập 1 MSSV hoặc dán cả cột MSSV từ Excel / Google Sheet.
               </p>
             </div>
@@ -789,7 +848,7 @@ export default function OfficeAdminPage() {
                 value={bulkMssvInput}
                 onChange={(e) => setBulkMssvInput(e.target.value)}
                 placeholder={'Dán 1 hoặc nhiều MSSV cách nhau bằng dấu phẩy hoặc xuống dòng:\nN22DCCN158\nN23DCAT012\nN24DCVT045'}
-                style={{ width: '100%', padding: '0.75rem', borderRadius: 10, border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem' }}
+                style={{ width: '100%', padding: '0.75rem', borderRadius: 10, border: '1px solid var(--border-strong)', fontFamily: 'monospace', fontSize: '0.85rem' }}
                 required
               />
               <div>
@@ -799,10 +858,10 @@ export default function OfficeAdminPage() {
               </div>
             </form>
 
-            <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 10 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'left' }}>MSSV</th>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'left' }}>Họ tên</th>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'left' }}>Lớp</th>
@@ -812,15 +871,15 @@ export default function OfficeAdminPage() {
                 </thead>
                 <tbody>
                   {volunteers.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: '1.2rem', textAlign: 'center', color: '#64748b' }}>Chưa có CTV trực nào.</td></tr>
+                    <tr><td colSpan={5} style={{ padding: '1.2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Chưa có CTV trực nào.</td></tr>
                   ) : volunteers.map((v) => (
-                    <tr key={v.mssv} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '0.65rem 0.85rem', fontFamily: 'monospace', fontWeight: 700, color: '#0369a1' }}>{v.mssv}</td>
+                    <tr key={v.mssv} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '0.65rem 0.85rem', fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-brand)' }}>{v.mssv}</td>
                       <td style={{ padding: '0.65rem 0.85rem', fontWeight: 700 }}>{v.full_name}</td>
                       <td style={{ padding: '0.65rem 0.85rem' }}>{v.class_id}</td>
-                      <td style={{ padding: '0.65rem 0.85rem', color: '#64748b' }}>{v.email}</td>
+                      <td style={{ padding: '0.65rem 0.85rem', color: 'var(--text-muted)' }}>{v.email}</td>
                       <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>
-                        <button type="button" onClick={() => handleDeleteVolunteer(v.mssv)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 7, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer' }}>
+                        <button type="button" onClick={() => handleDeleteVolunteer(v.mssv)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 7, border: '1px solid var(--tint-red-border)', background: 'var(--tint-red-bg)', color: 'var(--status-red-text)', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer' }}>
                           <TrashIcon size={13} /> Xóa
                         </button>
                       </td>
@@ -836,36 +895,36 @@ export default function OfficeAdminPage() {
         {activeTab === 'windows_network' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
             {/* Mở đợt đăng ký */}
-            <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem' }}>
+            <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.25rem' }}>
               <h2 style={{ margin: '0 0 0.9rem', fontSize: '1.05rem', fontWeight: 800 }}>Mở Đợt Đăng Ký Lịch Trực</h2>
-              <form onSubmit={handleCreateWindow} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', alignItems: 'end', marginBottom: '1rem', padding: '0.9rem', background: '#f8fafc', borderRadius: 12 }}>
+              <form onSubmit={handleCreateWindow} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', alignItems: 'end', marginBottom: '1rem', padding: '0.9rem', background: 'var(--bg-subtle)', borderRadius: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Tên đợt *</label>
-                  <input type="text" required value={winTitle} onChange={(e) => setWinTitle(e.target.value)} placeholder="VD: Trực tuần 12 (23/11 – 27/11)" style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }} />
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>Tên đợt *</label>
+                  <input type="text" required value={winTitle} onChange={(e) => setWinTitle(e.target.value)} placeholder="VD: Trực tuần 12 (23/11 – 27/11)" style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Áp dụng từ ngày *</label>
-                  <input type="date" required value={winFrom} onChange={(e) => setWinFrom(e.target.value)} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }} />
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>Áp dụng từ ngày *</label>
+                  <input type="date" required value={winFrom} onChange={(e) => setWinFrom(e.target.value)} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Áp dụng đến ngày *</label>
-                  <input type="date" required value={winTo} onChange={(e) => setWinTo(e.target.value)} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }} />
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>Áp dụng đến ngày *</label>
+                  <input type="date" required value={winTo} onChange={(e) => setWinTo(e.target.value)} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Mở đăng ký lúc *</label>
-                  <input type="datetime-local" required value={winOpen} onChange={(e) => setWinOpen(e.target.value)} style={{ width: '100%', height: 36, padding: '0 0.6rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }} />
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>Mở đăng ký lúc *</label>
+                  <input type="datetime-local" required value={winOpen} onChange={(e) => setWinOpen(e.target.value)} style={{ width: '100%', height: 36, padding: '0 0.6rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Đóng đăng ký lúc *</label>
-                  <input type="datetime-local" required value={winClose} onChange={(e) => setWinClose(e.target.value)} style={{ width: '100%', height: 36, padding: '0 0.6rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }} />
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>Đóng đăng ký lúc *</label>
+                  <input type="datetime-local" required value={winClose} onChange={(e) => setWinClose(e.target.value)} style={{ width: '100%', height: 36, padding: '0 0.6rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }} />
                 </div>
                 <button type="submit" style={{ height: 36, borderRadius: 8, border: 'none', background: '#1d4ed8', color: '#fff', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer' }}>Mở đợt đăng ký</button>
               </form>
 
-              <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 10 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
                       <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Tên đợt</th>
                       <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Ngày trực áp dụng</th>
                       <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Khung giờ mở đăng ký</th>
@@ -875,22 +934,30 @@ export default function OfficeAdminPage() {
                   </thead>
                   <tbody>
                     {windows.length === 0 ? (
-                      <tr><td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>Chưa có đợt đăng ký nào.</td></tr>
-                    ) : windows.map((w) => (
-                      <tr key={w.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.65rem 0.8rem', fontWeight: 700 }}>{w.title}</td>
-                        <td style={{ padding: '0.65rem 0.8rem' }}>{fmtDateVN(w.apply_from)} → {fmtDateVN(w.apply_to)}</td>
-                        <td style={{ padding: '0.65rem 0.8rem' }}>{fmtDateTimeVN(w.open_at)} → {fmtDateTimeVN(w.close_at)}</td>
-                        <td style={{ padding: '0.65rem 0.8rem', textAlign: 'center' }}>
-                          <button type="button" onClick={() => handleToggleWindow(w)} style={{ padding: '3px 9px', borderRadius: 999, border: 'none', fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer', background: w.is_active ? '#dcfce7' : '#f1f5f9', color: w.is_active ? '#15803d' : '#64748b' }}>
-                            {w.is_active ? 'Đang bật' : 'Đã tắt'}
-                          </button>
-                        </td>
-                        <td style={{ padding: '0.65rem 0.8rem', textAlign: 'right' }}>
-                          <button type="button" onClick={() => handleDeleteWindow(w.id)} style={{ padding: '4px 8px', borderRadius: 7, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Xóa</button>
-                        </td>
-                      </tr>
-                    ))}
+                      <tr><td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>Chưa có đợt đăng ký nào.</td></tr>
+                    ) : windows.map((w) => {
+                      const badge = resolveWindowBadge(w);
+                      return (
+                        <tr key={w.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '0.65rem 0.8rem', fontWeight: 700 }}>{w.title}</td>
+                          <td style={{ padding: '0.65rem 0.8rem' }}>{fmtDateVN(w.apply_from)} → {fmtDateVN(w.apply_to)}</td>
+                          <td style={{ padding: '0.65rem 0.8rem' }}>{fmtDateTimeVN(w.open_at)} → {fmtDateTimeVN(w.close_at)}</td>
+                          <td style={{ padding: '0.65rem 0.8rem', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              title={badge.title}
+                              onClick={() => handleToggleWindow(w)}
+                              style={{ padding: '3px 10px', borderRadius: 999, border: 'none', fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer', background: badge.bg, color: badge.color }}
+                            >
+                              {badge.label}
+                            </button>
+                          </td>
+                          <td style={{ padding: '0.65rem 0.8rem', textAlign: 'right' }}>
+                            <button type="button" onClick={() => handleDeleteWindow(w.id)} style={{ padding: '4px 8px', borderRadius: 7, border: '1px solid var(--tint-red-border)', background: 'var(--tint-red-bg)', color: 'var(--status-red-text)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Xóa</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -898,7 +965,7 @@ export default function OfficeAdminPage() {
 
             {/* Cấu hình Mạng WiFi VPĐ & Giờ ca */}
             {config && (
-              <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem' }}>
+              <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.25rem' }}>
                 <h2 style={{ margin: '0 0 0.8rem', fontSize: '1.05rem', fontWeight: 800 }}>Cấu hình Mạng WiFi VPĐ &amp; Khung giờ Check-in/out</h2>
                 <form onSubmit={handleSaveConfig} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', alignItems: 'center' }}>
@@ -906,7 +973,7 @@ export default function OfficeAdminPage() {
                       <input type="checkbox" checked={config.require_ip_check} onChange={(e) => setConfig({ ...config, require_ip_check: e.target.checked })} />
                       Bắt buộc kết nối đúng IP mạng WiFi Văn phòng Đoàn khi Check-in / Check-out
                     </label>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.84rem', color: '#475569', cursor: 'pointer' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.84rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                       <input type="checkbox" checked={config.allow_localhost} onChange={(e) => setConfig({ ...config, allow_localhost: e.target.checked })} />
                       Cho phép localhost (khi test máy cá nhân)
                     </label>
@@ -914,7 +981,7 @@ export default function OfficeAdminPage() {
 
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
-                      <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
                         Danh sách IP mạng WiFi VPĐ được phép (mỗi dòng 1 IP, hỗ trợ tiền tố dạng 113.161.72.*)
                       </label>
                       {clientIp && (
@@ -924,31 +991,31 @@ export default function OfficeAdminPage() {
                             const cur = ipsText.split('\n').map((s) => s.trim()).filter(Boolean);
                             if (!cur.includes(clientIp)) setIpsText([...cur, clientIp].join('\n'));
                           }}
-                          style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer' }}
+                          style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--tint-blue-border)', background: 'var(--tint-blue-bg)', color: 'var(--text-brand)', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer' }}
                         >
                           + Thêm IP mạng hiện tại ({clientIp})
                         </button>
                       )}
                     </div>
-                    <textarea rows={3} value={ipsText} onChange={(e) => setIpsText(e.target.value)} placeholder="VD: 113.161.72.10" style={{ width: '100%', padding: '0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.84rem' }} />
+                    <textarea rows={3} value={ipsText} onChange={(e) => setIpsText(e.target.value)} placeholder="VD: 113.161.72.10" style={{ width: '100%', padding: '0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)', fontFamily: 'monospace', fontSize: '0.84rem' }} />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Tối đa người / ca</label>
-                      <input type="number" min={1} max={10} value={config.max_per_shift} onChange={(e) => setConfig({ ...config, max_per_shift: Number(e.target.value) || 2 })} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1' }} />
+                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>Tối đa người / ca</label>
+                      <input type="number" min={1} max={10} value={config.max_per_shift} onChange={(e) => setConfig({ ...config, max_per_shift: Number(e.target.value) || 2 })} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Check-in sớm (phút)</label>
-                      <input type="number" min={0} max={120} value={config.early_checkin_minutes} onChange={(e) => setConfig({ ...config, early_checkin_minutes: Number(e.target.value) || 0 })} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1' }} />
+                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>Check-in sớm (phút)</label>
+                      <input type="number" min={0} max={120} value={config.early_checkin_minutes} onChange={(e) => setConfig({ ...config, early_checkin_minutes: Number(e.target.value) || 0 })} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Check-out trễ (phút)</label>
-                      <input type="number" min={0} max={120} value={config.late_checkout_minutes} onChange={(e) => setConfig({ ...config, late_checkout_minutes: Number(e.target.value) || 0 })} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1' }} />
+                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>Check-out trễ (phút)</label>
+                      <input type="number" min={0} max={120} value={config.late_checkout_minutes} onChange={(e) => setConfig({ ...config, late_checkout_minutes: Number(e.target.value) || 0 })} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>Số ngày cấm mượn khi trễ</label>
-                      <input type="number" min={1} max={365} value={config.ban_days_on_late_return} onChange={(e) => setConfig({ ...config, ban_days_on_late_return: Number(e.target.value) || 30 })} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1' }} />
+                      <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>Số ngày cấm mượn khi trễ</label>
+                      <input type="number" min={1} max={365} value={config.ban_days_on_late_return} onChange={(e) => setConfig({ ...config, ban_days_on_late_return: Number(e.target.value) || 30 })} style={{ width: '100%', height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)' }} />
                     </div>
                   </div>
 
@@ -967,10 +1034,10 @@ export default function OfficeAdminPage() {
         {activeTab === 'equipment' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
             {/* Đơn mượn từ LCĐ / CLB */}
-            <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem' }}>
+            <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.65rem', marginBottom: '0.75rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Đơn mượn dụng cụ từ LCĐ / CLB ({requests.length})</h2>
-                <button type="button" onClick={loadEquipment} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '0.38rem 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
+                <button type="button" onClick={loadEquipment} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '0.38rem 0.75rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
                   <RefreshIcon size={14} /> Làm mới
                 </button>
               </div>
@@ -993,9 +1060,9 @@ export default function OfficeAdminPage() {
                         gap: 5,
                         padding: '0.32rem 0.72rem',
                         borderRadius: 999,
-                        border: active ? '1px solid #1d4ed8' : '1px solid #e2e8f0',
-                        background: active ? '#1d4ed8' : '#fff',
-                        color: active ? '#fff' : '#334155',
+                        border: active ? '1px solid var(--brand-accent)' : '1px solid var(--border-color)',
+                        background: active ? '#1d4ed8' : 'var(--bg-surface)',
+                        color: active ? '#fff' : 'var(--text-body)',
                         fontSize: '0.77rem',
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -1009,10 +1076,10 @@ export default function OfficeAdminPage() {
                   );
                 })}
               </div>
-              <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 10 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
                       <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Đơn vị &amp; Mục đích</th>
                       <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Vật phẩm</th>
                       <th style={{ padding: '0.65rem 0.8rem', textAlign: 'left' }}>Hạn trả</th>
@@ -1022,13 +1089,13 @@ export default function OfficeAdminPage() {
                   </thead>
                   <tbody>
                     {paginatedRequests.length === 0 ? (
-                      <tr><td colSpan={5} style={{ padding: '1.2rem', textAlign: 'center', color: '#64748b' }}>Không có đơn mượn nào trong mục này.</td></tr>
+                      <tr><td colSpan={5} style={{ padding: '1.2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Không có đơn mượn nào trong mục này.</td></tr>
                     ) : paginatedRequests.map((r) => (
-                      <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9', background: r.current_overdue_days > 0 && r.status === 'borrowed' ? '#fef2f2' : undefined }}>
+                      <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)', background: r.current_overdue_days > 0 && r.status === 'borrowed' ? 'var(--tint-red-bg)' : undefined }}>
                         <td style={{ padding: '0.68rem 0.8rem' }}>
-                          <div style={{ fontWeight: 800, color: '#0f172a' }}>{r.unit_name}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#334155' }}>{r.purpose}</div>
-                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{r.requester_name} • {r.requester_phone || r.requester_email}</div>
+                          <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{r.unit_name}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-body)' }}>{r.purpose}</div>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{r.requester_name} • {r.requester_phone || r.requester_email}</div>
                         </td>
                         <td style={{ padding: '0.68rem 0.8rem' }}>
                           {(r.items || []).map((it: any, i: number) => (
@@ -1038,22 +1105,22 @@ export default function OfficeAdminPage() {
                         <td style={{ padding: '0.68rem 0.8rem', whiteSpace: 'nowrap' }}>
                           <div>{fmtDateVN(r.borrow_date)} → <strong>{fmtDateVN(r.due_date)}</strong></div>
                           {r.current_overdue_days > 0 && r.status === 'borrowed' && (
-                            <div style={{ color: '#dc2626', fontWeight: 800, fontSize: '0.75rem' }}>⚠ Trễ {r.current_overdue_days} ngày!</div>
+                            <div style={{ color: 'var(--status-red-text)', fontWeight: 800, fontSize: '0.75rem' }}>⚠ Trễ {r.current_overdue_days} ngày!</div>
                           )}
                         </td>
                         <td style={{ padding: '0.68rem 0.8rem', textAlign: 'center', fontWeight: 700 }}>
-                          {r.status === 'pending' && <span style={{ color: '#b45309' }}>Chờ duyệt</span>}
-                          {r.status === 'approved' && <span style={{ color: '#1d4ed8' }}>Đã duyệt</span>}
-                          {r.status === 'borrowed' && <span style={{ color: '#6d28d9' }}>Đang mượn</span>}
-                          {r.status === 'returned' && <span style={{ color: '#15803d' }}>Đã trả {r.late_days > 0 ? `(trễ ${r.late_days}d)` : ''}</span>}
-                          {r.status === 'rejected' && <span style={{ color: '#dc2626' }}>Từ chối</span>}
+                          {r.status === 'pending' && <span style={{ color: 'var(--status-amber-text)' }}>Chờ duyệt</span>}
+                          {r.status === 'approved' && <span style={{ color: 'var(--text-brand)' }}>Đã duyệt</span>}
+                          {r.status === 'borrowed' && <span style={{ color: 'var(--status-purple-text)' }}>Đang mượn</span>}
+                          {r.status === 'returned' && <span style={{ color: 'var(--status-green-text)' }}>Đã trả {r.late_days > 0 ? `(trễ ${r.late_days}d)` : ''}</span>}
+                          {r.status === 'rejected' && <span style={{ color: 'var(--status-red-text)' }}>Từ chối</span>}
                         </td>
                         <td style={{ padding: '0.68rem 0.8rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'inline-flex', gap: 5 }}>
                             {r.status === 'pending' && (
                               <>
                                 <button type="button" onClick={() => handleRequestAction(r.id, 'approve')} style={{ padding: '4px 9px', borderRadius: 7, border: 'none', background: '#1d4ed8', color: '#fff', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer' }}>Duyệt</button>
-                                <button type="button" onClick={() => handleRequestAction(r.id, 'reject')} style={{ padding: '4px 9px', borderRadius: 7, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer' }}>Từ chối</button>
+                                <button type="button" onClick={() => handleRequestAction(r.id, 'reject')} style={{ padding: '4px 9px', borderRadius: 7, border: '1px solid var(--tint-red-border)', background: 'var(--tint-red-bg)', color: 'var(--status-red-text)', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer' }}>Từ chối</button>
                               </>
                             )}
                             {r.status === 'approved' && (
@@ -1070,7 +1137,7 @@ export default function OfficeAdminPage() {
                 </table>
               </div>
               {reqTotalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.85rem', fontSize: '0.8rem', color: '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.85rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <span>
                     Hiển thị {(safeReqPage - 1) * REQ_PAGE_SIZE + 1}–{Math.min(safeReqPage * REQ_PAGE_SIZE, sortedFilteredRequests.length)} / {sortedFilteredRequests.length} đơn
                   </span>
@@ -1079,18 +1146,18 @@ export default function OfficeAdminPage() {
                       type="button"
                       disabled={safeReqPage <= 1}
                       onClick={() => setReqPage((p) => Math.max(1, p - 1))}
-                      style={{ padding: '0.32rem 0.7rem', borderRadius: 7, border: '1px solid #cbd5e1', background: '#fff', color: safeReqPage <= 1 ? '#94a3b8' : '#0f172a', fontWeight: 700, cursor: safeReqPage <= 1 ? 'not-allowed' : 'pointer' }}
+                      style={{ padding: '0.32rem 0.7rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)', color: safeReqPage <= 1 ? 'var(--text-subtle)' : 'var(--text-primary)', fontWeight: 700, cursor: safeReqPage <= 1 ? 'not-allowed' : 'pointer' }}
                     >
                       ← Trước
                     </button>
-                    <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                       Trang {safeReqPage} / {reqTotalPages}
                     </span>
                     <button
                       type="button"
                       disabled={safeReqPage >= reqTotalPages}
                       onClick={() => setReqPage((p) => Math.min(reqTotalPages, p + 1))}
-                      style={{ padding: '0.32rem 0.7rem', borderRadius: 7, border: '1px solid #cbd5e1', background: '#fff', color: safeReqPage >= reqTotalPages ? '#94a3b8' : '#0f172a', fontWeight: 700, cursor: safeReqPage >= reqTotalPages ? 'not-allowed' : 'pointer' }}
+                      style={{ padding: '0.32rem 0.7rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)', color: safeReqPage >= reqTotalPages ? 'var(--text-subtle)' : 'var(--text-primary)', fontWeight: 700, cursor: safeReqPage >= reqTotalPages ? 'not-allowed' : 'pointer' }}
                     >
                       Sau →
                     </button>
@@ -1100,21 +1167,21 @@ export default function OfficeAdminPage() {
             </section>
 
             {/* Đơn vị bị cấm mượn */}
-            <section style={{ background: '#fff', border: '1px solid #fecaca', borderRadius: 16, padding: '1.25rem' }}>
-              <h2 style={{ margin: '0 0 0.8rem', fontSize: '1.02rem', fontWeight: 800, color: '#991b1b' }}>
+            <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--tint-red-border)', borderRadius: 16, padding: '1.25rem' }}>
+              <h2 style={{ margin: '0 0 0.8rem', fontSize: '1.02rem', fontWeight: 800, color: 'var(--status-red-text)' }}>
                 Đơn vị đang bị Cấm Mượn ({activeBans.length})
               </h2>
               {activeBans.length === 0 ? (
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Hiện không có đơn vị nào bị cấm mượn dụng cụ.</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Hiện không có đơn vị nào bị cấm mượn dụng cụ.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {activeBans.map((b) => (
-                    <div key={b.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '0.75rem 0.9rem', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca' }}>
+                    <div key={b.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '0.75rem 0.9rem', borderRadius: 10, background: 'var(--tint-red-bg)', border: '1px solid var(--tint-red-border)' }}>
                       <div>
-                        <div style={{ fontWeight: 800, color: '#991b1b' }}>{b.unit_name} (Cấm đến {fmtDateVN(b.banned_until)})</div>
-                        <div style={{ fontSize: '0.8rem', color: '#7f1d1d' }}>{b.reason}</div>
+                        <div style={{ fontWeight: 800, color: 'var(--status-red-text)' }}>{b.unit_name} (Cấm đến {fmtDateVN(b.banned_until)})</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--status-red-text)' }}>{b.reason}</div>
                       </div>
-                      <button type="button" onClick={() => handleUnban(b.id)} style={{ padding: '5px 11px', borderRadius: 8, border: '1px solid #bbf7d0', background: '#fff', color: '#15803d', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}>
+                      <button type="button" onClick={() => handleUnban(b.id)} style={{ padding: '5px 11px', borderRadius: 8, border: '1px solid var(--tint-green-border)', background: 'var(--bg-surface)', color: 'var(--status-green-text)', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}>
                         Gỡ cấm mượn
                       </button>
                     </div>
@@ -1124,25 +1191,25 @@ export default function OfficeAdminPage() {
             </section>
 
             {/* Danh mục kho vật phẩm */}
-            <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem' }}>
+            <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.25rem' }}>
               <h2 style={{ margin: '0 0 0.8rem', fontSize: '1.02rem', fontWeight: 800 }}>Danh mục Vật phẩm kho VPĐ ({items.length})</h2>
-              <form onSubmit={handleAddItem} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.65rem', alignItems: 'end', marginBottom: '0.9rem', padding: '0.8rem', background: '#f8fafc', borderRadius: 10 }}>
-                <input type="text" required value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Tên vật phẩm *" style={{ height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }} />
-                <input type="text" value={newItemCat} onChange={(e) => setNewItemCat(e.target.value)} placeholder="Nhóm" style={{ height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }} />
-                <input type="number" min={1} value={newItemQty} onChange={(e) => setNewItemQty(Number(e.target.value) || 1)} placeholder="Số lượng" style={{ height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }} />
-                <input type="text" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} placeholder="Đơn vị (Cái/Bộ)" style={{ height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff' }} />
+              <form onSubmit={handleAddItem} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.65rem', alignItems: 'end', marginBottom: '0.9rem', padding: '0.8rem', background: 'var(--bg-subtle)', borderRadius: 10 }}>
+                <input type="text" required value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Tên vật phẩm *" style={{ height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }} />
+                <input type="text" value={newItemCat} onChange={(e) => setNewItemCat(e.target.value)} placeholder="Nhóm" style={{ height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }} />
+                <input type="number" min={1} value={newItemQty} onChange={(e) => setNewItemQty(Number(e.target.value) || 1)} placeholder="Số lượng" style={{ height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }} />
+                <input type="text" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} placeholder="Đơn vị (Cái/Bộ)" style={{ height: 36, padding: '0 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }} />
                 <button type="submit" style={{ height: 36, borderRadius: 8, border: 'none', background: '#1d4ed8', color: '#fff', fontWeight: 700, fontSize: '0.83rem', cursor: 'pointer' }}>Thêm vật phẩm</button>
               </form>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.65rem' }}>
                 {items.map((it) => (
-                  <div key={it.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '0.7rem 0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <div key={it.id} style={{ border: '1px solid var(--border-color)', borderRadius: 10, padding: '0.7rem 0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                     <div>
                       <div style={{ fontWeight: 800, fontSize: '0.86rem' }}>{it.name}</div>
-                      <div style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
                         {it.category} • Còn {it.available_qty}/{it.total_qty} {it.unit}
                       </div>
                     </div>
-                    <button type="button" onClick={() => handleDeleteItem(it.id)} title="Ẩn vật phẩm" style={{ border: 'none', background: '#fef2f2', color: '#dc2626', width: 28, height: 28, borderRadius: 7, cursor: 'pointer' }}>×</button>
+                    <button type="button" onClick={() => handleDeleteItem(it.id)} title="Ẩn vật phẩm" style={{ border: 'none', background: 'var(--tint-red-bg)', color: 'var(--status-red-text)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer' }}>×</button>
                   </div>
                 ))}
               </div>
@@ -1155,7 +1222,7 @@ export default function OfficeAdminPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
             <SupportEventCreator onCreated={() => loadSupportEvents()} />
 
-            <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.25rem' }}>
+            <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
                 <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>
                   Danh sách Sự kiện hỗ trợ đã tạo ({supportEvents.length})
@@ -1169,8 +1236,8 @@ export default function OfficeAdminPage() {
                     gap: 5,
                     padding: '0.4rem 0.75rem',
                     borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--bg-surface)',
                     fontWeight: 700,
                     fontSize: '0.78rem',
                     cursor: 'pointer',
@@ -1181,9 +1248,9 @@ export default function OfficeAdminPage() {
               </div>
 
               {loadingSupportEvents && supportEvents.length === 0 ? (
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Đang tải danh sách sự kiện hỗ trợ...</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Đang tải danh sách sự kiện hỗ trợ...</div>
               ) : supportEvents.length === 0 ? (
-                <div style={{ fontSize: '0.85rem', color: '#64748b', padding: '1rem', background: '#f8fafc', borderRadius: 10 }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', padding: '1rem', background: 'var(--bg-subtle)', borderRadius: 10 }}>
                   Chưa có sự kiện hỗ trợ nào được tạo. Hãy điền biểu mẫu phía trên để mở nhanh sự kiện không mượn phòng &amp; miễn duyệt CTSV.
                 </div>
               ) : (
@@ -1194,14 +1261,14 @@ export default function OfficeAdminPage() {
                       <div
                         key={ev.event_id}
                         style={{
-                          border: '1px solid #e2e8f0',
+                          border: '1px solid var(--border-color)',
                           borderRadius: 12,
                           padding: '0.9rem',
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'space-between',
                           gap: '0.65rem',
-                          background: '#ffffff',
+                          background: 'var(--bg-surface)',
                         }}
                       >
                         <div>
@@ -1212,20 +1279,20 @@ export default function OfficeAdminPage() {
                                 fontWeight: 800,
                                 padding: '2px 8px',
                                 borderRadius: 999,
-                                background: isClosed ? '#f1f5f9' : '#dcfce7',
-                                color: isClosed ? '#475569' : '#15803d',
+                                background: isClosed ? 'var(--bg-muted)' : 'var(--tint-green-strong)',
+                                color: isClosed ? 'var(--text-secondary)' : 'var(--status-green-text)',
                               }}
                             >
                               {isClosed ? 'Đã kết thúc' : 'Đang mở'}
                             </span>
-                            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                               {ev.semester || 'Chưa xếp kỳ'}
                             </span>
                           </div>
-                          <div style={{ fontWeight: 800, fontSize: '0.94rem', color: '#0f172a', marginBottom: 4 }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.94rem', color: 'var(--text-primary)', marginBottom: 4 }}>
                             {ev.event_name}
                           </div>
-                          <div style={{ fontSize: '0.78rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span>Ngày: <strong>{fmtDateVN(ev.event_date)}</strong> ({String(ev.start_time || '').slice(0, 5)} – {String(ev.end_time || '').slice(0, 5)})</span>
                             <span>Đơn vị: {ev.organization_unit || 'Văn phòng Đoàn Học Viện'}</span>
                             <span>
@@ -1256,9 +1323,9 @@ export default function OfficeAdminPage() {
                             style={{
                               padding: '0.45rem 0.7rem',
                               borderRadius: 8,
-                              border: '1px solid #cbd5e1',
-                              background: '#f8fafc',
-                              color: '#334155',
+                              border: '1px solid var(--border-strong)',
+                              background: 'var(--bg-subtle)',
+                              color: 'var(--text-body)',
                               fontWeight: 700,
                               fontSize: '0.78rem',
                               textDecoration: 'none',

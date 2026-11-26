@@ -609,9 +609,9 @@ export default function EventBulkImportModal({
           <div className={styles.headerTitleArea}>
             <div className={styles.iconWrapper}>
               {step === 'preview' ? (
-                <CheckCircleIcon size={22} color="#2563eb" />
+                <CheckCircleIcon size={22} color="var(--text-brand)" />
               ) : (
-                <UploadCloudIcon size={22} color="#1e40af" />
+                <UploadCloudIcon size={22} color="var(--text-brand-strong)" />
               )}
             </div>
             <div>
@@ -693,7 +693,7 @@ export default function EventBulkImportModal({
                     ))}
                   </select>
                   {sessions.find((s) => s.id === selectedSessionId)?.session_type === 'internal' && (
-                    <div style={{ marginTop: '0.45rem', fontSize: '0.8rem', color: '#b45309', background: '#fef3c7', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                    <div style={{ marginTop: '0.45rem', fontSize: '0.8rem', color: 'var(--status-amber-text)', background: 'var(--tint-amber-strong)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--tint-amber-border)' }}>
                       🔒 <strong>Lưu ý:</strong> Ca này là ca nội bộ chuẩn bị của Ban Tổ Chức & Cộng Tác Viên. Hệ thống chỉ cho phép nạp điểm danh cho sinh viên có tên trong danh sách CTV/BTC đã duyệt và chặn Người tham gia ở ca này.
                     </div>
                   )}
@@ -725,7 +725,7 @@ export default function EventBulkImportModal({
                 {fileName && <span className={styles.fileName}>{fileName}</span>}
               </div>
               <label className={styles.dropZone}>
-                <FileExcelIcon size={24} color="#16a34a" />
+                <FileExcelIcon size={24} color="var(--status-green-text)" />
                 <div className={styles.dropZoneText}>
                   <span className={styles.dropZonePrimary}>Bấm để chọn file Excel (.xlsx, .xls, .csv)</span>
                   <span className={styles.dropZoneSecondary}>Hệ thống tự động nhận diện Họ tên, Lớp, SĐT, Ban, Giới tính...</span>
@@ -739,7 +739,7 @@ export default function EventBulkImportModal({
               </label>
 
               {parsedStudents.length > 0 && parsedStudents.some((s) => s.full_name || s.class_id || s.phone) && (
-                <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', fontSize: '0.8rem', color: '#047857', fontWeight: 600 }}>
+                <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--tint-green-bg)', border: '1px solid var(--tint-green-border)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--status-green-text)', fontWeight: 600 }}>
                   Đã nhận diện thông tin chi tiết của <strong>{parsedStudents.length}</strong> sinh viên từ file Excel!
                 </div>
               )}
@@ -753,7 +753,7 @@ export default function EventBulkImportModal({
                   <span>{parsedMssvs.length} MSSV hợp lệ</span>
                 </span>
                 {rejectedCount > 0 && (
-                  <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--status-red-text)', fontWeight: 600 }}>
                     {rejectedCount} mã bị loại (sai format)
                   </span>
                 )}
@@ -770,9 +770,9 @@ export default function EventBulkImportModal({
             {feedback && (
               <div className={feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError}>
                 {feedback.type === 'success' ? (
-                  <CheckCircleIcon size={18} color="#16a34a" />
+                  <CheckCircleIcon size={18} color="var(--status-green-text)" />
                 ) : (
-                  <AlertTriangleIcon size={18} color="#dc2626" />
+                  <AlertTriangleIcon size={18} color="var(--status-red-text)" />
                 )}
                 <span>{feedback.message}</span>
               </div>
@@ -833,7 +833,7 @@ export default function EventBulkImportModal({
                     {previewData.summary.capacity.new_add_count} • Tổng dự kiến:{' '}
                     <strong
                       style={{
-                        color: previewData.summary.capacity.is_overflow ? '#dc2626' : '#16a34a',
+                        color: previewData.summary.capacity.is_overflow ? 'var(--status-red-text)' : 'var(--status-green-text)',
                       }}
                     >
                       {previewData.summary.capacity.projected_total} /{' '}
@@ -877,13 +877,13 @@ export default function EventBulkImportModal({
                 </div>
 
                 {previewData.summary.capacity.is_overflow ? (
-                  <div style={{ color: '#b91c1c', fontSize: '0.8rem', fontWeight: 700 }}>
+                  <div style={{ color: 'var(--status-red-text)', fontSize: '0.8rem', fontWeight: 700 }}>
                     VƯỢT QUÁ SỨC CHỨA SỰ KIỆN: Dự kiến sẽ có{' '}
                     {previewData.summary.capacity.projected_total} người tham gia (Vượt quá{' '}
                     {previewData.summary.capacity.overflow_count} chỗ). Vui lòng cân nhắc trước khi nạp!
                   </div>
                 ) : (
-                  <div style={{ color: '#047857', fontSize: '0.8rem', fontWeight: 600 }}>
+                  <div style={{ color: 'var(--status-green-text)', fontSize: '0.8rem', fontWeight: 600 }}>
                     Sức chứa khả dụng: Sau khi nạp sẽ còn{' '}
                     <strong>{previewData.summary.capacity.remaining_slots}</strong> chỗ trống.
                   </div>
@@ -903,14 +903,14 @@ export default function EventBulkImportModal({
                   className={styles.statCard}
                   style={{
                     background:
-                      (previewData.summary?.already_checked_in ?? 0) > 0 ? '#fffbeb' : '#ffffff',
+                      (previewData.summary?.already_checked_in ?? 0) > 0 ? 'var(--tint-amber-bg)' : 'var(--bg-surface)',
                   }}
                 >
                   <span
                     className={styles.statCardTitle}
                     style={{
                       color:
-                        (previewData.summary?.already_checked_in ?? 0) > 0 ? '#b45309' : '#64748b',
+                        (previewData.summary?.already_checked_in ?? 0) > 0 ? 'var(--status-amber-text)' : 'var(--text-muted)',
                     }}
                   >
                     Đã điểm danh rồi
@@ -919,7 +919,7 @@ export default function EventBulkImportModal({
                     className={styles.statCardValue}
                     style={{
                       color:
-                        (previewData.summary?.already_checked_in ?? 0) > 0 ? '#d97706' : '#0f172a',
+                        (previewData.summary?.already_checked_in ?? 0) > 0 ? 'var(--status-amber-text)' : 'var(--text-primary)',
                     }}
                   >
                     {previewData.summary?.already_checked_in ?? 0}
@@ -938,28 +938,28 @@ export default function EventBulkImportModal({
 
               <div className={styles.statCard}>
                 <span className={styles.statCardTitle}>Chưa có tài khoản</span>
-                <span className={styles.statCardValue} style={{ color: '#0284c7' }}>
+                <span className={styles.statCardValue} style={{ color: 'var(--text-brand)' }}>
                   {previewData.summary?.not_in_system ?? 0}
                 </span>
               </div>
 
               {(previewData.summary?.in_file_duplicates ?? 0) > 0 && (
-                <div className={styles.statCard} style={{ background: '#fef2f2' }}>
-                  <span className={styles.statCardTitle} style={{ color: '#b91c1c' }}>
+                <div className={styles.statCard} style={{ background: 'var(--tint-red-bg)' }}>
+                  <span className={styles.statCardTitle} style={{ color: 'var(--status-red-text)' }}>
                     Trùng lặp file
                   </span>
-                  <span className={styles.statCardValue} style={{ color: '#dc2626' }}>
+                  <span className={styles.statCardValue} style={{ color: 'var(--status-red-text)' }}>
                     {previewData.summary?.in_file_duplicates ?? 0}
                   </span>
                 </div>
               )}
 
               {(previewData.rejected ?? 0) > 0 && (
-                <div className={styles.statCard} style={{ background: '#fef2f2' }}>
-                  <span className={styles.statCardTitle} style={{ color: '#b91c1c' }}>
+                <div className={styles.statCard} style={{ background: 'var(--tint-red-bg)' }}>
+                  <span className={styles.statCardTitle} style={{ color: 'var(--status-red-text)' }}>
                     Sai format (loại)
                   </span>
-                  <span className={styles.statCardValue} style={{ color: '#dc2626' }}>
+                  <span className={styles.statCardValue} style={{ color: 'var(--status-red-text)' }}>
                     {previewData.rejected ?? 0}
                   </span>
                 </div>
@@ -971,11 +971,11 @@ export default function EventBulkImportModal({
               <div
                 style={{
                   padding: '0.65rem 0.85rem',
-                  background: '#fef2f2',
-                  border: '1px solid #fecaca',
+                  background: 'var(--tint-red-bg)',
+                  border: '1px solid var(--tint-red-border)',
                   borderRadius: '8px',
                   fontSize: '0.8rem',
-                  color: '#991b1b',
+                  color: 'var(--status-red-text)',
                 }}
               >
                 <strong>Các mã bị loại trừ do không đúng format MSSV PTIT:</strong>
@@ -1047,7 +1047,7 @@ export default function EventBulkImportModal({
                     type="button"
                     onClick={handleRemoveAlreadyCheckedIn}
                     className={styles.quickBtn}
-                    style={{ borderColor: '#fcd34d', background: '#fffbeb', color: '#b45309' }}
+                    style={{ borderColor: 'var(--tint-amber-border)', background: 'var(--tint-amber-bg)', color: 'var(--status-amber-text)' }}
                     title="Bỏ qua các bạn đã điểm danh trước đó để tránh ghi đè"
                   >
                     Bỏ qua {previewData.summary?.already_checked_in ?? 0} bạn đã điểm danh
@@ -1082,7 +1082,7 @@ export default function EventBulkImportModal({
 
                 if (displayed.length === 0) {
                   return (
-                    <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#64748b' }}>
+                    <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                       Không có sinh viên nào trong bộ lọc này.
                     </div>
                   );
@@ -1107,14 +1107,14 @@ export default function EventBulkImportModal({
                           <tr
                             key={s.mssv}
                             style={{
-                              background: hasWarning ? '#fffbeb' : '#ffffff',
+                              background: hasWarning ? 'var(--tint-amber-bg)' : 'var(--bg-surface)',
                             }}
                           >
-                            <td style={{ color: '#94a3b8' }}>{idx + 1}</td>
+                            <td style={{ color: 'var(--text-subtle)' }}>{idx + 1}</td>
                             <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{s.mssv}</td>
                             <td
                               style={{
-                                color: s.full_name === s.mssv ? '#dc2626' : '#1e293b',
+                                color: s.full_name === s.mssv ? 'var(--status-red-text)' : 'var(--text-body)',
                                 fontStyle: s.full_name === s.mssv ? 'italic' : 'normal',
                               }}
                             >
@@ -1122,7 +1122,7 @@ export default function EventBulkImportModal({
                             </td>
                             <td
                               style={{
-                                color: s.class_id === 'PTIT-HCM' ? '#94a3b8' : '#1e293b',
+                                color: s.class_id === 'PTIT-HCM' ? 'var(--text-subtle)' : 'var(--text-body)',
                               }}
                             >
                               {s.class_id}
@@ -1162,11 +1162,11 @@ export default function EventBulkImportModal({
                                   border: 'none',
                                   cursor: 'pointer',
                                   padding: '0.2rem',
-                                  color: '#dc2626',
+                                  color: 'var(--status-red-text)',
                                 }}
                                 title={`Xóa ${s.mssv}`}
                               >
-                                <TrashIcon size={14} color="#dc2626" />
+                                <TrashIcon size={14} color="var(--status-red-text)" />
                               </button>
                             </td>
                           </tr>
@@ -1181,9 +1181,9 @@ export default function EventBulkImportModal({
             {feedback && (
               <div className={feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError}>
                 {feedback.type === 'success' ? (
-                  <CheckCircleIcon size={18} color="#16a34a" />
+                  <CheckCircleIcon size={18} color="var(--status-green-text)" />
                 ) : (
-                  <AlertTriangleIcon size={18} color="#dc2626" />
+                  <AlertTriangleIcon size={18} color="var(--status-red-text)" />
                 )}
                 <span>{feedback.message}</span>
               </div>
@@ -1198,7 +1198,7 @@ export default function EventBulkImportModal({
                 flexWrap: 'wrap',
                 gap: '0.75rem',
                 paddingTop: '0.5rem',
-                borderTop: '1px solid #e2e8f0',
+                borderTop: '1px solid var(--border-color)',
               }}
             >
               <button

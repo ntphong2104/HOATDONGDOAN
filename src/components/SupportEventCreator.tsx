@@ -166,7 +166,7 @@ export default function SupportEventCreator({
     display: 'block',
     fontSize: '0.78rem',
     fontWeight: 700,
-    color: '#334155',
+    color: 'var(--text-body)',
     marginBottom: 4,
   };
 
@@ -174,18 +174,18 @@ export default function SupportEventCreator({
     width: '100%',
     padding: '0.52rem 0.72rem',
     borderRadius: 9,
-    border: '1px solid #cbd5e1',
+    border: '1px solid var(--border-strong)',
     fontSize: '0.86rem',
-    background: '#fff',
-    color: '#0f172a',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
     boxSizing: 'border-box',
   };
 
   return (
     <div
       style={{
-        background: '#ffffff',
-        border: '1.5px solid #bbf7d0',
+        background: 'var(--bg-surface)',
+        border: '1.5px solid var(--tint-green-border)',
         borderRadius: 16,
         padding: '1.2rem',
         boxShadow: '0 4px 16px rgba(22, 163, 74, 0.06)',
@@ -203,24 +203,24 @@ export default function SupportEventCreator({
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-            <CalendarIcon size={18} color="#15803d" />
-            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+            <CalendarIcon size={18} color="var(--status-green-text)" />
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               Tạo Sự Kiện Hỗ Trợ Nhanh (Văn Phòng Đoàn)
             </h3>
           </div>
-          <p style={{ margin: '0.3rem 0 0', fontSize: '0.81rem', color: '#475569', lineHeight: 1.45 }}>
+          <p style={{ margin: '0.3rem 0 0', fontSize: '0.81rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
             Dành cho các sự kiện hỗ trợ khẩn cấp <strong>không mượn phòng</strong> và <strong>không cần qua Phòng CTSV / Phòng TC-HC-QT</strong>. Sự kiện được mở ngay để tuyển CTV, đăng ký và điểm danh QR.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: '#dcfce7', color: '#15803d' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: 'var(--tint-green-strong)', color: 'var(--status-green-text)' }}>
             Không mượn phòng
           </span>
-          <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: '#dbeafe', color: '#1d4ed8' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: 'var(--tint-blue-strong)', color: 'var(--text-brand)' }}>
             Miễn duyệt CTSV
           </span>
-          <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: '#fef9c3', color: '#854d0e' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: 'var(--tint-amber-strong)', color: '#854d0e' }}>
             Mở ngay
           </span>
         </div>
@@ -237,12 +237,12 @@ export default function SupportEventCreator({
             padding: '0.75rem 0.95rem',
             marginBottom: '1rem',
             borderRadius: 12,
-            background: '#f0fdf4',
-            border: '1px solid #86efac',
+            background: 'var(--tint-green-bg)',
+            border: '1px solid var(--tint-green-border)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.84rem', color: '#166534', fontWeight: 700 }}>
-            <CheckCircleIcon size={17} color="#16a34a" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.84rem', color: 'var(--status-green-text)', fontWeight: 700 }}>
+            <CheckCircleIcon size={17} color="var(--status-green-text)" />
             <span>Đã mở sự kiện &ldquo;{lastCreated.event_name}&rdquo; thành công!</span>
           </div>
           <Link
@@ -363,7 +363,7 @@ export default function SupportEventCreator({
               }}
               style={inputStyle}
             />
-            <div style={{ fontSize: '0.72rem', color: '#15803d', marginTop: 3 }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--status-green-text)', marginTop: 3 }}>
               Dù trên 50 SV vẫn miễn duyệt CTSV.
             </div>
           </div>
@@ -378,7 +378,7 @@ export default function SupportEventCreator({
               onChange={(e) => setVolunteerCount(e.target.value === '' ? '' : Number(e.target.value))}
               style={inputStyle}
             />
-            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 3 }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3 }}>
               Nhập &gt; 0 để tự mở cổng tuyển CTV.
             </div>
           </div>
@@ -396,7 +396,7 @@ export default function SupportEventCreator({
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', fontSize: '0.82rem', color: '#334155' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', fontSize: '0.82rem', color: 'var(--text-body)' }}>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: 600 }}>
             <input
               type="checkbox"
@@ -422,7 +422,7 @@ export default function SupportEventCreator({
               marginLeft: 'auto',
               background: 'none',
               border: 'none',
-              color: '#1d4ed8',
+              color: 'var(--text-brand)',
               fontWeight: 700,
               fontSize: '0.8rem',
               cursor: 'pointer',
@@ -436,8 +436,8 @@ export default function SupportEventCreator({
         {showAdvanced && (
           <div
             style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border-color)',
               borderRadius: 12,
               padding: '0.9rem',
               display: 'flex',
@@ -469,9 +469,9 @@ export default function SupportEventCreator({
                       style={{
                         padding: '0.28rem 0.65rem',
                         borderRadius: 999,
-                        border: active ? '1.5px solid #1d4ed8' : '1px solid #cbd5e1',
-                        background: active ? '#dbeafe' : '#fff',
-                        color: active ? '#1e40af' : '#475569',
+                        border: active ? '1.5px solid var(--brand-accent)' : '1px solid var(--border-strong)',
+                        background: active ? 'var(--tint-blue-strong)' : 'var(--bg-surface)',
+                        color: active ? 'var(--text-brand-strong)' : 'var(--text-secondary)',
                         fontWeight: 700,
                         fontSize: '0.76rem',
                         cursor: 'pointer',
@@ -497,9 +497,9 @@ export default function SupportEventCreator({
                       style={{
                         padding: '0.28rem 0.65rem',
                         borderRadius: 999,
-                        border: active ? '1.5px solid #1d4ed8' : '1px solid #cbd5e1',
-                        background: active ? '#dbeafe' : '#fff',
-                        color: active ? '#1e40af' : '#475569',
+                        border: active ? '1.5px solid var(--brand-accent)' : '1px solid var(--border-strong)',
+                        background: active ? 'var(--tint-blue-strong)' : 'var(--bg-surface)',
+                        color: active ? 'var(--text-brand-strong)' : 'var(--text-secondary)',
                         fontWeight: 700,
                         fontSize: '0.76rem',
                         cursor: 'pointer',
@@ -513,7 +513,7 @@ export default function SupportEventCreator({
             </div>
 
             <div>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, color: '#1e293b' }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-body)' }}>
                 <input
                   type="checkbox"
                   checked={useCustomSessions}
@@ -568,9 +568,9 @@ export default function SupportEventCreator({
                         style={{
                           padding: '0.45rem',
                           borderRadius: 8,
-                          border: '1px solid #fecaca',
-                          background: '#fef2f2',
-                          color: '#dc2626',
+                          border: '1px solid var(--tint-red-border)',
+                          background: 'var(--tint-red-bg)',
+                          color: 'var(--status-red-text)',
                           cursor: sessions.length <= 1 ? 'not-allowed' : 'pointer',
                           opacity: sessions.length <= 1 ? 0.45 : 1,
                         }}
@@ -590,8 +590,8 @@ export default function SupportEventCreator({
                         padding: '0.35rem 0.7rem',
                         borderRadius: 8,
                         border: '1px dashed #2563eb',
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
+                        background: 'var(--tint-blue-bg)',
+                        color: 'var(--text-brand)',
                         fontWeight: 700,
                         fontSize: '0.78rem',
                         cursor: 'pointer',
@@ -614,9 +614,9 @@ export default function SupportEventCreator({
               style={{
                 padding: '0.58rem 1rem',
                 borderRadius: 10,
-                border: '1px solid #cbd5e1',
-                background: '#fff',
-                color: '#475569',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--bg-surface)',
+                color: 'var(--text-secondary)',
                 fontWeight: 700,
                 fontSize: '0.85rem',
                 cursor: 'pointer',

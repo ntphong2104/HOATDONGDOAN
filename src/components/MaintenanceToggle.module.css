@@ -1,14 +1,14 @@
 .container {
-  background: white;
+  background: var(--bg-surface);
   border-radius: 12px;
-  border: 1px solid var(--neutral-200);
+  border: 1px solid var(--border-color);
   padding: 1.5rem;
   transition: all 0.3s ease;
 }
 
 .active {
-  border-color: rgba(239, 68, 68, 0.5); /* error-500 approx */
-  background-color: rgba(254, 242, 242, 0.5); /* neutral/red mix */
+  border-color: var(--tint-red-border);
+  background-color: var(--tint-red-bg);
 }
 
 .header {
@@ -124,8 +124,8 @@
 }
 
 .saveBtn {
-  background-color: var(--neutral-900);
-  color: white;
+  background-color: var(--btn-dark-bg);
+  color: #ffffff;
   border: none;
   border-radius: 6px;
   padding: 0.5rem 1rem;
@@ -136,7 +136,7 @@
 }
 
 .saveBtn:hover:not(:disabled) {
-  background-color: var(--neutral-700);
+  background-color: var(--btn-dark-hover);
 }
 
 .saveBtn:disabled {

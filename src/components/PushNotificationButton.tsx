@@ -451,7 +451,7 @@ export default function PushNotificationButton() {
           {/* 3. Compact Web Push Toggle Footer */}
           <div className={styles.pushFooter}>
             <div className={styles.pushFooterRow}>
-              <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>
+              <span style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-body)' }}>
                 Thông báo đẩy thiết bị
               </span>
               <span
@@ -460,8 +460,8 @@ export default function PushNotificationButton() {
                   fontWeight: 800,
                   padding: '2px 7px',
                   borderRadius: 999,
-                  background: subscribedHere ? '#dcfce7' : '#e2e8f0',
-                  color: subscribedHere ? '#15803d' : '#475569',
+                  background: subscribedHere ? 'var(--tint-green-strong)' : 'var(--border-color)',
+                  color: subscribedHere ? 'var(--status-green-text)' : 'var(--text-secondary)',
                 }}
               >
                 {subscribedHere ? 'Đang bật' : 'Đang tắt'}
@@ -469,15 +469,15 @@ export default function PushNotificationButton() {
             </div>
 
             {isIos && !isStandalone ? (
-              <div style={{ fontSize: '0.74rem', color: '#475569', lineHeight: 1.4 }}>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                 Trên iPhone/iPad: bấm <strong>Chia sẻ → Add to Home Screen</strong> rồi mở app ngoài Màn hình chính để bật thông báo đẩy.
               </div>
             ) : !supported ? (
-              <div style={{ fontSize: '0.74rem', color: '#64748b', lineHeight: 1.4 }}>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
                 Trình duyệt chưa hỗ trợ đẩy nền — bạn vẫn xem đầy đủ thông báo ở danh sách phía trên.
               </div>
             ) : permission === 'denied' ? (
-              <div style={{ fontSize: '0.73rem', color: '#b91c1c', background: '#fef2f2', padding: '0.4rem 0.55rem', borderRadius: 8 }}>
+              <div style={{ fontSize: '0.73rem', color: 'var(--status-red-text)', background: 'var(--tint-red-bg)', padding: '0.4rem 0.55rem', borderRadius: 8 }}>
                 Trình duyệt đang chặn quyền thông báo đẩy. Hãy bật lại trong Cài đặt trang web nếu muốn nhận pop-up nền.
               </div>
             ) : subscribedHere ? (
@@ -489,9 +489,9 @@ export default function PushNotificationButton() {
                   width: '100%',
                   padding: '0.45rem 0.75rem',
                   borderRadius: 8,
-                  border: '1px solid #fecaca',
-                  background: '#fef2f2',
-                  color: '#b91c1c',
+                  border: '1px solid var(--tint-red-border)',
+                  background: 'var(--tint-red-bg)',
+                  color: 'var(--status-red-text)',
                   fontWeight: 700,
                   fontSize: '0.76rem',
                   cursor: busy ? 'not-allowed' : 'pointer',

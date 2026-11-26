@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 
 export async function GET() {
   try {
@@ -12,12 +13,14 @@ export async function GET() {
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
     const now = new Date().toISOString();
+    const safeEmail = sanitizePostgrestValue(auth.email.toLowerCase().trim(), 120);
+    const safeMssv = sanitizePostgrestValue(auth.email.split('@')[0].toUpperCase(), 40);
 
     // Check if current user is an active delegate in class_delegates
     const { data: delegate, error } = await supabase
       .from('class_delegates')
       .select('*')
-      .or(`email.eq.${auth.email},mssv.eq.${auth.email.split('@')[0].toUpperCase()}`)
+      .or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`)
       .eq('is_active', true)
       .gt('expires_at', now)
       .order('expires_at', { ascending: false })

@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--bg-primary);
 }
 
 .main {
@@ -13,13 +13,13 @@
 }
 
 .hero {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-left: 3px solid #1d4ed8;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--brand-accent);
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
-  color: #0f172a;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  color: var(--text-primary);
+  box-shadow: var(--card-shadow);
 }
 
 .heroEyebrow {
@@ -27,30 +27,30 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #1d4ed8;
+  color: var(--text-brand);
 }
 
 .heroTitle {
   margin: 0.2rem 0;
   font-size: 1.35rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
 .heroSub {
   margin: 0;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
   line-height: 1.45;
 }
 
 .banBanner {
-  background: #fef2f2;
+  background: var(--tint-red-bg);
   border: 1.5px solid #ef4444;
   border-radius: 14px;
   padding: 0.95rem 1.15rem;
-  color: #991b1b;
+  color: var(--status-red-text);
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
@@ -72,11 +72,11 @@
 }
 
 .card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 1.2rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -105,7 +105,7 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -116,8 +116,8 @@
   font-weight: 700;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tint-blue-bg);
+  color: var(--text-brand);
 }
 
 /* Search & Category Filters */
@@ -137,7 +137,7 @@
 .searchIcon {
   position: absolute;
   left: 0.75rem;
-  color: #94a3b8;
+  color: var(--text-subtle);
   pointer-events: none;
   display: flex;
 }
@@ -147,16 +147,16 @@
   height: 38px;
   padding: 0 0.85rem 0 2.25rem;
   border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-subtle);
   font-size: 0.86rem;
-  color: #0f172a;
+  color: var(--text-primary);
   transition: all 0.15s ease;
 }
 
 .searchInput:focus {
   outline: none;
-  background: #ffffff;
+  background: var(--bg-surface);
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -170,9 +170,9 @@
 .chip {
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #475569;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
   font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
@@ -180,13 +180,13 @@
 }
 
 .chip:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
 }
 
 .chipActive {
   background: #1d4ed8;
-  border-color: #1d4ed8;
+  border-color: var(--brand-accent);
   color: #ffffff;
 }
 
@@ -209,28 +209,28 @@
   gap: 0.75rem;
   padding: 0.65rem 0.8rem;
   border-radius: 11px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
   transition: all 0.15s ease;
 }
 
 .itemRow:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
 }
 
 .itemRowSelected {
   border-color: #3b82f6;
-  background: #eff6ff;
+  background: var(--tint-blue-bg);
 }
 
 .itemRowSelected:hover {
-  background: #eff6ff;
+  background: var(--tint-blue-bg);
 }
 
 .itemRowOut {
   opacity: 0.6;
-  background: #f8fafc;
+  background: var(--bg-subtle);
 }
 
 .itemInfo {
@@ -248,26 +248,26 @@
 .itemName {
   font-weight: 700;
   font-size: 0.88rem;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .itemCat {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #64748b;
-  background: #f1f5f9;
+  color: var(--text-muted);
+  background: var(--bg-muted);
   padding: 0.12rem 0.45rem;
   border-radius: 6px;
 }
 
 .itemMeta {
   font-size: 0.76rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin-top: 0.15rem;
 }
 
 .stockLow {
-  color: #dc2626;
+  color: var(--status-red-text);
   font-weight: 700;
 }
 
@@ -276,8 +276,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-strong);
   border-radius: 9px;
   padding: 2px;
   flex-shrink: 0;
@@ -288,8 +288,8 @@
   height: 28px;
   border: none;
   border-radius: 7px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-weight: 800;
   font-size: 0.95rem;
   cursor: pointer;
@@ -300,8 +300,8 @@
 }
 
 .stepperBtn:hover:not(:disabled) {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--tint-blue-strong);
+  color: var(--text-brand);
 }
 
 .stepperBtn:disabled {
@@ -314,13 +314,13 @@
   text-align: center;
   font-weight: 800;
   font-size: 0.86rem;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 /* Right Column — Selected Summary & Form */
 .selectedBox {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 0.75rem 0.85rem;
   margin-bottom: 1rem;
@@ -336,7 +336,7 @@
 .selectedLabel {
   font-size: 0.76rem;
   font-weight: 800;
-  color: #475569;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -344,7 +344,7 @@
 .clearBtn {
   background: none;
   border: none;
-  color: #dc2626;
+  color: var(--status-red-text);
   font-size: 0.74rem;
   font-weight: 700;
   cursor: pointer;
@@ -368,14 +368,14 @@
   font-size: 0.83rem;
   padding: 0.3rem 0.5rem;
   border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
 }
 
 .removeChipBtn {
   border: none;
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--tint-red-strong);
+  color: var(--status-red-text);
   width: 22px;
   height: 22px;
   border-radius: 6px;
@@ -390,7 +390,7 @@
 
 .emptyCart {
   font-size: 0.82rem;
-  color: #94a3b8;
+  color: var(--text-subtle);
   text-align: center;
   padding: 0.5rem 0;
 }
@@ -417,7 +417,7 @@
   display: block;
   font-size: 0.76rem;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-secondary);
   margin-bottom: 0.25rem;
 }
 
@@ -426,10 +426,10 @@
   height: 38px;
   padding: 0 0.75rem;
   border-radius: 9px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong);
   font-size: 0.86rem;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .fieldInput:focus {

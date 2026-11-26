@@ -19,19 +19,22 @@
 
 /* Colors based on role */
 .participant {
-  background-color: rgba(34, 197, 94, 0.1);
-  color: var(--success-500);
-  border: 1px solid rgba(34, 197, 94, 0.2);
+  background-color: var(--tint-green-bg);
+  color: var(--status-green-text);
+  border: 1px solid var(--tint-green-border);
+  font-weight: 700;
 }
 
 .volunteer {
-  background-color: rgba(234, 179, 8, 0.1);
-  color: var(--warning-500);
-  border: 1px solid rgba(234, 179, 8, 0.2);
+  background-color: var(--tint-amber-bg);
+  color: var(--status-amber-text);
+  border: 1px solid var(--tint-amber-border);
+  font-weight: 700;
 }
 
 .organizer {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: var(--error-500);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background-color: var(--tint-red-bg);
+  color: var(--status-red-text);
+  border: 1px solid var(--tint-red-border);
+  font-weight: 700;
 }

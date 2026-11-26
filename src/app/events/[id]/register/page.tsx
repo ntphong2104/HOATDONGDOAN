@@ -252,7 +252,7 @@ export default function EventRegisterPage({
         <Header showBack backHref="/" title="CỔNG ĐĂNG KÝ SỰ KIỆN" />
         <div style={{ textAlign: 'center', padding: '5rem' }}>
           <SpinnerIcon size={36} color="var(--primary-600)" />
-          <p style={{ marginTop: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+          <p style={{ marginTop: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
             Đang tải thông tin sự kiện...
           </p>
         </div>
@@ -293,7 +293,7 @@ export default function EventRegisterPage({
             </div>
             <span className={styles.badgeTag}>Đoàn Thanh Niên PTIT</span>
             <h1 className={styles.title}>{event.event_name}</h1>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Học Viện Công Nghệ Bưu Chính Viễn Thông — Cơ Sở Tại TP. Hồ Chí Minh
             </p>
           </div>
@@ -324,7 +324,7 @@ export default function EventRegisterPage({
               <span className={styles.infoLabel}>Trạng Thái</span>
               <span
                 className={styles.infoValue}
-                style={{ color: registrationWindow?.isOpen ? '#16a34a' : '#dc2626' }}
+                style={{ color: registrationWindow?.isOpen ? 'var(--status-green-text)' : 'var(--status-red-text)' }}
               >
                 {registrationWindow?.isOpen
                   ? '● Đang mở đăng ký'
@@ -341,7 +341,7 @@ export default function EventRegisterPage({
           {isBlacklisted && (
             <div className={styles.blacklistAlert}>
               <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <AlertTriangleIcon size={20} color="#b91c1c" />
+                <AlertTriangleIcon size={20} color="var(--status-red-text)" />
                 <span>TÀI KHOẢN CỦA BẠN ĐÃ BỊ KHÓA ĐĂNG KÝ (BLACKLIST)</span>
               </h3>
               <p className={styles.blacklistDesc}>
@@ -358,15 +358,15 @@ export default function EventRegisterPage({
           {!isBlacklisted && penaltyStatus && penaltyStatus.missed_count > 0 && (
             <div
               style={{
-                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                background: 'var(--tint-amber-bg)',
                 border: '1.5px solid #f59e0b',
                 borderRadius: '16px',
                 padding: '1.25rem 1.5rem',
                 marginBottom: '1rem',
               }}
             >
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <AlertTriangleIcon size={18} color="#d97706" />
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--status-amber-text)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <AlertTriangleIcon size={18} color="var(--status-amber-text)" />
                 <span>Cảnh báo: Bạn đã vắng mặt {penaltyStatus.missed_count}/3 lần</span>
               </h3>
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#78350f', lineHeight: 1.5 }}>
@@ -384,7 +384,7 @@ export default function EventRegisterPage({
               return (
                 <div className={styles.blacklistAlert}>
                   <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <AlertTriangleIcon size={20} color="#b91c1c" />
+                    <AlertTriangleIcon size={20} color="var(--status-red-text)" />
                     <span>BẠN KHÔNG NẰM TRONG KHÓA ĐƯỢC ĐĂNG KÝ</span>
                   </h3>
                   <p className={styles.blacklistDesc}>{cohortBlockMessage(check)}</p>
@@ -396,12 +396,12 @@ export default function EventRegisterPage({
             return (
               <div
                 style={{
-                  background: '#f0f9ff',
-                  border: '1.5px solid #7dd3fc',
+                  background: 'var(--tint-blue-bg)',
+                  border: '1.5px solid var(--tint-blue-border)',
                   borderRadius: '16px',
                   padding: '1rem 1.5rem',
                   marginBottom: '1rem',
-                  color: '#0369a1',
+                  color: 'var(--text-brand)',
                 }}
               >
                 <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -417,7 +417,7 @@ export default function EventRegisterPage({
               return (
                 <div className={styles.blacklistAlert}>
                   <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <AlertTriangleIcon size={20} color="#b91c1c" />
+                    <AlertTriangleIcon size={20} color="var(--status-red-text)" />
                     <span>BẠN KHÔNG THUỘC LIÊN CHI ĐOÀN ĐƯỢC ĐĂNG KÝ</span>
                   </h3>
                   <p className={styles.blacklistDesc}>
@@ -433,20 +433,20 @@ export default function EventRegisterPage({
             return (
               <div
                 style={{
-                  background: '#faf5ff',
+                  background: 'var(--tint-purple-bg)',
                   border: '1.5px solid #d8b4fe',
                   borderRadius: '16px',
                   padding: '1rem 1.5rem',
                   marginBottom: '1rem',
-                  color: '#6b21a8',
+                  color: 'var(--status-purple-text)',
                 }}
               >
                 <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                  <BuildingIcon size={16} color="#6b21a8" />
+                  <BuildingIcon size={16} color="var(--status-purple-text)" />
                   <span>Sự kiện dành riêng cho sinh viên thuộc: {formatLcdsLabel(allowedLcds)}</span>
                   {lcdEligibility?.myLcd && (
-                    <span style={{ fontSize: '0.78rem', padding: '0.15rem 0.55rem', borderRadius: '999px', background: '#dcfce7', color: '#166534', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <CheckCircleIcon size={13} color="#166534" />
+                    <span style={{ fontSize: '0.78rem', padding: '0.15rem 0.55rem', borderRadius: '999px', background: 'var(--tint-green-strong)', color: 'var(--status-green-text)', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <CheckCircleIcon size={13} color="var(--status-green-text)" />
                       <span>Đúng LCĐ của bạn ({lcdEligibility.myLcd.shortName})</span>
                     </span>
                   )}
@@ -459,15 +459,15 @@ export default function EventRegisterPage({
           {!registrationWindow?.isOpen && !isBlacklisted && (
             <div
               style={{
-                background: '#fffbeb',
-                border: '1.5px solid #fde68a',
+                background: 'var(--tint-amber-bg)',
+                border: '1.5px solid var(--tint-amber-border)',
                 borderRadius: '16px',
                 padding: '1.5rem',
                 marginBottom: '1.75rem',
-                color: '#92400e',
+                color: 'var(--status-amber-text)',
               }}
             >
-              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 800, color: '#b45309' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 800, color: 'var(--status-amber-text)' }}>
                 {event.is_registration_open === false || event.max_participants === 0
                   ? 'CỔNG ĐĂNG KÝ KHÁN GIẢ KHÔNG MỞ'
                   : 'CỔNG ĐĂNG KÝ ĐÃ ĐÓNG'}
@@ -510,10 +510,10 @@ export default function EventRegisterPage({
                 <CheckCircleIcon size={16} color="#ffffff" />
                 ĐÃ ĐĂNG KÝ THÀNH CÔNG
               </span>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: '#166534', fontSize: '1.15rem', fontWeight: 800 }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--status-green-text)', fontSize: '1.15rem', fontWeight: 800 }}>
                 Bạn đã có vé tham gia sự kiện này!
               </h3>
-              <p style={{ margin: '0 0 1.25rem 0', color: '#15803d', fontSize: '0.875rem' }}>
+              <p style={{ margin: '0 0 1.25rem 0', color: 'var(--status-green-text)', fontSize: '0.875rem' }}>
                 Vai trò đăng ký: <strong>{myRegistration.role_type === 'volunteer' ? 'Cộng tác viên' : 'Người tham gia'}</strong> • MSSV: <strong>{myRegistration.mssv}</strong>
               </p>
 
@@ -554,7 +554,7 @@ export default function EventRegisterPage({
                 style={{
                   margin: '0.85rem 0 0 0',
                   fontSize: '0.78rem',
-                  color: cancelEligibility.canCancel ? '#15803d' : '#b45309',
+                  color: cancelEligibility.canCancel ? 'var(--status-green-text)' : 'var(--status-amber-text)',
                   fontWeight: cancelEligibility.canCancel ? 500 : 600,
                 }}
               >
@@ -569,7 +569,7 @@ export default function EventRegisterPage({
             <form onSubmit={handleRegister} className={styles.formSection}>
               {!currentUser ? (
                 <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                  <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
                     Vui lòng đăng nhập với tài khoản Google Học Viện để tiến hành đăng ký.
                   </p>
                   <Link
@@ -588,12 +588,12 @@ export default function EventRegisterPage({
                     <div
                       style={{
                         padding: '0.85rem 1.15rem',
-                        background: '#f8fafc',
-                        border: '1.5px solid #e2e8f0',
+                        background: 'var(--bg-subtle)',
+                        border: '1.5px solid var(--border-color)',
                         borderRadius: '12px',
                         fontSize: '0.925rem',
                         fontWeight: 600,
-                        color: '#0f172a',
+                        color: 'var(--text-primary)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.45rem',
@@ -601,9 +601,9 @@ export default function EventRegisterPage({
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span><strong>Họ và tên:</strong> {currentUser.full_name}</span>
-                        <span style={{ color: '#2563eb', fontWeight: 700 }}>MSSV: {currentUser.mssv || currentUser.email}</span>
+                        <span style={{ color: 'var(--text-brand)', fontWeight: 700 }}>MSSV: {currentUser.mssv || currentUser.email}</span>
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         Lớp: <strong>{currentUser.class_id || 'PTIT-HCM'}</strong>
                       </div>
                     </div>
@@ -612,7 +612,7 @@ export default function EventRegisterPage({
                   {/* Session Selector for Participant if multiple participant sessions */}
                   {regType === 'participant' && participantSessions.length > 1 && (
                     <div className={styles.formGroup} style={{ marginBottom: '1.25rem' }}>
-                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-body)' }}>
                         🎯 Chọn Ca / Buổi Tham Gia <span style={{ color: '#ef4444' }}>*</span>
                       </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
@@ -625,8 +625,8 @@ export default function EventRegisterPage({
                               style={{
                                 padding: '0.85rem 1.15rem',
                                 borderRadius: '12px',
-                                border: isSelected ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
-                                background: isSelected ? '#eff6ff' : '#ffffff',
+                                border: isSelected ? '2px solid #2563eb' : '1.5px solid var(--border-color)',
+                                background: isSelected ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -635,15 +635,15 @@ export default function EventRegisterPage({
                               }}
                             >
                               <div>
-                                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isSelected ? '#1d4ed8' : '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isSelected ? 'var(--text-brand)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                   <span>{s.is_main && '⭐ '} {s.name}</span>
                                   {s.is_main && (
-                                    <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: '6px', background: '#fef3c7', color: '#b45309' }}>
+                                    <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: '6px', background: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)' }}>
                                       Ca Chính
                                     </span>
                                   )}
                                 </div>
-                                <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.25rem' }}>
+                                <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                                   📅 {s.session_date ? new Date(s.session_date).toLocaleDateString('vi-VN') : '—'} • ⏰ {s.start_time?.slice(0, 5)} - {s.end_time?.slice(0, 5)}
                                   {s.room_name && s.room_name !== 'Không mượn' && ` • 📍 ${s.room_name}`}
                                 </div>
@@ -665,11 +665,11 @@ export default function EventRegisterPage({
                   {regType === 'participant' && participantSessions.length === 1 && (
                     <div style={{
                       padding: '0.65rem 1rem',
-                      background: '#f0fdf4',
-                      border: '1px solid #bbf7d0',
+                      background: 'var(--tint-green-bg)',
+                      border: '1px solid var(--tint-green-border)',
                       borderRadius: '10px',
                       fontSize: '0.85rem',
-                      color: '#166534',
+                      color: 'var(--status-green-text)',
                       fontWeight: 600,
                       marginBottom: '1rem',
                       display: 'flex',
@@ -683,7 +683,7 @@ export default function EventRegisterPage({
                   {/* Gender & Phone fields (pre-filled from profile, saved permanently on submit) */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem', marginBottom: '1rem' }}>
                     <div className={styles.formGroup} style={{ margin: 0 }}>
-                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-body)' }}>
                         Giới Tính Của Bạn <span style={{ color: '#ef4444' }}>*</span>
                       </label>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', height: '44px' }}>
@@ -695,10 +695,10 @@ export default function EventRegisterPage({
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '0.35rem',
-                            border: gender === 'Nam' ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
+                            border: gender === 'Nam' ? '2px solid #2563eb' : '1.5px solid var(--border-color)',
                             borderRadius: '10px',
-                            background: gender === 'Nam' ? '#eff6ff' : '#ffffff',
-                            color: gender === 'Nam' ? '#1d4ed8' : '#64748b',
+                            background: gender === 'Nam' ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
+                            color: gender === 'Nam' ? 'var(--text-brand)' : 'var(--text-muted)',
                             fontWeight: gender === 'Nam' ? 700 : 600,
                             fontSize: '0.9rem',
                             cursor: 'pointer',
@@ -715,10 +715,10 @@ export default function EventRegisterPage({
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '0.35rem',
-                            border: gender === 'Nữ' ? '2px solid #ec4899' : '1.5px solid #e2e8f0',
+                            border: gender === 'Nữ' ? '2px solid #ec4899' : '1.5px solid var(--border-color)',
                             borderRadius: '10px',
-                            background: gender === 'Nữ' ? '#fdf2f8' : '#ffffff',
-                            color: gender === 'Nữ' ? '#be185d' : '#64748b',
+                            background: gender === 'Nữ' ? 'var(--tint-pink-bg)' : 'var(--bg-surface)',
+                            color: gender === 'Nữ' ? '#be185d' : 'var(--text-muted)',
                             fontWeight: gender === 'Nữ' ? 700 : 600,
                             fontSize: '0.9rem',
                             cursor: 'pointer',
@@ -731,7 +731,7 @@ export default function EventRegisterPage({
                     </div>
 
                     <div className={styles.formGroup} style={{ margin: 0 }}>
-                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-body)' }}>
                         Số Điện Thoại / Zalo <span style={{ color: '#ef4444' }}>*</span>
                       </label>
                       <input
@@ -744,13 +744,13 @@ export default function EventRegisterPage({
                           width: '100%',
                           height: '44px',
                           padding: '0 0.9rem',
-                          border: '1.5px solid #e2e8f0',
+                          border: '1.5px solid var(--border-color)',
                           borderRadius: '10px',
                           boxSizing: 'border-box',
                           fontWeight: 600,
                           fontSize: '0.9rem',
-                          color: '#0f172a',
-                          background: '#ffffff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--bg-surface)',
                           outline: 'none',
                         }}
                       />
@@ -769,7 +769,7 @@ export default function EventRegisterPage({
                         style={{
                           width: '100%',
                           padding: '0.65rem 0.85rem',
-                          border: '1.5px solid #cbd5e1',
+                          border: '1.5px solid var(--border-strong)',
                           borderRadius: '8px',
                           boxSizing: 'border-box',
                           fontFamily: 'inherit',
@@ -784,9 +784,9 @@ export default function EventRegisterPage({
                       style={{
                         fontSize: '0.8rem',
                         fontWeight: 600,
-                        color: '#b45309',
-                        background: '#fffbeb',
-                        border: '1px solid #fde68a',
+                        color: 'var(--status-amber-text)',
+                        background: 'var(--tint-amber-bg)',
+                        border: '1px solid var(--tint-amber-border)',
                         borderRadius: '10px',
                         padding: '0.6rem 0.85rem',
                         marginBottom: '0.75rem',
@@ -801,14 +801,14 @@ export default function EventRegisterPage({
                     const check = getCohortCheck();
                     if (check && !check.eligible) {
                       return (
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#b91c1c', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--status-red-text)', marginBottom: '0.75rem', lineHeight: 1.5 }}>
                           {cohortBlockMessage(check)}
                         </div>
                       );
                     }
                     if (lcdEligibility && !lcdEligibility.eligible) {
                       return (
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#b91c1c', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--status-red-text)', marginBottom: '0.75rem', lineHeight: 1.5 }}>
                           {describeLcdBlock(lcdEligibility, currentUser?.mssv || null, 'Sự kiện này')}
                         </div>
                       );

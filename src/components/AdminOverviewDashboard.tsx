@@ -562,27 +562,27 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
   const renderKeyStatus = (status: 'not_needed' | 'pending' | 'handed_over' | 'returned') => {
     if (status === 'not_needed') {
       return (
-        <span className={styles.statusPill} style={{ background: '#f1f5f9', color: '#64748b' }}>
+        <span className={styles.statusPill} style={{ background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>
           Không mượn phòng
         </span>
       );
     }
     if (status === 'handed_over') {
       return (
-        <span className={styles.statusPill} style={{ background: '#fef3c7', color: '#b45309' }}>
+        <span className={styles.statusPill} style={{ background: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)' }}>
           Đang nhận khóa
         </span>
       );
     }
     if (status === 'returned') {
       return (
-        <span className={styles.statusPill} style={{ background: '#dcfce7', color: '#15803d' }}>
+        <span className={styles.statusPill} style={{ background: 'var(--tint-green-strong)', color: 'var(--status-green-text)' }}>
           Đã trả khóa
         </span>
       );
     }
     return (
-      <span className={styles.statusPill} style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+      <span className={styles.statusPill} style={{ background: 'var(--tint-blue-bg)', color: 'var(--text-brand)' }}>
         Chờ nhận khóa
       </span>
     );
@@ -764,7 +764,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <h3 className={styles.cardTitle}>
-            <ClockIcon size={16} color="#1d4ed8" />
+            <ClockIcon size={16} color="var(--text-brand)" />
             <span>Lịch Hoạt Động Hôm Nay &amp; Ngày Mai ({data.live_schedule.length})</span>
           </h3>
           <span className={styles.cardHint}>
@@ -795,8 +795,8 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                       <span
                         className={styles.statusPill}
                         style={{
-                          background: ev.is_today ? '#dbeafe' : '#f1f5f9',
-                          color: ev.is_today ? '#1d4ed8' : '#475569',
+                          background: ev.is_today ? 'var(--tint-blue-strong)' : 'var(--bg-muted)',
+                          color: ev.is_today ? 'var(--text-brand)' : 'var(--text-secondary)',
                           marginRight: 6,
                         }}
                       >
@@ -808,15 +808,15 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                       <Link href={`/admin/events/${ev.event_id}`} className={styles.eventLink}>
                         {ev.event_name}
                       </Link>
-                      <div style={{ fontSize: '0.73rem', color: '#64748b' }}>{ev.unit_name}</div>
+                      <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>{ev.unit_name}</div>
                     </td>
                     <td style={{ fontWeight: 600 }}>{ev.room_name}</td>
                     <td>{renderKeyStatus(ev.key_status)}</td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 800 }}>
-                      <span style={{ color: '#15803d' }}>
+                      <span style={{ color: 'var(--status-green-text)' }}>
                         {ev.checked_in_count.toLocaleString('vi-VN')}
                       </span>
-                      <span style={{ color: '#64748b', fontWeight: 600 }}>
+                      <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
                         {' '}
                         / {ev.registered_count.toLocaleString('vi-VN')} ĐK
                       </span>
@@ -833,7 +833,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
       <section className={styles.kpiGrid}>
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Độ phủ Đoàn viên</span>
-          <span className={styles.kpiValue} style={{ color: '#1d4ed8' }}>
+          <span className={styles.kpiValue} style={{ color: 'var(--text-brand)' }}>
             {kpis.student_coverage_rate}%
           </span>
           <span className={styles.kpiSub}>
@@ -854,7 +854,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
 
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Lượt điểm danh</span>
-          <span className={styles.kpiValue} style={{ color: '#15803d' }}>
+          <span className={styles.kpiValue} style={{ color: 'var(--status-green-text)' }}>
             {kpis.total_checkins_in_semester.toLocaleString('vi-VN')}
           </span>
           <span className={styles.kpiSub}>
@@ -902,7 +902,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>
-              <CalendarIcon size={16} color="#1d4ed8" />
+              <CalendarIcon size={16} color="var(--text-brand)" />
               <span>Nhịp Độ Phong Trào Theo Tháng Trong Học Kỳ</span>
             </h3>
             <span className={styles.cardHint}>Cột xanh: Lượt tham gia · Nhãn trên: Số sự kiện</span>
@@ -944,7 +944,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>
-              <BuildingIcon size={16} color="#1d4ed8" />
+              <BuildingIcon size={16} color="var(--text-brand)" />
               <span>Cơ Cấu Nguồn Tổ Chức &amp; Chuyên Cần</span>
             </h3>
           </div>
@@ -955,7 +955,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                 label: 'Cấp Học viện / Đoàn trường',
                 events: data.source_breakdown.school.events,
                 checkins: data.source_breakdown.school.checkins,
-                color: '#1d4ed8',
+                color: 'var(--text-brand)',
               },
               {
                 label: 'Khối 8 Liên Chi Đoàn',
@@ -967,7 +967,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                 label: 'Khối 16 CLB / Đội / Nhóm',
                 events: data.source_breakdown.clb.events,
                 checkins: data.source_breakdown.clb.checkins,
-                color: '#6d28d9',
+                color: 'var(--status-purple-text)',
               },
             ].map((src) => {
               const pct = Math.round((src.checkins / totalSourceCheckins) * 100);
@@ -995,31 +995,31 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
 
           <div className={styles.stackList}>
             <div className={styles.stackRowTop}>
-              <span style={{ fontSize: '0.78rem', color: '#475569' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                 Phễu Chuyên Cần (Đăng ký trước)
               </span>
-              <span style={{ fontSize: '0.76rem', color: '#15803d' }}>
+              <span style={{ fontSize: '0.76rem', color: 'var(--status-green-text)' }}>
                 Đi thực tế: {kpis.attendance_conversion_rate}%
               </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.45rem', textAlign: 'center' }}>
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.45rem 0.35rem' }}>
-                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+              <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: 8, padding: '0.45rem 0.35rem' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   {kpis.total_registrations_in_semester.toLocaleString('vi-VN')}
                 </div>
-                <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Tổng ĐK</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>Tổng ĐK</div>
               </div>
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '0.45rem 0.35rem' }}>
-                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#15803d' }}>
+              <div style={{ background: 'var(--tint-green-bg)', border: '1px solid var(--tint-green-border)', borderRadius: 8, padding: '0.45rem 0.35rem' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--status-green-text)' }}>
                   {kpis.attended_from_registered.toLocaleString('vi-VN')}
                 </div>
-                <div style={{ fontSize: '0.68rem', color: '#15803d', fontWeight: 600 }}>Có mặt</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--status-green-text)', fontWeight: 600 }}>Có mặt</div>
               </div>
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '0.45rem 0.35rem' }}>
-                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#dc2626' }}>
+              <div style={{ background: 'var(--tint-red-bg)', border: '1px solid var(--tint-red-border)', borderRadius: 8, padding: '0.45rem 0.35rem' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--status-red-text)' }}>
                   {kpis.no_show_count.toLocaleString('vi-VN')}
                 </div>
-                <div style={{ fontSize: '0.68rem', color: '#b91c1c', fontWeight: 600 }}>Vắng mặt</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--status-red-text)', fontWeight: 600 }}>Vắng mặt</div>
               </div>
             </div>
           </div>
@@ -1032,7 +1032,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>
-              <ShieldCheckIcon size={16} color="#1d4ed8" />
+              <ShieldCheckIcon size={16} color="var(--text-brand)" />
               <span>Sức Khỏe 8 Liên Chi Đoàn &amp; 16 CLB</span>
             </h3>
             <button
@@ -1062,7 +1062,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                     <tr key={lcd.lcd_code}>
                       <td>
                         <strong style={{ color: lcd.lcd_color }}>{lcd.lcd_short_name}</strong>
-                        <div style={{ fontSize: '0.71rem', color: '#64748b' }}>
+                        <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)' }}>
                           {lcd.active_students.toLocaleString('vi-VN')}/
                           {lcd.total_students.toLocaleString('vi-VN')} SV
                         </div>
@@ -1086,8 +1086,8 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                         <span
                           className={styles.statusPill}
                           style={{
-                            background: fullDelegates ? '#dcfce7' : '#fef3c7',
-                            color: fullDelegates ? '#15803d' : '#b45309',
+                            background: fullDelegates ? 'var(--tint-green-strong)' : 'var(--tint-amber-strong)',
+                            color: fullDelegates ? 'var(--status-green-text)' : 'var(--status-amber-text)',
                           }}
                         >
                           {lcd.classes_with_delegate}/{lcd.total_classes}
@@ -1120,17 +1120,17 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                 marginTop: '0.8rem',
                 padding: '0.6rem 0.85rem',
                 borderRadius: 8,
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
+                background: 'var(--tint-green-bg)',
+                border: '1px solid var(--tint-green-border)',
                 fontSize: '0.78rem',
                 fontWeight: 700,
-                color: '#15803d',
+                color: 'var(--status-green-text)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
               }}
             >
-              <CheckCircleIcon size={15} color="#15803d" />
+              <CheckCircleIcon size={15} color="var(--status-green-text)" />
               <span>Toàn bộ {data.clb_health.total_clubs}/16 CLB đều đã có hoạt động trong kỳ!</span>
             </div>
           )}
@@ -1140,7 +1140,7 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>
-              <UsersIcon size={16} color="#1d4ed8" />
+              <UsersIcon size={16} color="var(--text-brand)" />
               <span>Phân Tích Sự Kiện Trong Kỳ</span>
             </h3>
 
@@ -1189,12 +1189,12 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                           <Link href={`/admin/events/${ev.event_id}`} className={styles.eventLink}>
                             {ev.event_name}
                           </Link>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{ev.unit_name}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{ev.unit_name}</div>
                         </td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: '#64748b' }}>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
                           {fmtDateVN(ev.event_date)}
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#15803d', whiteSpace: 'nowrap' }}>
+                        <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--status-green-text)', whiteSpace: 'nowrap' }}>
                           {ev.checkins_count.toLocaleString('vi-VN')} SV
                         </td>
                       </tr>
@@ -1225,9 +1225,9 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                           <Link href={`/admin/events/${ev.event_id}`} className={styles.eventLink}>
                             {ev.event_name}
                           </Link>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{ev.unit_name}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{ev.unit_name}</div>
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#b45309', whiteSpace: 'nowrap' }}>
+                        <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--status-amber-text)', whiteSpace: 'nowrap' }}>
                           {ev.avg_stars} / 5.0 ({ev.reviews_count})
                         </td>
                         <td style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -1263,15 +1263,15 @@ export default function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewD
                           <Link href={`/admin/events/${ev.event_id}`} className={styles.eventLink}>
                             {ev.event_name}
                           </Link>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{ev.unit_name}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{ev.unit_name}</div>
                         </td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: '#475569', fontWeight: 600 }}>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontWeight: 600 }}>
                           {ev.noshow_count}/{ev.registered_count}
                         </td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <span
                             className={styles.statusPill}
-                            style={{ background: '#fef2f2', color: '#dc2626' }}
+                            style={{ background: 'var(--tint-red-bg)', color: 'var(--status-red-text)' }}
                           >
                             {ev.noshow_rate}%
                           </span>

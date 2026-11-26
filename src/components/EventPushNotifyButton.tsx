@@ -98,9 +98,9 @@ export default function EventPushNotifyButton({ eventId, eventName }: EventPushN
         style={{
           padding: '0.35rem 0.85rem',
           borderRadius: '8px',
-          border: '1.5px solid #bfdbfe',
-          background: '#eff6ff',
-          color: '#1d4ed8',
+          border: '1.5px solid var(--tint-blue-border)',
+          background: 'var(--tint-blue-bg)',
+          color: 'var(--text-brand)',
           fontWeight: 700,
           fontSize: '0.8rem',
           cursor: 'pointer',
@@ -136,11 +136,11 @@ export default function EventPushNotifyButton({ eventId, eventName }: EventPushN
             style={{
               width: '100%',
               maxWidth: 500,
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
               borderRadius: 16,
               padding: '1.35rem',
               boxShadow: '0 20px 50px rgba(15, 23, 42, 0.25)',
-              color: '#0f172a',
+              color: 'var(--text-primary)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -152,26 +152,26 @@ export default function EventPushNotifyButton({ eventId, eventName }: EventPushN
                 onClick={() => setOpen(false)}
                 style={{
                   border: 'none',
-                  background: '#f1f5f9',
+                  background: 'var(--bg-muted)',
                   width: 30,
                   height: 30,
                   borderRadius: 8,
                   fontWeight: 800,
                   cursor: 'pointer',
-                  color: '#475569',
+                  color: 'var(--text-secondary)',
                 }}
               >
                 ×
               </button>
             </div>
 
-            <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: '#64748b', lineHeight: 1.45 }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
               Thông báo sẽ gửi trực tiếp tới màn hình khóa điện thoại của những sinh viên thuộc nhóm đã chọn (các bạn đã bật thông báo trên app).
             </p>
 
             <form onSubmit={handleSend} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
                   Nhóm người nhận *
                 </label>
                 <select
@@ -182,8 +182,8 @@ export default function EventPushNotifyButton({ eventId, eventName }: EventPushN
                     height: 38,
                     padding: '0 0.7rem',
                     borderRadius: 9,
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--bg-surface)',
                     fontSize: '0.85rem',
                   }}
                 >
@@ -197,7 +197,7 @@ export default function EventPushNotifyButton({ eventId, eventName }: EventPushN
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
                   Tiêu đề thông báo *
                 </label>
                 <input
@@ -211,14 +211,14 @@ export default function EventPushNotifyButton({ eventId, eventName }: EventPushN
                     height: 38,
                     padding: '0 0.75rem',
                     borderRadius: 9,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--border-strong)',
                     fontSize: '0.86rem',
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                <label style={{ display: 'block', fontSize: '0.77rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
                   Nội dung thông báo *
                 </label>
                 <textarea
@@ -232,7 +232,7 @@ export default function EventPushNotifyButton({ eventId, eventName }: EventPushN
                     width: '100%',
                     padding: '0.6rem 0.75rem',
                     borderRadius: 9,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--border-strong)',
                     fontFamily: 'inherit',
                     fontSize: '0.86rem',
                   }}
@@ -246,8 +246,8 @@ export default function EventPushNotifyButton({ eventId, eventName }: EventPushN
                   style={{
                     padding: '0.5rem 0.95rem',
                     borderRadius: 9,
-                    border: '1px solid #cbd5e1',
-                    background: '#f8fafc',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--bg-subtle)',
                     fontWeight: 700,
                     fontSize: '0.83rem',
                     cursor: 'pointer',

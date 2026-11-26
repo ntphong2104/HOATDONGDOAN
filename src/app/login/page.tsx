@@ -11,6 +11,7 @@ import {
   GoogleIcon,
 } from '@/components/icons';
 import DualLogos from '@/components/DualLogos';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 import styles from './login.module.css';
 
 /* ── Particle Network Canvas ── */
@@ -278,6 +279,7 @@ function LoginContent() {
 
   return (
     <div className={styles.container}>
+      <ThemeToggleButton variant="floating" />
       {/* Particle Network Background */}
       <ParticleCanvas />
 
@@ -288,14 +290,14 @@ function LoginContent() {
             <div
               className={styles.modalIconBox}
               style={{
-                background: modalInfo.type === 'warning' ? '#fef3c7' : '#fee2e2',
-                color: modalInfo.type === 'warning' ? '#d97706' : '#dc2626',
+                background: modalInfo.type === 'warning' ? 'var(--tint-amber-strong)' : 'var(--tint-red-strong)',
+                color: modalInfo.type === 'warning' ? 'var(--status-amber-text)' : 'var(--status-red-text)',
               }}
             >
               {modalInfo.type === 'warning' ? (
-                <YouthUnionIcon size={28} color="#d97706" />
+                <YouthUnionIcon size={28} color="var(--status-amber-text)" />
               ) : (
-                <ShieldCheckIcon size={28} color="#dc2626" />
+                <ShieldCheckIcon size={28} color="var(--status-red-text)" />
               )}
             </div>
             <h3 className={styles.modalTitle}>{modalInfo.title}</h3>

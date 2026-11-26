@@ -18,9 +18,9 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #ffffff;
+  background: var(--bg-elevated);
   border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.14), 0 4px 10px -2px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--dropdown-shadow);
   animation: slideInFromRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transition: all 0.2s ease;
   box-sizing: border-box;
@@ -38,22 +38,22 @@
 }
 
 .toastSuccess {
-  border: 1.5px solid #86efac;
+  border: 1.5px solid var(--tint-green-border);
   border-left: 4px solid #16a34a;
 }
 
 .toastError {
-  border: 1.5px solid #fca5a5;
+  border: 1.5px solid var(--tint-red-border);
   border-left: 4px solid #dc2626;
 }
 
 .toastWarning {
-  border: 1.5px solid #fde68a;
+  border: 1.5px solid var(--tint-amber-border);
   border-left: 4px solid #d97706;
 }
 
 .toastInfo {
-  border: 1.5px solid #bfdbfe;
+  border: 1.5px solid var(--tint-blue-border);
   border-left: 4px solid #2563eb;
 }
 
@@ -70,30 +70,30 @@
 }
 
 .iconBoxSuccess {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--tint-green-strong);
+  color: var(--status-green-text);
 }
 
 .iconBoxError {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--tint-red-strong);
+  color: var(--status-red-text);
 }
 
 .iconBoxWarning {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--tint-amber-strong);
+  color: var(--status-amber-text);
 }
 
 .iconBoxInfo {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tint-blue-strong);
+  color: var(--text-brand);
 }
 
 .messageContent {
   flex: 1;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary);
   line-height: 1.35;
   word-break: break-word;
 }
@@ -101,7 +101,7 @@
 .closeButton {
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: var(--text-subtle);
   cursor: pointer;
   padding: 4px;
   border-radius: 6px;
@@ -113,8 +113,8 @@
 }
 
 .closeButton:hover {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--bg-muted);
+  color: var(--text-primary);
 }
 
 @media (max-width: 640px) {

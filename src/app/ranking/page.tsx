@@ -40,7 +40,7 @@ export default function RankingPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       <Header user={user} title="BẢNG XẾP HẠNG SỰ KIỆN" />
       <main
         style={{

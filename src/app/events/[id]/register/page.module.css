@@ -1,6 +1,6 @@
 .container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--bg-primary);
   display: flex;
   flex-direction: column;
 }
@@ -14,18 +14,18 @@
 }
 
 .card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .headerArea {
   text-align: center;
   margin-bottom: 1.75rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .badgeTag {
@@ -33,8 +33,8 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.3rem 0.75rem;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--tint-blue-bg);
+  color: var(--text-brand);
   border-radius: 20px;
   font-size: 0.775rem;
   font-weight: 800;
@@ -46,7 +46,7 @@
 .title {
   font-size: 1.55rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
   line-height: 1.35;
 }
@@ -65,8 +65,8 @@
 }
 
 .infoBox {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 0.875rem 1rem;
   display: flex;
@@ -77,27 +77,27 @@
 .infoLabel {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-muted);
   text-transform: uppercase;
 }
 
 .infoValue {
   font-size: 0.925rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 /* ──── Blacklist Warning Box ──── */
 .blacklistAlert {
-  background: #fef2f2;
-  border: 1.5px solid #fecaca;
+  background: var(--tint-red-bg);
+  border: 1.5px solid var(--tint-red-border);
   border-radius: 16px;
   padding: 1.5rem;
   margin-bottom: 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  color: #991b1b;
+  color: var(--status-red-text);
 }
 
 .blacklistTitle {
@@ -107,7 +107,7 @@
   font-size: 1.05rem;
   font-weight: 800;
   margin: 0;
-  color: #b91c1c;
+  color: var(--status-red-text);
 }
 
 .blacklistDesc {
@@ -118,8 +118,8 @@
 
 /* ──── Registration Success Box ──── */
 .successCard {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border: 1.5px solid #86efac;
+  background: var(--tint-green-bg);
+  border: 1.5px solid var(--tint-green-border);
   border-radius: 16px;
   padding: 1.5rem;
   margin-bottom: 1.75rem;
@@ -155,7 +155,7 @@
 .label {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #334155;
+  color: var(--text-body);
 }
 
 .roleSelectGroup {
@@ -165,33 +165,33 @@
 }
 
 .roleOption {
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--border-strong);
   border-radius: 12px;
   padding: 0.875rem 1rem;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  background: #ffffff;
+  background: var(--bg-surface);
   transition: all 0.15s ease;
   text-align: left;
 }
 
 .roleOptionActive {
   border-color: #2563eb;
-  background: #eff6ff;
+  background: var(--tint-blue-bg);
   box-shadow: 0 0 0 1px #2563eb;
 }
 
 .roleOptionTitle {
   font-weight: 700;
   font-size: 0.95rem;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .roleOptionDesc {
   font-size: 0.775rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .submitBtn {
@@ -227,9 +227,9 @@
 .cancelBtn {
   width: 100%;
   height: 42px;
-  background: #ffffff;
-  color: #e11d48;
-  border: 1.5px solid #fecdd3;
+  background: var(--bg-surface);
+  color: var(--status-red-text);
+  border: 1.5px solid var(--tint-red-border);
   border-radius: 12px;
   font-weight: 700;
   font-size: 0.875rem;
@@ -238,15 +238,15 @@
 }
 
 .cancelBtn:hover {
-  background: #fff1f2;
+  background: var(--tint-red-bg);
 }
 
 .policyNote {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
   line-height: 1.45;
-  background: #fffbeb;
-  border: 1px solid #fef3c7;
+  background: var(--tint-amber-bg);
+  border: 1px solid var(--tint-amber-border);
   border-radius: 10px;
   padding: 0.75rem 1rem;
   margin-top: 1rem;

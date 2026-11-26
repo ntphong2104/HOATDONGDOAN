@@ -17,6 +17,7 @@ import {
   isPlaceholderClass,
   getMasterStudentByMssv,
 } from '@/lib/utils/student-profile';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 import Header from '@/components/Header';
 import StudentDashboardClient from '@/components/StudentDashboardClient';
 import type { HistoryItem, ParticipateRole, SessionUser } from '@/lib/types';
@@ -135,6 +136,8 @@ export default async function HomePage({
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
     const lowerEmail = auth.email.toLowerCase().trim();
+    const safeEmail = sanitizePostgrestValue(lowerEmail, 120);
+    const safeMssv = sanitizePostgrestValue(rawMssv, 40);
 
     // Run all student dashboard queries IN PARALLEL and use .eq() on normalized keys to hit B-tree indexes!
     const [
@@ -152,7 +155,7 @@ export default async function HomePage({
       supabase
         .from('users')
         .select('mssv, full_name, class_id')
-        .or(`email.eq.${lowerEmail},mssv.eq.${rawMssv}`)
+        .or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`)
         .maybeSingle(),
       getUserProfileExtraWithFallback(supabase, lowerEmail, rawMssv),
       supabase
@@ -186,14 +189,14 @@ export default async function HomePage({
             is_active
           )
         `)
-        .or(`email.eq.${lowerEmail},mssv.eq.${rawMssv}`)
+        .or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`)
         .order('created_at', { ascending: false }),
       Promise.resolve(
         supabase
           .from('office_duty_volunteers')
           .select('mssv')
           .eq('is_active', true)
-          .or(`email.ilike.${lowerEmail},mssv.eq.${rawMssv}`)
+          .or(`email.ilike.${safeEmail},mssv.eq.${safeMssv}`)
           .limit(1)
       )
         .then((r: any) => (Array.isArray(r?.data) ? r.data : []))
@@ -202,7 +205,7 @@ export default async function HomePage({
         supabase
           .from('office_duty_registrations')
           .select('id, duty_date, shift')
-          .or(`email.ilike.${lowerEmail},mssv.eq.${rawMssv}`)
+          .or(`email.ilike.${safeEmail},mssv.eq.${safeMssv}`)
           .gte('duty_date', lookbackDate)
           .order('duty_date', { ascending: true })
       )
@@ -212,7 +215,7 @@ export default async function HomePage({
         supabase
           .from('office_duty_attendance')
           .select('registration_id, duty_date, shift, status, check_in_at, check_out_at')
-          .or(`email.ilike.${lowerEmail},mssv.eq.${rawMssv}`)
+          .or(`email.ilike.${safeEmail},mssv.eq.${safeMssv}`)
           .gte('duty_date', lookbackDate)
       )
         .then((r: any) => (Array.isArray(r?.data) ? r.data : []))
@@ -232,7 +235,7 @@ export default async function HomePage({
         supabase
           .from('class_delegates')
           .select('class_id, granted_at, expires_at')
-          .or(`email.eq.${lowerEmail},mssv.eq.${rawMssv}`)
+          .or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`)
           .eq('is_active', true)
           .gt('expires_at', new Date().toISOString())
           .order('expires_at', { ascending: false })

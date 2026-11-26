@@ -114,7 +114,7 @@ export default function DataTable({
             {loading ? (
               <tr>
                 <td colSpan={activeColumns.length || 1} className={styles.emptyState}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', padding: '2rem 0', color: '#64748b' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', padding: '2rem 0', color: 'var(--text-muted)' }}>
                     <div className={styles.spinner}></div>
                     <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Đang tải dữ liệu danh sách...</span>
                   </div>

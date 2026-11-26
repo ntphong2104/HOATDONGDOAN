@@ -87,8 +87,8 @@ export default function PushBroadcastManager() {
   return (
     <section
       style={{
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-color)',
         borderRadius: 16,
         padding: '1.35rem',
         marginTop: '1.25rem',
@@ -106,10 +106,10 @@ export default function PushBroadcastManager() {
         }}
       >
         <div>
-          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
             Gửi Thông Báo Đẩy (Web Push — iPhone / Android / Máy tính)
           </h3>
-          <p style={{ margin: '0.28rem 0 0', fontSize: '0.83rem', color: '#64748b' }}>
+          <p style={{ margin: '0.28rem 0 0', fontSize: '0.83rem', color: 'var(--text-muted)' }}>
             Gửi thông báo trực tiếp tới màn hình khóa của đoàn viên, LCĐ hoặc danh sách SV đã đăng ký sự kiện.
           </p>
         </div>
@@ -124,11 +124,11 @@ export default function PushBroadcastManager() {
             gap: 5,
             padding: '0.42rem 0.8rem',
             borderRadius: 9,
-            border: '1px solid #cbd5e1',
-            background: '#f8fafc',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--bg-subtle)',
             fontSize: '0.8rem',
             fontWeight: 700,
-            color: '#334155',
+            color: 'var(--text-body)',
             cursor: 'pointer',
           }}
         >
@@ -146,17 +146,17 @@ export default function PushBroadcastManager() {
             marginBottom: '1rem',
           }}
         >
-          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '0.65rem 0.85rem' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#1e40af' }}>THIẾT BỊ ĐANG BẬT</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1d4ed8' }}>{stats.totalActiveDevices || 0}</div>
+          <div style={{ background: 'var(--tint-blue-bg)', border: '1px solid var(--tint-blue-border)', borderRadius: 10, padding: '0.65rem 0.85rem' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-brand-strong)' }}>THIẾT BỊ ĐANG BẬT</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-brand)' }}>{stats.totalActiveDevices || 0}</div>
           </div>
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '0.65rem 0.85rem' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#166534' }}>TÀI KHOẢN</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#15803d' }}>{stats.uniqueUsers || 0}</div>
+          <div style={{ background: 'var(--tint-green-bg)', border: '1px solid var(--tint-green-border)', borderRadius: 10, padding: '0.65rem 0.85rem' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--status-green-text)' }}>TÀI KHOẢN</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--status-green-text)' }}>{stats.uniqueUsers || 0}</div>
           </div>
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '0.65rem 0.85rem' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569' }}>IPHONE / ANDROID / PC</div>
-            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+          <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '0.65rem 0.85rem' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)' }}>IPHONE / ANDROID / PC</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>
               {stats.byDevice?.ios_pwa || 0} / {stats.byDevice?.android || 0} / {stats.byDevice?.desktop || 0}
             </div>
           </div>
@@ -167,7 +167,7 @@ export default function PushBroadcastManager() {
       <form onSubmit={handleBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+            <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
               Đối tượng nhận
             </label>
             <select
@@ -176,7 +176,7 @@ export default function PushBroadcastManager() {
                 setTargetType(e.target.value as 'all' | 'lcd' | 'event');
                 setTargetValue('');
               }}
-              style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 9, border: '1px solid #cbd5e1', background: '#fff' }}
+              style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 9, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }}
             >
               <option value="all">Toàn bộ thiết bị đã bật thông báo</option>
               <option value="lcd">Theo 1 trong 8 Liên Chi Đoàn</option>
@@ -186,14 +186,14 @@ export default function PushBroadcastManager() {
 
           {targetType === 'lcd' && (
             <div>
-              <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+              <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
                 Chọn Liên Chi Đoàn *
               </label>
               <select
                 required
                 value={targetValue}
                 onChange={(e) => setTargetValue(e.target.value)}
-                style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 9, border: '1px solid #cbd5e1', background: '#fff' }}
+                style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 9, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }}
               >
                 <option value="">-- Chọn LCĐ --</option>
                 {LCD_DEFINITIONS.map((lcd) => (
@@ -207,7 +207,7 @@ export default function PushBroadcastManager() {
 
           {targetType === 'event' && (
             <div>
-              <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+              <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
                 Chọn Sự kiện đang mở *
               </label>
               <select
@@ -218,7 +218,7 @@ export default function PushBroadcastManager() {
                   setTargetValue(evId);
                   if (evId) setUrl(`/events/${evId}/register`);
                 }}
-                style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 9, border: '1px solid #cbd5e1', background: '#fff' }}
+                style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 9, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)' }}
               >
                 <option value="">-- Chọn sự kiện --</option>
                 {(stats?.activeEvents || []).map((ev: any) => (
@@ -231,7 +231,7 @@ export default function PushBroadcastManager() {
           )}
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+            <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
               Đường dẫn khi bấm vào thông báo
             </label>
             <input
@@ -239,13 +239,13 @@ export default function PushBroadcastManager() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="/events"
-              style={{ width: '100%', height: 38, padding: '0 0.75rem', borderRadius: 9, border: '1px solid #cbd5e1' }}
+              style={{ width: '100%', height: 38, padding: '0 0.75rem', borderRadius: 9, border: '1px solid var(--border-strong)' }}
             />
           </div>
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+          <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
             Tiêu đề thông báo *
           </label>
           <input
@@ -255,12 +255,12 @@ export default function PushBroadcastManager() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="VD: Nhắc lịch điểm danh sự kiện tối nay lúc 18:00"
-            style={{ width: '100%', height: 38, padding: '0 0.75rem', borderRadius: 9, border: '1px solid #cbd5e1' }}
+            style={{ width: '100%', height: 38, padding: '0 0.75rem', borderRadius: 9, border: '1px solid var(--border-strong)' }}
           />
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+          <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4 }}>
             Nội dung thông báo *
           </label>
           <textarea
@@ -270,7 +270,7 @@ export default function PushBroadcastManager() {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="VD: Các bạn sinh viên đã đăng ký vui lòng có mặt trước 15 phút và mở sẵn mã QR cá nhân."
-            style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: 9, border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: '0.86rem' }}
+            style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: 9, border: '1px solid var(--border-strong)', fontFamily: 'inherit', fontSize: '0.86rem' }}
           />
         </div>
 
@@ -296,8 +296,8 @@ export default function PushBroadcastManager() {
 
       {/* Recent Broadcast Logs */}
       {Array.isArray(stats?.recentLogs) && stats.recentLogs.length > 0 && (
-        <div style={{ marginTop: '1.15rem', borderTop: '1px solid #e2e8f0', paddingTop: '0.9rem' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', marginBottom: '0.5rem' }}>
+        <div style={{ marginTop: '1.15rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.9rem' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
             Lịch sử gửi gần đây
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -312,16 +312,16 @@ export default function PushBroadcastManager() {
                   gap: '0.5rem',
                   padding: '0.5rem 0.75rem',
                   borderRadius: 9,
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border-color)',
                   fontSize: '0.8rem',
                 }}
               >
                 <div>
-                  <strong style={{ color: '#0f172a' }}>{log.title}</strong>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{log.body}</div>
+                  <strong style={{ color: 'var(--text-primary)' }}>{log.title}</strong>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{log.body}</div>
                 </div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--status-green-text)', whiteSpace: 'nowrap' }}>
                   ✓ {log.delivered_count}/{log.total_targets} thiết bị
                 </div>
               </div>

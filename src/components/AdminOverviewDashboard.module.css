@@ -7,8 +7,8 @@
 
 /* ── Layer 0: Control Bar ── */
 .controlBar {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 1rem 1.25rem;
   display: flex;
@@ -30,20 +30,20 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #1d4ed8;
+  color: var(--text-brand);
 }
 
 .heading {
   margin: 0;
   font-size: 1.2rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
 .subHeading {
   font-size: 0.79rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
@@ -58,9 +58,9 @@
   height: 36px;
   padding: 0 0.75rem;
   border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #0f172a;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
@@ -82,17 +82,17 @@
 }
 
 .btnSecondary {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #334155;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-body);
 }
 
 .btnSecondary:hover:not(:disabled) {
-  background: #f1f5f9;
+  background: var(--bg-muted);
 }
 
 .btnPrimary {
-  border: 1px solid #1d4ed8;
+  border: 1px solid var(--brand-accent);
   background: #1d4ed8;
   color: #ffffff;
 }
@@ -115,8 +115,8 @@
 }
 
 .actionCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 0.95rem 1.05rem;
   display: flex;
@@ -131,13 +131,13 @@
 
 .actionCard:hover {
   border-color: #94a3b8;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--card-shadow);
   transform: translateY(-1px);
 }
 
 .actionCardUrgent {
-  border-color: #fecaca;
-  background: #fffafa;
+  border-color: var(--tint-red-border);
+  background: var(--tint-red-bg);
 }
 
 .actionCardUrgent:hover {
@@ -145,8 +145,8 @@
 }
 
 .actionCardWarn {
-  border-color: #fde68a;
-  background: #fffdf7;
+  border-color: var(--tint-amber-border);
+  background: var(--tint-amber-bg);
 }
 
 .actionTop {
@@ -159,7 +159,7 @@
 .actionLabel {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -179,33 +179,33 @@
 }
 
 .actionBadgeWarn {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--tint-amber-strong);
+  color: var(--status-amber-text);
 }
 
 .actionBadgeNeutral {
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--bg-muted);
+  color: var(--text-muted);
 }
 
 .actionValue {
   font-size: 1.55rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   line-height: 1.15;
 }
 
 .actionMeta {
   font-size: 0.76rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 500;
   line-height: 1.35;
 }
 
 /* ── Generic Card Surface ── */
 .card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 1.1rem 1.2rem;
   min-width: 0;
@@ -224,7 +224,7 @@
   margin: 0;
   font-size: 0.94rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
@@ -232,7 +232,7 @@
 
 .cardHint {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
@@ -244,8 +244,8 @@
 }
 
 .kpiCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 0.88rem 0.95rem;
   display: flex;
@@ -257,7 +257,7 @@
 .kpiLabel {
   font-size: 0.71rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   white-space: nowrap;
@@ -268,13 +268,13 @@
 .kpiValue {
   font-size: 1.38rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   line-height: 1.2;
 }
 
 .kpiSub {
   font-size: 0.73rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 500;
   line-height: 1.3;
 }
@@ -299,7 +299,7 @@
   gap: 0.65rem;
   height: 205px;
   padding: 1.4rem 0.25rem 0.35rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .barCol {
@@ -315,7 +315,7 @@
 .barTopStat {
   font-size: 0.71rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
@@ -324,8 +324,8 @@
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tint-blue-bg);
+  color: var(--text-brand);
   white-space: nowrap;
 }
 
@@ -333,7 +333,7 @@
   width: 100%;
   max-width: 38px;
   height: 128px;
-  background: #f1f5f9;
+  background: var(--bg-muted);
   border-radius: 6px 6px 2px 2px;
   display: flex;
   align-items: flex-end;
@@ -357,7 +357,7 @@
   text-align: center;
   font-size: 0.74rem;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-secondary);
 }
 
 .stackList {
@@ -378,19 +378,19 @@
   align-items: center;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-body);
 }
 
 .stackRowMeta {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .progressTrack {
   width: 100%;
   height: 7px;
-  background: #f1f5f9;
+  background: var(--bg-muted);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -402,7 +402,7 @@
 
 .divider {
   height: 1px;
-  background: #f1f5f9;
+  background: var(--bg-muted);
   margin: 0.85rem 0;
 }
 
@@ -416,7 +416,7 @@
 .tableWrap {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
 }
 
@@ -427,22 +427,22 @@
 }
 
 .table th {
-  background: #f8fafc;
-  color: #475569;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-weight: 700;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0.58rem 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
   text-align: left;
   white-space: nowrap;
 }
 
 .table td {
   padding: 0.58rem 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #0f172a;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
   vertical-align: middle;
 }
 
@@ -459,9 +459,9 @@
 .pillTab {
   padding: 0.28rem 0.65rem;
   border-radius: 999px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #475569;
+  border: 1px solid var(--border-color);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-size: 0.74rem;
   font-weight: 700;
   cursor: pointer;
@@ -469,7 +469,7 @@
 
 .pillTabActive {
   background: #1d4ed8;
-  border-color: #1d4ed8;
+  border-color: var(--brand-accent);
   color: #ffffff;
 }
 
@@ -477,14 +477,14 @@
   margin-top: 0.85rem;
   padding: 0.75rem 0.85rem;
   border-radius: 10px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: var(--tint-amber-bg);
+  border: 1px solid var(--tint-amber-border);
 }
 
 .inactiveClubTitle {
   font-size: 0.77rem;
   font-weight: 800;
-  color: #92400e;
+  color: var(--status-amber-text);
   margin-bottom: 0.45rem;
 }
 
@@ -499,9 +499,9 @@
   font-weight: 700;
   padding: 0.18rem 0.55rem;
   border-radius: 6px;
-  background: #ffffff;
-  border: 1px solid #fcd34d;
-  color: #92400e;
+  background: var(--bg-surface);
+  border: 1px solid var(--tint-amber-border);
+  color: var(--status-amber-text);
 }
 
 .statusPill {
@@ -518,28 +518,28 @@
   padding: 1.15rem;
   text-align: center;
   font-size: 0.82rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .loadingState {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 2.5rem 1.25rem;
   text-align: center;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.88rem;
   font-weight: 600;
 }
 
 .eventLink {
-  color: #0f172a;
+  color: var(--text-primary);
   font-weight: 700;
   text-decoration: none;
 }
 
 .eventLink:hover {
-  color: #1d4ed8;
+  color: var(--text-brand);
   text-decoration: underline;
 }
 

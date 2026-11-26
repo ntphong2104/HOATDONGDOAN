@@ -393,6 +393,10 @@ export interface LcdRankingItem {
   active_students_count: number;
   total_participations: number;
   participation_rate: number; // 0 - 100
+  /** Tỷ trọng tổng lượt tham gia trên tổng SV của LCĐ (%) */
+  participation_weight_rate?: number;
+  /** Trung bình số lượt tham gia trên 1 SV của LCĐ */
+  avg_participations_per_student?: number;
   events_organized_count: number;
 }
 
@@ -424,6 +428,30 @@ export interface MyRankingSummary extends StudentRankingItem {
   gap_to_top50: number;
 }
 
+export type RankingScopeKey = 'all' | 'school' | 'other';
+
+export interface SchoolCampaignEventItem {
+  rank: number;
+  event_id: string;
+  event_name: string;
+  event_date?: string | null;
+  unit_name: string;
+  campaign_kind: 'support' | 'official';
+  total_participants: number;
+}
+
+export interface RankingScopeDataset {
+  scope: RankingScopeKey;
+  total_events: number;
+  support_events_count?: number;
+  official_school_events_count?: number;
+  total_participations: number;
+  total_students_participated: number;
+  lcd_rankings: LcdRankingItem[];
+  top_students: StudentRankingItem[];
+  my_rank?: MyRankingSummary | null;
+}
+
 export interface RankingResponseData {
   semester: AcademicSemester;
   all_semesters: AcademicSemester[];
@@ -435,4 +463,12 @@ export interface RankingResponseData {
   total_events_in_semester: number;
   total_participations_in_semester: number;
   total_students_participated: number;
+  /** Danh sách chi tiết các hoạt động Đoàn Trường & Phát động trong học kỳ */
+  school_events?: SchoolCampaignEventItem[];
+  /** Bộ dữ liệu 3 phân hệ thi đua tính sẵn trong RAM (all = school + other) */
+  scopes?: {
+    all: RankingScopeDataset;
+    school: RankingScopeDataset;
+    other: RankingScopeDataset;
+  };
 }

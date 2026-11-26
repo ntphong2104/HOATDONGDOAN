@@ -40,11 +40,11 @@ function normalizeVN(val: string): string {
 }
 
 const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  pending: { label: 'Chờ duyệt', bg: '#fef3c7', color: '#b45309' },
-  approved: { label: 'Đã duyệt (chờ nhận)', bg: '#dbeafe', color: '#1d4ed8' },
-  borrowed: { label: 'Đang mượn', bg: '#ede9fe', color: '#6d28d9' },
-  returned: { label: 'Đã trả', bg: '#dcfce7', color: '#15803d' },
-  rejected: { label: 'Từ chối', bg: '#fee2e2', color: '#b91c1c' },
+  pending: { label: 'Chờ duyệt', bg: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)' },
+  approved: { label: 'Đã duyệt (chờ nhận)', bg: 'var(--tint-blue-strong)', color: 'var(--text-brand)' },
+  borrowed: { label: 'Đang mượn', bg: 'var(--tint-purple-strong)', color: 'var(--status-purple-text)' },
+  returned: { label: 'Đã trả', bg: 'var(--tint-green-strong)', color: 'var(--status-green-text)' },
+  rejected: { label: 'Từ chối', bg: 'var(--tint-red-strong)', color: 'var(--status-red-text)' },
 };
 
 export default function OfficeBorrowPage() {
@@ -213,10 +213,10 @@ export default function OfficeBorrowPage() {
       <div className={styles.page}>
         <Header title="MƯỢN DỤNG CỤ VĂN PHÒNG ĐOÀN" />
         <main style={{ maxWidth: 720, margin: '3rem auto', padding: '0 1.25rem' }}>
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '2rem', textAlign: 'center' }}>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '2rem', textAlign: 'center' }}>
             <AlertTriangleIcon size={36} color="#f59e0b" />
             <h2 style={{ marginTop: '0.75rem', fontSize: '1.2rem' }}>Chức năng dành cho Đơn vị trực thuộc</h2>
-            <p style={{ color: '#64748b', fontSize: '0.92rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem' }}>
               Vui lòng đăng nhập bằng tài khoản Liên Chi Đoàn (LCĐ), Câu lạc bộ / Đội / Nhóm hoặc Ban tổ chức để gửi đơn mượn vật phẩm tại Văn phòng Đoàn.
             </p>
           </div>
@@ -244,7 +244,7 @@ export default function OfficeBorrowPage() {
         {/* Cảnh báo cấm mượn */}
         {activeBan && (
           <div className={styles.banBanner}>
-            <AlertTriangleIcon size={22} color="#dc2626" />
+            <AlertTriangleIcon size={22} color="var(--status-red-text)" />
             <div>
               <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>
                 Đơn vị đang bị CẤM MƯỢN dụng cụ đến ngày {fmtDateVN(activeBan.banned_until)}
@@ -262,7 +262,7 @@ export default function OfficeBorrowPage() {
           <section className={styles.card}>
             <div className={styles.cardHeader}>
               <h2 className={styles.cardTitle}>
-                <BuildingIcon size={18} color="#1d4ed8" />
+                <BuildingIcon size={18} color="var(--text-brand)" />
                 <span>Kho vật phẩm Văn phòng Đoàn</span>
               </h2>
               <span className={styles.countPill}>
@@ -308,11 +308,11 @@ export default function OfficeBorrowPage() {
             </div>
 
             {loading ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', fontSize: '0.88rem' }}>
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
                 Đang tải danh sách kho...
               </div>
             ) : filteredItems.length === 0 ? (
-              <div style={{ padding: '1.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.86rem', background: '#f8fafc', borderRadius: 10 }}>
+              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem', background: 'var(--bg-subtle)', borderRadius: 10 }}>
                 Không tìm thấy vật phẩm phù hợp.
               </div>
             ) : (
@@ -406,9 +406,9 @@ export default function OfficeBorrowPage() {
                 <div className={styles.selectedList}>
                   {chosenItems.map((it) => (
                     <div key={it.item_id} className={styles.selectedItem}>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                         {it.item_name}{' '}
-                        <strong style={{ color: '#1d4ed8' }}>
+                        <strong style={{ color: 'var(--text-brand)' }}>
                           (x{it.quantity} {it.unit})
                         </strong>
                       </span>
@@ -534,8 +534,8 @@ export default function OfficeBorrowPage() {
                 gap: 5,
                 padding: '0.38rem 0.75rem',
                 borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                background: '#f8fafc',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--bg-subtle)',
                 fontSize: '0.8rem',
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -546,16 +546,16 @@ export default function OfficeBorrowPage() {
           </div>
 
           {loading ? (
-            <div style={{ padding: '1.5rem', textAlign: 'center', color: '#64748b' }}>Đang tải...</div>
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>Đang tải...</div>
           ) : requests.length === 0 ? (
-            <div style={{ padding: '1.25rem', borderRadius: 10, background: '#f8fafc', color: '#64748b', fontSize: '0.86rem' }}>
+            <div style={{ padding: '1.25rem', borderRadius: 10, background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
               Đơn vị chưa có đơn mượn vật phẩm nào.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 10 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
                     <th style={{ padding: '0.68rem 0.85rem', textAlign: 'left' }}>Mục đích / Sự kiện</th>
                     <th style={{ padding: '0.68rem 0.85rem', textAlign: 'left' }}>Vật phẩm mượn</th>
                     <th style={{ padding: '0.68rem 0.85rem', textAlign: 'left' }}>Thời gian</th>
@@ -566,10 +566,10 @@ export default function OfficeBorrowPage() {
                   {requests.map((r) => {
                     const badge = STATUS_BADGE[r.status] || STATUS_BADGE.pending;
                     return (
-                      <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '0.7rem 0.85rem' }}>
-                          <div style={{ fontWeight: 700, color: '#0f172a' }}>{r.purpose}</div>
-                          <div style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{r.purpose}</div>
+                          <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
                             Người nhận: {r.requester_name} {r.requester_phone ? `• ${r.requester_phone}` : ''}
                           </div>
                         </td>
@@ -584,7 +584,7 @@ export default function OfficeBorrowPage() {
                           <div>Mượn: {fmtDateVN(r.borrow_date)}</div>
                           <div>Hạn trả: <strong>{fmtDateVN(r.due_date)}</strong></div>
                           {r.current_overdue_days > 0 && r.status === 'borrowed' && (
-                            <div style={{ color: '#dc2626', fontWeight: 800, fontSize: '0.76rem' }}>
+                            <div style={{ color: 'var(--status-red-text)', fontWeight: 800, fontSize: '0.76rem' }}>
                               ⚠ Quá hạn {r.current_overdue_days} ngày!
                             </div>
                           )}
@@ -594,7 +594,7 @@ export default function OfficeBorrowPage() {
                             {badge.label}
                           </span>
                           {r.late_days > 0 && r.status === 'returned' && (
-                            <div style={{ color: '#dc2626', fontSize: '0.73rem', fontWeight: 700, marginTop: 3 }}>
+                            <div style={{ color: 'var(--status-red-text)', fontSize: '0.73rem', fontWeight: 700, marginTop: 3 }}>
                               Trả trễ {r.late_days} ngày
                             </div>
                           )}

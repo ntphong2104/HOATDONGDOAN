@@ -8,8 +8,6 @@ import {
 } from '@/lib/utils/semesters';
 import {
   LCD_DEFINITIONS,
-  getLcdByCode,
-  normalizeLcdCode,
   resolveStudentLcd,
 } from '@/lib/utils/lcd';
 import { OFFICIAL_UNITS } from '@/lib/constants/units';
@@ -21,6 +19,13 @@ import {
 } from '@/lib/utils/student-profile';
 import { isValidMSSV, isUnitAccount, extractMSSV } from '@/lib/utils/extract-mssv';
 import { getGraduatedCohorts, isStudentGraduated } from '@/lib/utils/graduated-cohorts';
+import { getEventMetaBatch } from '@/lib/constants/event-meta-store';
+import { getStoredOfficerRoles } from '@/lib/constants/officers-store';
+import {
+  buildSchoolYouthUnionEmailSet,
+  classifyEventForRanking,
+  type ResolvedRankingEventOrigin,
+} from '@/lib/utils/ranking-scope';
 import { fetchAllRows } from '@/lib/supabase/pagination';
 import type {
   AcademicSemester,
@@ -29,6 +34,9 @@ import type {
   StudentRankingItem,
   MyRankingSummary,
   RankingResponseData,
+  RankingScopeKey,
+  RankingScopeDataset,
+  SchoolCampaignEventItem,
 } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -38,16 +46,28 @@ const RANKING_CACHE_TTL_MS = 300_000; // 5 phút fresh
 const RANKING_STALE_TTL_MS = 1_800_000; // 30 phút stale-while-revalidate (trả tức thì & làm mới ngầm)
 const MAX_RANKING_CACHE_ENTRIES = 12;
 
-interface CachedSemesterRanking {
-  lcd_rankings: LcdRankingItem[];
-  unit_rankings: UnitRankingItem[];
-  top_students: StudentRankingItem[];
-  total_events_in_semester: number;
-  total_participations_in_semester: number;
+interface InternalScopeBucket {
+  scope: RankingScopeKey;
+  total_events: number;
+  support_events_count?: number;
+  official_school_events_count?: number;
+  total_participations: number;
   total_students_participated: number;
+  lcd_rankings: LcdRankingItem[];
+  top_students: StudentRankingItem[];
   top50Threshold: number;
   totalRankedStudents: number;
   studentRankMap: Map<string, { rank: number; count: number; full_name: string; class_id: string }>;
+}
+
+interface CachedSemesterRanking {
+  unit_rankings: UnitRankingItem[];
+  school_events: SchoolCampaignEventItem[];
+  scopes: {
+    all: InternalScopeBucket;
+    school: InternalScopeBucket;
+    other: InternalScopeBucket;
+  };
 }
 
 const gRanking = globalThis as unknown as {
@@ -61,73 +81,135 @@ const rankingInFlight =
   gRanking.__hddRankingInFlight ||
   (gRanking.__hddRankingInFlight = new Map<string, Promise<CachedSemesterRanking>>());
 
-const UNIT_BY_EMAIL = new Map<string, string>(
-  OFFICIAL_UNITS.map((u) => [u.email.toLowerCase(), u.name])
-);
-
 const OFFICIAL_CLUBS = OFFICIAL_UNITS.filter(
   (u) => !u.code.startsWith('LCD_') && !u.type.includes('LCĐ') && !u.type.includes('Khoa')
 );
 
-function resolveUnitDisplayName(
-  proposalUnit?: string | null,
-  creatorEmail?: string | null
-): { unitName: string; unitType: 'lcd' | 'clb' | 'school'; lcdCode: string | null; lcdColor: string | null } {
-  const emailLower = String(creatorEmail || '').toLowerCase().trim();
-  const rawName = String(proposalUnit || '').trim() || UNIT_BY_EMAIL.get(emailLower) || '';
-  const rawLower = rawName.toLowerCase();
+interface ScopeAccumulator {
+  studentParticipationMap: Map<string, number>;
+  lcdActiveStudentsSet: Map<string, Set<string>>;
+  lcdTotalParticipationsMap: Map<string, number>;
+  totalParticipations: number;
+}
 
-  // Nhận diện CLB / Đội / Nhóm TRƯỚC khi kiểm tra LCĐ (tránh "CLB An toàn Thông tin" bị gộp nhầm sang "LCĐ An toàn Thông tin")
-  const isExplicitClub =
-    rawLower.startsWith('clb') ||
-    rawLower.startsWith('câu lạc bộ') ||
-    rawLower.startsWith('đội ') ||
-    emailLower.startsWith('clb') ||
-    emailLower.startsWith('doi');
-
-  if (isExplicitClub && rawName) {
-    return {
-      unitName: rawName,
-      unitType: 'clb',
-      lcdCode: null,
-      lcdColor: '#7c3aed',
-    };
+function createScopeAccumulator(): ScopeAccumulator {
+  const lcdActiveStudentsSet = new Map<string, Set<string>>();
+  const lcdTotalParticipationsMap = new Map<string, number>();
+  for (const lcd of LCD_DEFINITIONS) {
+    lcdActiveStudentsSet.set(lcd.code, new Set<string>());
+    lcdTotalParticipationsMap.set(lcd.code, 0);
   }
+  return {
+    studentParticipationMap: new Map<string, number>(),
+    lcdActiveStudentsSet,
+    lcdTotalParticipationsMap,
+    totalParticipations: 0,
+  };
+}
 
-  const lcdCode = normalizeLcdCode(rawName) || normalizeLcdCode(emailLower);
-  if (lcdCode) {
-    const lcd = getLcdByCode(lcdCode);
-    if (lcd) {
-      return {
-        unitName: lcd.name,
-        unitType: 'lcd',
-        lcdCode: lcd.code,
-        lcdColor: lcd.color,
-      };
+function finalizeScopeBucket(
+  scope: RankingScopeKey,
+  acc: ScopeAccumulator,
+  totalEvents: number,
+  lcdTotalStudentsMap: Map<string, number>,
+  organizedCountByLcd: Map<string, number>,
+  resolveStudentInfo: (mssv: string) => { full_name: string; class_id: string },
+  extraCounts?: { support_events_count?: number; official_school_events_count?: number }
+): InternalScopeBucket {
+  const lcdRankings: LcdRankingItem[] = LCD_DEFINITIONS.map((lcd) => {
+    const totalStudents = lcdTotalStudentsMap.get(lcd.code) || 0;
+    const activeStudentsCount = acc.lcdActiveStudentsSet.get(lcd.code)?.size || 0;
+    const totalParticipations = acc.lcdTotalParticipationsMap.get(lcd.code) || 0;
+    const participationRate =
+      totalStudents > 0
+        ? Math.round((activeStudentsCount / totalStudents) * 1000) / 10
+        : 0;
+    const participationWeightRate =
+      totalStudents > 0
+        ? Math.round((totalParticipations / totalStudents) * 1000) / 10
+        : 0;
+    const avgParticipationsPerStudent =
+      totalStudents > 0
+        ? Math.round((totalParticipations / totalStudents) * 100) / 100
+        : 0;
+
+    return {
+      rank: 0,
+      lcd_code: lcd.code,
+      lcd_name: lcd.name,
+      lcd_short_name: lcd.shortName,
+      lcd_color: lcd.color,
+      total_students: totalStudents,
+      active_students_count: activeStudentsCount,
+      total_participations: totalParticipations,
+      participation_rate: participationRate,
+      participation_weight_rate: participationWeightRate,
+      avg_participations_per_student: avgParticipationsPerStudent,
+      events_organized_count: scope === 'school' ? 0 : organizedCountByLcd.get(lcd.code) || 0,
+    };
+  });
+
+  lcdRankings.sort((a, b) => {
+    if (b.total_participations !== a.total_participations) {
+      return b.total_participations - a.total_participations;
     }
-  }
+    if (b.active_students_count !== a.active_students_count) {
+      return b.active_students_count - a.active_students_count;
+    }
+    return b.participation_rate - a.participation_rate;
+  });
+  lcdRankings.forEach((item, index) => {
+    item.rank = index + 1;
+  });
 
-  if (rawName) {
-    const isSchool =
-      rawLower.includes('đoàn học viện') ||
-      rawLower.includes('đoàn trường') ||
-      rawLower.includes('đoàn tncs') ||
-      rawLower.includes('phòng ') ||
-      rawLower.includes('khoa ') ||
-      rawLower.includes('ban chấp hành đoàn');
-    return {
-      unitName: rawName,
-      unitType: isSchool ? 'school' : 'clb',
-      lcdCode: null,
-      lcdColor: isSchool ? '#1d4ed8' : '#7c3aed',
-    };
+  const allSortedStudents = Array.from(acc.studentParticipationMap.entries()).sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return a[0].localeCompare(b[0]);
+  });
+
+  const top50Threshold =
+    allSortedStudents.length >= 50 ? allSortedStudents[49][1] : 1;
+
+  const topStudents: StudentRankingItem[] = allSortedStudents
+    .slice(0, 50)
+    .map(([mssv, count], index) => {
+      const stInfo = resolveStudentInfo(mssv);
+      const lcd = resolveStudentLcd(stInfo.class_id, mssv);
+      return {
+        rank: index + 1,
+        mssv,
+        full_name: stInfo.full_name,
+        class_id: stInfo.class_id,
+        lcd_code: lcd?.code || null,
+        lcd_name: lcd?.name || null,
+        lcd_color: lcd?.color || null,
+        participations_count: count,
+      };
+    });
+
+  const studentRankMap = new Map<string, { rank: number; count: number; full_name: string; class_id: string }>();
+  for (let i = 0; i < allSortedStudents.length; i++) {
+    const [mssv, count] = allSortedStudents[i];
+    const stInfo = resolveStudentInfo(mssv);
+    studentRankMap.set(mssv, {
+      rank: i + 1,
+      count,
+      full_name: stInfo.full_name,
+      class_id: stInfo.class_id,
+    });
   }
 
   return {
-    unitName: 'Đoàn TNCS Học Viện',
-    unitType: 'school',
-    lcdCode: null,
-    lcdColor: '#1d4ed8',
+    scope,
+    total_events: totalEvents,
+    ...(extraCounts || {}),
+    total_participations: acc.totalParticipations,
+    total_students_participated: acc.studentParticipationMap.size,
+    lcd_rankings: lcdRankings,
+    top_students: topStudents,
+    top50Threshold,
+    totalRankedStudents: allSortedStudents.length,
+    studentRankMap,
   };
 }
 
@@ -135,455 +217,516 @@ async function computeSemesterRanking(
   supabase: any,
   selectedSemester: AcademicSemester
 ): Promise<CachedSemesterRanking> {
-    // 2. Lấy danh sách sự kiện, proposals & quy tắc khóa tốt nghiệp song song (phân trang đầy đủ >1.000 dòng)
-    const [{ data: eventsData, error: eventsError }, { data: proposalsData }, graduatedRules] = await Promise.all([
-      fetchAllRows<any>(() =>
-        supabase
-          .from('events')
-          .select('event_id, event_name, event_date, created_at, created_by, semester, status')
-          .order('event_date', { ascending: false })
-          .order('event_id', { ascending: false })
-      ),
-      fetchAllRows<any>(() =>
-        supabase
-          .from('event_proposals')
-          .select('created_event_id, organization_unit')
-          .not('created_event_id', 'is', null)
-          .order('created_at', { ascending: false })
-      ),
-      getGraduatedCohorts(supabase, true),
-    ]);
+  // 2. Lấy danh sách sự kiện, proposals, phân quyền cán bộ & quy tắc khóa tốt nghiệp song song
+  const [
+    { data: eventsData, error: eventsError },
+    { data: proposalsData },
+    graduatedRules,
+    storedOfficers,
+  ] = await Promise.all([
+    fetchAllRows<any>(() =>
+      supabase
+        .from('events')
+        .select('event_id, event_name, event_date, created_at, created_by, semester, status')
+        .order('event_date', { ascending: false })
+        .order('event_id', { ascending: false })
+    ),
+    fetchAllRows<any>(() =>
+      supabase
+        .from('event_proposals')
+        .select('created_event_id, organization_unit')
+        .not('created_event_id', 'is', null)
+        .order('created_at', { ascending: false })
+    ),
+    getGraduatedCohorts(supabase, true),
+    getStoredOfficerRoles(supabase).catch(() => []),
+  ]);
 
-    if (eventsError) {
-      console.error('Error fetching events for ranking:', eventsError);
+  if (eventsError) {
+    console.error('Error fetching events for ranking:', eventsError);
+  }
+
+  const schoolOfficerEmails = buildSchoolYouthUnionEmailSet(storedOfficers);
+
+  const proposalUnitByEventId = new Map<string, string>();
+  for (const p of proposalsData || []) {
+    if (p.created_event_id && p.organization_unit) {
+      proposalUnitByEventId.set(String(p.created_event_id), String(p.organization_unit));
     }
+  }
 
-    const proposalUnitByEventId = new Map<string, string>();
-    for (const p of proposalsData || []) {
-      if (p.created_event_id && p.organization_unit) {
-        proposalUnitByEventId.set(String(p.created_event_id), String(p.organization_unit));
-      }
+  // Lọc sự kiện thuộc học kỳ đã chọn dựa trên khoảng thời gian [start_date, end_date]
+  const allEvents = eventsData || [];
+  const semesterEvents = allEvents.filter((ev: any) => {
+    if (ev.status === 'rejected' || ev.status === 'pending') return false;
+    const effectiveDate = ev.event_date || (ev.created_at ? String(ev.created_at).slice(0, 10) : null);
+    if (effectiveDate && isEventInSemester(effectiveDate, selectedSemester)) return true;
+    if (!effectiveDate && ev.semester) {
+      return ev.semester === selectedSemester?.name || ev.semester === selectedSemester?.id;
     }
+    return false;
+  });
 
-    // Lọc sự kiện thuộc học kỳ đã chọn dựa trên khoảng thời gian [start_date, end_date] do Super Admin cấu hình
-    const allEvents = eventsData || [];
-    const semesterEvents = allEvents.filter((ev: any) => {
-      if (ev.status === 'rejected' || ev.status === 'pending') return false;
-      const effectiveDate = ev.event_date || (ev.created_at ? String(ev.created_at).slice(0, 10) : null);
-      if (effectiveDate && isEventInSemester(effectiveDate, selectedSemester)) return true;
-      // Fallback: nếu sự kiện không có event_date thì đối chiếu theo tên/mã học kỳ
-      if (!effectiveDate && ev.semester) {
-        return ev.semester === selectedSemester?.name || ev.semester === selectedSemester?.id;
-      }
-      return false;
+  const eventIds = semesterEvents.map((ev: any) => String(ev.event_id));
+  const eventIdSet = new Set(eventIds);
+
+  // Nạp metadata sự kiện theo lô để nhận diện chính xác Sự kiện Hỗ trợ / Phát động (is_support_event) và đơn vị
+  const eventMetaMap =
+    eventIds.length > 0 ? await getEventMetaBatch(supabase, eventIds).catch(() => ({})) : {};
+
+  // Ánh xạ event_id -> đơn vị tổ chức & phân hệ xét thi đua ('school' vs 'other')
+  const unitInfoByEventId = new Map<string, ResolvedRankingEventOrigin>();
+  const organizedCountByLcd = new Map<string, number>();
+
+  interface UnitAgg {
+    unitName: string;
+    unitType: 'lcd' | 'clb' | 'school' | 'faculty';
+    lcdCode: string | null;
+    lcdColor: string | null;
+    eventsCount: number;
+    totalParticipants: number;
+    uniqueParticipants: Set<string>;
+  }
+  const unitAggMap = new Map<string, UnitAgg>();
+
+  for (const club of OFFICIAL_CLUBS) {
+    unitAggMap.set(club.name, {
+      unitName: club.name,
+      unitType: 'clb',
+      lcdCode: null,
+      lcdColor: '#7c3aed',
+      eventsCount: 0,
+      totalParticipants: 0,
+      uniqueParticipants: new Set<string>(),
     });
+  }
 
-    const eventIds = semesterEvents.map((ev: any) => String(ev.event_id));
-    const eventIdSet = new Set(eventIds);
+  interface SchoolEventAgg {
+    event_id: string;
+    event_name: string;
+    event_date: string | null;
+    unit_name: string;
+    campaign_kind: 'support' | 'official';
+    total_participants: number;
+  }
+  const schoolEventAggMap = new Map<string, SchoolEventAgg>();
 
-    // Ánh xạ event_id -> đơn vị tổ chức
-    const unitInfoByEventId = new Map<
-      string,
-      { unitName: string; unitType: 'lcd' | 'clb' | 'school'; lcdCode: string | null; lcdColor: string | null }
-    >();
-    const organizedCountByLcd = new Map<string, number>();
+  let schoolEventsCount = 0;
+  let supportEventsCount = 0;
+  let officialSchoolEventsCount = 0;
+  let otherEventsCount = 0;
 
-    interface UnitAgg {
-      unitName: string;
-      unitType: 'lcd' | 'clb' | 'school';
-      lcdCode: string | null;
-      lcdColor: string | null;
-      eventsCount: number;
-      totalParticipants: number;
-      uniqueParticipants: Set<string>;
+  for (const ev of semesterEvents) {
+    const evId = String(ev.event_id);
+    const meta = (eventMetaMap as Record<string, any>)[evId];
+    const origin = classifyEventForRanking({
+      proposalUnit: proposalUnitByEventId.get(evId),
+      metaUnit: meta?.organization_unit,
+      creatorEmail: ev.created_by,
+      isSupportEvent: Boolean(meta?.is_support_event),
+      schoolOfficerEmails,
+    });
+    unitInfoByEventId.set(evId, origin);
+
+    if (origin.rankingScope === 'school') {
+      schoolEventsCount += 1;
+      const kind: 'support' | 'official' = origin.campaignKind === 'support' ? 'support' : 'official';
+      if (kind === 'support') supportEventsCount += 1;
+      else officialSchoolEventsCount += 1;
+
+      schoolEventAggMap.set(evId, {
+        event_id: evId,
+        event_name: String(ev.event_name || 'Hoạt động Đoàn Trường'),
+        event_date: ev.event_date || (ev.created_at ? String(ev.created_at).slice(0, 10) : null),
+        unit_name: origin.unitName,
+        campaign_kind: kind,
+        total_participants: 0,
+      });
+    } else {
+      otherEventsCount += 1;
     }
-    const unitAggMap = new Map<string, UnitAgg>();
 
-    // Khởi tạo sẵn đủ 16 CLB / Đội / Nhóm chính thức (tương tự 8 LCĐ) để luôn hiển thị đầy đủ kể cả CLB chưa có sự kiện trong kỳ
-    for (const club of OFFICIAL_CLUBS) {
-      unitAggMap.set(club.name, {
-        unitName: club.name,
-        unitType: 'clb',
-        lcdCode: null,
-        lcdColor: '#7c3aed',
-        eventsCount: 0,
+    if (origin.lcdCode) {
+      organizedCountByLcd.set(
+        origin.lcdCode,
+        (organizedCountByLcd.get(origin.lcdCode) || 0) + 1
+      );
+    }
+
+    const existing = unitAggMap.get(origin.unitName);
+    if (existing) {
+      existing.eventsCount += 1;
+    } else {
+      unitAggMap.set(origin.unitName, {
+        unitName: origin.unitName,
+        unitType: origin.unitType,
+        lcdCode: origin.lcdCode,
+        lcdColor: origin.lcdColor,
+        eventsCount: 1,
         totalParticipants: 0,
         uniqueParticipants: new Set<string>(),
       });
     }
+  }
 
-    for (const ev of semesterEvents) {
-      const evId = String(ev.event_id);
-      const unitInfo = resolveUnitDisplayName(
-        proposalUnitByEventId.get(evId),
-        ev.created_by
-      );
-      unitInfoByEventId.set(evId, unitInfo);
-
-      if (unitInfo.lcdCode) {
-        organizedCountByLcd.set(
-          unitInfo.lcdCode,
-          (organizedCountByLcd.get(unitInfo.lcdCode) || 0) + 1
-        );
-      }
-
-      const existing = unitAggMap.get(unitInfo.unitName);
-      if (existing) {
-        existing.eventsCount += 1;
-      } else {
-        unitAggMap.set(unitInfo.unitName, {
-          unitName: unitInfo.unitName,
-          unitType: unitInfo.unitType,
-          lcdCode: unitInfo.lcdCode,
-          lcdColor: unitInfo.lcdColor,
-          eventsCount: 1,
-          totalParticipants: 0,
-          uniqueParticipants: new Set<string>(),
-        });
-      }
+  // 3. Lấy toàn bộ lượt check-in thuộc các sự kiện trong học kỳ này
+  const checkinRows: Array<{ event_id: string; mssv: string }> = [];
+  let loadedViaRpc = false;
+  if (eventIds.length > 0) {
+    const CHUNK = 150;
+    const pageSize = 1000;
+    const WAVE_PAGES = 4;
+    const slices: string[][] = [];
+    for (let i = 0; i < eventIds.length; i += CHUNK) {
+      slices.push(eventIds.slice(i, i + CHUNK));
     }
 
-    // 3. Lấy toàn bộ lượt check-in thuộc các sự kiện trong học kỳ này
-    //    Ưu tiên RPC SECURITY DEFINER (get_ranking_checkins_for_events) có phân trang song song theo đợt 4 trang (4.000 dòng/wave)
-    //    để vừa vượt giới hạn 1.000 dòng của PostgREST vừa giảm số vòng chờ mạng xuống 4 lần.
-    const checkinRows: Array<{ event_id: string; mssv: string }> = [];
-    let loadedViaRpc = false;
-    if (eventIds.length > 0) {
-      const CHUNK = 150;
-      const pageSize = 1000;
-      const WAVE_PAGES = 4;
-      const slices: string[][] = [];
-      for (let i = 0; i < eventIds.length; i += CHUNK) {
-        slices.push(eventIds.slice(i, i + CHUNK));
-      }
+    try {
+      const rpcRows: Array<{ event_id: string; mssv: string }> = [];
+      let rpcOk = true;
 
-      try {
-        const rpcRows: Array<{ event_id: string; mssv: string }> = [];
-        let rpcOk = true;
-
-        const sliceResults = await Promise.all(
-          slices.map(async (slice) => {
-            const rows: Array<{ event_id: string; mssv: string }> = [];
-            let offset = 0;
-            while (offset < 30_000) {
-              const offsets = Array.from({ length: WAVE_PAGES }, (_, idx) => offset + idx * pageSize).filter(
-                (o) => o < 30_000
-              );
-              const wave = await Promise.all(
-                offsets.map((o) =>
-                  supabase
-                    .rpc('get_ranking_checkins_for_events', { p_event_ids: slice })
-                    .range(o, o + pageSize - 1)
-                )
-              );
-              let reachedEnd = false;
-              for (const { data: rData, error: rErr } of wave) {
-                if (rErr || !Array.isArray(rData)) {
-                  console.warn('[ranking] RPC get_ranking_checkins_for_events fallback:', rErr?.message || 'non-array');
-                  return null;
-                }
-                rows.push(...rData);
-                if (rData.length < pageSize) {
-                  reachedEnd = true;
-                  break;
-                }
+      const sliceResults = await Promise.all(
+        slices.map(async (slice) => {
+          const rows: Array<{ event_id: string; mssv: string }> = [];
+          let offset = 0;
+          while (offset < 30_000) {
+            const offsets = Array.from({ length: WAVE_PAGES }, (_, idx) => offset + idx * pageSize).filter(
+              (o) => o < 30_000
+            );
+            const wave = await Promise.all(
+              offsets.map((o) =>
+                supabase
+                  .rpc('get_ranking_checkins_for_events', { p_event_ids: slice })
+                  .range(o, o + pageSize - 1)
+              )
+            );
+            let reachedEnd = false;
+            for (const { data: rData, error: rErr } of wave) {
+              if (rErr || !Array.isArray(rData)) {
+                console.warn('[ranking] RPC get_ranking_checkins_for_events fallback:', rErr?.message || 'non-array');
+                return null;
               }
-              if (reachedEnd) break;
-              offset += WAVE_PAGES * pageSize;
-            }
-            return rows;
-          })
-        );
-
-        for (const res of sliceResults) {
-          if (res === null) {
-            rpcOk = false;
-            break;
-          }
-          rpcRows.push(...res);
-        }
-
-        if (rpcOk) {
-          checkinRows.push(...rpcRows);
-          loadedViaRpc = true;
-        }
-      } catch (e: any) {
-        console.warn('[ranking] RPC exception fallback:', e?.message);
-      }
-
-      if (!loadedViaRpc) {
-        const fallbackResults = await Promise.all(
-          slices.map(async (slice) => {
-            const rows: Array<{ event_id: string; mssv: string }> = [];
-            let offset = 0;
-            while (offset < 30_000) {
-              const offsets = Array.from({ length: WAVE_PAGES }, (_, idx) => offset + idx * pageSize).filter(
-                (o) => o < 30_000
-              );
-              const wave = await Promise.all(
-                offsets.map((o) =>
-                  supabase
-                    .from('check_ins')
-                    .select('event_id, mssv')
-                    .in('event_id', slice)
-                    .range(o, o + pageSize - 1)
-                )
-              );
-              let reachedEnd = false;
-              for (const { data, error } of wave) {
-                if (error || !data || data.length === 0) {
-                  reachedEnd = true;
-                  break;
-                }
-                rows.push(...data);
-                if (data.length < pageSize) {
-                  reachedEnd = true;
-                  break;
-                }
+              rows.push(...rData);
+              if (rData.length < pageSize) {
+                reachedEnd = true;
+                break;
               }
-              if (reachedEnd) break;
-              offset += WAVE_PAGES * pageSize;
             }
-            return rows;
-          })
-        );
-        for (const rows of fallbackResults) {
-          checkinRows.push(...rows);
-        }
-      }
-    }
-
-    // 4. Nạp danh bạ chuẩn Học viện để phân bổ chính xác đoàn viên đang học theo 8 LCĐ
-    //    (tự động trừ các cặp LCĐ + Khóa đã đánh dấu tốt nghiệp khỏi mẫu số)
-    const masterDir = getMasterStudentDirectory();
-    const lcdTotalStudentsMap = new Map<string, number>();
-    for (const lcd of LCD_DEFINITIONS) {
-      lcdTotalStudentsMap.set(lcd.code, 0);
-    }
-
-    for (const [rawMssv, info] of masterDir.entries()) {
-      const mssv = String(rawMssv || '').trim().toUpperCase();
-      if (!isValidMSSV(mssv)) continue;
-      const classId = String(info.class_id || '').trim().toUpperCase();
-      if (isStudentGraduated(mssv, classId, graduatedRules)) continue;
-      const lcd = resolveStudentLcd(classId, mssv);
-      if (lcd) {
-        lcdTotalStudentsMap.set(lcd.code, (lcdTotalStudentsMap.get(lcd.code) || 0) + 1);
-      }
-    }
-
-    // Nạp thông tin lớp & họ tên mới nhất từ bảng users cho các MSSV có check-in
-    // (ưu tiên users.class_id trong DB để phản ánh ngay khi SV năm 4 chuyển lớp chuyên ngành)
-    const uniqueCheckedInMssvs = new Set<string>();
-    for (const row of checkinRows) {
-      const mssv = String(row.mssv || '').trim().toUpperCase();
-      if (mssv && isValidMSSV(mssv)) {
-        uniqueCheckedInMssvs.add(mssv);
-      }
-    }
-
-    const dbUserMap = new Map<string, { full_name: string; class_id: string }>();
-    if (uniqueCheckedInMssvs.size > 0) {
-      const mssvArr = Array.from(uniqueCheckedInMssvs);
-      const userChunks: string[][] = [];
-      for (let i = 0; i < mssvArr.length; i += 500) {
-        userChunks.push(mssvArr.slice(i, i + 500));
-      }
-      const userResults = await Promise.all(
-        userChunks.map((chunk) =>
-          supabase
-            .from('users')
-            .select('mssv, full_name, class_id')
-            .in('mssv', chunk)
-        )
-      );
-      for (const { data: uRows } of userResults) {
-        for (const u of uRows || []) {
-          const m = String(u.mssv || '').trim().toUpperCase();
-          if (m) {
-            dbUserMap.set(m, {
-              full_name: String(u.full_name || '').trim(),
-              class_id: String(u.class_id || '').trim().toUpperCase(),
-            });
+            if (reachedEnd) break;
+            offset += WAVE_PAGES * pageSize;
           }
+          return rows;
+        })
+      );
+
+      for (const res of sliceResults) {
+        if (res === null) {
+          rpcOk = false;
+          break;
+        }
+        rpcRows.push(...res);
+      }
+
+      if (rpcOk) {
+        checkinRows.push(...rpcRows);
+        loadedViaRpc = true;
+      }
+    } catch (e: any) {
+      console.warn('[ranking] RPC exception fallback:', e?.message);
+    }
+
+    if (!loadedViaRpc) {
+      const fallbackResults = await Promise.all(
+        slices.map(async (slice) => {
+          const rows: Array<{ event_id: string; mssv: string }> = [];
+          let offset = 0;
+          while (offset < 30_000) {
+            const offsets = Array.from({ length: WAVE_PAGES }, (_, idx) => offset + idx * pageSize).filter(
+              (o) => o < 30_000
+            );
+            const wave = await Promise.all(
+              offsets.map((o) =>
+                supabase
+                  .from('check_ins')
+                  .select('event_id, mssv')
+                  .in('event_id', slice)
+                  .range(o, o + pageSize - 1)
+              )
+            );
+            let reachedEnd = false;
+            for (const { data, error } of wave) {
+              if (error || !data || data.length === 0) {
+                reachedEnd = true;
+                break;
+              }
+              rows.push(...data);
+              if (data.length < pageSize) {
+                reachedEnd = true;
+                break;
+              }
+            }
+            if (reachedEnd) break;
+            offset += WAVE_PAGES * pageSize;
+          }
+          return rows;
+        })
+      );
+      for (const rows of fallbackResults) {
+        checkinRows.push(...rows);
+      }
+    }
+  }
+
+  // 4. Nạp danh bạ chuẩn Học viện để phân bổ chính xác đoàn viên đang học theo 8 LCĐ
+  const masterDir = getMasterStudentDirectory();
+  const lcdTotalStudentsMap = new Map<string, number>();
+  for (const lcd of LCD_DEFINITIONS) {
+    lcdTotalStudentsMap.set(lcd.code, 0);
+  }
+
+  for (const [rawMssv, info] of masterDir.entries()) {
+    const mssv = String(rawMssv || '').trim().toUpperCase();
+    if (!isValidMSSV(mssv)) continue;
+    const classId = String(info.class_id || '').trim().toUpperCase();
+    if (isStudentGraduated(mssv, classId, graduatedRules)) continue;
+    const lcd = resolveStudentLcd(classId, mssv);
+    if (lcd) {
+      lcdTotalStudentsMap.set(lcd.code, (lcdTotalStudentsMap.get(lcd.code) || 0) + 1);
+    }
+  }
+
+  const uniqueCheckedInMssvs = new Set<string>();
+  for (const row of checkinRows) {
+    const mssv = String(row.mssv || '').trim().toUpperCase();
+    if (mssv && isValidMSSV(mssv)) {
+      uniqueCheckedInMssvs.add(mssv);
+    }
+  }
+
+  const dbUserMap = new Map<string, { full_name: string; class_id: string }>();
+  if (uniqueCheckedInMssvs.size > 0) {
+    const mssvArr = Array.from(uniqueCheckedInMssvs);
+    const userChunks: string[][] = [];
+    for (let i = 0; i < mssvArr.length; i += 500) {
+      userChunks.push(mssvArr.slice(i, i + 500));
+    }
+    const userResults = await Promise.all(
+      userChunks.map((chunk) =>
+        supabase
+          .from('users')
+          .select('mssv, full_name, class_id')
+          .in('mssv', chunk)
+      )
+    );
+    for (const { data: uRows } of userResults) {
+      for (const u of uRows || []) {
+        const m = String(u.mssv || '').trim().toUpperCase();
+        if (m) {
+          dbUserMap.set(m, {
+            full_name: String(u.full_name || '').trim(),
+            class_id: String(u.class_id || '').trim().toUpperCase(),
+          });
         }
       }
     }
+  }
 
-    const resolveStudentInfo = (mssv: string) => {
-      const master = getMasterStudentByMssv(mssv);
-      const db = dbUserMap.get(mssv);
-      const full_name =
-        (db?.full_name && !isPlaceholderName(db.full_name, mssv) ? db.full_name : '') ||
-        master?.full_name ||
-        mssv;
-      // Luôn ưu tiên class_id trong DB (users) trước Data.xlsx để tự cập nhật khi năm 4 đổi mã lớp
-      const class_id =
-        (db?.class_id && !isPlaceholderClass(db.class_id) ? db.class_id : '') ||
-        master?.class_id ||
-        'PTIT-HCM';
-      return { full_name, class_id };
-    };
+  const resolveStudentInfo = (mssv: string) => {
+    const master = getMasterStudentByMssv(mssv);
+    const db = dbUserMap.get(mssv);
+    const full_name =
+      (db?.full_name && !isPlaceholderName(db.full_name, mssv) ? db.full_name : '') ||
+      master?.full_name ||
+      mssv;
+    const class_id =
+      (db?.class_id && !isPlaceholderClass(db.class_id) ? db.class_id : '') ||
+      master?.class_id ||
+      'PTIT-HCM';
+    return { full_name, class_id };
+  };
 
-    // 5. Thống kê theo từng sinh viên, từng LCĐ & từng Đơn vị tổ chức
-    const studentParticipationMap = new Map<string, number>();
-    const lcdActiveStudentsSet = new Map<string, Set<string>>();
-    const lcdTotalParticipationsMap = new Map<string, number>();
+  // 5. Tính toán đồng thời cho cả 3 phân hệ (all = school + other) trong 1 vòng lặp duy nhất trên RAM
+  const accAll = createScopeAccumulator();
+  const accSchool = createScopeAccumulator();
+  const accOther = createScopeAccumulator();
 
-    for (const lcd of LCD_DEFINITIONS) {
-      lcdActiveStudentsSet.set(lcd.code, new Set<string>());
-      lcdTotalParticipationsMap.set(lcd.code, 0);
+  const distinctEventStudentSet = new Set<string>();
+
+  const recordToAccumulator = (acc: ScopeAccumulator, mssv: string, lcdCode: string | null) => {
+    acc.totalParticipations += 1;
+    acc.studentParticipationMap.set(mssv, (acc.studentParticipationMap.get(mssv) || 0) + 1);
+    if (lcdCode) {
+      acc.lcdActiveStudentsSet.get(lcdCode)?.add(mssv);
+      acc.lcdTotalParticipationsMap.set(
+        lcdCode,
+        (acc.lcdTotalParticipationsMap.get(lcdCode) || 0) + 1
+      );
+    }
+  };
+
+  for (const row of checkinRows) {
+    const mssv = String(row.mssv || '').trim().toUpperCase();
+    if (!mssv || !isValidMSSV(mssv)) continue;
+    const eventId = String(row.event_id || '');
+    if (!eventIdSet.has(eventId)) continue;
+
+    const comboKey = `${eventId}__${mssv}`;
+    if (distinctEventStudentSet.has(comboKey)) continue;
+    distinctEventStudentSet.add(comboKey);
+
+    const stInfo = resolveStudentInfo(mssv);
+    const lcd = resolveStudentLcd(stInfo.class_id, mssv);
+    const lcdCode = lcd?.code || null;
+    const unitInfo = unitInfoByEventId.get(eventId);
+    const isSchoolScope = unitInfo?.rankingScope === 'school';
+
+    // 1. Tổng toàn trường
+    recordToAccumulator(accAll, mssv, lcdCode);
+
+    // 2. Đoàn Trường & Phát động vs 3. Còn lại (Cơ sở)
+    if (isSchoolScope) {
+      recordToAccumulator(accSchool, mssv, lcdCode);
+      const sEvt = schoolEventAggMap.get(eventId);
+      if (sEvt) sEvt.total_participants += 1;
+    } else {
+      recordToAccumulator(accOther, mssv, lcdCode);
     }
 
-    // Mỗi sự kiện 1 sinh viên tính 1 lượt tham gia hợp lệ
-    const distinctEventStudentSet = new Set<string>();
-
-    for (const row of checkinRows) {
-      const mssv = String(row.mssv || '').trim().toUpperCase();
-      if (!mssv || !isValidMSSV(mssv)) continue;
-      const eventId = String(row.event_id || '');
-      if (!eventIdSet.has(eventId)) continue;
-
-      const comboKey = `${eventId}__${mssv}`;
-      if (distinctEventStudentSet.has(comboKey)) continue;
-      distinctEventStudentSet.add(comboKey);
-
-      // a. Cá nhân sinh viên
-      studentParticipationMap.set(mssv, (studentParticipationMap.get(mssv) || 0) + 1);
-
-      // b. Liên Chi Đoàn của sinh viên
-      const stInfo = resolveStudentInfo(mssv);
-      const lcd = resolveStudentLcd(stInfo.class_id, mssv);
-      if (lcd) {
-        lcdActiveStudentsSet.get(lcd.code)?.add(mssv);
-        lcdTotalParticipationsMap.set(
-          lcd.code,
-          (lcdTotalParticipationsMap.get(lcd.code) || 0) + 1
-        );
-      }
-
-      // c. Đơn vị tổ chức sự kiện
-      const unitInfo = unitInfoByEventId.get(eventId);
-      if (unitInfo) {
-        const agg = unitAggMap.get(unitInfo.unitName);
-        if (agg) {
-          agg.totalParticipants += 1;
-          agg.uniqueParticipants.add(mssv);
-        }
+    // 4. Đơn vị tổ chức (CLB / Đội / Nhóm)
+    if (unitInfo) {
+      const agg = unitAggMap.get(unitInfo.unitName);
+      if (agg) {
+        agg.totalParticipants += 1;
+        agg.uniqueParticipants.add(mssv);
       }
     }
+  }
 
-    // 6. Xây dựng Bảng Xếp Hạng 8 Liên Chi Đoàn (theo lượng đoàn viên tham gia)
-    const lcdRankings: LcdRankingItem[] = LCD_DEFINITIONS.map((lcd) => {
-      const totalStudents = lcdTotalStudentsMap.get(lcd.code) || 0;
-      const activeStudentsCount = lcdActiveStudentsSet.get(lcd.code)?.size || 0;
-      const totalParticipations = lcdTotalParticipationsMap.get(lcd.code) || 0;
-      const participationRate =
-        totalStudents > 0
-          ? Math.round((activeStudentsCount / totalStudents) * 1000) / 10
-          : 0;
-
-      return {
-        rank: 0,
-        lcd_code: lcd.code,
-        lcd_name: lcd.name,
-        lcd_short_name: lcd.shortName,
-        lcd_color: lcd.color,
-        total_students: totalStudents,
-        active_students_count: activeStudentsCount,
-        total_participations: totalParticipations,
-        participation_rate: participationRate,
-        events_organized_count: organizedCountByLcd.get(lcd.code) || 0,
-      };
-    });
-
-    lcdRankings.sort((a, b) => {
-      if (b.total_participations !== a.total_participations) {
-        return b.total_participations - a.total_participations;
-      }
-      if (b.active_students_count !== a.active_students_count) {
-        return b.active_students_count - a.active_students_count;
-      }
-      return b.participation_rate - a.participation_rate;
-    });
-    lcdRankings.forEach((item, index) => {
-      item.rank = index + 1;
-    });
-
-    // 7. Xây dựng Bảng Xếp Hạng CLB / Đội / Nhóm (chỉ so sánh các CLB/Đội/Nhóm, tách riêng với 8 LCĐ và cấp Học viện)
-    const unitRankings: UnitRankingItem[] = Array.from(unitAggMap.values())
-      .filter((agg) => agg.unitType === 'clb')
-      .map((agg) => ({
-        rank: 0,
-        unit_name: agg.unitName,
-        unit_type: agg.unitType,
-        lcd_code: agg.lcdCode,
-        lcd_color: agg.lcdColor,
-        events_count: agg.eventsCount,
-        total_participants: agg.totalParticipants,
-        unique_participants: agg.uniqueParticipants.size,
-        avg_participants_per_event:
-          agg.eventsCount > 0 ? Math.round(agg.totalParticipants / agg.eventsCount) : 0,
-      }))
-      .sort((a, b) => {
-        if (b.total_participants !== a.total_participants) {
-          return b.total_participants - a.total_participants;
-        }
-        return b.events_count - a.events_count;
-      });
-    unitRankings.forEach((item, index) => {
-      item.rank = index + 1;
-    });
-
-    // 8. Xây dựng Bảng Xếp Hạng Top 50 Sinh Viên tham gia nhiều sự kiện nhất & vị trí cá nhân
-    const allSortedStudents = Array.from(studentParticipationMap.entries()).sort((a, b) => {
-      if (b[1] !== a[1]) return b[1] - a[1];
-      return a[0].localeCompare(b[0]);
-    });
-
-    const top50Threshold =
-      allSortedStudents.length >= 50 ? allSortedStudents[49][1] : 1;
-
-    const topStudents: StudentRankingItem[] = allSortedStudents
-      .slice(0, 50)
-      .map(([mssv, count], index) => {
-        const stInfo = resolveStudentInfo(mssv);
-        const lcd = resolveStudentLcd(stInfo.class_id, mssv);
-        return {
-          rank: index + 1,
-          mssv,
-          full_name: stInfo.full_name,
-          class_id: stInfo.class_id,
-          lcd_code: lcd?.code || null,
-          lcd_name: lcd?.name || null,
-          lcd_color: lcd?.color || null,
-          participations_count: count,
-        };
-      });
-
-    const studentRankMap = new Map<string, { rank: number; count: number; full_name: string; class_id: string }>();
-    for (let i = 0; i < allSortedStudents.length; i++) {
-      const [mssv, count] = allSortedStudents[i];
-      const stInfo = resolveStudentInfo(mssv);
-      studentRankMap.set(mssv, {
-        rank: i + 1,
-        count,
-        full_name: stInfo.full_name,
-        class_id: stInfo.class_id,
-      });
+  // 6. Chuẩn hóa 3 bộ kết quả phân hệ
+  const allBucket = finalizeScopeBucket(
+    'all',
+    accAll,
+    semesterEvents.length,
+    lcdTotalStudentsMap,
+    organizedCountByLcd,
+    resolveStudentInfo
+  );
+  const schoolBucket = finalizeScopeBucket(
+    'school',
+    accSchool,
+    schoolEventsCount,
+    lcdTotalStudentsMap,
+    organizedCountByLcd,
+    resolveStudentInfo,
+    {
+      support_events_count: supportEventsCount,
+      official_school_events_count: officialSchoolEventsCount,
     }
+  );
+  const otherBucket = finalizeScopeBucket(
+    'other',
+    accOther,
+    otherEventsCount,
+    lcdTotalStudentsMap,
+    organizedCountByLcd,
+    resolveStudentInfo
+  );
 
-    return {
-      lcd_rankings: lcdRankings,
-      unit_rankings: unitRankings,
-      top_students: topStudents,
-      total_events_in_semester: semesterEvents.length,
-      total_participations_in_semester: distinctEventStudentSet.size,
-      total_students_participated: studentParticipationMap.size,
-      top50Threshold,
-      totalRankedStudents: allSortedStudents.length,
-      studentRankMap,
-    };
+  // 7. Xây dựng Bảng Xếp Hạng CLB / Đội / Nhóm
+  const unitRankings: UnitRankingItem[] = Array.from(unitAggMap.values())
+    .filter((agg) => agg.unitType === 'clb')
+    .map((agg) => ({
+      rank: 0,
+      unit_name: agg.unitName,
+      unit_type: 'clb' as const,
+      lcd_code: agg.lcdCode,
+      lcd_color: agg.lcdColor,
+      events_count: agg.eventsCount,
+      total_participants: agg.totalParticipants,
+      unique_participants: agg.uniqueParticipants.size,
+      avg_participants_per_event:
+        agg.eventsCount > 0 ? Math.round(agg.totalParticipants / agg.eventsCount) : 0,
+    }))
+    .sort((a, b) => {
+      if (b.total_participants !== a.total_participants) {
+        return b.total_participants - a.total_participants;
+      }
+      return b.events_count - a.events_count;
+    });
+  unitRankings.forEach((item, index) => {
+    item.rank = index + 1;
+  });
+
+  // 8. Danh sách chi tiết các Hoạt động Đoàn Trường & Phát động trong kỳ
+  const schoolEvents: SchoolCampaignEventItem[] = Array.from(schoolEventAggMap.values())
+    .sort((a, b) => {
+      if (b.total_participants !== a.total_participants) {
+        return b.total_participants - a.total_participants;
+      }
+      return String(b.event_date || '').localeCompare(String(a.event_date || ''));
+    })
+    .map((item, idx) => ({
+      rank: idx + 1,
+      ...item,
+    }));
+
+  return {
+    unit_rankings: unitRankings,
+    school_events: schoolEvents,
+    scopes: {
+      all: allBucket,
+      school: schoolBucket,
+      other: otherBucket,
+    },
+  };
+}
+
+function buildMyRankForBucket(
+  bucket: InternalScopeBucket,
+  myMssv: string | null
+): MyRankingSummary | null {
+  if (!myMssv || !isValidMSSV(myMssv)) return null;
+  const rankedEntry = bucket.studentRankMap.get(myMssv);
+  const master = rankedEntry ? null : getMasterStudentByMssv(myMssv);
+  const fullName = rankedEntry?.full_name || master?.full_name || myMssv;
+  const classId = rankedEntry?.class_id || master?.class_id || 'PTIT-HCM';
+  const myCount = rankedEntry?.count || 0;
+  const myRankNum = rankedEntry?.rank || 0;
+  const lcd = resolveStudentLcd(classId, myMssv);
+  return {
+    rank: myRankNum,
+    mssv: myMssv,
+    full_name: fullName,
+    class_id: classId,
+    lcd_code: lcd?.code || null,
+    lcd_name: lcd?.name || null,
+    lcd_color: lcd?.color || null,
+    participations_count: myCount,
+    total_ranked_students: bucket.totalRankedStudents,
+    gap_to_top50:
+      myRankNum > 0 && myRankNum <= 50 ? 0 : Math.max(1, bucket.top50Threshold - myCount),
+  };
+}
+
+function toPublicScopeDataset(
+  bucket: InternalScopeBucket,
+  myMssv: string | null
+): RankingScopeDataset {
+  return {
+    scope: bucket.scope,
+    total_events: bucket.total_events,
+    ...(bucket.support_events_count !== undefined
+      ? { support_events_count: bucket.support_events_count }
+      : {}),
+    ...(bucket.official_school_events_count !== undefined
+      ? { official_school_events_count: bucket.official_school_events_count }
+      : {}),
+    total_participations: bucket.total_participations,
+    total_students_participated: bucket.total_students_participated,
+    lcd_rankings: bucket.lcd_rankings,
+    top_students: bucket.top_students,
+    my_rank: buildMyRankForBucket(bucket, myMssv),
+  };
 }
 
 export async function GET(req: Request) {
@@ -599,8 +742,6 @@ export async function GET(req: Request) {
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
 
-    // Chỉ Super Admin, Đoàn Trường, Phòng ban, LCĐ/CLB hoặc Admin sự kiện mới được chọn xem các kỳ khác;
-    // Sinh viên bình thường chỉ xem được học kỳ hiện tại (đang kích hoạt).
     const canSelectSemester = Boolean(
       auth &&
         (auth.isSuperAdmin ||
@@ -613,7 +754,6 @@ export async function GET(req: Request) {
           isUnitAccount({ email: auth.email }))
     );
 
-    // 1. Lấy danh sách cấu hình học kỳ do Super Admin gán thời gian
     const allSemesters = await getAcademicSemesters(supabase);
     const activeSemester = getActiveSemester(allSemesters);
 
@@ -623,7 +763,7 @@ export async function GET(req: Request) {
       if (found) selectedSemester = found;
     }
 
-    const cacheKey = `${selectedSemester.id}_${selectedSemester.start_date}_${selectedSemester.end_date}`;
+    const cacheKey = `v2_${selectedSemester.id}_${selectedSemester.start_date}_${selectedSemester.end_date}`;
     const now = Date.now();
     const cachedEntry = rankingCache.get(cacheKey);
     const allowBypass = canSelectSemester && forceRefresh;
@@ -658,7 +798,6 @@ export async function GET(req: Request) {
       rankedData = cachedEntry.data;
       cacheStatus = 'HIT';
     } else if (!allowBypass && cachedEntry && now - cachedEntry.ts < RANKING_STALE_TTL_MS) {
-      // Stale-While-Revalidate: trả dữ liệu tức thì (<5ms) và tự tính lại ngầm ở nền
       rankedData = cachedEntry.data;
       cacheStatus = 'STALE';
       triggerBackgroundRefresh();
@@ -685,46 +824,35 @@ export async function GET(req: Request) {
       }
     }
 
-    // Tính thứ hạng hiện tại của chính sinh viên đang đăng nhập (O(1) từ cache)
-    let myRank: MyRankingSummary | null = null;
+    let myMssv: string | null = null;
     if (auth && !isUnitAccount({ email: auth.email })) {
-      const myMssv = (extractMSSV(auth.email || '') || '').trim().toUpperCase();
-
-      if (myMssv && isValidMSSV(myMssv)) {
-        const rankedEntry = rankedData.studentRankMap.get(myMssv);
-        const master = rankedEntry ? null : getMasterStudentByMssv(myMssv);
-        const fullName = rankedEntry?.full_name || master?.full_name || myMssv;
-        const classId = rankedEntry?.class_id || master?.class_id || 'PTIT-HCM';
-        const myCount = rankedEntry?.count || 0;
-        const myRankNum = rankedEntry?.rank || 0;
-        const lcd = resolveStudentLcd(classId, myMssv);
-        myRank = {
-          rank: myRankNum,
-          mssv: myMssv,
-          full_name: fullName,
-          class_id: classId,
-          lcd_code: lcd?.code || null,
-          lcd_name: lcd?.name || null,
-          lcd_color: lcd?.color || null,
-          participations_count: myCount,
-          total_ranked_students: rankedData.totalRankedStudents,
-          gap_to_top50:
-            myRankNum > 0 && myRankNum <= 50 ? 0 : Math.max(1, rankedData.top50Threshold - myCount),
-        };
+      const extracted = (extractMSSV(auth.email || '') || '').trim().toUpperCase();
+      if (extracted && isValidMSSV(extracted)) {
+        myMssv = extracted;
       }
     }
+
+    const scopeAll = toPublicScopeDataset(rankedData.scopes.all, myMssv);
+    const scopeSchool = toPublicScopeDataset(rankedData.scopes.school, myMssv);
+    const scopeOther = toPublicScopeDataset(rankedData.scopes.other, myMssv);
 
     const responseData: RankingResponseData = {
       semester: selectedSemester,
       all_semesters: canSelectSemester ? allSemesters : [selectedSemester],
       can_select_semester: canSelectSemester,
-      my_rank: myRank,
-      lcd_rankings: rankedData.lcd_rankings,
+      my_rank: scopeAll.my_rank,
+      lcd_rankings: scopeAll.lcd_rankings,
       unit_rankings: rankedData.unit_rankings,
-      top_students: rankedData.top_students,
-      total_events_in_semester: rankedData.total_events_in_semester,
-      total_participations_in_semester: rankedData.total_participations_in_semester,
-      total_students_participated: rankedData.total_students_participated,
+      top_students: scopeAll.top_students,
+      total_events_in_semester: scopeAll.total_events,
+      total_participations_in_semester: scopeAll.total_participations,
+      total_students_participated: scopeAll.total_students_participated,
+      school_events: rankedData.school_events,
+      scopes: {
+        all: scopeAll,
+        school: scopeSchool,
+        other: scopeOther,
+      },
     };
 
     return NextResponse.json(

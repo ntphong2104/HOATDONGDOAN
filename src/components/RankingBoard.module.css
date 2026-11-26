@@ -5,18 +5,18 @@
 }
 
 .heroCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-left: 3px solid #1d4ed8;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--brand-accent);
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
-  color: #0f172a;
+  color: var(--text-primary);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1.15rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
   max-width: 100%;
   box-sizing: border-box;
@@ -38,7 +38,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #1d4ed8;
+  color: var(--text-brand);
 }
 
 .heroTitle {
@@ -47,13 +47,13 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .heroDesc {
   margin: 0;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
   line-height: 1.45;
   max-width: 640px;
 }
@@ -80,16 +80,16 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .semesterSelect {
   height: 38px;
   padding: 0 2rem 0 0.8rem;
   border-radius: 9px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #0f172a;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  color: var(--text-primary);
   font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
@@ -100,17 +100,17 @@
 }
 
 .semesterSelect option {
-  color: #0f172a;
-  background: #ffffff;
+  color: var(--text-primary);
+  background: var(--bg-surface);
 }
 
 .semesterStaticBadge {
   min-height: 38px;
   padding: 0.4rem 0.85rem;
   border-radius: 9px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #0f172a;
+  border: 1px solid var(--border-color);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.35;
@@ -131,9 +131,9 @@
   height: 38px;
   padding: 0 0.9rem;
   border-radius: 9px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #334155;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-body);
   font-size: 0.8rem;
   font-weight: 700;
   display: inline-flex;
@@ -145,9 +145,9 @@
 }
 
 .heroActionBtn:hover {
-  background: #f1f5f9;
+  background: var(--bg-muted);
   border-color: #94a3b8;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .heroActionBtnGreen {
@@ -160,6 +160,141 @@
   background: #15803d;
 }
 
+/* ── 3-Scope Emulation Segment Bar (Tổng hợp / Đoàn Trường & Phát động / Cơ sở) ── */
+.scopeBar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 0.65rem;
+  box-shadow: var(--card-shadow);
+}
+
+.scopeTabBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.78rem 1rem;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.scopeTabBtn:hover {
+  background: var(--bg-muted);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.scopeTabBtnActive {
+  background: var(--tint-blue-bg);
+  border-color: var(--brand-accent);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+.scopeTabBtnActive:hover {
+  background: var(--tint-blue-bg);
+  border-color: var(--brand-accent);
+}
+
+.scopeTabTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.scopeTabTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: inherit;
+  line-height: 1.25;
+}
+
+.scopeTabBtnActive .scopeTabTitle {
+  color: var(--text-brand);
+}
+
+.scopeCountPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.14rem 0.52rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.scopeTabBtnActive .scopeCountPill {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.scopeTabDesc {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.campaignBadgeSupport {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.71rem;
+  font-weight: 700;
+  background: var(--tint-teal-bg);
+  color: var(--status-teal-text);
+  border: 1px solid var(--tint-teal-border);
+  white-space: nowrap;
+}
+
+.campaignBadgeOfficial {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.71rem;
+  font-weight: 700;
+  background: var(--tint-blue-bg);
+  color: var(--text-brand);
+  border: 1px solid var(--tint-blue-border);
+  white-space: nowrap;
+}
+
+.splitSubMeta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 0.22rem;
+}
+
+@media (max-width: 900px) {
+  .scopeBar {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
 .kpiGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -167,14 +302,14 @@
 }
 
 .kpiCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 1rem 1.15rem;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  box-shadow: var(--card-shadow);
 }
 
 .kpiLabel {
@@ -182,19 +317,19 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .kpiValue {
   font-size: 1.55rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   line-height: 1.2;
 }
 
 .kpiSub {
   font-size: 0.77rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -208,8 +343,8 @@
 }
 
 .podiumCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 1.1rem 1.2rem;
   display: flex;
@@ -221,18 +356,18 @@
 
 .podiumFirst {
   border-color: #f59e0b;
-  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 55%);
+  background: linear-gradient(180deg, var(--tint-amber-bg) 0%, var(--bg-surface) 60%);
   box-shadow: 0 6px 20px rgba(245, 158, 11, 0.12);
 }
 
 .podiumSecond {
   border-color: #94a3b8;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 55%);
+  background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg-surface) 60%);
 }
 
 .podiumThird {
   border-color: #d97706;
-  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 55%);
+  background: linear-gradient(180deg, var(--tint-amber-bg) 0%, var(--bg-surface) 60%);
 }
 
 .podiumTop {
@@ -258,33 +393,33 @@
 }
 
 .rankGold {
-  background: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fcd34d;
+  background: var(--tint-amber-strong);
+  color: var(--status-amber-text);
+  border: 1px solid var(--tint-amber-border);
 }
 
 .rankSilver {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
 }
 
 .rankBronze {
-  background: #ffedd5;
-  color: #c2410c;
+  background: var(--tint-amber-strong);
+  color: var(--status-amber-text);
   border: 1px solid #fdba74;
 }
 
 .rankNormal {
-  background: #f8fafc;
-  color: #475569;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .podiumName {
   font-size: 1rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   line-height: 1.3;
 }
 
@@ -299,24 +434,24 @@
 .podiumBigNum {
   font-size: 1.45rem;
   font-weight: 800;
-  color: #1d4ed8;
+  color: var(--text-brand);
 }
 
 .podiumMeta {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
 .boardCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+  box-shadow: var(--card-shadow);
 }
 
 .tabsHeader {
@@ -325,7 +460,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.85rem;
 }
 
@@ -341,9 +476,9 @@
   gap: 0.45rem;
   padding: 0.52rem 0.95rem;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #475569;
+  border: 1px solid var(--border-color);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
@@ -351,13 +486,13 @@
 }
 
 .tabBtn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--bg-muted);
+  color: var(--text-primary);
 }
 
 .tabBtnActive {
   background: #1d4ed8;
-  border-color: #1d4ed8;
+  border-color: var(--brand-accent);
   color: #ffffff;
 }
 
@@ -384,7 +519,7 @@
 .searchIcon {
   position: absolute;
   left: 0.75rem;
-  color: #94a3b8;
+  color: var(--text-subtle);
   pointer-events: none;
   display: inline-flex;
 }
@@ -393,10 +528,10 @@
   width: 100%;
   height: 38px;
   padding: 0 0.85rem 0 2.25rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   font-size: 0.85rem;
-  color: #0f172a;
+  color: var(--text-primary);
   outline: none;
 }
 
@@ -408,17 +543,17 @@
 .filterSelect {
   height: 38px;
   padding: 0 0.75rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   font-size: 0.84rem;
   font-weight: 600;
-  color: #334155;
-  background: #ffffff;
+  color: var(--text-body);
+  background: var(--bg-surface);
 }
 
 .tableWrap {
   overflow-x: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
 }
 
@@ -432,20 +567,20 @@
 .table th {
   text-align: left;
   padding: 0.82rem 1rem;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-size: 0.73rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
 }
 
 .table td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-body);
   vertical-align: middle;
 }
 
@@ -454,7 +589,7 @@
 }
 
 .table tbody tr:hover {
-  background: #f8fafc;
+  background: var(--bg-subtle);
 }
 
 .cellCenter {
@@ -470,7 +605,7 @@
 }
 
 .rowHighlight {
-  background: #eff6ff !important;
+  background: var(--tint-blue-bg) !important;
 }
 
 .barTrack {
@@ -478,7 +613,7 @@
   max-width: 240px;
   min-width: 150px;
   height: 8px;
-  background: #f1f5f9;
+  background: var(--bg-muted);
   border-radius: 999px;
   overflow: hidden;
   margin-top: 0.35rem;
@@ -509,17 +644,17 @@
 .emptyState {
   padding: 2.5rem 1rem;
   text-align: center;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.9rem;
-  background: #f8fafc;
+  background: var(--bg-subtle);
   border-radius: 12px;
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--border-strong);
 }
 
 .loadingBox {
   padding: 3rem 1rem;
   text-align: center;
-  color: #475569;
+  color: var(--text-secondary);
   font-weight: 600;
   font-size: 0.92rem;
 }
@@ -558,10 +693,10 @@
 .studentCompactList {
   display: flex;
   flex-direction: column;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--bg-surface);
 }
 
 .studentCompactRow {
@@ -569,7 +704,7 @@
   align-items: center;
   gap: 0.9rem;
   padding: 0.85rem 1.05rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-color);
   transition: background 0.12s ease;
 }
 
@@ -578,7 +713,7 @@
 }
 
 .studentCompactRow:hover {
-  background: #f8fafc;
+  background: var(--bg-subtle);
 }
 
 .studentCompactRank {
@@ -603,7 +738,7 @@
 .studentCompactName {
   font-size: 0.98rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -614,8 +749,8 @@
   flex-shrink: 0;
   padding: 0.1rem 0.48rem;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--tint-blue-strong);
+  color: var(--text-brand);
   font-size: 0.68rem;
   font-weight: 800;
   line-height: 1.3;
@@ -635,19 +770,19 @@
 
 .studentCompactClass {
   font-weight: 700;
-  color: #475569;
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .studentCompactMssv {
   font-family: monospace;
   font-weight: 700;
-  color: #0369a1;
+  color: var(--text-brand);
   flex-shrink: 0;
 }
 
 .studentCompactDot {
-  color: #cbd5e1;
+  color: var(--border-strong);
   flex-shrink: 0;
 }
 
@@ -663,8 +798,8 @@
   flex-shrink: 0;
   padding: 0.28rem 0.72rem;
   border-radius: 999px;
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--tint-green-strong);
+  color: var(--status-green-text);
   font-size: 0.8rem;
   font-weight: 800;
   white-space: nowrap;

@@ -70,8 +70,16 @@ export function checkRateLimit(
 
   validTimestamps.push(now);
   if (!rateLimitMap.has(identifier) && rateLimitMap.size >= MAX_RATE_LIMIT_KEYS) {
-    const oldestKey = rateLimitMap.keys().next().value;
-    if (oldestKey !== undefined) rateLimitMap.delete(oldestKey);
+    for (const [k, rec] of rateLimitMap.entries()) {
+      const retainMs = Math.max(rec.windowMs || 60000, 60000);
+      if (rec.timestamps.every((ts) => now - ts >= retainMs)) {
+        rateLimitMap.delete(k);
+      }
+    }
+    if (rateLimitMap.size >= MAX_RATE_LIMIT_KEYS) {
+      const oldestKey = rateLimitMap.keys().next().value;
+      if (oldestKey !== undefined) rateLimitMap.delete(oldestKey);
+    }
   }
   rateLimitMap.set(identifier, { timestamps: validTimestamps, windowMs });
 

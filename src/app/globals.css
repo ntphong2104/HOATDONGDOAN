@@ -1,7 +1,8 @@
-/* Fonts are self-hosted via next/font in layout.tsx — no @import needed */
+/* Fonts are loaded in layout.tsx */
 
 :root {
-  --asset-rev: 20261121;
+  color-scheme: light;
+  --asset-rev: 20261125;
   --primary-50: #eff6ff;
   --primary-100: #dbeafe;
   --primary-200: #bfdbfe;
@@ -59,14 +60,106 @@
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
 
   /* ──── Semantic Surface, Border & Text Tokens ──── */
-  --bg-primary: var(--neutral-50);
+  --bg-primary: #f8fafc;
   --bg-surface: #ffffff;
-  --bg-subtle: var(--neutral-100);
-  --border-color: var(--neutral-200);
-  --border-strong: var(--neutral-300);
-  --text-primary: var(--neutral-900);
-  --text-secondary: var(--neutral-600);
-  --text-muted: var(--neutral-500);
+  --bg-elevated: #ffffff;
+  --bg-subtle: #f8fafc;
+  --bg-muted: #f1f5f9;
+  --bg-input: #ffffff;
+  --header-bg: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  --header-dot-border: #1e3a8a;
+  --bottom-nav-bg: rgba(255, 255, 255, 0.96);
+  --btn-dark-bg: #0f172a;
+  --btn-dark-hover: #1e293b;
+
+  --border-color: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  --text-primary: #0f172a;
+  --text-body: #334155;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --text-brand: #1d4ed8;
+  --text-brand-strong: #1e40af;
+  --brand-accent: #1d4ed8;
+
+  /* ──── Semantic Status & Callout Tints ──── */
+  --tint-blue-bg: #eff6ff;
+  --tint-blue-strong: #dbeafe;
+  --tint-blue-border: #bfdbfe;
+
+  --tint-green-bg: #f0fdf4;
+  --tint-green-strong: #dcfce7;
+  --tint-green-border: #bbf7d0;
+  --status-green-text: #15803d;
+
+  --tint-red-bg: #fef2f2;
+  --tint-red-strong: #fee2e2;
+  --tint-red-border: #fecaca;
+  --status-red-text: #dc2626;
+
+  --tint-amber-bg: #fffbeb;
+  --tint-amber-strong: #fef3c7;
+  --tint-amber-border: #fde68a;
+  --status-amber-text: #b45309;
+
+  --tint-purple-bg: #f5f3ff;
+  --tint-purple-strong: #ede9fe;
+  --tint-purple-border: #ddd6fe;
+  --status-purple-text: #6d28d9;
+
+  --tint-teal-bg: #f0fdfa;
+  --tint-teal-strong: #ccfbf1;
+  --tint-teal-border: #99f6e4;
+  --status-teal-text: #0f766e;
+
+  --tint-cyan-bg: #ecfeff;
+  --tint-cyan-strong: #cffafe;
+  --tint-cyan-border: #a5f3fc;
+  --status-cyan-text: #0e7490;
+
+  --tint-pink-bg: #fdf2f8;
+  --tint-pink-strong: #fce7f3;
+  --tint-pink-border: #fbcfe8;
+  --status-pink-text: #be185d;
+
+  /* ──── 8 LCĐ Adaptive Identity Tokens ──── */
+  --lcd-cntt-fg: #0369a1;
+  --lcd-cntt-bg: #f0f9ff;
+  --lcd-cntt-border: #bae6fd;
+
+  --lcd-cndpt-fg: #ea580c;
+  --lcd-cndpt-bg: #fff7ed;
+  --lcd-cndpt-border: #fed7aa;
+
+  --lcd-attt-fg: #0284c7;
+  --lcd-attt-bg: #e0f2fe;
+  --lcd-attt-border: #7dd3fc;
+
+  --lcd-vt-fg: #172554;
+  --lcd-vt-bg: #eef2ff;
+  --lcd-vt-border: #c7d2fe;
+
+  --lcd-dt-fg: #18181b;
+  --lcd-dt-bg: #f4f4f5;
+  --lcd-dt-border: #d4d4d8;
+
+  --lcd-qtkd-fg: #dc2626;
+  --lcd-qtkd-bg: #fef2f2;
+  --lcd-qtkd-border: #fecaca;
+
+  --lcd-mkt-fg: #111827;
+  --lcd-mkt-bg: #f3f4f6;
+  --lcd-mkt-border: #d1d5db;
+
+  --lcd-kt-fg: #15803d;
+  --lcd-kt-bg: #f0fdf4;
+  --lcd-kt-border: #bbf7d0;
+
+  /* ──── Locked Physical Surfaces (QR Quiet Zone & Logos) ──── */
+  --qr-surface: #ffffff;
+  --qr-fg: #000000;
 
   /* ──── Unified Page Container & Card Geometry Tokens ──── */
   --page-max-wide: 1600px;
@@ -75,6 +168,9 @@
   --page-max-form: 680px;
   --card-radius: 16px;
   --card-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  --dropdown-shadow: 0 12px 32px rgba(15, 23, 42, 0.2), 0 2px 6px rgba(15, 23, 42, 0.08);
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
 
   /* ──── Motion Design Tokens (Smooth GPU-Accelerated Curves) ──── */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
@@ -85,12 +181,203 @@
   --duration-modal: 280ms;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK MODE — 5-Tier Obsidian Deep Black Architecture (OLED & WCAG AA Calibrated)
+   ═══════════════════════════════════════════════════════════════════════════ */
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  --primary-50: rgba(37, 99, 235, 0.18);
+  --primary-100: rgba(37, 99, 235, 0.28);
+  --primary-200: rgba(96, 165, 250, 0.36);
+
+  --neutral-50: #050608;
+  --neutral-100: #10131a;
+  --neutral-200: #1c2029;
+  --neutral-300: #272d3b;
+  --neutral-400: #5c6678;
+  --neutral-500: #7f8b9e;
+  --neutral-600: #94a3b8;
+  --neutral-700: #dce3ee;
+  --neutral-800: #eef2f8;
+  --neutral-900: #f8fafc;
+
+  --success-50: rgba(34, 197, 94, 0.13);
+  --success-100: rgba(34, 197, 94, 0.22);
+  --success-700: #4ade80;
+
+  --error-50: rgba(239, 68, 68, 0.14);
+  --error-100: rgba(239, 68, 68, 0.24);
+  --error-700: #f87171;
+
+  --warning-50: rgba(245, 158, 11, 0.13);
+  --warning-100: rgba(245, 158, 11, 0.22);
+  --warning-700: #fbbf24;
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 2px 8px 0 rgba(0, 0, 0, 0.65);
+  --shadow-md: 0 8px 18px -2px rgba(0, 0, 0, 0.72);
+  --shadow-lg: 0 14px 28px -4px rgba(0, 0, 0, 0.78);
+  --shadow-xl: 0 24px 48px -8px rgba(0, 0, 0, 0.85);
+
+  /* Obsidian Deep Black 5-Tier Surface Hierarchy */
+  --bg-primary: #050608;
+  --bg-surface: #0b0d12;
+  --bg-subtle: #10131a;
+  --bg-elevated: #12161f;
+  --bg-muted: #171c26;
+  --bg-input: #050608;
+  --header-bg: linear-gradient(180deg, #080a0f 0%, #06080c 100%);
+  --header-dot-border: #080a0f;
+  --bottom-nav-bg: rgba(7, 9, 13, 0.94);
+  --btn-dark-bg: #2563eb;
+  --btn-dark-hover: #1d4ed8;
+
+  /* Crisp Hairline Borders */
+  --border-color: #1c2029;
+  --border-strong: #272d3b;
+
+  /* Pure Crisp White & Cool Neutral Typography */
+  --text-primary: #f8fafc;
+  --text-body: #dce3ee;
+  --text-secondary: #94a3b8;
+  --text-muted: #7f8b9e;
+  --text-subtle: #5c6678;
+  --text-brand: #60a5fa;
+  --text-brand-strong: #93c5fd;
+  --brand-accent: #2563eb;
+
+  /* Vivid Royal & Semantic Tints on Obsidian */
+  --tint-blue-bg: rgba(37, 99, 235, 0.18);
+  --tint-blue-strong: rgba(37, 99, 235, 0.28);
+  --tint-blue-border: rgba(96, 165, 250, 0.32);
+
+  --tint-green-bg: rgba(34, 197, 94, 0.13);
+  --tint-green-strong: rgba(34, 197, 94, 0.22);
+  --tint-green-border: rgba(74, 222, 128, 0.32);
+  --status-green-text: #4ade80;
+
+  --tint-red-bg: rgba(239, 68, 68, 0.14);
+  --tint-red-strong: rgba(239, 68, 68, 0.24);
+  --tint-red-border: rgba(248, 113, 113, 0.34);
+  --status-red-text: #f87171;
+
+  --tint-amber-bg: rgba(245, 158, 11, 0.13);
+  --tint-amber-strong: rgba(245, 158, 11, 0.22);
+  --tint-amber-border: rgba(251, 191, 36, 0.34);
+  --status-amber-text: #fbbf24;
+
+  --tint-purple-bg: rgba(139, 92, 246, 0.16);
+  --tint-purple-strong: rgba(139, 92, 246, 0.26);
+  --tint-purple-border: rgba(167, 139, 250, 0.34);
+  --status-purple-text: #c084fc;
+
+  --tint-teal-bg: rgba(20, 184, 166, 0.14);
+  --tint-teal-strong: rgba(20, 184, 166, 0.24);
+  --tint-teal-border: rgba(45, 212, 191, 0.32);
+  --status-teal-text: #2dd4bf;
+
+  --tint-cyan-bg: rgba(6, 182, 212, 0.15);
+  --tint-cyan-strong: rgba(6, 182, 212, 0.24);
+  --tint-cyan-border: rgba(34, 211, 238, 0.32);
+  --status-cyan-text: #22d3ee;
+
+  --tint-pink-bg: rgba(236, 72, 153, 0.15);
+  --tint-pink-strong: rgba(236, 72, 153, 0.24);
+  --tint-pink-border: rgba(244, 114, 182, 0.34);
+  --status-pink-text: #f472b6;
+
+  /* 8 LCĐ High-Contrast Dark Mode Identity */
+  --lcd-cntt-fg: #38bdf8;
+  --lcd-cntt-bg: rgba(14, 165, 233, 0.16);
+  --lcd-cntt-border: rgba(56, 189, 248, 0.32);
+
+  --lcd-cndpt-fg: #fb923c;
+  --lcd-cndpt-bg: rgba(249, 115, 22, 0.16);
+  --lcd-cndpt-border: rgba(251, 146, 60, 0.32);
+
+  --lcd-attt-fg: #7dd3fc;
+  --lcd-attt-bg: rgba(14, 165, 233, 0.18);
+  --lcd-attt-border: rgba(125, 211, 252, 0.34);
+
+  --lcd-vt-fg: #93c5fd;
+  --lcd-vt-bg: rgba(99, 102, 241, 0.18);
+  --lcd-vt-border: rgba(147, 197, 253, 0.34);
+
+  --lcd-dt-fg: #e4e4e7;
+  --lcd-dt-bg: rgba(161, 161, 170, 0.16);
+  --lcd-dt-border: rgba(212, 212, 216, 0.3);
+
+  --lcd-qtkd-fg: #f87171;
+  --lcd-qtkd-bg: rgba(239, 68, 68, 0.16);
+  --lcd-qtkd-border: rgba(248, 113, 113, 0.32);
+
+  --lcd-mkt-fg: #e2e8f0;
+  --lcd-mkt-bg: rgba(148, 163, 184, 0.16);
+  --lcd-mkt-border: rgba(203, 213, 225, 0.3);
+
+  --lcd-kt-fg: #4ade80;
+  --lcd-kt-bg: rgba(34, 197, 94, 0.16);
+  --lcd-kt-border: rgba(74, 222, 128, 0.32);
+
+  --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+  --dropdown-shadow: 0 20px 44px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --scrollbar-thumb: #242a36;
+  --scrollbar-thumb-hover: #363f52;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) {
+    color-scheme: dark;
+  }
+}
+
+/* Force clean white paper palette when printing administrative documents */
+@media print {
+  html[data-theme='dark'] {
+    color-scheme: light;
+    --bg-primary: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-elevated: #ffffff;
+    --bg-subtle: #f8fafc;
+    --bg-muted: #f1f5f9;
+    --bg-input: #ffffff;
+    --border-color: #cbd5e1;
+    --border-strong: #94a3b8;
+    --text-primary: #0f172a;
+    --text-body: #334155;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-subtle: #94a3b8;
+    --text-brand: #1d4ed8;
+    --text-brand-strong: #1e40af;
+    --status-green-text: #15803d;
+    --status-red-text: #dc2626;
+    --status-amber-text: #b45309;
+    --status-purple-text: #6d28d9;
+  }
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
 select, input, textarea {
   max-width: 100%;
+  color: var(--text-primary);
+}
+
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']),
+  select,
+  textarea
+) {
+  background-color: var(--bg-input);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-subtle);
 }
 
 select {
@@ -102,8 +389,8 @@ html, body {
   margin: 0;
   padding: 0;
   font-family: var(--font-sans);
-  background-color: #f8fafc;
-  color: var(--neutral-900);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -193,7 +480,7 @@ button, input, select, textarea {
 /* ──── Custom Sleek Scrollbar Design ──── */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -206,15 +493,14 @@ button, input, select, textarea {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--scrollbar-thumb);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--scrollbar-thumb-hover);
 }
 
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
-

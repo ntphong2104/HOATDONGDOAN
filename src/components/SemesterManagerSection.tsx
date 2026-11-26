@@ -165,8 +165,8 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
   return (
     <div
       style={{
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-color)',
         borderRadius: 16,
         padding: '1.35rem',
         marginTop: '1.25rem',
@@ -183,18 +183,18 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '0.75rem',
-          borderBottom: '1px solid #f1f5f9',
+          borderBottom: '1px solid var(--border-color)',
           paddingBottom: '0.9rem',
         }}
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <CalendarIcon size={18} color="#1d4ed8" />
-            <h3 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 800, color: '#0f172a' }}>
+            <CalendarIcon size={18} color="var(--text-brand)" />
+            <h3 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               Cấu hình &amp; Gán Thời Gian Học Kỳ (Tính Bảng Xếp Hạng)
             </h3>
           </div>
-          <p style={{ margin: '0.3rem 0 0', fontSize: '0.84rem', color: '#64748b' }}>
+          <p style={{ margin: '0.3rem 0 0', fontSize: '0.84rem', color: 'var(--text-muted)' }}>
             Gán khoảng thời gian <strong>Từ ngày → Đến ngày</strong> cho từng học kỳ. Bảng xếp hạng LCĐ, đơn vị tổ chức và sinh viên sẽ tự động lọc chính xác các sự kiện diễn ra trong khung thời gian đã gán.
           </p>
         </div>
@@ -209,9 +209,9 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
             gap: '0.4rem',
             padding: '0.48rem 0.85rem',
             borderRadius: 9,
-            border: '1px solid #cbd5e1',
-            background: '#f8fafc',
-            color: '#334155',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--bg-subtle)',
+            color: 'var(--text-body)',
             fontSize: '0.82rem',
             fontWeight: 700,
             cursor: 'pointer',
@@ -229,9 +229,9 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
             borderRadius: 10,
             fontSize: '0.85rem',
             fontWeight: 600,
-            background: statusMsg.type === 'success' ? '#f0fdf4' : '#fef2f2',
-            border: `1px solid ${statusMsg.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-            color: statusMsg.type === 'success' ? '#15803d' : '#b91c1c',
+            background: statusMsg.type === 'success' ? 'var(--tint-green-bg)' : 'var(--tint-red-bg)',
+            border: `1px solid ${statusMsg.type === 'success' ? 'var(--tint-green-border)' : 'var(--tint-red-border)'}`,
+            color: statusMsg.type === 'success' ? 'var(--status-green-text)' : 'var(--status-red-text)',
           }}
         >
           {statusMsg.text}
@@ -242,8 +242,8 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
       <form
         onSubmit={handleAddSemester}
         style={{
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
+          background: 'var(--bg-subtle)',
+          border: '1px solid var(--border-color)',
           borderRadius: 12,
           padding: '1rem',
           display: 'grid',
@@ -253,7 +253,7 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
             Tên học kỳ mới *
           </label>
           <input
@@ -265,16 +265,16 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
               height: 38,
               padding: '0 0.75rem',
               borderRadius: 8,
-              border: '1px solid #cbd5e1',
+              border: '1px solid var(--border-strong)',
               fontSize: '0.85rem',
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
             }}
             required
           />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
             Năm học
           </label>
           <input
@@ -286,15 +286,15 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
               height: 38,
               padding: '0 0.75rem',
               borderRadius: 8,
-              border: '1px solid #cbd5e1',
+              border: '1px solid var(--border-strong)',
               fontSize: '0.85rem',
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
             }}
           />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
             Ngày bắt đầu *
           </label>
           <input
@@ -305,16 +305,16 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
               height: 38,
               padding: '0 0.7rem',
               borderRadius: 8,
-              border: '1px solid #cbd5e1',
+              border: '1px solid var(--border-strong)',
               fontSize: '0.85rem',
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
             }}
             required
           />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.28rem' }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
             Ngày kết thúc *
           </label>
           <input
@@ -325,9 +325,9 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
               height: 38,
               padding: '0 0.7rem',
               borderRadius: 8,
-              border: '1px solid #cbd5e1',
+              border: '1px solid var(--border-strong)',
               fontSize: '0.85rem',
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
             }}
             required
           />
@@ -354,28 +354,28 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
 
       {/* Bảng chỉnh sửa trực tiếp các học kỳ */}
       {loading ? (
-        <div style={{ padding: '1.5rem', textAlign: 'center', color: '#64748b' }}>
+        <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
           Đang tải danh sách học kỳ...
         </div>
       ) : (
         <form onSubmit={handleSaveAll} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 12 }}>
+          <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 12 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ textAlign: 'left', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: '#475569', textTransform: 'uppercase' }}>
+                <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
+                  <th style={{ textAlign: 'left', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
                     Tên học kỳ
                   </th>
-                  <th style={{ textAlign: 'left', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: '#475569', textTransform: 'uppercase' }}>
+                  <th style={{ textAlign: 'left', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
                     Từ ngày
                   </th>
-                  <th style={{ textAlign: 'left', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: '#475569', textTransform: 'uppercase' }}>
+                  <th style={{ textAlign: 'left', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
                     Đến ngày
                   </th>
-                  <th style={{ textAlign: 'left', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: '#475569', textTransform: 'uppercase' }}>
+                  <th style={{ textAlign: 'left', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
                     Trạng thái
                   </th>
-                  <th style={{ textAlign: 'right', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: '#475569', textTransform: 'uppercase' }}>
+                  <th style={{ textAlign: 'right', padding: '0.68rem 0.75rem', fontSize: '0.73rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
                     Thao tác
                   </th>
                 </tr>
@@ -385,8 +385,8 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
                   <tr
                     key={sem.id}
                     style={{
-                      borderBottom: '1px solid #f1f5f9',
-                      background: sem.is_active ? '#eff6ff' : '#ffffff',
+                      borderBottom: '1px solid var(--border-color)',
+                      background: sem.is_active ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
                     }}
                   >
                     <td style={{ padding: '0.65rem 0.75rem', minWidth: 210 }}>
@@ -399,11 +399,11 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
                           height: 34,
                           padding: '0 0.6rem',
                           borderRadius: 7,
-                          border: '1px solid #cbd5e1',
+                          border: '1px solid var(--border-strong)',
                           fontWeight: 700,
                           fontSize: '0.84rem',
-                          color: '#0f172a',
-                          background: '#ffffff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--bg-surface)',
                         }}
                       />
                     </td>
@@ -416,9 +416,9 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
                           height: 34,
                           padding: '0 0.55rem',
                           borderRadius: 7,
-                          border: '1px solid #cbd5e1',
+                          border: '1px solid var(--border-strong)',
                           fontSize: '0.83rem',
-                          background: '#ffffff',
+                          background: 'var(--bg-surface)',
                         }}
                       />
                     </td>
@@ -431,9 +431,9 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
                           height: 34,
                           padding: '0 0.55rem',
                           borderRadius: 7,
-                          border: '1px solid #cbd5e1',
+                          border: '1px solid var(--border-strong)',
                           fontSize: '0.83rem',
-                          background: '#ffffff',
+                          background: 'var(--bg-surface)',
                         }}
                       />
                     </td>
@@ -446,13 +446,13 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
                             gap: '0.3rem',
                             padding: '0.22rem 0.6rem',
                             borderRadius: 999,
-                            background: '#dcfce7',
-                            color: '#15803d',
+                            background: 'var(--tint-green-strong)',
+                            color: 'var(--status-green-text)',
                             fontSize: '0.75rem',
                             fontWeight: 800,
                           }}
                         >
-                          <CheckCircleIcon size={13} color="#15803d" />
+                          <CheckCircleIcon size={13} color="var(--status-green-text)" />
                           <span>Đang kích hoạt</span>
                         </span>
                       ) : (
@@ -463,9 +463,9 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
                           style={{
                             padding: '0.25rem 0.65rem',
                             borderRadius: 7,
-                            border: '1px solid #bfdbfe',
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
+                            border: '1px solid var(--tint-blue-border)',
+                            background: 'var(--tint-blue-bg)',
+                            color: 'var(--text-brand)',
                             fontSize: '0.76rem',
                             fontWeight: 700,
                             cursor: 'pointer',
@@ -488,9 +488,9 @@ export default function SemesterManagerSection({ onSaved }: SemesterManagerSecti
                           width: 32,
                           height: 32,
                           borderRadius: 8,
-                          border: '1px solid #fecaca',
-                          background: '#fef2f2',
-                          color: '#dc2626',
+                          border: '1px solid var(--tint-red-border)',
+                          background: 'var(--tint-red-bg)',
+                          color: 'var(--status-red-text)',
                           cursor: semesters.length <= 1 ? 'not-allowed' : 'pointer',
                           opacity: semesters.length <= 1 ? 0.45 : 1,
                         }}

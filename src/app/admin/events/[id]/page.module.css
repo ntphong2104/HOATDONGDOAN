@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f8fafc;
+  background-color: var(--bg-primary);
 }
 
 .main {
@@ -16,7 +16,7 @@
 .loading {
   text-align: center;
   padding: 4rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 1rem;
 }
 
@@ -28,18 +28,18 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  color: #2563eb;
+  color: var(--text-brand);
   font-weight: 600;
   font-size: 0.875rem;
   padding: 0.35rem 0.75rem;
-  background: #eff6ff;
+  background: var(--tint-blue-bg);
   border-radius: 8px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--tint-blue-border);
   transition: all 0.15s ease;
 }
 
 .backLink:hover {
-  background: #dbeafe;
+  background: var(--tint-blue-strong);
   transform: translateX(-2px);
 }
 
@@ -50,13 +50,13 @@
 .title {
   font-size: 1.75rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
   letter-spacing: -0.02em;
 }
 
 .subtitle {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.925rem;
   margin: 0;
   display: flex;
@@ -73,11 +73,11 @@
 }
 
 .section {
-  background: #ffffff;
+  background: var(--bg-surface);
   padding: 1.75rem;
   border-radius: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e2e8f0;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
   margin-bottom: 2rem;
 }
 
@@ -87,7 +87,7 @@
   align-items: center;
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-color);
   flex-wrap: wrap;
   gap: 0.75rem;
 }
@@ -95,7 +95,7 @@
 .sectionTitle {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-body);
   margin: 0;
   display: flex;
   align-items: center;
@@ -112,7 +112,7 @@
   flex: 1;
   height: 42px;
   padding: 0 1rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   font-size: 0.9rem;
   outline: none;
@@ -157,22 +157,22 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.875rem 1.125rem;
-  background: #f8fafc;
+  background: var(--bg-subtle);
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
 }
 
 .roleEmail {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-body);
   font-size: 0.9rem;
 }
 
 .deleteButton {
   padding: 0.35rem 0.75rem;
-  background: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: var(--tint-red-bg);
+  color: var(--status-red-text);
+  border: 1px solid var(--tint-red-border);
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.8rem;
@@ -181,13 +181,13 @@
 }
 
 .deleteButton:hover {
-  background: #fee2e2;
+  background: var(--tint-red-strong);
   border-color: #f87171;
 }
 
 .emptyList {
   text-align: center;
-  color: #94a3b8;
+  color: var(--text-subtle);
   padding: 1.5rem 0;
   font-size: 0.9rem;
 }
@@ -228,13 +228,13 @@
 }
 
 .tabButtonInactive {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--bg-muted);
+  color: var(--text-secondary);
 }
 
 .tabButtonInactive:hover {
-  background: #e2e8f0;
-  color: #1e293b;
+  background: var(--border-color);
+  color: var(--text-body);
 }
 
 .excelExportWrapper {

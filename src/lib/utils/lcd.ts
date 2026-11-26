@@ -46,9 +46,9 @@ export const LCD_DEFINITIONS: ReadonlyArray<LcdDefinition> = [
     email: 'lcdcntt@student.ptithcm.edu.vn',
     classCodes: ['CN', 'CE', 'TN'],
     mssvCodes: ['DCCN', 'DVCN', 'CQCN', 'DECE', 'DCCE', 'CECE', 'EDCE', 'CQCE', 'DCTN', 'CQTN'],
-    color: '#0369a1', // Xanh biển
-    bg: '#f0f9ff',
-    border: '#bae6fd',
+    color: 'var(--lcd-cntt-fg, #0369a1)',
+    bg: 'var(--lcd-cntt-bg, #f0f9ff)',
+    border: 'var(--lcd-cntt-border, #bae6fd)',
   },
   {
     code: 'LCD_CNDPT',
@@ -57,9 +57,9 @@ export const LCD_DEFINITIONS: ReadonlyArray<LcdDefinition> = [
     email: 'lcdcndpt@student.ptithcm.edu.vn',
     classCodes: ['PT', 'PTTK', 'PTUD', 'TT'],
     mssvCodes: ['DCPT', 'CQPT', 'DCTT', 'CQTT'],
-    color: '#ea580c', // Cam
-    bg: '#fff7ed',
-    border: '#fed7aa',
+    color: 'var(--lcd-cndpt-fg, #ea580c)',
+    bg: 'var(--lcd-cndpt-bg, #fff7ed)',
+    border: 'var(--lcd-cndpt-border, #fed7aa)',
   },
   {
     code: 'LCD_ATTT',
@@ -68,9 +68,9 @@ export const LCD_DEFINITIONS: ReadonlyArray<LcdDefinition> = [
     email: 'lcdattt@student.ptithcm.edu.vn',
     classCodes: ['AT', 'AE'],
     mssvCodes: ['DCAT', 'CQAT', 'DCAE', 'CQAE'],
-    color: '#0ea5e9', // Xanh biển tươi sáng hơn CNTT
-    bg: '#e0f2fe',
-    border: '#7dd3fc',
+    color: 'var(--lcd-attt-fg, #0284c7)',
+    bg: 'var(--lcd-attt-bg, #e0f2fe)',
+    border: 'var(--lcd-attt-border, #7dd3fc)',
   },
   {
     code: 'LCD_VT',
@@ -79,9 +79,9 @@ export const LCD_DEFINITIONS: ReadonlyArray<LcdDefinition> = [
     email: 'lcdvt@student.ptithcm.edu.vn',
     classCodes: ['VT', 'CVT', 'CI', 'KD'],
     mssvCodes: ['DCVT', 'CQVT', 'CQCVT', 'DTCV', 'DCCI', 'CQCI', 'DCKD', 'CQKD'],
-    color: '#172554', // Xanh đen
-    bg: '#eef2ff',
-    border: '#c7d2fe',
+    color: 'var(--lcd-vt-fg, #172554)',
+    bg: 'var(--lcd-vt-bg, #eef2ff)',
+    border: 'var(--lcd-vt-border, #c7d2fe)',
   },
   {
     code: 'LCD_DT',
@@ -90,9 +90,9 @@ export const LCD_DEFINITIONS: ReadonlyArray<LcdDefinition> = [
     email: 'lcddt@student.ptithcm.edu.vn',
     classCodes: ['DT', 'DK', 'DKDK', 'VM'],
     mssvCodes: ['DCDT', 'CQDT', 'DCDK', 'CQDK', 'DCVM', 'CQVM'],
-    color: '#18181b', // Đen
-    bg: '#f4f4f5',
-    border: '#d4d4d8',
+    color: 'var(--lcd-dt-fg, #18181b)',
+    bg: 'var(--lcd-dt-bg, #f4f4f5)',
+    border: 'var(--lcd-dt-border, #d4d4d8)',
   },
   {
     code: 'LCD_QTKD',
@@ -101,9 +101,9 @@ export const LCD_DEFINITIONS: ReadonlyArray<LcdDefinition> = [
     email: 'lcdqtkd@student.ptithcm.edu.vn',
     classCodes: ['QT'],
     mssvCodes: ['DCQT', 'DVQT', 'CQQT'],
-    color: '#dc2626', // Đỏ
-    bg: '#fef2f2',
-    border: '#fecaca',
+    color: 'var(--lcd-qtkd-fg, #dc2626)',
+    bg: 'var(--lcd-qtkd-bg, #fef2f2)',
+    border: 'var(--lcd-qtkd-border, #fecaca)',
   },
   {
     code: 'LCD_MKT',
@@ -112,9 +112,9 @@ export const LCD_DEFINITIONS: ReadonlyArray<LcdDefinition> = [
     email: 'lcdmarketing@student.ptithcm.edu.vn',
     classCodes: ['MR', 'ME', 'MEO'],
     mssvCodes: ['DCMR', 'CQMR', 'DQMR', 'DEME', 'DCME', 'CQME'],
-    color: '#111827', // Đen
-    bg: '#f3f4f6',
-    border: '#d1d5db',
+    color: 'var(--lcd-mkt-fg, #111827)',
+    bg: 'var(--lcd-mkt-bg, #f3f4f6)',
+    border: 'var(--lcd-mkt-border, #d1d5db)',
   },
   {
     code: 'LCD_KT',
@@ -123,9 +123,9 @@ export const LCD_DEFINITIONS: ReadonlyArray<LcdDefinition> = [
     email: 'lcdketoan@student.ptithcm.edu.vn',
     classCodes: ['KT', 'TC'],
     mssvCodes: ['DCKT', 'CQKT', 'DCTC', 'CQTC'],
-    color: '#15803d', // Xanh lá đậm
-    bg: '#f0fdf4',
-    border: '#bbf7d0',
+    color: 'var(--lcd-kt-fg, #15803d)',
+    bg: 'var(--lcd-kt-bg, #f0fdf4)',
+    border: 'var(--lcd-kt-border, #bbf7d0)',
   },
 ];
 

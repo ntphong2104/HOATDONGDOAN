@@ -108,7 +108,7 @@ export default function DutyMatrixTable({
   if (!workdays || workdays.length === 0) return null;
 
   return (
-    <div style={{ overflowX: 'auto', border: '1px solid #cbd5e1', borderRadius: 12, background: '#fff' }}>
+    <div style={{ overflowX: 'auto', border: '1px solid var(--border-strong)', borderRadius: 12, background: 'var(--bg-surface)' }}>
       <table
         style={{
           width: '100%',
@@ -120,7 +120,7 @@ export default function DutyMatrixTable({
       >
         <thead>
           {/* Hàng 1: STT | Họ tên | Thứ 2 (colSpan=2) | Thứ 3 ... | Thứ 6 | Tổng */}
-          <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
+          <tr style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border-strong)' }}>
             <th
               rowSpan={2}
               style={{
@@ -128,8 +128,8 @@ export default function DutyMatrixTable({
                 textAlign: 'center',
                 width: 48,
                 fontWeight: 800,
-                color: '#334155',
-                borderRight: '1px solid #cbd5e1',
+                color: 'var(--text-body)',
+                borderRight: '1px solid var(--border-strong)',
               }}
             >
               STT
@@ -141,8 +141,8 @@ export default function DutyMatrixTable({
                 textAlign: 'left',
                 minWidth: 195,
                 fontWeight: 800,
-                color: '#0f172a',
-                borderRight: '1px solid #cbd5e1',
+                color: 'var(--text-primary)',
+                borderRight: '1px solid var(--border-strong)',
               }}
             >
               Họ và Tên CTV
@@ -157,13 +157,13 @@ export default function DutyMatrixTable({
                     padding: '0.5rem 0.4rem',
                     textAlign: 'center',
                     fontWeight: 800,
-                    color: isToday ? '#1d4ed8' : '#0f172a',
-                    background: isToday ? '#dbeafe' : '#f1f5f9',
-                    borderRight: '1px solid #cbd5e1',
+                    color: isToday ? 'var(--text-brand)' : 'var(--text-primary)',
+                    background: isToday ? 'var(--tint-blue-strong)' : 'var(--bg-muted)',
+                    borderRight: '1px solid var(--border-strong)',
                   }}
                 >
                   <div>{DAY_LABELS[i]}</div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: isToday ? '#1d4ed8' : '#64748b' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: isToday ? 'var(--text-brand)' : 'var(--text-muted)' }}>
                     {fmtShortDate(dayStr)}
                   </div>
                 </th>
@@ -176,7 +176,7 @@ export default function DutyMatrixTable({
                 textAlign: 'center',
                 width: 66,
                 fontWeight: 800,
-                color: '#334155',
+                color: 'var(--text-body)',
               }}
             >
               Tổng
@@ -184,7 +184,7 @@ export default function DutyMatrixTable({
           </tr>
 
           {/* Hàng 2: Sáng | Chiều + bộ đếm nhỏ 0/2, 1/2 ngay dưới */}
-          <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #cbd5e1' }}>
+          <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1.5px solid var(--border-strong)' }}>
             {workdays.map((dayStr) => {
               const isToday = dayStr === todayVN;
               const mCount = slotCountMap.get(`${dayStr}__morning`) || 0;
@@ -197,9 +197,9 @@ export default function DutyMatrixTable({
                       textAlign: 'center',
                       fontSize: '0.75rem',
                       fontWeight: 700,
-                      color: '#475569',
-                      background: isToday ? '#eff6ff' : '#f8fafc',
-                      borderRight: '1px solid #e2e8f0',
+                      color: 'var(--text-secondary)',
+                      background: isToday ? 'var(--tint-blue-bg)' : 'var(--bg-subtle)',
+                      borderRight: '1px solid var(--border-color)',
                       width: 64,
                     }}
                   >
@@ -209,7 +209,7 @@ export default function DutyMatrixTable({
                         fontSize: '0.67rem',
                         fontWeight: 800,
                         marginTop: 1,
-                        color: mCount >= maxPerShift ? '#15803d' : mCount > 0 ? '#b45309' : '#94a3b8',
+                        color: mCount >= maxPerShift ? 'var(--status-green-text)' : mCount > 0 ? 'var(--status-amber-text)' : 'var(--text-subtle)',
                       }}
                     >
                       {mCount}/{maxPerShift}
@@ -221,9 +221,9 @@ export default function DutyMatrixTable({
                       textAlign: 'center',
                       fontSize: '0.75rem',
                       fontWeight: 700,
-                      color: '#475569',
-                      background: isToday ? '#eff6ff' : '#f8fafc',
-                      borderRight: '1px solid #cbd5e1',
+                      color: 'var(--text-secondary)',
+                      background: isToday ? 'var(--tint-blue-bg)' : 'var(--bg-subtle)',
+                      borderRight: '1px solid var(--border-strong)',
                       width: 64,
                     }}
                   >
@@ -233,7 +233,7 @@ export default function DutyMatrixTable({
                         fontSize: '0.67rem',
                         fontWeight: 800,
                         marginTop: 1,
-                        color: aCount >= maxPerShift ? '#15803d' : aCount > 0 ? '#b45309' : '#94a3b8',
+                        color: aCount >= maxPerShift ? 'var(--status-green-text)' : aCount > 0 ? 'var(--status-amber-text)' : 'var(--text-subtle)',
                       }}
                     >
                       {aCount}/{maxPerShift}
@@ -248,7 +248,7 @@ export default function DutyMatrixTable({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={3 + workdays.length * 2} style={{ padding: '1.6rem', textAlign: 'center', color: '#64748b' }}>
+              <td colSpan={3 + workdays.length * 2} style={{ padding: '1.6rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                 Chưa có CTV trực nào trong danh sách. Hãy thêm MSSV ở tab <strong>Danh sách CTV trực</strong> trước.
               </td>
             </tr>
@@ -267,8 +267,8 @@ export default function DutyMatrixTable({
                 <tr
                   key={vol.mssv}
                   style={{
-                    borderBottom: '1px solid #e2e8f0',
-                    background: isMe ? '#f0f9ff' : '#ffffff',
+                    borderBottom: '1px solid var(--border-color)',
+                    background: isMe ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
                   }}
                 >
                   <td
@@ -276,8 +276,8 @@ export default function DutyMatrixTable({
                       padding: '0.55rem 0.4rem',
                       textAlign: 'center',
                       fontWeight: 700,
-                      color: '#64748b',
-                      borderRight: '1px solid #e2e8f0',
+                      color: 'var(--text-muted)',
+                      borderRight: '1px solid var(--border-color)',
                     }}
                   >
                     {idx + 1}
@@ -285,11 +285,11 @@ export default function DutyMatrixTable({
                   <td
                     style={{
                       padding: '0.55rem 0.85rem',
-                      borderRight: '1px solid #cbd5e1',
+                      borderRight: '1px solid var(--border-strong)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <strong style={{ color: '#0f172a' }}>{vol.full_name || vol.mssv}</strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>{vol.full_name || vol.mssv}</strong>
                       {isMe && (
                         <span
                           style={{
@@ -297,15 +297,15 @@ export default function DutyMatrixTable({
                             fontWeight: 800,
                             padding: '1px 6px',
                             borderRadius: 999,
-                            background: '#dbeafe',
-                            color: '#1d4ed8',
+                            background: 'var(--tint-blue-strong)',
+                            color: 'var(--text-brand)',
                           }}
                         >
                           Bạn
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                       {vol.mssv}
                       {vol.class_id ? ` • ${vol.class_id}` : ''}
                     </div>
@@ -332,8 +332,8 @@ export default function DutyMatrixTable({
                           style={{
                             padding: '0.35rem',
                             textAlign: 'center',
-                            borderRight: shift === 'afternoon' ? '1px solid #cbd5e1' : '1px solid #e2e8f0',
-                            background: reg ? '#dcfce7' : undefined,
+                            borderRight: shift === 'afternoon' ? '1px solid var(--border-strong)' : '1px solid var(--border-color)',
+                            background: reg ? 'var(--tint-green-strong)' : undefined,
                           }}
                         >
                           {canInteract ? (
@@ -356,9 +356,9 @@ export default function DutyMatrixTable({
                                 width: 32,
                                 height: 30,
                                 borderRadius: 7,
-                                border: reg ? '1.5px solid #16a34a' : '1.5px dashed #cbd5e1',
-                                background: reg ? '#16a34a' : '#ffffff',
-                                color: reg ? '#ffffff' : '#94a3b8',
+                                border: reg ? '1.5px solid #16a34a' : '1.5px dashed var(--border-strong)',
+                                background: reg ? '#16a34a' : 'var(--bg-surface)',
+                                color: reg ? '#ffffff' : 'var(--text-subtle)',
                                 fontWeight: 900,
                                 fontSize: '0.9rem',
                                 cursor: 'pointer',
@@ -401,7 +401,7 @@ export default function DutyMatrixTable({
                       padding: '0.55rem 0.4rem',
                       textAlign: 'center',
                       fontWeight: 800,
-                      color: rowTotal > 0 ? '#1d4ed8' : '#94a3b8',
+                      color: rowTotal > 0 ? 'var(--text-brand)' : 'var(--text-subtle)',
                     }}
                   >
                     {rowTotal}

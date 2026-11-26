@@ -281,15 +281,15 @@ export default function StudentEventsDiscoverPage() {
                 gap: '0.4rem',
                 padding: '0.45rem 0.85rem',
                 borderRadius: '9px',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                color: '#0f172a',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-strong)',
+                color: 'var(--text-primary)',
                 fontSize: '0.8rem',
                 fontWeight: 700,
                 textDecoration: 'none',
               }}
             >
-              <QrCodeIcon size={15} color="#1d4ed8" />
+              <QrCodeIcon size={15} color="var(--text-brand)" />
               <span>Mở Thẻ QR Cá Nhân</span>
             </Link>
           </div>
@@ -400,19 +400,19 @@ export default function StudentEventsDiscoverPage() {
         {errorMsg && (
           <div
             style={{
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
+              background: 'var(--tint-red-bg)',
+              border: '1px solid var(--tint-red-border)',
               borderRadius: '14px',
               padding: '1rem 1.25rem',
               marginBottom: '1.25rem',
-              color: '#b91c1c',
+              color: 'var(--status-red-text)',
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
             }}
           >
-            <AlertTriangleIcon size={18} color="#b91c1c" />
+            <AlertTriangleIcon size={18} color="var(--status-red-text)" />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -426,7 +426,7 @@ export default function StudentEventsDiscoverPage() {
           </div>
         ) : filteredEvents.length === 0 ? (
           <div className={styles.emptyState}>
-            <CalendarIcon size={40} color="#94a3b8" />
+            <CalendarIcon size={40} color="var(--text-subtle)" />
             <h3 className={styles.emptyTitle}>
               {searchQuery
                 ? `Không tìm thấy sự kiện khớp "${searchQuery}"`
@@ -482,12 +482,12 @@ export default function StudentEventsDiscoverPage() {
                   <div className={styles.badgesRow}>
                     {ev.allowed_lcds.length > 0 ? (
                       <span className={`${styles.badge} ${styles.badgeLcd}`}>
-                        <BuildingIcon size={12} color="#6b21a8" />
+                        <BuildingIcon size={12} color="var(--status-purple-text)" />
                         <span>{ev.allowed_lcds_label}</span>
                       </span>
                     ) : (
                       <span className={`${styles.badge} ${styles.badgeAll}`}>
-                        <YouthUnionIcon size={12} color="#1d4ed8" />
+                        <YouthUnionIcon size={12} color="var(--text-brand)" />
                         <span>Toàn Học viện</span>
                       </span>
                     )}
@@ -501,14 +501,14 @@ export default function StudentEventsDiscoverPage() {
 
                     {ev.is_registered && (
                       <span className={`${styles.badge} ${styles.badgeRegistered}`}>
-                        <CheckCircleIcon size={12} color="#15803d" />
+                        <CheckCircleIcon size={12} color="var(--status-green-text)" />
                         <span>Đã đăng ký</span>
                       </span>
                     )}
 
                     {ev.recruitment_window.isOpen && !ev.is_expired && (
                       <span className={`${styles.badge} ${styles.badgeRecruiting}`}>
-                        <UsersIcon size={12} color="#b45309" />
+                        <UsersIcon size={12} color="var(--status-amber-text)" />
                         <span>Tuyển CTV</span>
                       </span>
                     )}
@@ -526,7 +526,7 @@ export default function StudentEventsDiscoverPage() {
                       {ev.event_name}
                     </h2>
                     <div className={styles.cardOrg} style={{ marginTop: '0.35rem' }}>
-                      <BuildingIcon size={14} color="#64748b" />
+                      <BuildingIcon size={14} color="var(--text-muted)" />
                       <span>{ev.organizer_unit}</span>
                     </div>
                   </div>
@@ -547,7 +547,7 @@ export default function StudentEventsDiscoverPage() {
                       return (
                         <>
                           <div className={styles.metaItem}>
-                            <CalendarIcon size={14} color="#2563eb" />
+                            <CalendarIcon size={14} color="var(--text-brand)" />
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                               {isMultiDay ? (
                                 <>
@@ -559,9 +559,9 @@ export default function StudentEventsDiscoverPage() {
                                       style={{
                                         fontSize: '0.68rem',
                                         fontWeight: 800,
-                                        color: '#15803d',
-                                        background: '#dcfce7',
-                                        border: '1px solid #86efac',
+                                        color: 'var(--status-green-text)',
+                                        background: 'var(--tint-green-strong)',
+                                        border: '1px solid var(--tint-green-border)',
                                         borderRadius: '999px',
                                         padding: '0.05rem 0.42rem',
                                       }}
@@ -578,9 +578,9 @@ export default function StudentEventsDiscoverPage() {
                                       style={{
                                         fontSize: '0.68rem',
                                         fontWeight: 800,
-                                        color: '#15803d',
-                                        background: '#dcfce7',
-                                        border: '1px solid #86efac',
+                                        color: 'var(--status-green-text)',
+                                        background: 'var(--tint-green-strong)',
+                                        border: '1px solid var(--tint-green-border)',
                                         borderRadius: '999px',
                                         padding: '0.05rem 0.42rem',
                                       }}
@@ -589,7 +589,7 @@ export default function StudentEventsDiscoverPage() {
                                     </span>
                                   )}
                                   {ev.sessions_count > 1 && (
-                                    <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>
+                                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                                       ({ev.sessions_count} ca)
                                     </span>
                                   )}
@@ -601,7 +601,7 @@ export default function StudentEventsDiscoverPage() {
                             <div
                               style={{
                                 fontSize: '0.74rem',
-                                color: '#64748b',
+                                color: 'var(--text-muted)',
                                 fontWeight: 600,
                                 paddingLeft: '1.35rem',
                                 marginTop: '-0.18rem',
@@ -614,14 +614,14 @@ export default function StudentEventsDiscoverPage() {
                       );
                     })()}
                     <div className={styles.metaItem}>
-                      <ClockIcon size={14} color="#2563eb" />
+                      <ClockIcon size={14} color="var(--text-brand)" />
                       <span>
                         {ev.start_time?.slice(0, 5) || '07:30'} – {ev.end_time?.slice(0, 5) || '11:30'}
                       </span>
                     </div>
                     {ev.room_name && (
                       <div className={styles.metaItem}>
-                        <MapPinIcon size={14} color="#2563eb" />
+                        <MapPinIcon size={14} color="var(--text-brand)" />
                         <span>{ev.room_name}</span>
                       </div>
                     )}
@@ -632,10 +632,10 @@ export default function StudentEventsDiscoverPage() {
                     <div className={styles.capacityWrap}>
                       <div className={styles.capacityHeader}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <UsersIcon size={13} color="#64748b" />
+                          <UsersIcon size={13} color="var(--text-muted)" />
                           <span>Chỉ tiêu tham gia</span>
                         </span>
-                        <span style={{ color: isFull ? '#dc2626' : '#1e40af' }}>
+                        <span style={{ color: isFull ? 'var(--status-red-text)' : 'var(--text-brand-strong)' }}>
                           {ev.participant_count} / {ev.max_participants} SV ({capacityPct}%)
                         </span>
                       </div>
@@ -671,7 +671,7 @@ export default function StudentEventsDiscoverPage() {
                     ) : isIneligible ? (
                       <div className={styles.lockedNotice}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <LockIcon size={14} color="#b91c1c" />
+                          <LockIcon size={14} color="var(--status-red-text)" />
                           <span>{lockReason}</span>
                         </span>
                       </div>

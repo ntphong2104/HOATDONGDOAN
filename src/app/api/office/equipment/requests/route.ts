@@ -224,8 +224,9 @@ export async function POST(req: Request) {
       .single();
 
     if (createErr || !created) {
+      console.error('POST /api/office/equipment/requests createErr:', createErr);
       return NextResponse.json(
-        { success: false, error: createErr?.message || 'Không thể tạo đơn mượn.' },
+        { success: false, error: 'Không thể tạo đơn mượn dụng cụ.' },
         { status: 500 }
       );
     }
@@ -239,9 +240,10 @@ export async function POST(req: Request) {
 
     const { error: itemErr } = await supabase.from('office_borrow_items').insert(itemRows);
     if (itemErr) {
+      console.error('POST /api/office/equipment/requests itemErr:', itemErr);
       // Rollback orphan borrow request if inserting items fails
       await supabase.from('office_borrow_requests').delete().eq('id', created.id);
-      return NextResponse.json({ success: false, error: itemErr.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Không thể lưu chi tiết vật phẩm mượn.' }, { status: 500 });
     }
 
     const pendingCache = (globalThis as unknown as { __hddAdminPendingCounts?: { expiresAt: number } })

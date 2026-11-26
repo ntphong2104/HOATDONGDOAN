@@ -69,8 +69,14 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const postResponse = await POST(req);
   const origin = getTrustedOrigin(req);
+  // Prevent cross-site subresource Logout CSRF (e.g. <img src="/api/auth/logout">)
+  const secFetchSite = req.headers?.get?.('sec-fetch-site')?.toLowerCase();
+  if (secFetchSite === 'cross-site') {
+    return NextResponse.redirect(new URL('/login', origin));
+  }
+
+  const postResponse = await POST(req);
   const redirectRes = NextResponse.redirect(new URL('/login', origin));
 
   try {

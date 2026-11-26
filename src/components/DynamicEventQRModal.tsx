@@ -41,10 +41,10 @@ export default function DynamicEventQRModal({
 
   const roleBadgeStyle =
     targetRole === 'volunteer'
-      ? { background: '#fef3c7', color: '#b45309', border: '1px solid #fde047' }
+      ? { background: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)', border: '1px solid var(--tint-amber-border)' }
       : targetRole === 'organizer'
-      ? { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' }
-      : { background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' };
+      ? { background: 'var(--tint-red-strong)', color: 'var(--status-red-text)', border: '1px solid var(--tint-red-border)' }
+      : { background: 'var(--tint-green-strong)', color: 'var(--status-green-text)', border: '1px solid var(--tint-green-border)' };
 
   // Load sessions for this event
   useEffect(() => {
@@ -227,8 +227,8 @@ export default function DynamicEventQRModal({
           {/* Session Selector & Time Status */}
           {sessions.length > 0 && (
             <div style={{
-              background: '#f8fafc',
-              border: '1.5px solid #e2e8f0',
+              background: 'var(--bg-subtle)',
+              border: '1.5px solid var(--border-color)',
               borderRadius: '12px',
               padding: '0.75rem 1rem',
               marginBottom: '1rem',
@@ -242,7 +242,7 @@ export default function DynamicEventQRModal({
               textAlign: 'left',
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: 0 }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-body)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   <MapPinIcon size={14} /> Chọn Buổi / Ca Điểm Danh:
                 </label>
                 <select
@@ -254,11 +254,11 @@ export default function DynamicEventQRModal({
                     minWidth: 0,
                     padding: '0.42rem 0.65rem',
                     borderRadius: '8px',
-                    border: '1.5px solid #cbd5e1',
+                    border: '1.5px solid var(--border-strong)',
                     fontSize: '0.825rem',
                     fontWeight: 700,
-                    background: '#ffffff',
-                    color: '#0f172a',
+                    background: 'var(--bg-input)',
+                    color: 'var(--text-primary)',
                     cursor: 'pointer',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -276,11 +276,11 @@ export default function DynamicEventQRModal({
               <div style={{
                 fontSize: '0.775rem',
                 fontWeight: 700,
-                color: sessionTimeStatus.status === 'open' ? '#166534' : sessionTimeStatus.status === 'early' ? '#b45309' : '#991b1b',
-                background: sessionTimeStatus.status === 'open' ? '#f0fdf4' : sessionTimeStatus.status === 'early' ? '#fffbeb' : '#fef2f2',
+                color: sessionTimeStatus.status === 'open' ? 'var(--status-green-text)' : sessionTimeStatus.status === 'early' ? 'var(--status-amber-text)' : 'var(--status-red-text)',
+                background: sessionTimeStatus.status === 'open' ? 'var(--tint-green-bg)' : sessionTimeStatus.status === 'early' ? 'var(--tint-amber-bg)' : 'var(--tint-red-bg)',
                 padding: '0.3rem 0.6rem',
                 borderRadius: '6px',
-                border: `1px solid ${sessionTimeStatus.status === 'open' ? '#bbf7d0' : sessionTimeStatus.status === 'early' ? '#fde68a' : '#fecaca'}`,
+                border: `1px solid ${sessionTimeStatus.status === 'open' ? 'var(--tint-green-border)' : sessionTimeStatus.status === 'early' ? 'var(--tint-amber-border)' : 'var(--tint-red-border)'}`,
               }}>
                 {sessionTimeStatus.message}
               </div>
@@ -314,13 +314,13 @@ export default function DynamicEventQRModal({
           <div className={styles.qrCard}>
             {qrError && !token ? (
               <div style={{ padding: '2.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textAlign: 'center' }}>
-                <span style={{ color: '#b91c1c', fontWeight: 700, fontSize: '0.92rem' }}>{qrError}</span>
-                <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Hệ thống sẽ tự động kết nối lại sau vài giây...</span>
+                <span style={{ color: 'var(--status-red-text)', fontWeight: 700, fontSize: '0.92rem' }}>{qrError}</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Hệ thống sẽ tự động kết nối lại sau vài giây...</span>
               </div>
             ) : loading || !token ? (
               <div style={{ padding: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-                <SpinnerIcon size={36} color="#2563eb" />
-                <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Đang tạo mã QR động...</span>
+                <SpinnerIcon size={36} color="var(--text-brand)" />
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Đang tạo mã QR động...</span>
               </div>
             ) : (
               <QRCodeSVG
@@ -328,17 +328,19 @@ export default function DynamicEventQRModal({
                 size={300}
                 level="M"
                 includeMargin={true}
+                bgColor="#ffffff"
+                fgColor="#000000"
               />
             )}
           </div>
 
           <div className={styles.antiFraudBadge}>
-            <LockIcon size={16} color="#16a34a" />
+            <LockIcon size={16} color="var(--status-green-text)" />
             <span>Mã bảo mật chống gian lận — Tự động đổi mới mỗi 10 giây</span>
           </div>
 
           <div className={styles.instructions} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-            <QrCodeIcon size={16} color="#2563eb" />
+            <QrCodeIcon size={16} color="var(--text-brand)" />
             <span>
               Sinh viên mở ứng dụng ➔ Bấm <strong>&quot;Quét mã sự kiện&quot;</strong> để ghi nhận vai trò <strong>{roleLabel}</strong>.
             </span>

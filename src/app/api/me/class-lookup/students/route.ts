@@ -16,10 +16,12 @@ export async function GET(request: Request) {
     const now = new Date().toISOString();
 
     // Verify active delegation
+    const safeEmail = sanitizePostgrestValue(auth.email.toLowerCase().trim(), 120);
+    const safeMssv = sanitizePostgrestValue(auth.email.split('@')[0].toUpperCase(), 40);
     const { data: delegate } = await adminSupabase
       .from('class_delegates')
       .select('*')
-      .or(`email.eq.${auth.email},mssv.eq.${auth.email.split('@')[0].toUpperCase()}`)
+      .or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`)
       .eq('is_active', true)
       .gt('expires_at', now)
       .order('expires_at', { ascending: false })

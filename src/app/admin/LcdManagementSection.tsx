@@ -398,7 +398,7 @@ export default function LcdManagementSection({
       <div className={styles.banner}>
         <div className={styles.bannerLeft}>
           <span className={styles.bannerEyebrow}>
-            <BuildingIcon size={14} color="#1d4ed8" />
+            <BuildingIcon size={14} color="var(--text-brand)" />
             <span>Quản trị Liên Chi Đoàn trực thuộc</span>
           </span>
           <h2 className={styles.bannerTitle}>{currentLcdName}</h2>
@@ -436,7 +436,7 @@ export default function LcdManagementSection({
       <div className={styles.kpiGrid}>
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Tổng Đoàn viên</span>
-          <span className={styles.kpiValue} style={{ color: '#1d4ed8' }}>
+          <span className={styles.kpiValue} style={{ color: 'var(--text-brand)' }}>
             {loadingMembers ? '—' : summary.total_students}
           </span>
           <span className={styles.kpiHint}>Thuộc {currentLcdShort}</span>
@@ -450,7 +450,7 @@ export default function LcdManagementSection({
 
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Chi đoàn đã có BCH</span>
-          <span className={styles.kpiValue} style={{ color: '#15803d' }}>
+          <span className={styles.kpiValue} style={{ color: 'var(--status-green-text)' }}>
             {loadingMembers ? '—' : `${summary.classes_with_delegate}/${summary.total_classes}`}
           </span>
           <span className={styles.kpiHint}>
@@ -462,7 +462,7 @@ export default function LcdManagementSection({
 
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>BCH Chi đoàn hoạt động</span>
-          <span className={styles.kpiValue} style={{ color: '#7c3aed' }}>
+          <span className={styles.kpiValue} style={{ color: 'var(--status-purple-text)' }}>
             {loadingMembers ? '—' : summary.active_delegates}
           </span>
           <span className={styles.kpiHint}>Có quyền tra cứu ĐRL lớp</span>
@@ -476,7 +476,7 @@ export default function LcdManagementSection({
         <section className={styles.card}>
           <div className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>
-              <UsersIcon size={18} color="#2563eb" />
+              <UsersIcon size={18} color="var(--text-brand)" />
               <span>
                 Danh sách Đoàn viên {currentLcdShort} ({filteredStudents.length})
               </span>
@@ -561,11 +561,11 @@ export default function LcdManagementSection({
           </div>
 
           {loadingMembers ? (
-            <div style={{ padding: '2.5rem', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', fontWeight: 600 }}>
               Đang tải dữ liệu đoàn viên {currentLcdShort}...
             </div>
           ) : pagedStudents.length === 0 ? (
-            <div style={{ padding: '2.5rem', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '12px' }}>
+            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderRadius: '12px' }}>
               Không tìm thấy đoàn viên nào phù hợp điều kiện lọc.
             </div>
           ) : (
@@ -586,14 +586,14 @@ export default function LcdManagementSection({
                   <tbody>
                     {pagedStudents.map((st, idx) => (
                       <tr key={st.mssv}>
-                        <td style={{ color: '#64748b', fontWeight: 600 }}>
+                        <td style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
                           {(page - 1) * PAGE_SIZE + idx + 1}
                         </td>
-                        <td style={{ fontFamily: 'monospace', fontWeight: 800, color: '#1d4ed8' }}>
+                        <td style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--text-brand)' }}>
                           {st.mssv}
                         </td>
                         <td style={{ fontWeight: 700 }}>{st.full_name}</td>
-                        <td style={{ fontWeight: 600, color: '#334155' }}>{st.class_id}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--text-body)' }}>{st.class_id}</td>
                         <td>
                           <span
                             className={`${styles.badge} ${st.total_attended > 0 ? styles.badgeSuccess : styles.badgeNeutral}`}
@@ -604,11 +604,11 @@ export default function LcdManagementSection({
                         <td>
                           {st.is_delegate ? (
                             <span className={`${styles.badge} ${styles.badgeInfo}`}>
-                              <ShieldCheckIcon size={12} color="#1d4ed8" />
+                              <ShieldCheckIcon size={12} color="var(--text-brand)" />
                               <span>Đang là BCH</span>
                             </span>
                           ) : (
-                            <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>—</span>
+                            <span style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>—</span>
                           )}
                         </td>
                         <td>
@@ -666,7 +666,7 @@ export default function LcdManagementSection({
           <section className={styles.card}>
             <div className={styles.cardHeader}>
               <h3 className={styles.cardTitle}>
-                <ShieldCheckIcon size={18} color="#2563eb" />
+                <ShieldCheckIcon size={18} color="var(--text-brand)" />
                 <span>Cấp quyền Ban Chấp Hành Chi Đoàn theo nhiệm kỳ</span>
               </h3>
 
@@ -839,7 +839,7 @@ export default function LcdManagementSection({
               {bulkErrors.length > 0 && (
                 <div className={styles.bulkErrorBox}>
                   <div style={{ fontWeight: 800, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <AlertTriangleIcon size={15} color="#b91c1c" />
+                    <AlertTriangleIcon size={15} color="var(--status-red-text)" />
                     <span>Các dòng bị bỏ qua ({bulkErrors.length}):</span>
                   </div>
                   <ul style={{ margin: 0, paddingLeft: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -857,8 +857,8 @@ export default function LcdManagementSection({
           {/* Classes without BCH callout */}
           {classesWithoutDelegate.length > 0 && (
             <div className={styles.missingClassesBox}>
-              <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <AlertTriangleIcon size={16} color="#d97706" />
+              <div style={{ fontSize: '0.84rem', fontWeight: 800, color: 'var(--status-amber-text)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <AlertTriangleIcon size={16} color="var(--status-amber-text)" />
                 <span>
                   Các Chi đoàn thuộc {currentLcdShort} chưa có BCH trên hệ thống ({classesWithoutDelegate.length} lớp):
                 </span>
@@ -880,7 +880,7 @@ export default function LcdManagementSection({
           <section className={styles.card}>
             <div className={styles.cardHeader}>
               <h3 className={styles.cardTitle}>
-                <UsersIcon size={18} color="#2563eb" />
+                <UsersIcon size={18} color="var(--text-brand)" />
                 <span>Danh sách BCH Chi đoàn thuộc {currentLcdShort} ({filteredDelegates.length})</span>
               </h3>
 
@@ -899,11 +899,11 @@ export default function LcdManagementSection({
             </div>
 
             {loadingDelegates ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                 Đang tải danh sách BCH Chi đoàn...
               </div>
             ) : filteredDelegates.length === 0 ? (
-              <div style={{ padding: '2.25rem', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '12px' }}>
+              <div style={{ padding: '2.25rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderRadius: '12px' }}>
                 Chưa có BCH Chi đoàn nào được gán cho {currentLcdShort}. Hãy thêm bằng biểu mẫu phía trên.
               </div>
             ) : (
@@ -923,10 +923,10 @@ export default function LcdManagementSection({
                   <tbody>
                     {filteredDelegates.map((d) => (
                       <tr key={d.id}>
-                        <td style={{ fontFamily: 'monospace', fontWeight: 800, color: '#1d4ed8' }}>{d.mssv}</td>
+                        <td style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--text-brand)' }}>{d.mssv}</td>
                         <td style={{ fontWeight: 700 }}>{d.full_name}</td>
                         <td style={{ fontWeight: 700 }}>{d.class_id}</td>
-                        <td style={{ fontSize: '0.82rem', color: '#475569' }}>{d.notes || 'BCH Chi đoàn'}</td>
+                        <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{d.notes || 'BCH Chi đoàn'}</td>
                         <td>
                           {d.status === 'active' ? (
                             <span className={`${styles.badge} ${d.daysLeft <= 15 ? styles.badgeWarning : styles.badgeSuccess}`}>
@@ -941,7 +941,7 @@ export default function LcdManagementSection({
                             </span>
                           )}
                         </td>
-                        <td style={{ fontSize: '0.78rem', color: '#64748b' }}>{d.created_by}</td>
+                        <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{d.created_by}</td>
                         <td>
                           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                             <button
@@ -991,7 +991,7 @@ export default function LcdManagementSection({
         >
           <div
             style={{
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
               borderRadius: '18px',
               maxWidth: '720px',
               width: '100%',
@@ -1046,7 +1046,7 @@ export default function LcdManagementSection({
 
             <div style={{ padding: '1.35rem', overflowY: 'auto', flex: 1 }}>
               {loadingHistory ? (
-                <div style={{ padding: '2.5rem', textAlign: 'center', color: '#64748b' }}>
+                <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   Đang tải lịch sử minh chứng...
                 </div>
               ) : historyError ? (
@@ -1055,8 +1055,8 @@ export default function LcdManagementSection({
                 <>
                   <div
                     style={{
-                      background: '#f0fdf4',
-                      border: '1px solid #bbf7d0',
+                      background: 'var(--tint-green-bg)',
+                      border: '1px solid var(--tint-green-border)',
                       borderRadius: '12px',
                       padding: '0.8rem 1rem',
                       marginBottom: '1rem',
@@ -1065,11 +1065,11 @@ export default function LcdManagementSection({
                       justifyContent: 'space-between',
                     }}
                   >
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#166534' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--status-green-text)' }}>
                       Tổng số hoạt động đã điểm danh hợp lệ
                     </span>
-                    <span style={{ fontSize: '1.35rem', fontWeight: 900, color: '#15803d', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <CheckCircleIcon size={18} color="#15803d" />
+                    <span style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--status-green-text)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <CheckCircleIcon size={18} color="var(--status-green-text)" />
                       <span>{studentHistory.total_attended} sự kiện</span>
                     </span>
                   </div>
@@ -1094,7 +1094,7 @@ export default function LcdManagementSection({
                                   {h.session_count || 1}/{h.total_sessions || 1} buổi
                                 </span>
                               </td>
-                              <td style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                              <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                 {new Date(h.checkin_time).toLocaleString('vi-VN')}
                               </td>
                               <td>
@@ -1112,7 +1112,7 @@ export default function LcdManagementSection({
                       </table>
                     </div>
                   ) : (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '12px' }}>
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderRadius: '12px' }}>
                       Đoàn viên này chưa có lượt điểm danh sự kiện nào.
                     </div>
                   )}

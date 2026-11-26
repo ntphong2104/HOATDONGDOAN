@@ -10,34 +10,34 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem 1rem 4rem' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '2rem 1rem 4rem' }}>
       <main
         style={{
           maxWidth: 820,
           margin: '0 auto',
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-color)',
           borderRadius: 18,
           padding: '2rem 2rem 2.5rem',
           boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)',
-          color: '#1e293b',
+          color: 'var(--text-body)',
           lineHeight: 1.7,
         }}
       >
-        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1.25rem' }}>
-          <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1d4ed8' }}>
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-brand)' }}>
             Đoàn TNCS Hồ Chí Minh — PTIT Cơ sở tại TP. Hồ Chí Minh
           </div>
-          <h1 style={{ margin: '0.35rem 0 0.4rem', fontSize: '1.7rem', fontWeight: 800, color: '#0f172a' }}>
+          <h1 style={{ margin: '0.35rem 0 0.4rem', fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-primary)' }}>
             Chính Sách Bảo Mật (Privacy Policy)
           </h1>
-          <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             Ứng dụng: <strong>Hoạt Động Đoàn PTIT HCM</strong> (https://ptithcm.com) • Cập nhật lần cuối: 20/11/2026
           </div>
         </div>
 
         <section style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
             1. Mục đích của ứng dụng / Purpose of the Application
           </h2>
           <p style={{ margin: 0, fontSize: '0.93rem' }}>
@@ -49,7 +49,7 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
             2. Dữ liệu chúng tôi thu thập / Data We Collect
           </h2>
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.93rem' }}>
@@ -65,7 +65,7 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
             3. Cách chúng tôi sử dụng dữ liệu / How We Use Your Data
           </h2>
           <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.93rem' }}>
@@ -76,7 +76,7 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
             4. Lưu trữ và bảo mật / Data Storage &amp; Security
           </h2>
           <p style={{ margin: 0, fontSize: '0.93rem' }}>
@@ -87,19 +87,19 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
             5. Quyền của người dùng &amp; Liên hệ / User Rights &amp; Contact
           </h2>
           <p style={{ margin: 0, fontSize: '0.93rem' }}>
             Sinh viên có thể xem, cập nhật thông tin cá nhân trực tiếp trên hệ thống hoặc yêu cầu hỗ trợ chỉnh sửa/xóa dữ liệu
             bằng cách liên hệ Ban Quản trị Hệ thống Hoạt Động Đoàn PTIT HCM qua email:{' '}
-            <a href="mailto:nnguyenthanhphong2104@gmail.com" style={{ color: '#1d4ed8', fontWeight: 700 }}>
+            <a href="mailto:nnguyenthanhphong2104@gmail.com" style={{ color: 'var(--text-brand)', fontWeight: 700 }}>
               nnguyenthanhphong2104@gmail.com
             </a>.
           </p>
         </section>
 
-        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
           <Link
             href="/login"
             style={{

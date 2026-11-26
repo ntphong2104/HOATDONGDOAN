@@ -174,8 +174,8 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
   return (
     <section
       style={{
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-color)',
         borderRadius: 16,
         padding: '1.35rem',
         marginTop: '1.25rem',
@@ -198,19 +198,19 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
               margin: 0,
               fontSize: '1.05rem',
               fontWeight: 800,
-              color: '#0f172a',
+              color: 'var(--text-primary)',
               display: 'flex',
               alignItems: 'center',
               gap: '0.45rem',
             }}
           >
-            <ShieldCheckIcon size={18} color="#b45309" />
+            <ShieldCheckIcon size={18} color="var(--status-amber-text)" />
             <span>Quản lý Khóa Đã Tốt Nghiệp theo từng Liên Chi Đoàn</span>
           </h3>
-          <p style={{ margin: '0.3rem 0 0', fontSize: '0.84rem', color: '#64748b', lineHeight: 1.45 }}>
+          <p style={{ margin: '0.3rem 0 0', fontSize: '0.84rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
             Đánh dấu từng cặp <strong>LCĐ + Khóa</strong> đã ra trường (VD: khối Kinh tế 4 năm tốt nghiệp sớm hơn khối Kỹ thuật 4.5–5 năm). Sau khi{' '}
             <strong>toàn bộ {LCD_DEFINITIONS.length}/{LCD_DEFINITIONS.length} LCĐ của một khóa đã tốt nghiệp và được lưu cấu hình</strong>, nút{' '}
-            <strong style={{ color: '#dc2626' }}>✕ Xóa DS</strong> mới xuất hiện để xóa khóa cũ khỏi Danh sách Sinh viên (kèm xác nhận 2 bước, vẫn giữ nguyên lịch sử sự kiện cũ).
+            <strong style={{ color: 'var(--status-red-text)' }}>✕ Xóa DS</strong> mới xuất hiện để xóa khóa cũ khỏi Danh sách Sinh viên (kèm xác nhận 2 bước, vẫn giữ nguyên lịch sử sự kiện cũ).
           </p>
         </div>
 
@@ -220,9 +220,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
               style={{
                 padding: '0.28rem 0.6rem',
                 borderRadius: 999,
-                background: '#fef3c7',
-                border: '1px solid #fcd34d',
-                color: '#b45309',
+                background: 'var(--tint-amber-strong)',
+                border: '1px solid var(--tint-amber-border)',
+                color: 'var(--status-amber-text)',
                 fontSize: '0.74rem',
                 fontWeight: 700,
               }}
@@ -240,11 +240,11 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
               gap: 5,
               padding: '0.45rem 0.8rem',
               borderRadius: 9,
-              border: '1px solid #cbd5e1',
-              background: '#f8fafc',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--bg-subtle)',
               fontSize: '0.8rem',
               fontWeight: 700,
-              color: '#334155',
+              color: 'var(--text-body)',
               cursor: 'pointer',
             }}
           >
@@ -272,16 +272,16 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
       </div>
 
       {loading ? (
-        <div style={{ padding: '1.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.86rem' }}>
+        <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
           Đang tải ma trận khóa tốt nghiệp...
         </div>
       ) : (
         <>
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 12 }}>
+          <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 12 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '0.65rem 0.85rem', textAlign: 'left', fontWeight: 800, color: '#334155', minWidth: 210 }}>
+                <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
+                  <th style={{ padding: '0.65rem 0.85rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', minWidth: 210 }}>
                     Liên Chi Đoàn ({LCD_DEFINITIONS.length} LCĐ)
                   </th>
                   {cohorts.map((cohort) => {
@@ -304,9 +304,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                             style={{
                               padding: '0.25rem 0.55rem',
                               borderRadius: 7,
-                              border: `1px solid ${allChecked ? '#d97706' : '#cbd5e1'}`,
-                              background: allChecked ? '#fef3c7' : '#ffffff',
-                              color: allChecked ? '#92400e' : '#0f172a',
+                              border: `1px solid ${allChecked ? '#d97706' : 'var(--border-strong)'}`,
+                              background: allChecked ? 'var(--tint-amber-strong)' : 'var(--bg-surface)',
+                              color: allChecked ? 'var(--status-amber-text)' : 'var(--text-primary)',
                               fontWeight: 800,
                               fontSize: '0.78rem',
                               cursor: 'pointer',
@@ -324,9 +324,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                                 marginTop: 2,
                                 padding: '2px 6px',
                                 borderRadius: 5,
-                                border: '1px solid #fecaca',
-                                background: '#fef2f2',
-                                color: '#dc2626',
+                                border: '1px solid var(--tint-red-border)',
+                                background: 'var(--tint-red-bg)',
+                                color: 'var(--status-red-text)',
                                 fontWeight: 700,
                                 fontSize: '0.66rem',
                                 cursor: deletingCohort ? 'not-allowed' : 'pointer',
@@ -342,9 +342,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                                 marginTop: 2,
                                 padding: '2px 6px',
                                 borderRadius: 5,
-                                border: '1px solid #fde68a',
-                                background: '#fffbeb',
-                                color: '#b45309',
+                                border: '1px solid var(--tint-amber-border)',
+                                background: 'var(--tint-amber-bg)',
+                                color: 'var(--status-amber-text)',
                                 fontWeight: 700,
                                 fontSize: '0.64rem',
                                 whiteSpace: 'nowrap',
@@ -359,9 +359,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                                 marginTop: 2,
                                 padding: '2px 6px',
                                 borderRadius: 5,
-                                border: `1px solid ${graduatedCount > 0 ? '#fde68a' : '#e2e8f0'}`,
-                                background: graduatedCount > 0 ? '#fffbeb' : '#f8fafc',
-                                color: graduatedCount > 0 ? '#b45309' : '#94a3b8',
+                                border: `1px solid ${graduatedCount > 0 ? 'var(--tint-amber-border)' : 'var(--border-color)'}`,
+                                background: graduatedCount > 0 ? 'var(--tint-amber-bg)' : 'var(--bg-subtle)',
+                                color: graduatedCount > 0 ? 'var(--status-amber-text)' : 'var(--text-subtle)',
                                 fontWeight: 700,
                                 fontSize: '0.65rem',
                                 whiteSpace: 'nowrap',
@@ -378,8 +378,8 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
               </thead>
               <tbody>
                 {LCD_DEFINITIONS.map((lcd) => (
-                  <tr key={lcd.code} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '0.6rem 0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                  <tr key={lcd.code} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '0.6rem 0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                         <span
                           style={{
@@ -405,9 +405,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                               minWidth: 62,
                               padding: '0.32rem 0.35rem',
                               borderRadius: 8,
-                              border: `1px solid ${checked ? '#f59e0b' : '#e2e8f0'}`,
-                              background: checked ? '#fef3c7' : '#ffffff',
-                              color: checked ? '#b45309' : '#94a3b8',
+                              border: `1px solid ${checked ? '#f59e0b' : 'var(--border-color)'}`,
+                              background: checked ? 'var(--tint-amber-strong)' : 'var(--bg-surface)',
+                              color: checked ? 'var(--status-amber-text)' : 'var(--text-subtle)',
                               fontWeight: checked ? 800 : 600,
                               fontSize: '0.74rem',
                               cursor: 'pointer',
@@ -429,7 +429,7 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
               style={{
                 marginTop: '0.75rem',
                 fontSize: '0.78rem',
-                color: '#64748b',
+                color: 'var(--text-muted)',
                 display: 'flex',
                 alignItems: 'center',
                 flexWrap: 'wrap',
@@ -443,9 +443,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                   style={{
                     padding: '0.15rem 0.5rem',
                     borderRadius: 999,
-                    background: '#f1f5f9',
-                    border: '1px solid #cbd5e1',
-                    color: '#334155',
+                    background: 'var(--bg-muted)',
+                    border: '1px solid var(--border-strong)',
+                    color: 'var(--text-body)',
                     fontWeight: 700,
                     fontSize: '0.73rem',
                   }}
@@ -481,13 +481,13 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
             <div
               onClick={(e) => e.stopPropagation()}
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-surface)',
                 borderRadius: 16,
                 width: '100%',
                 maxWidth: 480,
                 boxShadow: '0 24px 64px rgba(15, 23, 42, 0.28)',
                 overflow: 'hidden',
-                border: '1px solid #fecaca',
+                border: '1px solid var(--tint-red-border)',
               }}
             >
               {/* Header */}
@@ -551,9 +551,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                       style={{
                         padding: '0.65rem 0.85rem',
                         borderRadius: 10,
-                        background: '#f0fdf4',
-                        border: '1px solid #bbf7d0',
-                        color: '#15803d',
+                        background: 'var(--tint-green-bg)',
+                        border: '1px solid var(--tint-green-border)',
+                        color: 'var(--status-green-text)',
                         fontSize: '0.8rem',
                         fontWeight: 700,
                       }}
@@ -565,14 +565,14 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                       style={{
                         padding: '0.85rem 1rem',
                         borderRadius: 10,
-                        background: '#fef2f2',
-                        border: '1px solid #fecaca',
-                        color: '#7f1d1d',
+                        background: 'var(--tint-red-bg)',
+                        border: '1px solid var(--tint-red-border)',
+                        color: 'var(--status-red-text)',
                         fontSize: '0.82rem',
                         lineHeight: 1.55,
                       }}
                     >
-                      <div style={{ fontWeight: 800, marginBottom: '0.4rem', color: '#991b1b' }}>
+                      <div style={{ fontWeight: 800, marginBottom: '0.4rem', color: 'var(--status-red-text)' }}>
                         Vui lòng kiểm tra kỹ ảnh hưởng trước khi xóa:
                       </div>
                       <ul style={{ margin: 0, paddingLeft: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -598,9 +598,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                         style={{
                           padding: '0.5rem 0.95rem',
                           borderRadius: 9,
-                          border: '1px solid #cbd5e1',
-                          background: '#f8fafc',
-                          color: '#334155',
+                          border: '1px solid var(--border-strong)',
+                          background: 'var(--bg-subtle)',
+                          color: 'var(--text-body)',
                           fontWeight: 700,
                           fontSize: '0.82rem',
                           cursor: 'pointer',
@@ -631,15 +631,15 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                   </>
                 ) : (
                   <>
-                    <div style={{ fontSize: '0.84rem', color: '#334155', lineHeight: 1.5 }}>
+                    <div style={{ fontSize: '0.84rem', color: 'var(--text-body)', lineHeight: 1.5 }}>
                       Để chắc chắn không ấn nhầm, vui lòng nhập chính xác{' '}
                       <code
                         style={{
                           padding: '0.15rem 0.45rem',
                           borderRadius: 6,
-                          background: '#fef2f2',
-                          border: '1px solid #fecaca',
-                          color: '#b91c1c',
+                          background: 'var(--tint-red-bg)',
+                          border: '1px solid var(--tint-red-border)',
+                          color: 'var(--status-red-text)',
                           fontWeight: 800,
                         }}
                       >
@@ -666,12 +666,12 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                           boxSizing: 'border-box',
                           padding: '0.62rem 0.85rem',
                           borderRadius: 10,
-                          border: `2px solid ${isConfirmMatched ? '#16a34a' : '#cbd5e1'}`,
+                          border: `2px solid ${isConfirmMatched ? '#16a34a' : 'var(--border-strong)'}`,
                           outline: 'none',
                           fontSize: '0.9rem',
                           fontWeight: 700,
-                          color: '#0f172a',
-                          background: isSubmittingDelete ? '#f8fafc' : '#ffffff',
+                          color: 'var(--text-primary)',
+                          background: isSubmittingDelete ? 'var(--bg-subtle)' : 'var(--bg-surface)',
                         }}
                       />
                       <div
@@ -679,7 +679,7 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                           marginTop: '0.35rem',
                           fontSize: '0.76rem',
                           fontWeight: 700,
-                          color: isConfirmMatched ? '#15803d' : '#64748b',
+                          color: isConfirmMatched ? 'var(--status-green-text)' : 'var(--text-muted)',
                         }}
                       >
                         {isConfirmMatched
@@ -696,9 +696,9 @@ export default function GraduatedCohortsManager({ onCohortChanged }: GraduatedCo
                         style={{
                           padding: '0.5rem 0.9rem',
                           borderRadius: 9,
-                          border: '1px solid #cbd5e1',
-                          background: '#f8fafc',
-                          color: '#334155',
+                          border: '1px solid var(--border-strong)',
+                          background: 'var(--bg-subtle)',
+                          color: 'var(--text-body)',
                           fontWeight: 700,
                           fontSize: '0.82rem',
                           cursor: isSubmittingDelete ? 'not-allowed' : 'pointer',

@@ -223,7 +223,7 @@ export default function SecurityDashboardClient({
       <div className={styles.banner}>
         <div className={styles.bannerLeft}>
           <h1 className={styles.bannerTitle}>
-            <ShieldCheckIcon size={24} color="#1d4ed8" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px' }} />
+            <ShieldCheckIcon size={24} color="var(--text-brand)" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px' }} />
             SỔ TRỰC BÀN GIAO CHÌA KHÓA PHÒNG
           </h1>
           <p className={styles.bannerSubtitle}>
@@ -244,31 +244,31 @@ export default function SecurityDashboardClient({
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <span className={styles.statLabel}>Phòng mượn trong ngày</span>
-          <span className={styles.statValue} style={{ color: '#0f172a' }}>
+          <span className={styles.statValue} style={{ color: 'var(--text-primary)' }}>
             {stats.total}
           </span>
         </div>
-        <div className={styles.statCard} style={{ borderColor: '#fde68a' }}>
-          <span className={styles.statLabel} style={{ color: '#b45309', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <ClockIcon size={14} color="#b45309" /> Chưa bàn giao chìa
+        <div className={styles.statCard} style={{ borderColor: 'var(--tint-amber-border)' }}>
+          <span className={styles.statLabel} style={{ color: 'var(--status-amber-text)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <ClockIcon size={14} color="var(--status-amber-text)" /> Chưa bàn giao chìa
           </span>
-          <span className={styles.statValue} style={{ color: '#d97706' }}>
+          <span className={styles.statValue} style={{ color: 'var(--status-amber-text)' }}>
             {stats.pending}
           </span>
         </div>
-        <div className={styles.statCard} style={{ borderColor: '#a7f3d0' }}>
-          <span className={styles.statLabel} style={{ color: '#047857', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <KeyIcon size={14} color="#047857" /> Đang mượn chìa
+        <div className={styles.statCard} style={{ borderColor: 'var(--tint-green-border)' }}>
+          <span className={styles.statLabel} style={{ color: 'var(--status-green-text)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <KeyIcon size={14} color="var(--status-green-text)" /> Đang mượn chìa
           </span>
-          <span className={styles.statValue} style={{ color: '#059669' }}>
+          <span className={styles.statValue} style={{ color: 'var(--status-green-text)' }}>
             {stats.handedOver}
           </span>
         </div>
-        <div className={styles.statCard} style={{ borderColor: '#cbd5e1' }}>
-          <span className={styles.statLabel} style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <CheckCircleIcon size={14} color="#475569" /> Đã trả chìa khóa
+        <div className={styles.statCard} style={{ borderColor: 'var(--border-strong)' }}>
+          <span className={styles.statLabel} style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <CheckCircleIcon size={14} color="var(--text-secondary)" /> Đã trả chìa khóa
           </span>
-          <span className={styles.statValue} style={{ color: '#334155' }}>
+          <span className={styles.statValue} style={{ color: 'var(--text-body)' }}>
             {stats.returned}
           </span>
         </div>
@@ -329,7 +329,7 @@ export default function SecurityDashboardClient({
       {/* List of Approved Room Loans */}
       {filteredProposals.length === 0 ? (
         <div className={styles.emptyState}>
-          <BuildingIcon size={44} color="#94a3b8" style={{ marginBottom: '12px' }} />
+          <BuildingIcon size={44} color="var(--text-subtle)" style={{ marginBottom: '12px' }} />
           <h3 className={styles.emptyStateTitle}>Không có lịch mượn phòng nào</h3>
           <p style={{ margin: 0, fontSize: '0.875rem' }}>
             {dateFilter === 'today'
@@ -348,24 +348,24 @@ export default function SecurityDashboardClient({
                 {/* Header */}
                 <div className={styles.roomCardHeader}>
                   <div className={styles.roomBadge}>
-                    <BuildingIcon size={16} color="#1d4ed8" />
+                    <BuildingIcon size={16} color="var(--text-brand)" />
                     <span>{item.room_name}</span>
                   </div>
 
                   <div>
                     {keyStatus === 'pending' && (
                       <span className={`${styles.keyStatusBadge} ${styles.statusPending}`}>
-                        <ClockIcon size={14} color="#d97706" /> Chưa bàn giao chìa khóa
+                        <ClockIcon size={14} color="var(--status-amber-text)" /> Chưa bàn giao chìa khóa
                       </span>
                     )}
                     {keyStatus === 'handed_over' && (
                       <span className={`${styles.keyStatusBadge} ${styles.statusHandedOver}`}>
-                        <KeyIcon size={14} color="#059669" /> Đang mượn (Giao lúc {formatTimeHHmm(item.key_handed_at)})
+                        <KeyIcon size={14} color="var(--status-green-text)" /> Đang mượn (Giao lúc {formatTimeHHmm(item.key_handed_at)})
                       </span>
                     )}
                     {keyStatus === 'returned' && (
                       <span className={`${styles.keyStatusBadge} ${styles.statusReturned}`}>
-                        <CheckCircleIcon size={14} color="#16a34a" /> Đã nhận lại chìa (Lúc {formatTimeHHmm(item.key_returned_at)})
+                        <CheckCircleIcon size={14} color="var(--status-green-text)" /> Đã nhận lại chìa (Lúc {formatTimeHHmm(item.key_returned_at)})
                       </span>
                     )}
                   </div>
@@ -378,7 +378,7 @@ export default function SecurityDashboardClient({
                     <h3 className={styles.eventTitle}>{item.title}</h3>
                     <div className={styles.metaList}>
                       <div className={styles.metaItem}>
-                        <ClockIcon size={15} color="#64748b" />
+                        <ClockIcon size={15} color="var(--text-muted)" />
                         <span>
                           Thời gian:{' '}
                           <strong className={styles.timeHighlight}>
@@ -387,33 +387,33 @@ export default function SecurityDashboardClient({
                         </span>
                       </div>
                       <div className={styles.metaItem}>
-                        <CalendarIcon size={15} color="#64748b" />
+                        <CalendarIcon size={15} color="var(--text-muted)" />
                         <span>
                           Ngày mượn:{' '}
                           <strong className={styles.metaHighlight}>
                             {formatDateVi(item.start_date || item.start_datetime?.split('T')[0])}
                           </strong>
                           {(item.start_date || item.start_datetime?.split('T')[0]) === todayStr && (
-                            <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: '#16a34a', fontWeight: 800, background: '#dcfce7', padding: '1px 6px', borderRadius: '4px' }}>
+                            <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: 'var(--status-green-text)', fontWeight: 800, background: 'var(--tint-green-strong)', padding: '1px 6px', borderRadius: '4px' }}>
                               Hôm nay
                             </span>
                           )}
                           {(item.start_date || item.start_datetime?.split('T')[0]) && (item.start_date || item.start_datetime?.split('T')[0])! < todayStr && (
-                            <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: '#64748b', fontWeight: 600, background: '#f1f5f9', padding: '1px 6px', borderRadius: '4px' }}>
+                            <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, background: 'var(--bg-muted)', padding: '1px 6px', borderRadius: '4px' }}>
                               Đã diễn ra
                             </span>
                           )}
                         </span>
                       </div>
                       <div className={styles.metaItem}>
-                        <UsersIcon size={15} color="#64748b" />
+                        <UsersIcon size={15} color="var(--text-muted)" />
                         <span>
                           Quy mô dự kiến:{' '}
                           <strong>{item.total_count || item.participant_count} người</strong>
                         </span>
                       </div>
                       <div className={styles.metaItem}>
-                        <BuildingIcon size={15} color="#64748b" />
+                        <BuildingIcon size={15} color="var(--text-muted)" />
                         <span>
                           Đơn vị tổ chức: <strong>{item.organization_unit || 'Đoàn - Hội PTIT'}</strong>
                         </span>
@@ -426,7 +426,7 @@ export default function SecurityDashboardClient({
                         <div style={{
                           fontSize: '0.78rem',
                           fontWeight: 800,
-                          color: '#475569',
+                          color: 'var(--text-secondary)',
                           marginBottom: '0.35rem',
                           display: 'flex',
                           alignItems: 'center',
@@ -434,20 +434,20 @@ export default function SecurityDashboardClient({
                         }}>
                           📋 Lịch trình chi tiết ({item.sessions.length} ca):
                         </div>
-                        <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1.5px solid #e2e8f0' }}>
+                        <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1.5px solid var(--border-color)' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                             <thead>
-                              <tr style={{ background: '#f1f5f9' }}>
-                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.72rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Ca</th>
-                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.72rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>📅 Ngày</th>
-                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.72rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>⏰ Giờ</th>
-                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.72rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>🔑 Phòng</th>
+                              <tr style={{ background: 'var(--bg-muted)' }}>
+                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.72rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>Ca</th>
+                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.72rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>📅 Ngày</th>
+                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.72rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>⏰ Giờ</th>
+                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.72rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>🔑 Phòng</th>
                               </tr>
                             </thead>
                             <tbody>
                               {item.sessions.map((sess: any, sIdx: number) => (
-                                <tr key={sess.id || sIdx} style={{ background: sIdx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 700, color: '#1e1b4b', whiteSpace: 'nowrap' }}>
+                                <tr key={sess.id || sIdx} style={{ background: sIdx % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
+                                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                                     <span style={{
                                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                       width: '20px', height: '20px', borderRadius: '50%',
@@ -456,16 +456,16 @@ export default function SecurityDashboardClient({
                                     }}>{sIdx + 1}</span>
                                     {sess.name || `Buổi ${sIdx + 1}`}
                                   </td>
-                                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                                     {sess.session_date ? new Date(sess.session_date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' }) : '—'}
                                   </td>
-                                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                                     {sess.start_time?.slice(0, 5) || '??'} – {sess.end_time?.slice(0, 5) || '??'}
                                   </td>
                                   <td style={{
                                     padding: '0.4rem 0.6rem',
                                     fontWeight: 700,
-                                    color: sess.room_name && sess.room_name !== 'Không mượn' ? '#0f172a' : '#94a3b8',
+                                    color: sess.room_name && sess.room_name !== 'Không mượn' ? 'var(--text-primary)' : 'var(--text-subtle)',
                                   }}>
                                     {sess.room_name && sess.room_name !== 'Không mượn' ? (
                                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -488,15 +488,15 @@ export default function SecurityDashboardClient({
                   {/* Right: Borrower Representative Info & Verification */}
                   <div className={styles.borrowerCard}>
                     <span className={styles.borrowerTitle} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <UserIcon size={14} color="#475569" /> Người đại diện mượn phòng
+                      <UserIcon size={14} color="var(--text-secondary)" /> Người đại diện mượn phòng
                     </span>
                     <span className={styles.borrowerName}>{item.created_by}</span>
                     <span className={styles.borrowerMeta}>
-                      Tình trạng phê duyệt: <strong style={{ color: '#16a34a' }}>✓ Đã duyệt 100% (Đủ điều kiện nhận chìa)</strong>
+                      Tình trạng phê duyệt: <strong style={{ color: 'var(--status-green-text)' }}>✓ Đã duyệt 100% (Đủ điều kiện nhận chìa)</strong>
                     </span>
                     {item.description && (
-                      <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: '#475569', background: '#ffffff', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                        <FileTextIcon size={13} color="#64748b" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />
+                      <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'var(--bg-surface)', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                        <FileTextIcon size={13} color="var(--text-muted)" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />
                         <em>{item.description.length > 90 ? item.description.slice(0, 90) + '...' : item.description}</em>
                       </div>
                     )}
@@ -514,12 +514,12 @@ export default function SecurityDashboardClient({
                         className={styles.planLink}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
-                        <FileTextIcon size={14} color="#2563eb" />
+                        <FileTextIcon size={14} color="var(--text-brand)" />
                         <span>Xem File Kế Hoạch Đính Kèm</span>
-                        <ExternalLinkIcon size={13} color="#2563eb" />
+                        <ExternalLinkIcon size={13} color="var(--text-brand)" />
                       </a>
                     ) : (
-                      <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
                         Chưa đính kèm link tài liệu
                       </span>
                     )}

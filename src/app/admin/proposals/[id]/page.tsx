@@ -212,7 +212,7 @@ export default function ProposalDetailPage({
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
         <Header showBack backHref="/admin/proposals" title="CHI TIẾT KẾ HOẠCH" />
         <div style={{ maxWidth: 900, margin: '0 auto', width: '100%', padding: '2rem 1.25rem' }}>
           {/* Skeleton shimmer animation */}
@@ -222,14 +222,14 @@ export default function ProposalDetailPage({
               100% { background-position: 400px 0; }
             }
             .sk-pulse {
-              background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 37%, #e2e8f0 63%);
+              background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border-color) 37%, var(--bg-muted) 63%);
               background-size: 800px 100%;
               animation: skeletonShimmer 1.8s ease-in-out infinite;
               border-radius: 10px;
             }
           `}</style>
           {/* Title skeleton */}
-          <div style={{ background: '#fff', borderRadius: 20, padding: '1.75rem 2rem', marginBottom: '1.25rem', border: '1px solid #e2e8f0' }}>
+          <div style={{ background: 'var(--bg-surface)', borderRadius: 20, padding: '1.75rem 2rem', marginBottom: '1.25rem', border: '1px solid var(--border-color)' }}>
             <div className="sk-pulse" style={{ height: 14, width: '35%', marginBottom: 12 }} />
             <div className="sk-pulse" style={{ height: 22, width: '70%', marginBottom: 16 }} />
             <div style={{ display: 'flex', gap: 10 }}>
@@ -238,7 +238,7 @@ export default function ProposalDetailPage({
             </div>
           </div>
           {/* Info skeleton */}
-          <div style={{ background: '#fff', borderRadius: 20, padding: '1.75rem 2rem', marginBottom: '1.25rem', border: '1px solid #e2e8f0' }}>
+          <div style={{ background: 'var(--bg-surface)', borderRadius: 20, padding: '1.75rem 2rem', marginBottom: '1.25rem', border: '1px solid var(--border-color)' }}>
             <div className="sk-pulse" style={{ height: 16, width: '40%', marginBottom: 18 }} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               {[1,2,3,4].map(i => (
@@ -250,7 +250,7 @@ export default function ProposalDetailPage({
             </div>
           </div>
           {/* Steps skeleton */}
-          <div style={{ background: '#fff', borderRadius: 20, padding: '1.75rem 2rem', border: '1px solid #e2e8f0' }}>
+          <div style={{ background: 'var(--bg-surface)', borderRadius: 20, padding: '1.75rem 2rem', border: '1px solid var(--border-color)' }}>
             <div className="sk-pulse" style={{ height: 16, width: '30%', marginBottom: 20 }} />
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
               {[1,2,3].map(i => (
@@ -262,7 +262,7 @@ export default function ProposalDetailPage({
             </div>
           </div>
           {/* Loading text */}
-          <p style={{ textAlign: 'center', marginTop: '1.5rem', color: '#94a3b8', fontWeight: 600, fontSize: '0.85rem', letterSpacing: '0.02em' }}>
+          <p style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-subtle)', fontWeight: 600, fontSize: '0.85rem', letterSpacing: '0.02em' }}>
             Đang tải thông tin kế hoạch...
           </p>
         </div>
@@ -272,11 +272,11 @@ export default function ProposalDetailPage({
 
   if (!proposal) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
         <Header showBack backHref="/admin/proposals" title="CHI TIẾT KẾ HOẠCH" />
         <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
-          <h2 style={{ color: '#0f172a' }}>Không tìm thấy kế hoạch</h2>
-          <Link href="/admin/proposals" style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'underline' }}>
+          <h2 style={{ color: 'var(--text-primary)' }}>Không tìm thấy kế hoạch</h2>
+          <Link href="/admin/proposals" style={{ color: 'var(--text-brand)', fontWeight: 700, textDecoration: 'underline' }}>
             Quay lại danh sách
           </Link>
         </div>
@@ -386,7 +386,7 @@ export default function ProposalDetailPage({
     (bookingSchedule.mode === 'range' && bookingSchedule.slots[0] && bookingSchedule.slots[0].end_date !== bookingSchedule.slots[0].date);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
       <Header showBack backHref={backTarget} title="HỒ SƠ KẾ HOẠCH" />
 
       <main style={{ flex: 1, maxWidth: '960px', width: '100%', margin: '0 auto', padding: '2rem 1.25rem 4rem', boxSizing: 'border-box' }}>
@@ -400,7 +400,7 @@ export default function ProposalDetailPage({
               gap: '0.4rem',
               fontSize: '0.9rem',
               fontWeight: 700,
-              color: '#2563eb',
+              color: 'var(--text-brand)',
               textDecoration: 'none',
             }}
           >
@@ -412,8 +412,8 @@ export default function ProposalDetailPage({
         {/* ═══════════════ MAIN PROFILE CARD ═══════════════ */}
         <div
           style={{
-            background: '#ffffff',
-            border: '1.5px solid #cbd5e1',
+            background: 'var(--bg-surface)',
+            border: '1.5px solid var(--border-strong)',
             borderRadius: '24px',
             padding: '2rem',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)',
@@ -428,31 +428,31 @@ export default function ProposalDetailPage({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-start',
-              borderBottom: '1.5px solid #f1f5f9',
+              borderBottom: '1.5px solid var(--border-color)',
               paddingBottom: '1.5rem',
               flexWrap: 'wrap',
               gap: '1rem',
             }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: '700px' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', borderRadius: '10px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', fontSize: '0.85rem', fontWeight: 800, width: 'fit-content' }}>
-                <BuildingIcon size={14} color="#1e40af" />
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', borderRadius: '10px', background: 'var(--tint-blue-bg)', border: '1px solid var(--tint-blue-border)', color: 'var(--text-brand-strong)', fontSize: '0.85rem', fontWeight: 800, width: 'fit-content' }}>
+                <BuildingIcon size={14} color="var(--text-brand-strong)" />
                 <span>{proposal.organization_unit || 'Liên Chi Đoàn'}</span>
               </div>
 
-              <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
                 {proposal.title}
               </h1>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', color: '#64748b', fontSize: '0.875rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <UserIcon size={15} color="#64748b" />
-                  <span>Người nộp: <strong style={{ color: '#0f172a' }}>{proposal.created_by}</strong></span>
+                  <UserIcon size={15} color="var(--text-muted)" />
+                  <span>Người nộp: <strong style={{ color: 'var(--text-primary)' }}>{proposal.created_by}</strong></span>
                 </div>
                 <span>•</span>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <CalendarIcon size={15} color="#64748b" />
-                  <span>Ngày nộp: <strong style={{ color: '#0f172a' }}>{new Date(proposal.created_at).toLocaleDateString('vi-VN')}</strong></span>
+                  <CalendarIcon size={15} color="var(--text-muted)" />
+                  <span>Ngày nộp: <strong style={{ color: 'var(--text-primary)' }}>{new Date(proposal.created_at).toLocaleDateString('vi-VN')}</strong></span>
                 </div>
               </div>
             </div>
@@ -460,18 +460,18 @@ export default function ProposalDetailPage({
             {/* Status Pill */}
             <div>
               {proposal.status === 'approved' ? (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.15rem', borderRadius: '20px', background: '#dcfce7', border: '1.5px solid #86efac', color: '#15803d', fontWeight: 800, fontSize: '0.9rem' }}>
-                  <CheckCircleIcon size={16} color="#15803d" />
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.15rem', borderRadius: '20px', background: 'var(--tint-green-strong)', border: '1.5px solid var(--tint-green-border)', color: 'var(--status-green-text)', fontWeight: 800, fontSize: '0.9rem' }}>
+                  <CheckCircleIcon size={16} color="var(--status-green-text)" />
                   <span>Đã Duyệt Chung Cuộc</span>
                 </div>
               ) : proposal.status === 'rejected' ? (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.15rem', borderRadius: '20px', background: '#fee2e2', border: '1.5px solid #fca5a5', color: '#991b1b', fontWeight: 800, fontSize: '0.9rem' }}>
-                  <CloseIcon size={16} color="#991b1b" />
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.15rem', borderRadius: '20px', background: 'var(--tint-red-strong)', border: '1.5px solid var(--tint-red-border)', color: 'var(--status-red-text)', fontWeight: 800, fontSize: '0.9rem' }}>
+                  <CloseIcon size={16} color="var(--status-red-text)" />
                   <span>Đã Từ Chối</span>
                 </div>
               ) : (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.15rem', borderRadius: '20px', background: '#fef3c7', border: '1.5px solid #fde68a', color: '#92400e', fontWeight: 800, fontSize: '0.9rem' }}>
-                  <ClockIcon size={16} color="#92400e" />
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.15rem', borderRadius: '20px', background: 'var(--tint-amber-strong)', border: '1.5px solid var(--tint-amber-border)', color: 'var(--status-amber-text)', fontWeight: 800, fontSize: '0.9rem' }}>
+                  <ClockIcon size={16} color="var(--status-amber-text)" />
                   <span>Đang Chờ Duyệt</span>
                 </div>
               )}
@@ -483,35 +483,35 @@ export default function ProposalDetailPage({
             <div
               style={{
                 padding: '1.25rem 1.5rem',
-                background: '#fffbeb',
+                background: 'var(--tint-amber-bg)',
                 border: '2px solid #f59e0b',
                 borderRadius: '16px',
                 boxShadow: '0 4px 14px rgba(245, 158, 11, 0.12)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b45309', fontWeight: 800, fontSize: '1.05rem' }}>
-                <AlertTriangleIcon size={20} color="#b45309" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--status-amber-text)', fontWeight: 800, fontSize: '1.05rem' }}>
+                <AlertTriangleIcon size={20} color="var(--status-amber-text)" />
                 <span>CẢNH BÁO: ĐƠN VỊ CÓ LỊCH SỬ ĐÁNH GIÁ THẤP ({proposal.ratingSummary?.average_stars} sao)</span>
               </div>
-              <p style={{ margin: '0.4rem 0 0.75rem', fontSize: '0.9rem', color: '#92400e', lineHeight: 1.5 }}>
+              <p style={{ margin: '0.4rem 0 0.75rem', fontSize: '0.9rem', color: 'var(--status-amber-text)', lineHeight: 1.5 }}>
                 Đơn vị <strong>{proposal.organization_unit}</strong> từng nhận đánh giá <strong>1, 2 hoặc 3 sao</strong> từ các phòng ban ở các chương trình trước. Các cấp phê duyệt vui lòng kiểm tra kỹ kế hoạch và bổ sung ghi chú dặn dò trước khi duyệt.
               </p>
 
               {recentLowRatings.length > 0 && (
-                <div style={{ background: '#ffffff', borderRadius: '12px', padding: '0.85rem 1.15rem', border: '1px solid #fde68a' }}>
+                <div style={{ background: 'var(--bg-surface)', borderRadius: '12px', padding: '0.85rem 1.15rem', border: '1px solid var(--tint-amber-border)' }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#78350f', textTransform: 'uppercase' }}>
                     Chi tiết các đánh giá thấp trước đây:
                   </span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                     {recentLowRatings.map((r, idx) => (
-                      <div key={idx} style={{ fontSize: '0.875rem', color: '#334155', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <span style={{ color: '#d97706', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-                          <StarIcon size={13} color="#d97706" fill="#d97706" />
+                      <div key={idx} style={{ fontSize: '0.875rem', color: 'var(--text-body)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--status-amber-text)', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                          <StarIcon size={13} color="var(--status-amber-text)" fill="#d97706" />
                           <span>{r.stars} / 5 sao</span>
                         </span>
-                        <strong style={{ color: '#0f172a' }}>[{getRatingDepartmentLabel(r.rater_tier)}]:</strong>
+                        <strong style={{ color: 'var(--text-primary)' }}>[{getRatingDepartmentLabel(r.rater_tier)}]:</strong>
                         <span>&quot;{r.feedback || 'Không có nhận xét chi tiết'}&quot;</span>
-                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: 'auto' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginLeft: 'auto' }}>
                           {new Date(r.created_at).toLocaleDateString('vi-VN')}
                         </span>
                       </div>
@@ -527,14 +527,14 @@ export default function ProposalDetailPage({
             <div
               style={{
                 padding: '1.25rem 1.5rem',
-                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-                border: '2px solid #86efac',
+                background: 'var(--tint-green-bg)',
+                border: '2px solid var(--tint-green-border)',
                 borderRadius: '16px',
                 boxShadow: '0 4px 14px rgba(34, 197, 94, 0.12)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#15803d', fontWeight: 800, fontSize: '1.05rem', marginBottom: '0.85rem' }}>
-                <MessageSquareIcon size={18} color="#15803d" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--status-green-text)', fontWeight: 800, fontSize: '1.05rem', marginBottom: '0.85rem' }}>
+                <MessageSquareIcon size={18} color="var(--status-green-text)" />
                 <span>Ý KIẾN & CĂN DẶN TỪ CÁC CẤP PHÊ DUYỆT DÀNH CHO ĐƠN VỊ:</span>
               </div>
 
@@ -543,27 +543,27 @@ export default function ProposalDetailPage({
                   <div
                     key={log.id}
                     style={{
-                      background: '#ffffff',
+                      background: 'var(--bg-surface)',
                       borderRadius: '12px',
                       padding: '1rem 1.25rem',
-                      border: '1.5px solid #bbf7d0',
+                      border: '1.5px solid var(--tint-green-border)',
                       boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.25rem' }}>
-                      <span style={{ fontWeight: 800, fontSize: '0.925rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <BuildingIcon size={14} color="#166534" />
+                      <span style={{ fontWeight: 800, fontSize: '0.925rem', color: 'var(--status-green-text)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <BuildingIcon size={14} color="var(--status-green-text)" />
                         <span>{getStageDepartmentName(log.stage, log.actor_email || '')}</span>
                         {log.actor_email && (
-                          <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>({log.actor_email})</span>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>({log.actor_email})</span>
                         )}
                       </span>
-                      <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                         {new Date(log.created_at).toLocaleString('vi-VN')}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '1rem', color: '#0f172a', lineHeight: 1.5, fontWeight: 600, background: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
+                    <div style={{ fontSize: '1rem', color: 'var(--text-primary)', lineHeight: 1.5, fontWeight: 600, background: 'var(--bg-subtle)', padding: '0.65rem 0.85rem', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
                       &quot;{log.notes}&quot;
                     </div>
                   </div>
@@ -577,8 +577,8 @@ export default function ProposalDetailPage({
             <div
               style={{
                 padding: '1.25rem 1.5rem',
-                background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-                border: '1.5px solid #a7f3d0',
+                background: 'var(--tint-green-bg)',
+                border: '1.5px solid var(--tint-green-border)',
                 borderRadius: '16px',
                 display: 'flex',
                 alignItems: 'center',
@@ -588,7 +588,7 @@ export default function ProposalDetailPage({
               }}
             >
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#047857', fontWeight: 700 }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--status-green-text)', fontWeight: 700 }}>
                   Kế hoạch đã hoàn tất duyệt & Kích hoạt sự kiện chính thức:
                 </span>
                 <div style={{ fontWeight: 800, fontSize: '1.15rem', color: '#065f46', marginTop: '0.2rem' }}>
@@ -622,9 +622,9 @@ export default function ProposalDetailPage({
                   target="_blank"
                   style={{
                     padding: '0.65rem 1.25rem',
-                    background: '#ffffff',
-                    color: '#059669',
-                    border: '1.5px solid #a7f3d0',
+                    background: 'var(--bg-surface)',
+                    color: 'var(--status-green-text)',
+                    border: '1.5px solid var(--tint-green-border)',
                     borderRadius: '10px',
                     fontWeight: 700,
                     fontSize: '0.9rem',
@@ -639,9 +639,9 @@ export default function ProposalDetailPage({
                   target="_blank"
                   style={{
                     padding: '0.65rem 1.25rem',
-                    background: '#eff6ff',
-                    color: '#2563eb',
-                    border: '1.5px solid #bfdbfe',
+                    background: 'var(--tint-blue-bg)',
+                    color: 'var(--text-brand)',
+                    border: '1.5px solid var(--tint-blue-border)',
                     borderRadius: '10px',
                     fontWeight: 700,
                     fontSize: '0.9rem',
@@ -659,8 +659,8 @@ export default function ProposalDetailPage({
             <div
               style={{
                 padding: '1.25rem 1.5rem',
-                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                border: '1.5px solid #bfdbfe',
+                background: 'var(--tint-blue-bg)',
+                border: '1.5px solid var(--tint-blue-border)',
                 borderRadius: '16px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -669,11 +669,11 @@ export default function ProposalDetailPage({
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
-                  <span style={{ fontSize: '0.85rem', color: '#1e40af', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <ShieldCheckIcon size={16} color="#1e40af" />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-brand-strong)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <ShieldCheckIcon size={16} color="var(--text-brand-strong)" />
                     <span>Thao tác phê duyệt thẩm quyền của bạn:</span>
                   </span>
-                  <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1e3a8a', marginTop: '0.2rem' }}>
+                  <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-brand-strong)', marginTop: '0.2rem' }}>
                     {proposal.current_stage === 'super_admin' ? 'Xác nhận phê duyệt & Mở sự kiện' : getStageLabel(proposal.current_stage)}
                   </div>
                 </div>
@@ -704,9 +704,9 @@ export default function ProposalDetailPage({
                       )}&date=${proposal.start_date}&start=${proposal.start_time}&end=${proposal.end_time}`}
                       style={{
                         padding: '0.65rem 1.25rem',
-                        background: '#eff6ff',
-                        color: '#2563eb',
-                        border: '1.5px solid #bfdbfe',
+                        background: 'var(--tint-blue-bg)',
+                        color: 'var(--text-brand)',
+                        border: '1.5px solid var(--tint-blue-border)',
                         borderRadius: '10px',
                         fontWeight: 700,
                         fontSize: '0.9rem',
@@ -730,9 +730,9 @@ export default function ProposalDetailPage({
                     disabled={actionLoading}
                     style={{
                       padding: '0.65rem 1.25rem',
-                      background: '#ffffff',
-                      color: '#dc2626',
-                      border: '1.5px solid #fecaca',
+                      background: 'var(--bg-surface)',
+                      color: 'var(--status-red-text)',
+                      border: '1.5px solid var(--tint-red-border)',
                       borderRadius: '10px',
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -755,10 +755,10 @@ export default function ProposalDetailPage({
                     width: '100%',
                     padding: '0.75rem 1rem',
                     borderRadius: '10px',
-                    border: '1.5px solid #bfdbfe',
+                    border: '1.5px solid var(--tint-blue-border)',
                     fontSize: '0.9rem',
-                    background: '#ffffff',
-                    color: '#1e293b',
+                    background: 'var(--bg-surface)',
+                    color: 'var(--text-body)',
                     boxSizing: 'border-box',
                     outline: 'none',
                   }}
@@ -772,53 +772,53 @@ export default function ProposalDetailPage({
             <div
               style={{
                 padding: '1.25rem 1.5rem',
-                background: roomConflicts.length > 0 ? '#fef2f2' : isLongBooking ? '#fffbeb' : '#f8fafc',
-                border: roomConflicts.length > 0 ? '2px solid #fca5a5' : isLongBooking ? '2px solid #f59e0b' : '1.5px solid #e2e8f0',
+                background: roomConflicts.length > 0 ? 'var(--tint-red-bg)' : isLongBooking ? 'var(--tint-amber-bg)' : 'var(--bg-subtle)',
+                border: roomConflicts.length > 0 ? '2px solid var(--tint-red-border)' : isLongBooking ? '2px solid #f59e0b' : '1.5px solid var(--border-color)',
                 borderRadius: '16px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.6rem',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: roomConflicts.length > 0 ? '#b91c1c' : isLongBooking ? '#b45309' : '#0f172a', fontWeight: 800, fontSize: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: roomConflicts.length > 0 ? 'var(--status-red-text)' : isLongBooking ? 'var(--status-amber-text)' : 'var(--text-primary)', fontWeight: 800, fontSize: '1rem' }}>
                 {roomConflicts.length > 0 || isLongBooking ? (
                   <AlertTriangleIcon size={18} color={roomConflicts.length > 0 ? '#b91c1c' : '#b45309'} />
                 ) : (
-                  <MapPinIcon size={18} color="#2563eb" />
+                  <MapPinIcon size={18} color="var(--text-brand)" />
                 )}
                 <span>LỊCH MƯỢN PHÒNG THỰC TẾ</span>
               </div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.5 }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.5 }}>
                 {bookingSummary}
               </div>
               {isLongBooking && (
-                <div style={{ fontSize: '0.875rem', color: '#92400e', lineHeight: 1.5 }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--status-amber-text)', lineHeight: 1.5 }}>
                   {bookingSchedule.mode === 'daily'
                     ? `Kế hoạch này giữ phòng ${bookingSchedule.slots.length} ngày liên tiếp theo khung giờ trên. Nếu thực tế chỉ dùng một số buổi, đơn vị nên nộp theo chế độ "Nhiều Ca" để không chặn lịch của đơn vị khác.`
                     : 'Kế hoạch này giữ phòng liên tục qua nhiều ngày (kể cả ban đêm). Vui lòng kiểm tra kỹ trước khi duyệt.'}
                 </div>
               )}
               {roomConflicts.length > 0 ? (
-                <div style={{ background: '#ffffff', borderRadius: '12px', padding: '0.85rem 1.15rem', border: '1px solid #fecaca', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase' }}>
+                <div style={{ background: 'var(--bg-surface)', borderRadius: '12px', padding: '0.85rem 1.15rem', border: '1px solid var(--tint-red-border)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--status-red-text)', textTransform: 'uppercase' }}>
                     Trùng lịch phòng với chương trình khác ({roomConflicts.length}):
                   </span>
                   {roomConflicts.slice(0, 10).map((c, i) => (
                     <Link
                       key={`${c.other_id}-${c.slot_key}-${i}`}
                       href={`/admin/proposals/${c.other_id}`}
-                      style={{ fontSize: '0.875rem', color: '#7f1d1d', lineHeight: 1.5, textDecoration: 'none' }}
+                      style={{ fontSize: '0.875rem', color: 'var(--status-red-text)', lineHeight: 1.5, textDecoration: 'none' }}
                     >
                       • {describeConflict(c)}
                     </Link>
                   ))}
                   {roomConflicts.length > 10 && (
-                    <span style={{ fontSize: '0.8rem', color: '#991b1b' }}>… và {roomConflicts.length - 10} ca trùng khác.</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--status-red-text)' }}>… và {roomConflicts.length - 10} ca trùng khác.</span>
                   )}
                 </div>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: '#15803d', fontWeight: 700 }}>
-                  <CheckCircleIcon size={15} color="#15803d" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--status-green-text)', fontWeight: 700 }}>
+                  <CheckCircleIcon size={15} color="var(--status-green-text)" />
                   <span>Không trùng lịch phòng với chương trình nào khác đang chờ duyệt / đã duyệt.</span>
                 </div>
               )}
@@ -831,47 +831,47 @@ export default function ProposalDetailPage({
             gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
             gap: '0.75rem',
             padding: '1.25rem',
-            background: '#f8fafc',
-            border: '1.5px solid #e2e8f0',
+            background: 'var(--bg-subtle)',
+            border: '1.5px solid var(--border-color)',
             borderRadius: '16px',
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Ngày tổ chức</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase' }}>Ngày tổ chức</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {isMultiDay
                   ? `${formatDateVN(proposal.start_date)} → ${formatDateVN(proposal.end_date)}`
                   : formatDateVN(proposal.start_date)}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Thời gian</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase' }}>Thời gian</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {proposal.start_time?.slice(0, 5)} – {proposal.end_time?.slice(0, 5)}
                 {isMultiDay && bookingSchedule.mode === 'daily' && (
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}> (mỗi ngày)</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}> (mỗi ngày)</span>
                 )}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Quy mô</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase' }}>Quy mô</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {(proposal.participant_count || 0) + (proposal.volunteer_count || 0) + (proposal.organizer_count || 0)} người
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                   {' '}({proposal.participant_count || 0} SV, {proposal.volunteer_count || 0} CTV, {proposal.organizer_count || 0} BTC)
                 </span>
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Khóa SV được đăng ký</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.allowed_cohorts && proposal.allowed_cohorts.length > 0 ? '#b91c1c' : '#15803d' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase' }}>Khóa SV được đăng ký</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.allowed_cohorts && proposal.allowed_cohorts.length > 0 ? 'var(--status-red-text)' : 'var(--status-green-text)' }}>
                 {proposal.allowed_cohorts && proposal.allowed_cohorts.length > 0
                   ? `Chỉ khóa ${proposal.allowed_cohorts.join(', ')}`
                   : 'Tất cả khóa (Full khóa)'}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Phạm vi Liên Chi Đoàn</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.allowed_lcds && proposal.allowed_lcds.length > 0 ? '#7c3aed' : '#15803d' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase' }}>Phạm vi Liên Chi Đoàn</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.allowed_lcds && proposal.allowed_lcds.length > 0 ? 'var(--status-purple-text)' : 'var(--status-green-text)' }}>
                 {proposal.allowed_lcds && proposal.allowed_lcds.length > 0
                   ? `Chỉ ${formatLcdsLabel(proposal.allowed_lcds)}`
                   : 'Toàn Học viện (Tất cả LCĐ)'}
@@ -879,40 +879,40 @@ export default function ProposalDetailPage({
             </div>
             {/* ── BẢNG TÓM TẮT LỊCH TRÌNH & ĐỊA ĐIỂM CÁC CA ── */}
             <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Lịch Trình & Địa Điểm Các Ca</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Lịch Trình & Địa Điểm Các Ca</span>
               {proposal.sessions && proposal.sessions.length > 0 ? (
-                <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
+                <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1.5px solid var(--border-color)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                     <thead>
-                      <tr style={{ background: '#f1f5f9' }}>
-                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Ca</th>
-                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Ngày</th>
-                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Giờ</th>
-                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Địa điểm / Phòng</th>
-                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Số lượng</th>
-                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: '#334155', fontSize: '0.78rem', borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>Trạng thái</th>
+                      <tr style={{ background: 'var(--bg-muted)' }}>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.78rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>Ca</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.78rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>Ngày</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.78rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>Giờ</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.78rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>Địa điểm / Phòng</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.78rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>Số lượng</th>
+                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 800, color: 'var(--text-body)', fontSize: '0.78rem', borderBottom: '1.5px solid var(--border-color)', whiteSpace: 'nowrap' }}>Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody>
                       {proposal.sessions.map((sess: any, idx: number) => (
-                        <tr key={sess.id || idx} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: '#1e1b4b', whiteSpace: 'nowrap' }}>
+                        <tr key={sess.id || idx} style={{ background: idx % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                             <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#7e22ce', color: '#fff', fontSize: '0.7rem', fontWeight: 800, marginRight: '0.4rem' }}>{idx + 1}</span>
                             {sess.name || `Buổi ${idx + 1}`}
                           </td>
-                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                             {sess.session_date ? new Date(sess.session_date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' }) : '—'}
                           </td>
-                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                             {sess.start_time?.slice(0, 5) || '??'} – {sess.end_time?.slice(0, 5) || '??'}
                           </td>
                           <td style={{
                             padding: '0.55rem 0.75rem',
                             fontWeight: 700,
-                            color: sess.room_name && sess.room_name !== 'Không mượn' ? '#0f172a' : '#94a3b8',
+                            color: sess.room_name && sess.room_name !== 'Không mượn' ? 'var(--text-primary)' : 'var(--text-subtle)',
                           }}>
                             {sess.room_name && sess.room_name !== 'Không mượn' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: roomConflicts.some((c) => c.slot_key === sess.id) ? '#b91c1c' : undefined }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: roomConflicts.some((c) => c.slot_key === sess.id) ? 'var(--status-red-text)' : undefined }}>
                                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: roomConflicts.some((c) => c.slot_key === sess.id) ? '#dc2626' : '#16a34a', flexShrink: 0 }} />
                                 {sess.room_name}
                                 {roomConflicts.some((c) => c.slot_key === sess.id) && ' (trùng lịch)'}
@@ -921,10 +921,10 @@ export default function ProposalDetailPage({
                               'Không mượn phòng'
                             )}
                           </td>
-                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                             {sess.participant_count ? `${sess.participant_count} người` : '—'}
                           </td>
-                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, whiteSpace: 'nowrap', color: sess.status === 'rejected' ? '#991b1b' : (sess.status === 'approved' || proposal.status === 'approved') ? '#166534' : '#475569' }}>
+                          <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, whiteSpace: 'nowrap', color: sess.status === 'rejected' ? 'var(--status-red-text)' : (sess.status === 'approved' || proposal.status === 'approved') ? 'var(--status-green-text)' : 'var(--text-secondary)' }}>
                             {sess.status === 'rejected' ? 'Từ chối' : (sess.status === 'approved' || proposal.status === 'approved') ? 'Đã duyệt' : 'Chờ duyệt'}
                           </td>
                         </tr>
@@ -933,20 +933,20 @@ export default function ProposalDetailPage({
                   </table>
                 </div>
               ) : (
-                <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.room_name && proposal.room_name !== 'Không mượn' ? '#0f172a' : '#94a3b8' }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 800, color: proposal.room_name && proposal.room_name !== 'Không mượn' ? 'var(--text-primary)' : 'var(--text-subtle)' }}>
                   {proposal.room_name && proposal.room_name !== 'Không mượn' ? proposal.room_name : 'Không mượn phòng'}
                 </span>
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>🏢 Đơn vị</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase' }}>🏢 Đơn vị</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {proposal.organization_unit || 'Không rõ'}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>📝 Học kỳ</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase' }}>📝 Học kỳ</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {proposal.semester || '—'}
               </span>
             </div>
@@ -956,14 +956,14 @@ export default function ProposalDetailPage({
           {proposal.sessions && proposal.sessions.length > 0 && (
             <div style={{
               padding: '1.25rem',
-              background: '#faf5ff',
-              border: '1.5px solid #e9d5ff',
+              background: 'var(--tint-purple-bg)',
+              border: '1.5px solid var(--tint-purple-border)',
               borderRadius: '16px',
             }}>
               <h3 style={{
                 fontSize: '1rem',
                 fontWeight: 800,
-                color: '#581c87',
+                color: 'var(--status-purple-text)',
                 margin: '0 0 0.85rem 0',
                 display: 'flex',
                 alignItems: 'center',
@@ -982,8 +982,8 @@ export default function ProposalDetailPage({
                       alignItems: 'start',
                       padding: '0.85rem 1rem',
                       borderRadius: '12px',
-                      background: '#ffffff',
-                      border: (sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? '1.5px solid #86efac' : sess.status === 'rejected' ? '1.5px solid #fca5a5' : '1.5px solid #e2e8f0',
+                      background: 'var(--bg-surface)',
+                      border: (sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? '1.5px solid var(--tint-green-border)' : sess.status === 'rejected' ? '1.5px solid var(--tint-red-border)' : '1.5px solid var(--border-color)',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                     }}
                   >
@@ -995,7 +995,7 @@ export default function ProposalDetailPage({
                       gap: '0.5rem',
                       flexWrap: 'wrap',
                     }}>
-                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1e1b4b' }}>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                         Ca {idx + 1}: {sess.name || `Buổi ${idx + 1}`}
                       </span>
                       {sess.status && (
@@ -1004,8 +1004,8 @@ export default function ProposalDetailPage({
                           fontWeight: 700,
                           padding: '0.2rem 0.6rem',
                           borderRadius: '12px',
-                          background: (sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? '#dcfce7' : sess.status === 'rejected' ? '#fee2e2' : '#f1f5f9',
-                          color: (sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? '#166534' : sess.status === 'rejected' ? '#991b1b' : '#475569',
+                          background: (sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? 'var(--tint-green-strong)' : sess.status === 'rejected' ? 'var(--tint-red-strong)' : 'var(--bg-muted)',
+                          color: (sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? 'var(--status-green-text)' : sess.status === 'rejected' ? 'var(--status-red-text)' : 'var(--text-secondary)',
                           textTransform: 'uppercase',
                         }}>
                           {(sess.status === 'approved' || (proposal.status === 'approved' && sess.status !== 'rejected')) ? '✅ Đã duyệt' : sess.status === 'rejected' ? '❌ Từ chối' : '⏳ Chờ duyệt'}
@@ -1013,20 +1013,20 @@ export default function ProposalDetailPage({
                       )}
                     </div>
 
-                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>📅 Ngày:</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>📅 Ngày:</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                       {sess.session_date ? new Date(sess.session_date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
                     </span>
 
-                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>⏰ Giờ:</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>⏰ Giờ:</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                       {sess.start_time?.slice(0, 5) || '??'} – {sess.end_time?.slice(0, 5) || '??'}
                     </span>
 
                     {(sess.room_name || sess.room_id) && (
                       <>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>📍 Phòng:</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>📍 Phòng:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                           {sess.room_name || sess.room_id || '—'}
                         </span>
                       </>
@@ -1034,8 +1034,8 @@ export default function ProposalDetailPage({
 
                     {sess.participant_count != null && sess.participant_count > 0 && (
                       <>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>👥 Số lượng:</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>👥 Số lượng:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                           {sess.participant_count} người
                         </span>
                       </>
@@ -1043,8 +1043,8 @@ export default function ProposalDetailPage({
 
                     {sess.purpose && (
                       <>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>📝 Mục đích:</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>📝 Mục đích:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-body)' }}>
                           {sess.purpose}
                         </span>
                       </>
@@ -1052,8 +1052,8 @@ export default function ProposalDetailPage({
 
                     {sess.rejection_reason && (
                       <>
-                        <span style={{ fontSize: '0.8rem', color: '#dc2626', fontWeight: 600 }}>⚠️ Lý do từ chối:</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#dc2626' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--status-red-text)', fontWeight: 600 }}>⚠️ Lý do từ chối:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--status-red-text)' }}>
                           {sess.rejection_reason}
                         </span>
                       </>
@@ -1066,8 +1066,8 @@ export default function ProposalDetailPage({
 
           {/* ═══════════════ TIẾN TRÌNH THẨM ĐỊNH KẾ HOẠCH ═══════════════ */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <ShieldCheckIcon size={20} color="#2563eb" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <ShieldCheckIcon size={20} color="var(--text-brand)" />
               <span>Tiến Trình Phê Duyệt Kế Hoạch:</span>
             </h3>
 
@@ -1080,8 +1080,8 @@ export default function ProposalDetailPage({
                   justifyContent: 'space-between',
                   padding: '1rem 1.25rem',
                   borderRadius: '14px',
-                  border: getStepStatus('youth_union') === 'done' ? '1.5px solid #86efac' : getStepStatus('youth_union') === 'skipped' ? '1.5px solid #e2e8f0' : '1.5px solid #bbf7d0',
-                  background: getStepStatus('youth_union') === 'done' ? '#f0fdf4' : getStepStatus('youth_union') === 'skipped' ? '#f8fafc' : '#ffffff',
+                  border: getStepStatus('youth_union') === 'done' ? '1.5px solid var(--tint-green-border)' : getStepStatus('youth_union') === 'skipped' ? '1.5px solid var(--border-color)' : '1.5px solid var(--tint-green-border)',
+                  background: getStepStatus('youth_union') === 'done' ? 'var(--tint-green-bg)' : getStepStatus('youth_union') === 'skipped' ? 'var(--bg-subtle)' : 'var(--bg-surface)',
                   opacity: getStepStatus('youth_union') === 'skipped' ? 0.65 : 1,
                   boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
                   flexWrap: 'wrap',
@@ -1106,11 +1106,11 @@ export default function ProposalDetailPage({
                     {getStepStatus('youth_union') === 'done' ? '✓' : getStepStatus('youth_union') === 'skipped' ? '—' : '1'}
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                       1. Đoàn TNCS Học Viện Xét Duyệt
                       {getStepStatus('youth_union') === 'skipped' && ' — Tự động miễn duyệt (Đơn vị Khoa)'}
                     </div>
-                    <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.15rem' }}>
+                    <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                       {getStepStatus('youth_union') === 'done'
                         ? '✓ Đã xét duyệt nội dung & chấp thuận kế hoạch'
                         : getStepStatus('youth_union') === 'skipped'
@@ -1126,8 +1126,8 @@ export default function ProposalDetailPage({
                     fontWeight: 800,
                     padding: '0.3rem 0.75rem',
                     borderRadius: '20px',
-                    background: getStepStatus('youth_union') === 'done' ? '#dcfce7' : getStepStatus('youth_union') === 'skipped' ? '#f1f5f9' : '#dcfce7',
-                    color: getStepStatus('youth_union') === 'done' ? '#166534' : getStepStatus('youth_union') === 'skipped' ? '#64748b' : '#15803d',
+                    background: getStepStatus('youth_union') === 'done' ? 'var(--tint-green-strong)' : getStepStatus('youth_union') === 'skipped' ? 'var(--bg-muted)' : 'var(--tint-green-strong)',
+                    color: getStepStatus('youth_union') === 'done' ? 'var(--status-green-text)' : getStepStatus('youth_union') === 'skipped' ? 'var(--text-muted)' : 'var(--status-green-text)',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -1143,8 +1143,8 @@ export default function ProposalDetailPage({
                   justifyContent: 'space-between',
                   padding: '1rem 1.25rem',
                   borderRadius: '14px',
-                  border: getStepStatus('ctsv') === 'done' ? '1.5px solid #86efac' : getStepStatus('ctsv') === 'skipped' ? '1.5px solid #e2e8f0' : '1.5px solid #bfdbfe',
-                  background: getStepStatus('ctsv') === 'done' ? '#f0fdf4' : getStepStatus('ctsv') === 'skipped' ? '#f8fafc' : '#ffffff',
+                  border: getStepStatus('ctsv') === 'done' ? '1.5px solid var(--tint-green-border)' : getStepStatus('ctsv') === 'skipped' ? '1.5px solid var(--border-color)' : '1.5px solid var(--tint-blue-border)',
+                  background: getStepStatus('ctsv') === 'done' ? 'var(--tint-green-bg)' : getStepStatus('ctsv') === 'skipped' ? 'var(--bg-subtle)' : 'var(--bg-surface)',
                   opacity: getStepStatus('ctsv') === 'skipped' ? 0.65 : 1,
                   boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
                   flexWrap: 'wrap',
@@ -1169,11 +1169,11 @@ export default function ProposalDetailPage({
                     {getStepStatus('ctsv') === 'done' ? '✓' : getStepStatus('ctsv') === 'skipped' ? '—' : '2'}
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                       2. Phòng Công Tác Sinh Viên (CTSV) Thẩm Định
                       {getStepStatus('ctsv') === 'skipped' && (isDirectFaculty ? ' — Tự động miễn duyệt (Đơn vị Khoa)' : ' — Tự động miễn duyệt (≤50 người)')}
                     </div>
-                    <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.15rem' }}>
+                    <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                       {getStepStatus('ctsv') === 'done'
                         ? '✓ Đã phê duyệt phương án và nội dung sinh viên tham gia'
                         : getStepStatus('ctsv') === 'current'
@@ -1191,8 +1191,8 @@ export default function ProposalDetailPage({
                     fontWeight: 800,
                     padding: '0.3rem 0.75rem',
                     borderRadius: '20px',
-                    background: getStepStatus('ctsv') === 'done' ? '#dcfce7' : getStepStatus('ctsv') === 'current' ? '#dbeafe' : '#f1f5f9',
-                    color: getStepStatus('ctsv') === 'done' ? '#166534' : getStepStatus('ctsv') === 'current' ? '#1e40af' : '#64748b',
+                    background: getStepStatus('ctsv') === 'done' ? 'var(--tint-green-strong)' : getStepStatus('ctsv') === 'current' ? 'var(--tint-blue-strong)' : 'var(--bg-muted)',
+                    color: getStepStatus('ctsv') === 'done' ? 'var(--status-green-text)' : getStepStatus('ctsv') === 'current' ? 'var(--text-brand-strong)' : 'var(--text-muted)',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -1208,8 +1208,8 @@ export default function ProposalDetailPage({
                   justifyContent: 'space-between',
                   padding: '1rem 1.25rem',
                   borderRadius: '14px',
-                  border: getStepStatus('facility') === 'done' ? '1.5px solid #86efac' : '1.5px solid #e2e8f0',
-                  background: getStepStatus('facility') === 'done' ? '#f0fdf4' : getStepStatus('facility') === 'skipped' ? '#f8fafc' : '#ffffff',
+                  border: getStepStatus('facility') === 'done' ? '1.5px solid var(--tint-green-border)' : '1.5px solid var(--border-color)',
+                  background: getStepStatus('facility') === 'done' ? 'var(--tint-green-bg)' : getStepStatus('facility') === 'skipped' ? 'var(--bg-subtle)' : 'var(--bg-surface)',
                   opacity: getStepStatus('facility') === 'skipped' ? 0.65 : 1,
                   boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
                   flexWrap: 'wrap',
@@ -1234,11 +1234,11 @@ export default function ProposalDetailPage({
                     {getStepStatus('facility') === 'done' ? '✓' : getStepStatus('facility') === 'skipped' ? '—' : '3'}
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                       3. Phòng. TC-HC-QT Cấp Phòng
                       {!proposal.requires_facility_approval && ' — Tự động miễn duyệt (Không mượn phòng)'}
                     </div>
-                    <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '0.15rem' }}>
+                    <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                       {getStepStatus('facility') === 'done'
                         ? `✓ Đã duyệt cấp phòng "${proposal.room_name}" & Kích hoạt sự kiện`
                         : getStepStatus('facility') === 'current'
@@ -1256,8 +1256,8 @@ export default function ProposalDetailPage({
                     fontWeight: 800,
                     padding: '0.3rem 0.75rem',
                     borderRadius: '20px',
-                    background: getStepStatus('facility') === 'done' ? '#dcfce7' : getStepStatus('facility') === 'current' ? '#ffedd5' : '#f1f5f9',
-                    color: getStepStatus('facility') === 'done' ? '#166534' : getStepStatus('facility') === 'current' ? '#c2410c' : '#64748b',
+                    background: getStepStatus('facility') === 'done' ? 'var(--tint-green-strong)' : getStepStatus('facility') === 'current' ? 'var(--tint-amber-strong)' : 'var(--bg-muted)',
+                    color: getStepStatus('facility') === 'done' ? 'var(--status-green-text)' : getStepStatus('facility') === 'current' ? 'var(--status-amber-text)' : 'var(--text-muted)',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -1271,8 +1271,8 @@ export default function ProposalDetailPage({
           <div
             style={{
               padding: '1.5rem',
-              background: '#f8fafc',
-              border: '1.5px solid #e2e8f0',
+              background: 'var(--bg-subtle)',
+              border: '1.5px solid var(--border-color)',
               borderRadius: '18px',
               display: 'flex',
               flexDirection: 'column',
@@ -1281,8 +1281,8 @@ export default function ProposalDetailPage({
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <FileTextIcon size={20} color="#2563eb" />
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                <FileTextIcon size={20} color="var(--text-brand)" />
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   Kế Hoạch Sơ Bộ & Tài Liệu Đính Kèm
                 </h3>
               </div>
@@ -1316,11 +1316,11 @@ export default function ProposalDetailPage({
             {proposal.description ? (
               <div
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--bg-surface)',
                   padding: '1rem 1.25rem',
                   borderRadius: '12px',
-                  border: '1px solid #cbd5e1',
-                  color: '#334155',
+                  border: '1px solid var(--border-strong)',
+                  color: 'var(--text-body)',
                   fontSize: '0.925rem',
                   lineHeight: 1.6,
                   whiteSpace: 'pre-line',
@@ -1329,7 +1329,7 @@ export default function ProposalDetailPage({
                 {proposal.description}
               </div>
             ) : (
-              <div style={{ color: '#94a3b8', fontSize: '0.875rem', fontStyle: 'italic' }}>
+              <div style={{ color: 'var(--text-subtle)', fontSize: '0.875rem', fontStyle: 'italic' }}>
                 Đơn vị không đính kèm mô tả sơ bộ bằng văn bản.
               </div>
             )}
@@ -1337,45 +1337,45 @@ export default function ProposalDetailPage({
 
           {/* ═══════════════ THÔNG TIN CHI TIẾT SỰ KIỆN (4 CARDS GRID) ═══════════════ */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
-            <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <ClockIcon size={14} color="#64748b" />
+            <div style={{ background: 'var(--bg-subtle)', border: '1.5px solid var(--border-color)', borderRadius: '16px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <ClockIcon size={14} color="var(--text-muted)" />
                 <span>Giờ Bắt Đầu</span>
               </span>
-              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {proposal.start_time.slice(0, 5)} ngày {new Date(proposal.start_date).toLocaleDateString('vi-VN')}
               </span>
             </div>
 
-            <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <ClockIcon size={14} color="#64748b" />
+            <div style={{ background: 'var(--bg-subtle)', border: '1.5px solid var(--border-color)', borderRadius: '16px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <ClockIcon size={14} color="var(--text-muted)" />
                 <span>Giờ Kết Thúc</span>
               </span>
-              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {proposal.end_time.slice(0, 5)} ngày {new Date(proposal.end_date).toLocaleDateString('vi-VN')}
               </span>
             </div>
 
-            <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <MapPinIcon size={14} color="#64748b" />
+            <div style={{ background: 'var(--bg-subtle)', border: '1.5px solid var(--border-color)', borderRadius: '16px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <MapPinIcon size={14} color="var(--text-muted)" />
                 <span>Địa Điểm Tổ Chức</span>
               </span>
-              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {proposal.room_name}
               </span>
             </div>
 
-            <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <UsersIcon size={14} color="#64748b" />
+            <div style={{ background: 'var(--bg-subtle)', border: '1.5px solid var(--border-color)', borderRadius: '16px', padding: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <UsersIcon size={14} color="var(--text-muted)" />
                 <span>Tổng Quy Mô Dự Kiến</span>
               </span>
-              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {proposal.total_count} người
               </span>
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 ({proposal.participant_count} SV, {proposal.volunteer_count} CTV, {proposal.organizer_count} BTC)
               </span>
             </div>
@@ -1387,43 +1387,43 @@ export default function ProposalDetailPage({
               style={{
                 marginTop: '1rem',
                 padding: '1.5rem',
-                background: '#f8fafc',
-                border: '1.5px solid #cbd5e1',
+                background: 'var(--bg-subtle)',
+                border: '1.5px solid var(--border-strong)',
                 borderRadius: '16px',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <StarIcon size={18} color="#f59e0b" />
                     <span>Đánh Giá Chất Lượng Tổ Chức Sau Chương Trình</span>
                   </h3>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     Dành cho 4 cấp Ban ngành đánh giá (1-3 sao sẽ kích hoạt cảnh báo lưu ý cho lần trình kế hoạch sau)
                   </p>
                 </div>
 
                 {proposal.eventRatings && proposal.eventRatings.length > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ffffff', padding: '0.4rem 0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-surface)', padding: '0.4rem 0.8rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                     <StarIcon size={16} color="#f59e0b" fill="#f59e0b" />
-                    <span style={{ fontSize: '1rem', color: '#0f172a', fontWeight: 800 }}>
+                    <span style={{ fontSize: '1rem', color: 'var(--text-primary)', fontWeight: 800 }}>
                       {(proposal.eventRatings.reduce((a, c) => a + c.stars, 0) / proposal.eventRatings.length).toFixed(1)} / 5
                     </span>
-                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>({proposal.eventRatings.length} lượt đánh giá)</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>({proposal.eventRatings.length} lượt đánh giá)</span>
                   </div>
                 )}
               </div>
 
               {/* Form gửi đánh giá cho Approver */}
               {isApproverRole && (
-                <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1.25rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#334155', marginBottom: '0.5rem' }}>
-                    Gửi nhận xét từ: <span style={{ color: '#2563eb' }}>{getRatingDepartmentLabel(tier)}</span>
+                <div style={{ background: 'var(--bg-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1.25rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-body)', marginBottom: '0.5rem' }}>
+                    Gửi nhận xét từ: <span style={{ color: 'var(--text-brand)' }}>{getRatingDepartmentLabel(tier)}</span>
                   </div>
 
                   {/* Interactive Star Picker */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Mức độ hài lòng:</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Mức độ hài lòng:</span>
                     <div style={{ display: 'flex', gap: '0.35rem' }}>
                       {[1, 2, 3, 4, 5].map((s) => (
                         <button
@@ -1448,7 +1448,7 @@ export default function ProposalDetailPage({
                         </button>
                       ))}
                     </div>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: ratingStars <= 3 ? '#d97706' : '#16a34a', marginLeft: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: ratingStars <= 3 ? 'var(--status-amber-text)' : 'var(--status-green-text)', marginLeft: '0.5rem' }}>
                       {ratingStars} Sao {ratingStars <= 3 ? '(Gắn cờ lưu ý)' : '(Đạt tiêu chuẩn)'}
                     </span>
                   </div>
@@ -1462,7 +1462,7 @@ export default function ProposalDetailPage({
                       width: '100%',
                       padding: '0.75rem',
                       borderRadius: '8px',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       fontSize: '0.875rem',
                       fontFamily: 'inherit',
                       boxSizing: 'border-box',
@@ -1499,36 +1499,36 @@ export default function ProposalDetailPage({
                     <div
                       key={r.id}
                       style={{
-                        background: '#ffffff',
+                        background: 'var(--bg-surface)',
                         borderRadius: '10px',
                         padding: '0.85rem 1rem',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--border-color)',
                         borderLeft: r.stars <= 3 ? '4px solid #f59e0b' : '4px solid #10b981',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
                         <div>
-                          <strong style={{ color: '#0f172a', fontSize: '0.875rem' }}>
+                          <strong style={{ color: 'var(--text-primary)', fontSize: '0.875rem' }}>
                             {getRatingDepartmentLabel(r.rater_tier)}
                           </strong>
-                          <span style={{ fontSize: '0.775rem', color: '#64748b', marginLeft: '0.4rem' }}>({r.rater_email})</span>
+                          <span style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginLeft: '0.4rem' }}>({r.rater_email})</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#d97706', fontWeight: 800, fontSize: '0.875rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--status-amber-text)', fontWeight: 800, fontSize: '0.875rem' }}>
                           <StarIcon size={14} color="#f59e0b" fill="#f59e0b" />
                           <span>{r.stars} / 5 sao</span>
                         </div>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: 1.4 }}>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.4 }}>
                         {r.feedback || 'Không có nhận xét chi tiết.'}
                       </p>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem', display: 'block' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.25rem', display: 'block' }}>
                         {new Date(r.created_at).toLocaleString('vi-VN')}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
                   Chưa có đánh giá nào từ các phòng ban cho chương trình này.
                 </p>
               )}
@@ -1537,13 +1537,13 @@ export default function ProposalDetailPage({
 
           {/* ═══════════════ AUDIT LOGS (DÀNH RIÊNG CHO SUPER ADMIN) ═══════════════ */}
           {isSuperAdmin && (
-            <div style={{ paddingTop: '1.5rem', borderTop: '1.5px solid #f1f5f9' }}>
+            <div style={{ paddingTop: '1.5rem', borderTop: '1.5px solid var(--border-color)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <ShieldCheckIcon size={16} color="#dc2626" />
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <ShieldCheckIcon size={16} color="var(--status-red-text)" />
                   <span>Nhật Ký Kiểm Toán Cán Bộ (Chỉ Super Admin):</span>
                 </h3>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '0.2rem 0.5rem', borderRadius: '6px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--status-red-text)', background: 'var(--tint-red-strong)', padding: '0.2rem 0.5rem', borderRadius: '6px' }}>
                   Bảo Mật Nội Bộ
                 </span>
               </div>
@@ -1554,28 +1554,28 @@ export default function ProposalDetailPage({
                     <div
                       key={log.id}
                       style={{
-                        background: '#f8fafc',
+                        background: 'var(--bg-subtle)',
                         borderRadius: '10px',
                         padding: '0.75rem 1rem',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--border-color)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.25rem',
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                         <span>
-                          <strong style={{ color: '#0f172a' }}>{log.actor_name || log.actor_email || 'Hội đồng xét duyệt'}</strong>
+                          <strong style={{ color: 'var(--text-primary)' }}>{log.actor_name || log.actor_email || 'Hội đồng xét duyệt'}</strong>
                           {log.actor_email ? ` (${log.actor_email})` : ''}
                         </span>
                         <span>{new Date(log.created_at).toLocaleString('vi-VN')}</span>
                       </div>
-                      <div style={{ fontSize: '0.875rem', color: '#334155' }}>{log.notes}</div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-body)' }}>{log.notes}</div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Chưa có nhật ký nào.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Chưa có nhật ký nào.</p>
               )}
             </div>
           )}

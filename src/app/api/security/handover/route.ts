@@ -134,6 +134,6 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error('Error updating key handover:', err);
-    return NextResponse.json({ success: false, error: 'Internal Server Error', message: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal Server Error', message: 'Lỗi hệ thống khi cập nhật sổ bàn giao chìa khóa' }, { status: 500 });
   }
 }

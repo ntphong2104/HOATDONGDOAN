@@ -76,7 +76,8 @@ export async function POST(req: Request) {
       message: `Đã thêm đơn vị / LCĐ "${cleanName}" thành công!`,
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: 'Internal Error', message: err.message }, { status: 500 });
+    console.error('POST /api/admin/units error:', err);
+    return NextResponse.json({ success: false, error: 'Internal Error', message: 'Lỗi hệ thống khi lưu đơn vị' }, { status: 500 });
   }
 }
 
@@ -105,6 +106,7 @@ export async function DELETE(req: Request) {
       message: `Đã xóa đơn vị mã "${code}" thành công!`,
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: 'Internal Error', message: err.message }, { status: 500 });
+    console.error('DELETE /api/admin/units error:', err);
+    return NextResponse.json({ success: false, error: 'Internal Error', message: 'Lỗi hệ thống khi xóa đơn vị' }, { status: 500 });
   }
 }

@@ -7,6 +7,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  colorScheme: 'light dark',
   themeColor: '#1e3a8a',
 };
 
@@ -82,14 +83,18 @@ const jsonLd = {
   },
 };
 
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('hdd_theme');var p=(t==='dark'||t==='light'||t==='system')?t:'system';var sys=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;var d=p==='system'?(sys?'dark':'light'):p;document.documentElement.setAttribute('data-theme-pref',p);document.documentElement.setAttribute('data-theme',d);document.documentElement.style.colorScheme=d;var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',d==='dark'?'#050608':'#1e3a8a');}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning>
       <head>
+        <meta name="darkreader-lock" />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -100,7 +105,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://accounts.google.com" />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
         />
       </head>
       <body>

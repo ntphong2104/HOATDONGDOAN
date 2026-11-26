@@ -1,6 +1,6 @@
 .container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--bg-primary);
   display: flex;
   flex-direction: column;
 }
@@ -16,13 +16,13 @@
 /* ──── Department Hero Card ──── */
 .heroCard {
   position: relative;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-left: 3px solid #1d4ed8;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--brand-accent);
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--card-shadow);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -41,12 +41,12 @@
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 1px solid #bfdbfe;
+  background: var(--tint-blue-bg);
+  border: 1px solid var(--tint-blue-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #2563eb;
+  color: var(--text-brand);
   flex-shrink: 0;
 }
 
@@ -56,21 +56,21 @@
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #2563eb;
+  color: var(--text-brand);
   margin-bottom: 0.25rem;
 }
 
 .heroTitle {
   font-size: 1.45rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 0.35rem 0;
   letter-spacing: -0.02em;
 }
 
 .heroDesc {
   font-size: 0.9rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0;
   line-height: 1.4;
 }
@@ -78,10 +78,10 @@
 /* ──── Segmented Filter Tabs ──── */
 .tabGroup {
   display: inline-flex;
-  background: #f1f5f9;
+  background: var(--bg-muted);
   padding: 0.375rem;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   gap: 0.25rem;
 }
 
@@ -94,7 +94,7 @@
   border: none;
   font-size: 0.875rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-muted);
   background: transparent;
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
@@ -102,13 +102,13 @@
 }
 
 .tabBtn:hover {
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .tabBtnActive {
-  background: #ffffff;
-  color: #0f172a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--card-shadow);
 }
 
 .tabBadge {
@@ -121,8 +121,8 @@
   border-radius: 10px;
   font-size: 0.75rem;
   font-weight: 800;
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--border-color);
+  color: var(--text-secondary);
 }
 
 .tabBadgeActive {
@@ -142,14 +142,14 @@
 .sectionTitle {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 0.25rem 0;
   letter-spacing: -0.01em;
 }
 
 .sectionSubtitle {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -181,11 +181,11 @@
 }
 
 .proposalCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 1.5rem 1.75rem;
-  box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
@@ -196,8 +196,8 @@
 }
 
 .proposalCard:hover {
-  border-color: #93c5fd;
-  box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.08);
+  border-color: var(--tint-blue-border);
+  box-shadow: var(--card-shadow);
   transform: translateY(-2px);
 }
 
@@ -217,7 +217,7 @@
 .proposalTitle {
   font-size: 1.2rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.35;
 }
@@ -225,7 +225,7 @@
 .orgText {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-muted);
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -244,12 +244,12 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.375rem 0.75rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 0.825rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-body);
 }
 
 /* ──── Bottom Action Footer ──── */
@@ -260,7 +260,7 @@
   flex-wrap: wrap;
   gap: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--border-color);
 }
 
 .stageBadge {
@@ -275,39 +275,39 @@
 }
 
 .stageYouthUnion {
-  background: #fefce8;
+  background: var(--tint-amber-bg);
   color: #854d0e;
-  border: 1px solid #fef08a;
+  border: 1px solid var(--tint-amber-border);
 }
 
 .stageCtsv {
-  background: #eff6ff;
-  color: #1e40af;
-  border: 1px solid #bfdbfe;
+  background: var(--tint-blue-bg);
+  color: var(--text-brand-strong);
+  border: 1px solid var(--tint-blue-border);
 }
 
 .stageFacility {
-  background: #faf5ff;
-  color: #6b21a8;
-  border: 1px solid #e9d5ff;
+  background: var(--tint-purple-bg);
+  color: var(--status-purple-text);
+  border: 1px solid var(--tint-purple-border);
 }
 
 .stageSuperAdmin {
-  background: #fff7ed;
-  color: #9a3412;
-  border: 1px solid #ffedd5;
+  background: var(--tint-amber-bg);
+  color: var(--status-amber-text);
+  border: 1px solid var(--tint-amber-border);
 }
 
 .stageApproved {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: var(--tint-green-bg);
+  color: var(--status-green-text);
+  border: 1px solid var(--tint-green-border);
 }
 
 .stageRejected {
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  background: var(--tint-red-bg);
+  color: var(--status-red-text);
+  border: 1px solid var(--tint-red-border);
 }
 
 /* ──── Sleek Action Buttons ──── */
@@ -343,9 +343,9 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.45rem 0.875rem;
-  background: #ffffff;
-  color: #e11d48;
-  border: 1.5px solid #fecdd3;
+  background: var(--bg-surface);
+  color: var(--status-red-text);
+  border: 1.5px solid var(--tint-red-border);
   border-radius: 8px;
   font-weight: 700;
   font-size: 0.825rem;
@@ -354,9 +354,9 @@
 }
 
 .rejectBtn:hover {
-  background: #fff1f2;
-  border-color: #fda4af;
-  color: #be123c;
+  background: var(--tint-red-bg);
+  border-color: var(--tint-red-border);
+  color: var(--status-red-text);
 }
 
 .completedPill {
@@ -364,9 +364,9 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.75rem;
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
+  background: var(--tint-green-bg);
+  color: var(--status-green-text);
+  border: 1px solid var(--tint-green-border);
   border-radius: 20px;
   font-size: 0.775rem;
   font-weight: 700;
@@ -375,7 +375,7 @@
 .emptyState {
   text-align: center;
   padding: 4.5rem 2rem;
-  background: #ffffff;
-  border: 1.5px dashed #cbd5e1;
+  background: var(--bg-surface);
+  border: 1.5px dashed var(--border-strong);
   border-radius: 20px;
 }

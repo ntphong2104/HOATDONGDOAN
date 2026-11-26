@@ -1091,13 +1091,13 @@ export default function EventDetailPage({ params }: { params?: any }) {
           <div style={{
             textAlign: 'center',
             padding: '3rem 1.5rem',
-            background: '#fff1f2',
+            background: 'var(--tint-red-bg)',
             borderRadius: '16px',
-            border: '1.5px solid #fecaca',
-            color: '#b91c1c',
+            border: '1.5px solid var(--tint-red-border)',
+            color: 'var(--status-red-text)',
           }}>
             <p style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>Bạn không có quyền xem sự kiện này</p>
-            <p style={{ fontSize: '0.875rem', margin: 0, color: '#64748b' }}>Chỉ Super Admin, Đoàn Học Viện hoặc đơn vị tạo sự kiện mới có quyền truy cập.</p>
+            <p style={{ fontSize: '0.875rem', margin: 0, color: 'var(--text-muted)' }}>Chỉ Super Admin, Đoàn Học Viện hoặc đơn vị tạo sự kiện mới có quyền truy cập.</p>
           </div>
         </main>
       </div>
@@ -1154,7 +1154,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   {event.start_time && ` (${event.start_time.slice(0, 5)} – ${endTimeStr})`}
                 </span>
                 <span style={{ color: '#cbd5e1' }}>•</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: displayLoc ? '#334155' : '#94a3b8', fontWeight: displayLoc ? 600 : 400 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: displayLoc ? 'var(--text-body)' : 'var(--text-subtle)', fontWeight: displayLoc ? 600 : 400 }}>
                   <MapPinIcon size={15} color={displayLoc ? '#1d4ed8' : '#94a3b8'} />
                   <span>{displayLoc || 'Chưa cập nhật địa điểm'}</span>
                 </span>
@@ -1171,14 +1171,14 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 return (
                   <span
                     style={{
-                      color: '#b45309',
+                      color: 'var(--status-amber-text)',
                       fontWeight: 700,
                       fontSize: '0.9rem',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.35rem',
-                      background: '#fef3c7',
-                      border: '1.5px solid #fde68a',
+                      background: 'var(--tint-amber-strong)',
+                      border: '1.5px solid var(--tint-amber-border)',
                       padding: '0.35rem 0.85rem',
                       borderRadius: '10px',
                     }}
@@ -1192,14 +1192,14 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 return (
                   <span
                     style={{
-                      color: '#15803d',
+                      color: 'var(--status-green-text)',
                       fontWeight: 700,
                       fontSize: '0.9rem',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.35rem',
-                      background: '#dcfce7',
-                      border: '1.5px solid #86efac',
+                      background: 'var(--tint-green-strong)',
+                      border: '1.5px solid var(--tint-green-border)',
                       padding: '0.35rem 0.85rem',
                       borderRadius: '10px',
                     }}
@@ -1212,14 +1212,14 @@ export default function EventDetailPage({ params }: { params?: any }) {
               return (
                 <span
                   style={{
-                    color: '#dc2626',
+                    color: 'var(--status-red-text)',
                     fontWeight: 700,
                     fontSize: '0.9rem',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.35rem',
-                    background: '#fee2e2',
-                    border: '1.5px solid #fca5a5',
+                    background: 'var(--tint-red-strong)',
+                    border: '1.5px solid var(--tint-red-border)',
                     padding: '0.35rem 0.85rem',
                     borderRadius: '10px',
                   }}
@@ -1236,9 +1236,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   gap: '0.35rem',
                   padding: '0.35rem 0.75rem',
                   borderRadius: '8px',
-                  border: '1.5px solid #fecaca',
-                  background: '#fef2f2',
-                  color: '#b91c1c',
+                  border: '1.5px solid var(--tint-red-border)',
+                  background: 'var(--tint-red-bg)',
+                  color: 'var(--status-red-text)',
                   fontSize: '0.8rem',
                   fontWeight: 700,
                 }}
@@ -1253,9 +1253,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 style={{
                   padding: '0.35rem 0.85rem',
                   borderRadius: '8px',
-                  border: '1.5px solid #fca5a5',
-                  background: '#fef2f2',
-                  color: '#dc2626',
+                  border: '1.5px solid var(--tint-red-border)',
+                  background: 'var(--tint-red-bg)',
+                  color: 'var(--status-red-text)',
                   fontWeight: 700,
                   fontSize: '0.8rem',
                   cursor: 'pointer',
@@ -1270,9 +1270,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 style={{
                   padding: '0.35rem 0.85rem',
                   borderRadius: '8px',
-                  border: '1.5px solid #86efac',
-                  background: '#f0fdf4',
-                  color: '#15803d',
+                  border: '1.5px solid var(--tint-green-border)',
+                  background: 'var(--tint-green-bg)',
+                  color: 'var(--status-green-text)',
                   fontWeight: 700,
                   fontSize: '0.8rem',
                   cursor: 'pointer',
@@ -1288,9 +1288,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   gap: '0.35rem',
                   padding: '0.35rem 0.75rem',
                   borderRadius: '8px',
-                  border: '1.5px solid #e2e8f0',
-                  background: '#f8fafc',
-                  color: '#64748b',
+                  border: '1.5px solid var(--border-color)',
+                  background: 'var(--bg-subtle)',
+                  color: 'var(--text-muted)',
                   fontSize: '0.8rem',
                   fontWeight: 600,
                 }}
@@ -1322,9 +1322,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   gap: '0.35rem',
                   padding: '0.35rem 0.85rem',
                   borderRadius: '8px',
-                  border: '1.5px solid #cbd5e1',
-                  background: '#ffffff',
-                  color: '#334155',
+                  border: '1.5px solid var(--border-strong)',
+                  background: 'var(--bg-surface)',
+                  color: 'var(--text-body)',
                   fontWeight: 700,
                   fontSize: '0.8rem',
                   cursor: 'pointer',
@@ -1338,22 +1338,22 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
           {isLockedPast3Days && (
             <div style={{
-              background: '#fff1f2',
-              border: '1.5px solid #fecaca',
+              background: 'var(--tint-red-bg)',
+              border: '1.5px solid var(--tint-red-border)',
               borderRadius: '12px',
               padding: '0.85rem 1.25rem',
               marginTop: '1rem',
               display: 'flex',
               alignItems: 'center',
               gap: '0.75rem',
-              color: '#991b1b',
+              color: 'var(--status-red-text)',
             }}>
-              <LockIcon size={22} color="#dc2626" />
+              <LockIcon size={22} color="var(--status-red-text)" />
               <div>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>
                   Sự kiện này đã kết thúc quá 3 ngày và đã được chốt sổ toàn hệ thống
                 </div>
-                <div style={{ fontSize: '0.82rem', color: '#b91c1c', marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.82rem', color: 'var(--status-red-text)', marginTop: '0.2rem' }}>
                   {isSuperAdmin
                     ? 'Bạn đang quản trị với tư cách Super Admin: Bạn có quyền mở khóa hoặc chỉnh sửa bổ sung nếu có trường hợp đặc biệt.'
                     : 'Toàn bộ quyền điều chỉnh thông tin, thêm/xóa ca, duyệt nhân sự và nạp danh sách đã bị khóa tự động theo quy định. Chỉ Super Admin mới có quyền can thiệp.'}
@@ -1370,8 +1370,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
               gap: '0.65rem',
               marginTop: '0.75rem',
               padding: '0.6rem 1rem',
-              background: requireRegistration ? '#eff6ff' : '#fef3c7',
-              border: `1.5px solid ${requireRegistration ? '#bfdbfe' : '#fde68a'}`,
+              background: requireRegistration ? 'var(--tint-blue-bg)' : 'var(--tint-amber-strong)',
+              border: `1.5px solid ${requireRegistration ? 'var(--tint-blue-border)' : 'var(--tint-amber-border)'}`,
               borderRadius: '10px',
               flexWrap: 'wrap',
             }}>
@@ -1382,7 +1382,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 cursor: 'pointer',
                 fontSize: '0.85rem',
                 fontWeight: 700,
-                color: requireRegistration ? '#1d4ed8' : '#b45309',
+                color: requireRegistration ? 'var(--text-brand)' : 'var(--status-amber-text)',
               }}>
                 <input
                   type="checkbox"
@@ -1418,7 +1418,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   : 'Không yêu cầu đăng ký (CTR không cần đăng ký)'
                 }
               </label>
-              <span style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                 {requireRegistration
                   ? '(SV phải đăng ký trước mới được quét mã điểm danh)'
                   : '(SV quét mã QR điểm danh trực tiếp, không cần đăng ký trước)'
@@ -1436,22 +1436,22 @@ export default function EventDetailPage({ params }: { params?: any }) {
               gap: '0.75rem',
               marginTop: '0.75rem',
               padding: '0.65rem 1rem',
-              background: cancellationPolicy === 'disabled' ? '#fef2f2' : '#f0fdf4',
-              border: `1.5px solid ${cancellationPolicy === 'disabled' ? '#fecaca' : '#bbf7d0'}`,
+              background: cancellationPolicy === 'disabled' ? 'var(--tint-red-bg)' : 'var(--tint-green-bg)',
+              border: `1.5px solid ${cancellationPolicy === 'disabled' ? 'var(--tint-red-border)' : 'var(--tint-green-border)'}`,
               borderRadius: '10px',
               flexWrap: 'wrap',
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: cancellationPolicy === 'disabled' ? '#b91c1c' : '#15803d' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: cancellationPolicy === 'disabled' ? 'var(--status-red-text)' : 'var(--status-green-text)' }}>
                   Chế độ sinh viên tự hủy tham gia
                 </span>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {cancellationPolicy === 'disabled'
                     ? 'Sinh viên không thể tự hủy sau khi đăng ký (phải liên hệ BTC để xóa).'
                     : 'Sinh viên được tự hủy đăng ký trước giờ diễn ra sự kiện ít nhất 2 tiếng.'}
                 </span>
               </div>
-              <div style={{ display: 'inline-flex', gap: '0.35rem', background: '#ffffff', padding: '0.25rem', borderRadius: '9px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'inline-flex', gap: '0.35rem', background: 'var(--bg-surface)', padding: '0.25rem', borderRadius: '9px', border: '1px solid var(--border-color)' }}>
                 {([
                   { value: 'before_2h' as const, label: 'Hủy trước 2 tiếng' },
                   { value: 'disabled' as const, label: 'Không thể hủy' },
@@ -1499,7 +1499,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             ? '#dc2626'
                             : '#16a34a'
                           : 'transparent',
-                        color: active ? '#ffffff' : '#475569',
+                        color: active ? '#ffffff' : 'var(--text-secondary)',
                         transition: 'all 0.15s ease',
                       }}
                     >
@@ -1517,12 +1517,12 @@ export default function EventDetailPage({ params }: { params?: any }) {
               style={{
                 marginTop: '1rem',
                 padding: '1rem 1.25rem',
-                background: '#f0f9ff',
-                border: '1px solid #bae6fd',
+                background: 'var(--tint-blue-bg)',
+                border: '1px solid var(--tint-blue-border)',
                 borderRadius: '12px',
               }}
             >
-              <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0369a1', display: 'block', marginBottom: '0.5rem' }}>
+              <label style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-brand)', display: 'block', marginBottom: '0.5rem' }}>
                 🎓 Giới hạn khóa SV được đăng ký
               </label>
               {(() => {
@@ -1566,8 +1566,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   gap: '0.35rem',
                   padding: '0.4rem 0.75rem',
                   borderRadius: '8px',
-                  border: checked ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                  background: checked ? '#dbeafe' : 'white',
+                  border: checked ? '2px solid #2563eb' : '1px solid var(--border-strong)',
+                  background: checked ? 'var(--tint-blue-strong)' : 'white',
                   cursor: 'pointer',
                   fontSize: '0.85rem',
                   fontWeight: checked ? 700 : 500,
@@ -1601,7 +1601,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         );
                       })}
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                       {isAll
                         ? 'Mặc định: tất cả khóa đều đăng ký được (khán giả & CTV). Bỏ chọn khóa nào thì khóa đó không đăng ký được.'
                         : `Chỉ SV khóa ${currentCohorts.join(', ')} được đăng ký (khán giả & CTV). SV khóa khác sẽ được báo "không nằm trong khóa".`}
@@ -1618,13 +1618,13 @@ export default function EventDetailPage({ params }: { params?: any }) {
               style={{
                 marginTop: '0.85rem',
                 padding: '1rem 1.25rem',
-                background: '#faf5ff',
-                border: '1px solid #e9d5ff',
+                background: 'var(--tint-purple-bg)',
+                border: '1px solid var(--tint-purple-border)',
                 borderRadius: '12px',
               }}
             >
-              <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#6b21a8', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
-                <BuildingIcon size={15} color="#6b21a8" />
+              <label style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--status-purple-text)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                <BuildingIcon size={15} color="var(--status-purple-text)" />
                 <span>Phạm vi Liên Chi Đoàn (LCĐ) được đăng ký</span>
               </label>
               {(() => {
@@ -1671,9 +1671,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   gap: '0.35rem',
                   padding: '0.4rem 0.75rem',
                   borderRadius: '8px',
-                  border: active ? '2px solid #7c3aed' : '1px solid #cbd5e1',
-                  background: active ? '#f3e8ff' : '#ffffff',
-                  color: active ? '#6b21a8' : '#334155',
+                  border: active ? '2px solid #7c3aed' : '1px solid var(--border-strong)',
+                  background: active ? 'var(--tint-purple-strong)' : 'var(--bg-surface)',
+                  color: active ? 'var(--status-purple-text)' : 'var(--text-body)',
                   cursor: 'pointer',
                   fontSize: '0.84rem',
                   fontWeight: active ? 700 : 500,
@@ -1707,7 +1707,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         );
                       })}
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                       {isAllLcds
                         ? 'Mặc định: mở cho toàn thể sinh viên Học viện. Chọn riêng 1 hoặc nhiều LCĐ để giới hạn chỉ sinh viên thuộc LCĐ đó được đăng ký.'
                         : `Chỉ sinh viên thuộc ${formatLcdsLabel(currentLcds)} được đăng ký (khán giả & CTV). Sinh viên LCĐ khác sẽ bị chặn.`}
@@ -1739,8 +1739,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 {/* 1. CỔNG LINK ĐĂNG KÝ KHÁN GIẢ */}
                 <div
                   style={{
-                    background: '#ffffff',
-                    border: `1.5px solid ${regWindow.isOpen ? '#bfdbfe' : '#e2e8f0'}`,
+                    background: 'var(--bg-surface)',
+                    border: `1.5px solid ${regWindow.isOpen ? 'var(--tint-blue-border)' : 'var(--border-color)'}`,
                     borderRadius: '16px',
                     padding: '1.5rem',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
@@ -1756,7 +1756,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-brand-strong)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
                         Cổng Đăng Ký Khán Giả
                       </span>
                       <span
@@ -1765,21 +1765,21 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           borderRadius: '12px',
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          background: regWindow.isOpen ? '#dcfce7' : '#fee2e2',
-                          color: regWindow.isOpen ? '#15803d' : '#b91c1c',
-                          border: `1px solid ${regWindow.isOpen ? '#86efac' : '#fca5a5'}`,
+                          background: regWindow.isOpen ? 'var(--tint-green-strong)' : 'var(--tint-red-strong)',
+                          color: regWindow.isOpen ? 'var(--status-green-text)' : 'var(--status-red-text)',
+                          border: `1px solid ${regWindow.isOpen ? 'var(--tint-green-border)' : 'var(--tint-red-border)'}`,
                         }}
                       >
                         {regWindow.isOpen ? '● Đang mở đăng ký' : '● Đã đóng cổng'}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                       {participantRegistrations.length}{' '}
-                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>sinh viên đăng ký</span>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>sinh viên đăng ký</span>
                     </div>
 
-                    <p style={{ margin: 0, fontSize: '0.825rem', color: '#64748b', lineHeight: 1.5, minHeight: '38px' }}>
+                    <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5, minHeight: '38px' }}>
                       Dành cho sinh viên toàn trường đăng ký tham gia sự kiện nhận điểm rèn luyện.
                     </p>
                   </div>
@@ -1818,9 +1818,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         rel="noreferrer"
                         style={{
                           height: '36px',
-                          background: '#ffffff',
-                          color: '#2563eb',
-                          border: '1.5px solid #bfdbfe',
+                          background: 'var(--bg-surface)',
+                          color: 'var(--text-brand)',
+                          border: '1.5px solid var(--tint-blue-border)',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.775rem',
@@ -1843,9 +1843,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           disabled={togglingReg}
                           style={{
                             height: '36px',
-                            background: '#fffbeb',
-                            color: '#b45309',
-                            border: '1.5px solid #fde68a',
+                            background: 'var(--tint-amber-bg)',
+                            color: 'var(--status-amber-text)',
+                            border: '1.5px solid var(--tint-amber-border)',
                             borderRadius: '8px',
                             fontWeight: 700,
                             fontSize: '0.775rem',
@@ -1862,9 +1862,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           disabled={togglingReg}
                           style={{
                             height: '36px',
-                            background: '#f0fdf4',
-                            color: '#15803d',
-                            border: '1.5px solid #bbf7d0',
+                            background: 'var(--tint-green-bg)',
+                            color: 'var(--status-green-text)',
+                            border: '1.5px solid var(--tint-green-border)',
                             borderRadius: '8px',
                             fontWeight: 700,
                             fontSize: '0.775rem',
@@ -1889,9 +1889,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         }}
                         style={{
                           height: '36px',
-                          background: '#eff6ff',
-                          color: '#1d4ed8',
-                          border: '1.5px solid #bfdbfe',
+                          background: 'var(--tint-blue-bg)',
+                          color: 'var(--text-brand)',
+                          border: '1.5px solid var(--tint-blue-border)',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.775rem',
@@ -1908,8 +1908,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 {/* 2. CỔNG LINK TUYỂN DỤNG BAN CHUYÊN TRÁCH & CTV */}
                 <div
                   style={{
-                    background: '#ffffff',
-                    border: `1.5px solid ${event.is_recruitment_open !== false ? '#99f6e4' : '#e2e8f0'}`,
+                    background: 'var(--bg-surface)',
+                    border: `1.5px solid ${event.is_recruitment_open !== false ? 'var(--tint-teal-border)' : 'var(--border-color)'}`,
                     borderRadius: '16px',
                     padding: '1.5rem',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
@@ -1925,7 +1925,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e40af', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-brand-strong)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
                         Cổng Tuyển Ban Chuyên Trách & CTV
                       </span>
                       <span
@@ -1934,23 +1934,23 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           borderRadius: '12px',
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          background: event.is_recruitment_open !== false ? '#dcfce7' : '#fee2e2',
-                          color: event.is_recruitment_open !== false ? '#15803d' : '#b91c1c',
-                          border: `1px solid ${event.is_recruitment_open !== false ? '#86efac' : '#fca5a5'}`,
+                          background: event.is_recruitment_open !== false ? 'var(--tint-green-strong)' : 'var(--tint-red-strong)',
+                          color: event.is_recruitment_open !== false ? 'var(--status-green-text)' : 'var(--status-red-text)',
+                          border: `1px solid ${event.is_recruitment_open !== false ? 'var(--tint-green-border)' : 'var(--tint-red-border)'}`,
                         }}
                       >
                         {event.is_recruitment_open !== false ? '● Đang mở tuyển' : '● Đã đóng cổng'}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                       {departments.length > 0 ? `${departments.length} Ban Chuyên Trách` : 'Ban Tổ Chức & CTV'}{' '}
-                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                         ({volunteerRegistrations.length} {departments.length > 0 ? 'đơn ứng tuyển' : 'cộng tác viên'})
                       </span>
                     </div>
 
-                    <p style={{ margin: 0, fontSize: '0.825rem', color: '#64748b', lineHeight: 1.5, minHeight: '38px' }}>
+                    <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5, minHeight: '38px' }}>
                       Dành cho sinh viên nộp đơn ứng tuyển vào các Ban theo chỉ tiêu và giới tính.
                     </p>
                   </div>
@@ -1989,9 +1989,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         rel="noreferrer"
                         style={{
                           height: '36px',
-                          background: '#ffffff',
-                          color: '#1e40af',
-                          border: '1.5px solid #bfdbfe',
+                          background: 'var(--bg-surface)',
+                          color: 'var(--text-brand-strong)',
+                          border: '1.5px solid var(--tint-blue-border)',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.775rem',
@@ -2013,9 +2013,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         disabled={togglingRecruitment}
                         style={{
                           height: '36px',
-                          background: event.is_recruitment_open !== false ? '#fffbeb' : '#f0fdf4',
-                          color: event.is_recruitment_open !== false ? '#b45309' : '#15803d',
-                          border: `1.5px solid ${event.is_recruitment_open !== false ? '#fde68a' : '#bbf7d0'}`,
+                          background: event.is_recruitment_open !== false ? 'var(--tint-amber-bg)' : 'var(--tint-green-bg)',
+                          color: event.is_recruitment_open !== false ? 'var(--status-amber-text)' : 'var(--status-green-text)',
+                          border: `1.5px solid ${event.is_recruitment_open !== false ? 'var(--tint-amber-border)' : 'var(--tint-green-border)'}`,
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.775rem',
@@ -2043,9 +2043,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         }}
                         style={{
                           height: '36px',
-                          background: '#eff6ff',
-                          color: '#1e40af',
-                          border: '1.5px solid #bfdbfe',
+                          background: 'var(--tint-blue-bg)',
+                          color: 'var(--text-brand-strong)',
+                          border: '1.5px solid var(--tint-blue-border)',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.775rem',
@@ -2062,13 +2062,13 @@ export default function EventDetailPage({ params }: { params?: any }) {
             );
           })()}
 
-          <div style={{ marginTop: '1.25rem', padding: '1.25rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
+          <div style={{ marginTop: '1.25rem', padding: '1.25rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.25rem 0' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 0.25rem 0' }}>
                   Màn hình Chiếu Mã QR Động (Máy chiếu / Hội trường)
                 </h3>
-                <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
                   Chọn vai trò trước khi chiếu để phát mã QR tương ứng lên màn hình lớn:
                 </p>
               </div>
@@ -2194,9 +2194,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
           <div style={{
             marginTop: '1.25rem',
             padding: '1rem 1.25rem',
-            background: '#ffffff',
+            background: 'var(--bg-surface)',
             borderRadius: '16px',
-            border: '1.5px solid #e2e8f0',
+            border: '1.5px solid var(--border-color)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -2209,8 +2209,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 width: '42px',
                 height: '42px',
                 borderRadius: '12px',
-                background: (event.max_participants || 0) > 0 && stats.participant >= (event.max_participants || 0) ? '#fee2e2' : '#eff6ff',
-                color: (event.max_participants || 0) > 0 && stats.participant >= (event.max_participants || 0) ? '#dc2626' : '#2563eb',
+                background: (event.max_participants || 0) > 0 && stats.participant >= (event.max_participants || 0) ? 'var(--tint-red-strong)' : 'var(--tint-blue-bg)',
+                color: (event.max_participants || 0) > 0 && stats.participant >= (event.max_participants || 0) ? 'var(--status-red-text)' : 'var(--text-brand)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2218,10 +2218,10 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 <UsersIcon size={22} />
               </div>
               <div>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Giới Hạn Số Lượng Đăng Ký
                 </div>
-                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span>
                     {(event.max_participants || 0) > 0
                       ? `${event.max_participants} người`
@@ -2233,8 +2233,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       fontWeight: 700,
                       padding: '0.2rem 0.6rem',
                       borderRadius: '8px',
-                      background: stats.participant >= (event.max_participants || 0) ? '#fee2e2' : '#ecfdf5',
-                      color: stats.participant >= (event.max_participants || 0) ? '#dc2626' : '#059669',
+                      background: stats.participant >= (event.max_participants || 0) ? 'var(--tint-red-strong)' : 'var(--tint-green-bg)',
+                      color: stats.participant >= (event.max_participants || 0) ? 'var(--status-red-text)' : 'var(--status-green-text)',
                     }}>
                       {stats.participant >= (event.max_participants || 0)
                         ? `Đã đầy (${stats.participant}/${event.max_participants})`
@@ -2242,7 +2242,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                   Hệ thống tự động chặn đăng ký khi đạt tối đa <strong>{(event.max_participants || 0) > 0 ? `${event.max_participants} người` : 'vô hạn'}</strong>. Đã đăng ký: <strong>{stats.participant}</strong> | Đã điểm danh: <strong>{stats.checkedParticipant}</strong>
                 </div>
               </div>
@@ -2259,8 +2259,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   padding: '0.55rem 1.15rem',
                   borderRadius: '10px',
                   border: '1.5px solid #2563eb',
-                  background: '#eff6ff',
-                  color: '#1d4ed8',
+                  background: 'var(--tint-blue-bg)',
+                  color: 'var(--text-brand)',
                   fontWeight: 700,
                   fontSize: '0.85rem',
                   cursor: 'pointer',
@@ -2276,15 +2276,15 @@ export default function EventDetailPage({ params }: { params?: any }) {
             ) : (
               <div style={{
                 fontSize: '0.8rem',
-                color: '#64748b',
+                color: 'var(--text-muted)',
                 fontWeight: 600,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.35rem',
                 padding: '0.5rem 0.85rem',
-                background: '#f8fafc',
+                background: 'var(--bg-subtle)',
                 borderRadius: '8px',
-                border: '1px dashed #cbd5e1',
+                border: '1px dashed var(--border-strong)',
               }}>
                 Chỉ Super Admin có quyền sửa sức chứa
               </div>
@@ -2298,12 +2298,12 @@ export default function EventDetailPage({ params }: { params?: any }) {
           <details>
             <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', userSelect: 'none' }}>
               <h2 className={styles.sectionTitle} style={{ margin: 0 }}>
-                <UsersIcon size={20} color="#2563eb" />
+                <UsersIcon size={20} color="var(--text-brand)" />
                 Quản lý CTV Quét Mã (Checker)
-                <span style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.5rem' }}>
+                <span style={{ background: 'var(--tint-blue-strong)', color: 'var(--text-brand-strong)', padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.5rem' }}>
                   {roles.filter(r => r.role_type === 'checker').length}
                 </span>
-                <span style={{ fontSize: '0.7rem', color: '#94a3b8', marginLeft: '0.4rem' }}>▼</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-subtle)', marginLeft: '0.4rem' }}>▼</span>
               </h2>
             </summary>
             <div style={{ marginTop: '0.75rem' }}>
@@ -2344,12 +2344,12 @@ export default function EventDetailPage({ params }: { params?: any }) {
           <details>
             <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', userSelect: 'none' }}>
               <h2 className={styles.sectionTitle} style={{ margin: 0 }}>
-                <ShieldCheckIcon size={20} color="#7c3aed" />
+                <ShieldCheckIcon size={20} color="var(--status-purple-text)" />
                 Quản lý Ban Tổ Chức Sự Kiện (BTC)
-                <span style={{ background: '#ede9fe', color: '#6d28d9', padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.5rem' }}>
+                <span style={{ background: 'var(--tint-purple-strong)', color: 'var(--status-purple-text)', padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.5rem' }}>
                   {roles.filter(r => r.role_type === 'event_admin').length}
                 </span>
-                <span style={{ fontSize: '0.7rem', color: '#94a3b8', marginLeft: '0.4rem' }}>▼</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-subtle)', marginLeft: '0.4rem' }}>▼</span>
               </h2>
             </summary>
             <div style={{ marginTop: '0.75rem' }}>
@@ -2402,7 +2402,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               <button type="submit" className={styles.button}>Điểm danh</button>
             </form>
             {manualCheckinStatus && (
-              <div style={{ color: manualCheckinStatus.startsWith('Lỗi') ? '#dc2626' : '#16a34a', fontSize: '0.9rem', fontWeight: 600 }}>
+              <div style={{ color: manualCheckinStatus.startsWith('Lỗi') ? 'var(--status-red-text)' : 'var(--status-green-text)', fontSize: '0.9rem', fontWeight: 600 }}>
                 {manualCheckinStatus}
               </div>
             )}
@@ -2552,19 +2552,19 @@ export default function EventDetailPage({ params }: { params?: any }) {
           {/* Supplement Attendance Modal (Super Admin Only) */}
           {showSupplementModal && isSuperAdmin && (
             <div style={{
-              background: '#faf5ff',
-              border: '2px solid #c4b5fd',
+              background: 'var(--tint-purple-bg)',
+              border: '2px solid var(--tint-purple-border)',
               borderRadius: '12px',
               padding: '1.25rem',
               marginBottom: '1rem',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', color: '#6d28d9', fontWeight: 800 }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--status-purple-text)', fontWeight: 800 }}>
                   Bổ Sung Điểm Danh CTV / BTC (Super Admin)
                 </h3>
                 <button
                   onClick={() => setShowSupplementModal(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }}
                 >
                   ✕
                 </button>
@@ -2572,7 +2572,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div style={{ minWidth: 0 }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--status-purple-text)', marginBottom: '0.3rem' }}>
                     Vai trò
                   </label>
                   <select
@@ -2584,7 +2584,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       minWidth: 0,
                       padding: '0.5rem',
                       borderRadius: '8px',
-                      border: '1.5px solid #c4b5fd',
+                      border: '1.5px solid var(--tint-purple-border)',
                       fontSize: '0.85rem',
                     }}
                   >
@@ -2594,7 +2594,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 </div>
 
                 <div style={{ minWidth: 0 }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--status-purple-text)', marginBottom: '0.3rem' }}>
                     Ca / Buổi điểm danh
                   </label>
                   <select
@@ -2606,7 +2606,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       minWidth: 0,
                       padding: '0.5rem',
                       borderRadius: '8px',
-                      border: '1.5px solid #c4b5fd',
+                      border: '1.5px solid var(--tint-purple-border)',
                       fontSize: '0.85rem',
                       textOverflow: 'ellipsis',
                     }}
@@ -2620,7 +2620,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </div>
 
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--status-purple-text)', marginBottom: '0.3rem' }}>
                   Danh sách MSSV (mỗi dòng 1 MSSV, hoặc cách nhau bằng dấu phẩy)
                 </label>
                 <textarea
@@ -2632,7 +2632,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     width: '100%',
                     padding: '0.6rem',
                     borderRadius: '8px',
-                    border: '1.5px solid #c4b5fd',
+                    border: '1.5px solid var(--tint-purple-border)',
                     fontSize: '0.85rem',
                     fontFamily: 'monospace',
                     resize: 'vertical',
@@ -2641,7 +2641,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </div>
 
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95', marginBottom: '0.3rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--status-purple-text)', marginBottom: '0.3rem' }}>
                   Lý do bổ sung (tùy chọn)
                 </label>
                 <input
@@ -2653,7 +2653,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     width: '100%',
                     padding: '0.5rem',
                     borderRadius: '8px',
-                    border: '1.5px solid #c4b5fd',
+                    border: '1.5px solid var(--tint-purple-border)',
                     fontSize: '0.85rem',
                   }}
                 />
@@ -2661,8 +2661,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
               {supplementResult && (
                 <div style={{
-                  background: supplementResult.success ? '#dcfce7' : '#fee2e2',
-                  color: supplementResult.success ? '#166534' : '#991b1b',
+                  background: supplementResult.success ? 'var(--tint-green-strong)' : 'var(--tint-red-strong)',
+                  color: supplementResult.success ? 'var(--status-green-text)' : 'var(--status-red-text)',
                   padding: '0.75rem',
                   borderRadius: '8px',
                   marginBottom: '0.75rem',
@@ -2729,7 +2729,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 {supplementing ? 'Đang xử lý...' : 'Bổ Sung Điểm Danh'}
               </button>
 
-              <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#7c3aed', fontStyle: 'italic' }}>
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--status-purple-text)', fontStyle: 'italic' }}>
                 Chức năng này bypass kiểm tra: trạng thái sự kiện, SĐT, đăng ký. Chỉ dành cho Super Admin. Mọi thao tác đều được ghi log.
               </p>
             </div>
@@ -2742,7 +2742,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   key: 'stt',
                   label: 'STT',
                   render: (_val: any, _row: any, index?: number) => (
-                    <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>
                       {(index ?? 0) + 1}
                     </span>
                   ),
@@ -2755,9 +2755,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       style={{
                         fontFamily: 'monospace',
                         fontWeight: 700,
-                        color: '#1e40af',
-                        background: '#eff6ff',
-                        border: '1px solid #bfdbfe',
+                        color: 'var(--text-brand-strong)',
+                        background: 'var(--tint-blue-bg)',
+                        border: '1px solid var(--tint-blue-border)',
                         padding: '3px 8px',
                         borderRadius: '6px',
                         fontSize: '0.85rem',
@@ -2772,7 +2772,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   key: 'full_name',
                   label: 'Họ và tên',
                   render: (val: string) => (
-                    <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                       {val || '—'}
                     </span>
                   ),
@@ -2781,7 +2781,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   key: 'class_id',
                   label: 'Lớp',
                   render: (val: string) => (
-                    <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
                       {val || '—'}
                     </span>
                   ),
@@ -2792,9 +2792,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   render: (val: string) => {
                     const isVol = val === 'Cộng tác viên' || val === 'volunteer';
                     const isOrg = val === 'Ban tổ chức' || val === 'organizer';
-                    const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
+                    const bg = isOrg ? 'var(--tint-amber-bg)' : isVol ? 'var(--tint-purple-bg)' : 'var(--tint-green-bg)';
                     const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
-                    const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
+                    const border = isOrg ? 'var(--tint-amber-border)' : isVol ? 'var(--tint-purple-border)' : 'var(--tint-green-border)';
                     const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
                     return (
                       <span
@@ -2833,8 +2833,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '5px',
-                            background: '#faf5ff',
-                            border: '1px solid #e9d5ff',
+                            background: 'var(--tint-purple-bg)',
+                            border: '1px solid var(--tint-purple-border)',
                             color: '#7e22ce',
                             padding: '3px 9px',
                             borderRadius: '6px',
@@ -2857,9 +2857,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '5px',
-                            background: '#f0f9ff',
-                            border: '1px solid #bae6fd',
-                            color: '#0369a1',
+                            background: 'var(--tint-blue-bg)',
+                            border: '1px solid var(--tint-blue-border)',
+                            color: 'var(--text-brand)',
                             padding: '3px 9px',
                             borderRadius: '6px',
                             fontSize: '0.8rem',
@@ -2868,7 +2868,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           }}
                           title={raw}
                         >
-                          <UsersIcon size={14} color="#0369a1" />
+                          <UsersIcon size={14} color="var(--text-brand)" />
                           <span>Đăng ký trực tuyến</span>
                         </span>
                       );
@@ -2881,9 +2881,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '5px',
-                            background: '#f0fdf4',
-                            border: '1px solid #bbf7d0',
-                            color: '#15803d',
+                            background: 'var(--tint-green-bg)',
+                            border: '1px solid var(--tint-green-border)',
+                            color: 'var(--status-green-text)',
                             padding: '3px 9px',
                             borderRadius: '6px',
                             fontSize: '0.8rem',
@@ -2892,7 +2892,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           }}
                           title={raw}
                         >
-                          <UserIcon size={14} color="#15803d" />
+                          <UserIcon size={14} color="var(--status-green-text)" />
                           <span>{raw}</span>
                         </span>
                       );
@@ -2905,9 +2905,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '5px',
-                            background: '#eff6ff',
-                            border: '1px solid #bfdbfe',
-                            color: '#1d4ed8',
+                            background: 'var(--tint-blue-bg)',
+                            border: '1px solid var(--tint-blue-border)',
+                            color: 'var(--text-brand)',
                             padding: '3px 9px',
                             borderRadius: '6px',
                             fontSize: '0.8rem',
@@ -2915,7 +2915,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          <QrCodeIcon size={14} color="#2563eb" />
+                          <QrCodeIcon size={14} color="var(--text-brand)" />
                           <span>Sinh viên tự quét QR</span>
                         </span>
                       );
@@ -2927,9 +2927,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '5px',
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          color: '#475569',
+                          background: 'var(--bg-subtle)',
+                          border: '1px solid var(--border-color)',
+                          color: 'var(--text-secondary)',
                           padding: '3px 9px',
                           borderRadius: '6px',
                           fontSize: '0.8rem',
@@ -2956,14 +2956,14 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           borderRadius: '12px',
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          background: '#eff6ff',
-                          color: '#2563eb',
-                          border: '1px solid #bfdbfe',
+                          background: 'var(--tint-blue-bg)',
+                          color: 'var(--text-brand)',
+                          border: '1px solid var(--tint-blue-border)',
                           width: 'fit-content',
                         }}>
                           {ratio}
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {names}
                         </span>
                       </div>
@@ -2980,14 +2980,14 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       return (
                         <span
                           style={{
-                            color: '#1e293b',
+                            color: 'var(--text-body)',
                             fontWeight: 600,
                             fontSize: '0.85rem',
                             whiteSpace: 'nowrap',
                           }}
                         >
                           {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}{' '}
-                          <span style={{ color: '#94a3b8', fontWeight: 400 }}>•</span>{' '}
+                          <span style={{ color: 'var(--text-subtle)', fontWeight: 400 }}>•</span>{' '}
                           {d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </span>
                       );
@@ -3005,8 +3005,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
           ) : activeTab === 'sessions' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{
-                background: '#ffffff',
-                border: '1.5px solid #e2e8f0',
+                background: 'var(--bg-surface)',
+                border: '1.5px solid var(--border-color)',
                 borderRadius: '14px',
                 padding: '1.25rem 1.5rem',
                 display: 'flex',
@@ -3016,10 +3016,10 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 gap: '1rem',
               }}>
                 <div>
-                  <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                  <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                     Quản Lý Các Ca / Buổi Điểm Danh ({sessions.length} ca)
                   </h3>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     Mỗi ca có khung giờ điểm danh độc lập. Sinh viên đăng ký 1 lần, đến ca nào điểm danh ca đó và không thể điểm danh 2 lần trong cùng 1 ca.
                   </p>
                 </div>
@@ -3057,8 +3057,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   <div
                     key={s.id || idx}
                     style={{
-                      background: '#ffffff',
-                      border: '1.5px solid #e2e8f0',
+                      background: 'var(--bg-surface)',
+                      border: '1.5px solid var(--border-color)',
                       borderRadius: '14px',
                       padding: '1.25rem',
                       display: 'flex',
@@ -3074,8 +3074,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           <span style={{
                             fontSize: '0.75rem',
                             fontWeight: 800,
-                            background: '#eff6ff',
-                            color: '#2563eb',
+                            background: 'var(--tint-blue-bg)',
+                            color: 'var(--text-brand)',
                             padding: '0.2rem 0.6rem',
                             borderRadius: '6px',
                           }}>
@@ -3085,11 +3085,11 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             <span style={{
                               fontSize: '0.75rem',
                               fontWeight: 800,
-                              background: '#fef3c7',
-                              color: '#b45309',
+                              background: 'var(--tint-amber-strong)',
+                              color: 'var(--status-amber-text)',
                               padding: '0.2rem 0.6rem',
                               borderRadius: '6px',
-                              border: '1px solid #fde68a',
+                              border: '1px solid var(--tint-amber-border)',
                             }}>
                               ⭐ Ca Chính (Khán Giả)
                             </span>
@@ -3097,8 +3097,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             <span style={{
                               fontSize: '0.75rem',
                               fontWeight: 700,
-                              background: '#f1f5f9',
-                              color: '#64748b',
+                              background: 'var(--bg-muted)',
+                              color: 'var(--text-muted)',
                               padding: '0.2rem 0.6rem',
                               borderRadius: '6px',
                             }}>
@@ -3108,8 +3108,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             <span style={{
                               fontSize: '0.75rem',
                               fontWeight: 700,
-                              background: '#ecfdf5',
-                              color: '#059669',
+                              background: 'var(--tint-green-bg)',
+                              color: 'var(--status-green-text)',
                               padding: '0.2rem 0.6rem',
                               borderRadius: '6px',
                             }}>
@@ -3124,9 +3124,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.3rem',
-                            background: '#fef2f2',
-                            border: '1px solid #fecaca',
-                            color: '#dc2626',
+                            background: 'var(--tint-red-bg)',
+                            border: '1px solid var(--tint-red-border)',
+                            color: 'var(--status-red-text)',
                             padding: '0.3rem 0.65rem',
                             borderRadius: '8px',
                             fontSize: '0.785rem',
@@ -3139,17 +3139,17 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         </button>
                       </div>
 
-                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                         {s.name}
                       </h4>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.825rem', color: '#475569' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
                         <div><CalendarIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Ngày:</strong> {s.session_date ? new Date(s.session_date).toLocaleDateString('vi-VN') : 'Mặc định'}</div>
                         <div><ClockIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Giờ:</strong> {s.start_time || '07:30'} - {s.end_time || '11:30'}</div>
                         {s.room_name && s.room_name !== 'Không mượn' && (
-                          <div><MapPinIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Địa điểm:</strong> <span style={{ color: '#0f172a', fontWeight: 700 }}>{s.room_name}</span></div>
+                          <div><MapPinIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Địa điểm:</strong> <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{s.room_name}</span></div>
                         )}
-                        <div><UsersIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Đã điểm danh ca này:</strong> <span style={{ color: '#16a34a', fontWeight: 800, fontSize: '0.95rem' }}>{s.checkedInCount || 0}</span> sinh viên</div>
+                        <div><UsersIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <strong>Đã điểm danh ca này:</strong> <span style={{ color: 'var(--status-green-text)', fontWeight: 800, fontSize: '0.95rem' }}>{s.checkedInCount || 0}</span> sinh viên</div>
                       </div>
                     </div>
 
@@ -3165,9 +3165,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                               fontWeight: 700,
                               padding: '0.35rem 0.65rem',
                               borderRadius: '6px',
-                              background: '#fffbeb',
-                              color: '#b45309',
-                              border: '1px solid #fde68a',
+                              background: 'var(--tint-amber-bg)',
+                              color: 'var(--status-amber-text)',
+                              border: '1px solid var(--tint-amber-border)',
                               cursor: 'pointer',
                             }}
                           >
@@ -3182,9 +3182,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             fontWeight: 700,
                             padding: '0.35rem 0.65rem',
                             borderRadius: '6px',
-                            background: s.session_type === 'internal' ? '#ecfdf5' : '#f8fafc',
-                            color: s.session_type === 'internal' ? '#047857' : '#475569',
-                            border: '1px solid #cbd5e1',
+                            background: s.session_type === 'internal' ? 'var(--tint-green-bg)' : 'var(--bg-subtle)',
+                            color: s.session_type === 'internal' ? 'var(--status-green-text)' : 'var(--text-secondary)',
+                            border: '1px solid var(--border-strong)',
                             cursor: 'pointer',
                           }}
                         >
@@ -3206,16 +3206,16 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           justifyContent: 'center',
                           gap: '0.4rem',
                           padding: '0.6rem 1rem',
-                          background: '#f0fdf4',
-                          color: '#166534',
-                          border: '1.5px solid #bbf7d0',
+                          background: 'var(--tint-green-bg)',
+                          color: 'var(--status-green-text)',
+                          border: '1.5px solid var(--tint-green-border)',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.825rem',
                           cursor: 'pointer',
                         }}
                       >
-                        <QrCodeIcon size={16} color="#166534" />
+                        <QrCodeIcon size={16} color="var(--status-green-text)" />
                         <span>Chiếu Mã QR Cho Ca Này</span>
                       </button>
                     </div>
@@ -3226,18 +3226,18 @@ export default function EventDetailPage({ params }: { params?: any }) {
           ) : activeTab === 'registrations' ? (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.65rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   Danh Sách Đăng Ký Khán Giả ({participantRegistrations.length})
                 </h3>
                 {invalidRegistrationCount > 0 && (
                   <span style={{
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    color: '#dc2626',
-                    background: '#fef2f2',
+                    color: 'var(--status-red-text)',
+                    background: 'var(--tint-red-bg)',
                     padding: '0.2rem 0.6rem',
                     borderRadius: '6px',
-                    border: '1px solid #fecaca',
+                    border: '1px solid var(--tint-red-border)',
                   }}>
                     ⚠ {invalidRegistrationCount} dòng MSSV sai format đã bị ẩn
                   </span>
@@ -3336,15 +3336,15 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '0.65rem 1rem',
-                  background: '#fef2f2',
-                  border: '1.5px solid #fecaca',
+                  background: 'var(--tint-red-bg)',
+                  border: '1.5px solid var(--tint-red-border)',
                   borderRadius: '10px',
                   marginBottom: '0.85rem',
                   flexWrap: 'wrap',
                   gap: '0.5rem',
                 }}>
-                  <div style={{ fontSize: '0.85rem', color: '#991b1b', fontWeight: 600 }}>
-                    Đã chọn: <strong style={{ color: '#dc2626' }}>{selectedRegMssvs.length}</strong> sinh viên đăng ký
+                  <div style={{ fontSize: '0.85rem', color: 'var(--status-red-text)', fontWeight: 600 }}>
+                    Đã chọn: <strong style={{ color: 'var(--status-red-text)' }}>{selectedRegMssvs.length}</strong> sinh viên đăng ký
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <button
@@ -3376,9 +3376,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       style={{
                         padding: '0.4rem 0.75rem',
                         borderRadius: '8px',
-                        background: '#ffffff',
-                        color: '#475569',
-                        border: '1px solid #cbd5e1',
+                        background: 'var(--bg-surface)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid var(--border-strong)',
                         fontSize: '0.8rem',
                         fontWeight: 600,
                         cursor: 'pointer',
@@ -3432,9 +3432,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         style={{
                           fontFamily: 'monospace',
                           fontWeight: 700,
-                          color: '#1e40af',
-                          background: '#eff6ff',
-                          border: '1px solid #bfdbfe',
+                          color: 'var(--text-brand-strong)',
+                          background: 'var(--tint-blue-bg)',
+                          border: '1px solid var(--tint-blue-border)',
                           padding: '3px 8px',
                           borderRadius: '6px',
                           fontSize: '0.85rem',
@@ -3449,7 +3449,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     key: 'full_name',
                     label: 'Họ và tên',
                     render: (val: string) => (
-                      <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                         {val || '—'}
                       </span>
                     ),
@@ -3458,7 +3458,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     key: 'class_id',
                     label: 'Lớp',
                     render: (val: string) => (
-                      <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
                         {val || '—'}
                       </span>
                     ),
@@ -3469,9 +3469,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     render: (val: string) => {
                       const isVol = val === 'Cộng tác viên' || val === 'volunteer';
                       const isOrg = val === 'Ban tổ chức' || val === 'organizer';
-                      const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
+                      const bg = isOrg ? 'var(--tint-amber-bg)' : isVol ? 'var(--tint-purple-bg)' : 'var(--tint-green-bg)';
                       const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
-                      const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
+                      const border = isOrg ? 'var(--tint-amber-border)' : isVol ? 'var(--tint-purple-border)' : 'var(--tint-green-border)';
                       const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
                       return (
                         <span
@@ -3506,9 +3506,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             borderRadius: '20px',
                             fontSize: '0.8rem',
                             fontWeight: 700,
-                            background: '#dcfce7',
-                            color: '#15803d',
-                            border: '1px solid #bbf7d0',
+                            background: 'var(--tint-green-strong)',
+                            color: 'var(--status-green-text)',
+                            border: '1px solid var(--tint-green-border)',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -3524,9 +3524,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             borderRadius: '20px',
                             fontSize: '0.8rem',
                             fontWeight: 700,
-                            background: '#fef2f2',
-                            color: '#dc2626',
-                            border: '1px solid #fecaca',
+                            background: 'var(--tint-red-bg)',
+                            color: 'var(--status-red-text)',
+                            border: '1px solid var(--tint-red-border)',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -3541,7 +3541,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       if (!val) return '—';
                       const d = new Date(val);
                       return (
-                        <span style={{ color: '#475569', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                           {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}{' '}
                           <span style={{ color: '#cbd5e1' }}>•</span>{' '}
                           {d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -3577,9 +3577,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         style={{
                           padding: '3px 10px',
                           borderRadius: '6px',
-                          border: '1px solid #fecaca',
-                          background: '#fef2f2',
-                          color: '#dc2626',
+                          border: '1px solid var(--tint-red-border)',
+                          background: 'var(--tint-red-bg)',
+                          color: 'var(--status-red-text)',
                           fontSize: '0.75rem',
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -3602,8 +3602,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
               {/* 1. CẤU HÌNH CÁC BAN CHUYÊN TRÁCH */}
               <div
                 style={{
-                  background: '#ffffff',
-                  border: '1.5px solid #e2e8f0',
+                  background: 'var(--bg-surface)',
+                  border: '1.5px solid var(--border-color)',
                   borderRadius: '16px',
                   padding: '1.5rem',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
@@ -3612,7 +3612,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                         Cấu hình Ban Chuyên Trách & Tuyển Dụng CTV
                       </h3>
                       <span
@@ -3621,15 +3621,15 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           fontWeight: 700,
                           padding: '3px 9px',
                           borderRadius: '12px',
-                          background: event.is_recruitment_open !== false ? '#dcfce7' : '#fee2e2',
-                          color: event.is_recruitment_open !== false ? '#15803d' : '#b91c1c',
-                          border: `1px solid ${event.is_recruitment_open !== false ? '#86efac' : '#fca5a5'}`,
+                          background: event.is_recruitment_open !== false ? 'var(--tint-green-strong)' : 'var(--tint-red-strong)',
+                          color: event.is_recruitment_open !== false ? 'var(--status-green-text)' : 'var(--status-red-text)',
+                          border: `1px solid ${event.is_recruitment_open !== false ? 'var(--tint-green-border)' : 'var(--tint-red-border)'}`,
                         }}
                       >
                         {event.is_recruitment_open !== false ? '● Cổng CTV đang mở' : '● Cổng CTV đã đóng'}
                       </span>
                     </div>
-                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.825rem', color: '#64748b' }}>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.825rem', color: 'var(--text-muted)' }}>
                       Thiết lập các Ban, chỉ tiêu số lượng và tiêu chuẩn Nam/Nữ để ứng viên nộp đơn.
                     </p>
                   </div>
@@ -3642,9 +3642,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       style={{
                         height: '38px',
                         padding: '0 1rem',
-                        background: event.is_recruitment_open !== false ? '#fffbeb' : '#f0fdf4',
-                        color: event.is_recruitment_open !== false ? '#b45309' : '#15803d',
-                        border: `1.5px solid ${event.is_recruitment_open !== false ? '#fde68a' : '#bbf7d0'}`,
+                        background: event.is_recruitment_open !== false ? 'var(--tint-amber-bg)' : 'var(--tint-green-bg)',
+                        color: event.is_recruitment_open !== false ? 'var(--status-amber-text)' : 'var(--status-green-text)',
+                        border: `1.5px solid ${event.is_recruitment_open !== false ? 'var(--tint-amber-border)' : 'var(--tint-green-border)'}`,
                         borderRadius: '10px',
                         fontSize: '0.825rem',
                         fontWeight: 700,
@@ -3666,9 +3666,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       style={{
                         height: '38px',
                         padding: '0 1.25rem',
-                        background: showAddDeptForm ? '#f1f5f9' : '#2563eb',
-                        color: showAddDeptForm ? '#475569' : '#ffffff',
-                        border: showAddDeptForm ? '1.5px solid #cbd5e1' : 'none',
+                        background: showAddDeptForm ? 'var(--bg-muted)' : '#2563eb',
+                        color: showAddDeptForm ? 'var(--text-secondary)' : '#ffffff',
+                        border: showAddDeptForm ? '1.5px solid var(--border-strong)' : 'none',
                         borderRadius: '10px',
                         fontSize: '0.85rem',
                         fontWeight: 700,
@@ -3688,8 +3688,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 {showAddDeptForm && (
                   <div
                     style={{
-                      background: '#f8fafc',
-                      border: '1.5px solid #cbd5e1',
+                      background: 'var(--bg-subtle)',
+                      border: '1.5px solid var(--border-strong)',
                       borderRadius: '14px',
                       padding: '1.25rem',
                       marginBottom: '1.25rem',
@@ -3699,13 +3699,13 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0f172a' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                         Tạo Ban Chuyên Trách Mới
                       </span>
                       <button
                         type="button"
                         onClick={() => setShowAddDeptForm(false)}
-                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700 }}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700 }}
                       >
                         ✕
                       </button>
@@ -3713,8 +3713,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem' }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                          Tên Ban / Vị trí <span style={{ color: '#dc2626' }}>*</span>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
+                          Tên Ban / Vị trí <span style={{ color: 'var(--status-red-text)' }}>*</span>
                         </label>
                         <input
                           type="text"
@@ -3724,19 +3724,19 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           style={{
                             width: '100%',
                             padding: '0.6rem 0.75rem',
-                            border: '1.5px solid #cbd5e1',
+                            border: '1.5px solid var(--border-strong)',
                             borderRadius: '8px',
                             boxSizing: 'border-box',
                             fontSize: '0.85rem',
-                            background: '#ffffff',
+                            background: 'var(--bg-surface)',
                             fontWeight: 600,
                           }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                          Chỉ tiêu (Số người) <span style={{ color: '#dc2626' }}>*</span>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
+                          Chỉ tiêu (Số người) <span style={{ color: 'var(--status-red-text)' }}>*</span>
                         </label>
                         <input
                           type="number"
@@ -3746,18 +3746,18 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           style={{
                             width: '100%',
                             padding: '0.6rem 0.75rem',
-                            border: '1.5px solid #cbd5e1',
+                            border: '1.5px solid var(--border-strong)',
                             borderRadius: '8px',
                             boxSizing: 'border-box',
                             fontSize: '0.85rem',
-                            background: '#ffffff',
+                            background: 'var(--bg-surface)',
                             fontWeight: 600,
                           }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                           Yêu cầu Giới tính
                         </label>
                         <select
@@ -3766,9 +3766,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                           style={{
                             width: '100%',
                             padding: '0.6rem 0.75rem',
-                            border: '1.5px solid #cbd5e1',
+                            border: '1.5px solid var(--border-strong)',
                             borderRadius: '8px',
-                            background: '#ffffff',
+                            background: 'var(--bg-surface)',
                             fontSize: '0.85rem',
                             fontWeight: 600,
                           }}
@@ -3781,7 +3781,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                         Mô tả nhiệm vụ & Tiêu chí tuyển chọn
                       </label>
                       <input
@@ -3792,11 +3792,11 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         style={{
                           width: '100%',
                           padding: '0.6rem 0.75rem',
-                          border: '1.5px solid #cbd5e1',
+                          border: '1.5px solid var(--border-strong)',
                           borderRadius: '8px',
                           boxSizing: 'border-box',
                           fontSize: '0.85rem',
-                          background: '#ffffff',
+                          background: 'var(--bg-surface)',
                           fontWeight: 500,
                         }}
                       />
@@ -3808,12 +3808,12 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         onClick={() => setShowAddDeptForm(false)}
                         style={{
                           padding: '0.5rem 1rem',
-                          background: '#ffffff',
-                          border: '1.5px solid #cbd5e1',
+                          background: 'var(--bg-surface)',
+                          border: '1.5px solid var(--border-strong)',
                           borderRadius: '8px',
                           fontSize: '0.825rem',
                           fontWeight: 700,
-                          color: '#475569',
+                          color: 'var(--text-secondary)',
                           cursor: 'pointer',
                         }}
                       >
@@ -3843,7 +3843,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
                 {/* Danh sách các Ban hiện có */}
                 {departments.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', margin: '1rem 0' }}>
+                  <p style={{ textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.85rem', margin: '1rem 0' }}>
                     Chưa có Ban chuyên trách nào được cấu hình cho sự kiện này.
                   </p>
                 ) : (
@@ -3855,8 +3855,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         <div
                           key={dept.id}
                           style={{
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
+                            background: 'var(--bg-surface)',
+                            border: '1px solid var(--border-color)',
                             borderRadius: '10px',
                             padding: '0.85rem',
                             display: 'flex',
@@ -3867,7 +3867,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         >
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                              <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>
+                              <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                                 {dept.name}
                               </span>
                               <span
@@ -3876,27 +3876,27 @@ export default function EventDetailPage({ params }: { params?: any }) {
                                   fontWeight: 800,
                                   padding: '0.15rem 0.45rem',
                                   borderRadius: '10px',
-                                  background: dept.gender_req === 'male' ? '#dbeafe' : dept.gender_req === 'female' ? '#fce7f3' : '#dcfce7',
-                                  color: dept.gender_req === 'male' ? '#1e40af' : dept.gender_req === 'female' ? '#be185d' : '#166534',
+                                  background: dept.gender_req === 'male' ? 'var(--tint-blue-strong)' : dept.gender_req === 'female' ? 'var(--tint-pink-strong)' : 'var(--tint-green-strong)',
+                                  color: dept.gender_req === 'male' ? 'var(--text-brand-strong)' : dept.gender_req === 'female' ? '#be185d' : 'var(--status-green-text)',
                                 }}
                               >
                                 {dept.gender_req === 'male' ? 'Nam' : dept.gender_req === 'female' ? 'Nữ' : 'Nam & Nữ'}
                               </span>
                             </div>
-                            <div style={{ fontSize: '0.775rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                            <div style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                               Chỉ tiêu: <strong>{acceptedCount}/{dept.quota} bạn</strong> ({count} đơn nộp)
                             </div>
                             {dept.description && (
-                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-subtle)', lineHeight: 1.3 }}>
                                 {dept.description}
                               </p>
                             )}
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.35rem', borderTop: '1px dashed #f1f5f9' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.35rem', borderTop: '1px dashed var(--border-color)' }}>
                             <button
                               type="button"
                               onClick={() => handleDeleteDepartment(dept.id)}
-                              style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                              style={{ background: 'none', border: 'none', color: 'var(--status-red-text)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
                             >
                               Xóa Ban
                             </button>
@@ -3911,7 +3911,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               {/* 2. DANH SÁCH ỨNG VIÊN TUYỂN DỤNG & BULK ACTION BAR */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                     Danh Sách Đơn Ứng Tuyển Ban Chuyên Trách ({volunteerRegistrations.length})
                   </h3>
 
@@ -3972,7 +3972,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 {selectedMssvs.length > 0 && (
                   <div
                     style={{
-                      background: '#1e293b',
+                      background: 'var(--btn-dark-hover)',
                       color: '#ffffff',
                       padding: '0.75rem 1.25rem',
                       borderRadius: '12px',
@@ -4084,7 +4084,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       key: 'stt',
                       label: 'STT',
                       render: (_val: any, _row: any, index?: number) => (
-                        <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>
                           {(index ?? 0) + 1}
                         </span>
                       ),
@@ -4093,7 +4093,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       key: 'mssv',
                       label: 'MSSV',
                       render: (val: string) => (
-                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e40af', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '3px 8px', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-brand-strong)', background: 'var(--tint-blue-bg)', border: '1px solid var(--tint-blue-border)', padding: '3px 8px', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                           {val}
                         </span>
                       ),
@@ -4101,18 +4101,18 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     {
                       key: 'full_name',
                       label: 'Họ và tên',
-                      render: (val: string) => <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>{val || '—'}</span>,
+                      render: (val: string) => <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{val || '—'}</span>,
                     },
                     {
                       key: 'class_id',
                       label: 'Lớp',
-                      render: (val: string) => <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>{val || '—'}</span>,
+                      render: (val: string) => <span style={{ color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>{val || '—'}</span>,
                     },
                     {
                       key: 'department_name',
                       label: 'Ban Ứng Tuyển',
                       render: (val: string) => (
-                        <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--text-brand)', background: 'var(--tint-blue-bg)', padding: '3px 8px', borderRadius: '6px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                           {val || 'Ban CTV'}
                         </span>
                       ),
@@ -4121,7 +4121,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       key: 'gender',
                       label: 'Giới tính',
                       render: (val: string) => (
-                        <span style={{ fontWeight: 600, color: val === 'Nam' ? '#1d4ed8' : '#be185d', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontWeight: 600, color: val === 'Nam' ? 'var(--text-brand)' : '#be185d', whiteSpace: 'nowrap' }}>
                           {val || 'Nam'}
                         </span>
                       ),
@@ -4130,7 +4130,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       key: 'phone',
                       label: 'SĐT / Zalo',
                       render: (val: string) => (
-                        <span style={{ fontFamily: 'monospace', color: '#0f172a', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                           {val || '—'}
                         </span>
                       ),
@@ -4139,7 +4139,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       key: 'note',
                       label: 'Ghi chú / Kỹ năng',
                       render: (val: string) => (
-                        <span style={{ fontSize: '0.8rem', color: '#475569', maxWidth: '250px', display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', maxWidth: '250px', display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {val || 'Không có ghi chú'}
                         </span>
                       ),
@@ -4149,7 +4149,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       label: 'Trạng Thái',
                       render: (val: string) => {
                         const status = val || 'pending';
-                        const bg = status === 'accepted' ? '#dcfce7' : status === 'rejected' ? '#fee2e2' : '#fef3c7';
+                        const bg = status === 'accepted' ? 'var(--tint-green-strong)' : status === 'rejected' ? 'var(--tint-red-strong)' : 'var(--tint-amber-strong)';
                         const color = status === 'accepted' ? '#15803d' : status === 'rejected' ? '#b91c1c' : '#b45309';
                         const label = status === 'accepted' ? 'Trúng Tuyển' : status === 'rejected' ? 'Từ Chối' : 'Chờ Duyệt';
                         return (
@@ -4170,8 +4170,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             disabled={reviewingMssv === row.mssv || row.review_status === 'accepted'}
                             style={{
                               padding: '0.25rem 0.5rem',
-                              background: row.review_status === 'accepted' ? '#e2e8f0' : '#16a34a',
-                              color: row.review_status === 'accepted' ? '#94a3b8' : '#ffffff',
+                              background: row.review_status === 'accepted' ? 'var(--border-color)' : '#16a34a',
+                              color: row.review_status === 'accepted' ? 'var(--text-subtle)' : '#ffffff',
                               border: 'none',
                               borderRadius: '6px',
                               fontSize: '0.75rem',
@@ -4187,8 +4187,8 @@ export default function EventDetailPage({ params }: { params?: any }) {
                             disabled={reviewingMssv === row.mssv || row.review_status === 'rejected'}
                             style={{
                               padding: '0.25rem 0.5rem',
-                              background: row.review_status === 'rejected' ? '#e2e8f0' : '#ef4444',
-                              color: row.review_status === 'rejected' ? '#94a3b8' : '#ffffff',
+                              background: row.review_status === 'rejected' ? 'var(--border-color)' : '#ef4444',
+                              color: row.review_status === 'rejected' ? 'var(--text-subtle)' : '#ffffff',
                               border: 'none',
                               borderRadius: '6px',
                               fontSize: '0.75rem',
@@ -4212,7 +4212,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
           ) : activeTab === 'noshow' ? (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.65rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   Chưa Điểm Danh ({unattendedRegistrations.length})
                 </h3>
                 {unattendedRegistrations.length > 0 && (
@@ -4279,7 +4279,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   key: 'stt',
                   label: 'STT',
                   render: (_val: any, _row: any, index?: number) => (
-                    <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>
                       {(index ?? 0) + 1}
                     </span>
                   ),
@@ -4292,9 +4292,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       style={{
                         fontFamily: 'monospace',
                         fontWeight: 700,
-                        color: '#1e40af',
-                        background: '#eff6ff',
-                        border: '1px solid #bfdbfe',
+                        color: 'var(--text-brand-strong)',
+                        background: 'var(--tint-blue-bg)',
+                        border: '1px solid var(--tint-blue-border)',
                         padding: '3px 8px',
                         borderRadius: '6px',
                         fontSize: '0.85rem',
@@ -4309,7 +4309,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   key: 'full_name',
                   label: 'Họ và tên',
                   render: (val: string) => (
-                    <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                       {val || '—'}
                     </span>
                   ),
@@ -4318,7 +4318,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   key: 'class_id',
                   label: 'Lớp',
                   render: (val: string) => (
-                    <span style={{ color: '#475569', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
                       {val || '—'}
                     </span>
                   ),
@@ -4329,9 +4329,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   render: (val: string) => {
                     const isVol = val === 'Cộng tác viên' || val === 'volunteer';
                     const isOrg = val === 'Ban tổ chức' || val === 'organizer';
-                    const bg = isOrg ? '#fffbeb' : isVol ? '#f5f3ff' : '#ecfdf5';
+                    const bg = isOrg ? 'var(--tint-amber-bg)' : isVol ? 'var(--tint-purple-bg)' : 'var(--tint-green-bg)';
                     const color = isOrg ? '#b45309' : isVol ? '#6d28d9' : '#047857';
-                    const border = isOrg ? '#fde68a' : isVol ? '#ddd6fe' : '#a7f3d0';
+                    const border = isOrg ? 'var(--tint-amber-border)' : isVol ? 'var(--tint-purple-border)' : 'var(--tint-green-border)';
                     const label = isOrg ? 'Ban tổ chức' : isVol ? 'Cộng tác viên' : 'Người tham gia';
                     return (
                       <span
@@ -4364,22 +4364,22 @@ export default function EventDetailPage({ params }: { params?: any }) {
               {isApproverRole && (
                 <div
                   style={{
-                    background: '#f8fafc',
-                    border: '1.5px solid #cbd5e1',
+                    background: 'var(--bg-subtle)',
+                    border: '1.5px solid var(--border-strong)',
                     borderRadius: '12px',
                     padding: '1.25rem',
                   }}
                 >
-                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <StarIcon size={18} color="#f59e0b" fill="#f59e0b" />
                     <span>Gửi Đánh Giá Chất Lượng Tổ Chức (Dành cho 4 cấp Ban ngành)</span>
                   </h4>
-                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: '#64748b' }}>
+                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     Nếu đơn vị bị đánh giá 1, 2 hoặc 3 sao, hệ thống sẽ tự động gắn cờ cảnh báo chú ý trong các lần trình kế hoạch tiếp theo.
                   </p>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Chọn số sao:</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-body)' }}>Chọn số sao:</span>
                     <div style={{ display: 'flex', gap: '0.35rem' }}>
                       {[1, 2, 3, 4, 5].map((s) => (
                         <button
@@ -4404,7 +4404,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                         </button>
                       ))}
                     </div>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: ratingStars <= 3 ? '#d97706' : '#16a34a', marginLeft: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: ratingStars <= 3 ? 'var(--status-amber-text)' : 'var(--status-green-text)', marginLeft: '0.5rem' }}>
                       {ratingStars} Sao {ratingStars <= 3 ? '(Kích hoạt cảnh báo lưu ý)' : '(Đạt chuẩn)'}
                     </span>
                   </div>
@@ -4418,7 +4418,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       width: '100%',
                       padding: '0.75rem',
                       borderRadius: '8px',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       fontSize: '0.875rem',
                       fontFamily: 'inherit',
                       boxSizing: 'border-box',
@@ -4453,16 +4453,16 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     <div
                       key={r.id}
                       style={{
-                        background: '#ffffff',
+                        background: 'var(--bg-surface)',
                         borderRadius: '10px',
                         padding: '1rem',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--border-color)',
                         borderLeft: r.stars <= 3 ? '4px solid #f59e0b' : '4px solid #10b981',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                         <div>
-                          <strong style={{ color: '#0f172a', fontSize: '0.9rem' }}>
+                          <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                             {r.rater_tier === 'youth_union'
                               ? 'Đoàn Học Viện'
                               : r.rater_tier === 'ctsv'
@@ -4471,24 +4471,24 @@ export default function EventDetailPage({ params }: { params?: any }) {
                               ? 'Phòng. TC-HC-QT'
                               : 'Super Admin'}
                           </strong>
-                          <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '0.5rem' }}>({r.rater_email})</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({r.rater_email})</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#d97706', fontWeight: 800 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--status-amber-text)', fontWeight: 800 }}>
                           <StarIcon size={14} color="#f59e0b" fill="#f59e0b" />
                           <span>{r.stars} / 5 sao</span>
                         </div>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: 1.4 }}>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.4 }}>
                         {r.feedback || 'Không có nhận xét chi tiết.'}
                       </p>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.3rem', display: 'block' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.3rem', display: 'block' }}>
                         Ngày đánh giá: {new Date(r.created_at).toLocaleString('vi-VN')}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', fontSize: '0.875rem', textAlign: 'center', padding: '2rem 0' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '2rem 0' }}>
                   Chưa có đánh giá nào cho sự kiện này.
                 </p>
               )}
@@ -4514,20 +4514,20 @@ export default function EventDetailPage({ params }: { params?: any }) {
           padding: '1rem',
         }} onClick={() => setShowAddSessionModal(false)}>
           <div style={{
-            background: '#ffffff',
+            background: 'var(--bg-surface)',
             borderRadius: '16px',
             maxWidth: '480px',
             width: '100%',
             padding: '1.5rem',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
           }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               ➕ Thêm Ca / Buổi Điểm Danh Mới
             </h3>
 
             <form onSubmit={handleAddSession} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem' }}>
                   Tên Ca / Buổi Điểm Danh: *
                 </label>
                 <input
@@ -4539,7 +4539,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     width: '100%',
                     padding: '0.6rem 0.85rem',
                     borderRadius: '8px',
-                    border: '1.5px solid #cbd5e1',
+                    border: '1.5px solid var(--border-strong)',
                     fontSize: '0.9rem',
                     boxSizing: 'border-box',
                   }}
@@ -4548,7 +4548,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem' }}>
                   Ngày Diễn Ra: *
                 </label>
                 <input
@@ -4559,7 +4559,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     width: '100%',
                     padding: '0.6rem 0.85rem',
                     borderRadius: '8px',
-                    border: '1.5px solid #cbd5e1',
+                    border: '1.5px solid var(--border-strong)',
                     fontSize: '0.9rem',
                     boxSizing: 'border-box',
                   }}
@@ -4569,7 +4569,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem' }}>
                     Giờ Bắt Đầu: *
                   </label>
                   <input
@@ -4580,7 +4580,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       width: '100%',
                       padding: '0.6rem 0.85rem',
                       borderRadius: '8px',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       fontSize: '0.9rem',
                       boxSizing: 'border-box',
                     }}
@@ -4588,7 +4588,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem' }}>
                     Giờ Kết Thúc: *
                   </label>
                   <input
@@ -4599,7 +4599,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       width: '100%',
                       padding: '0.6rem 0.85rem',
                       borderRadius: '8px',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       fontSize: '0.9rem',
                       boxSizing: 'border-box',
                     }}
@@ -4609,7 +4609,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem' }}>
                   Loại Ca / Đối Tượng:
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -4619,9 +4619,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     style={{
                       padding: '0.55rem',
                       borderRadius: '8px',
-                      border: newSessionType === 'participant' ? '2px solid #2563eb' : '1.5px solid #cbd5e1',
-                      background: newSessionType === 'participant' ? '#eff6ff' : '#ffffff',
-                      color: newSessionType === 'participant' ? '#1d4ed8' : '#475569',
+                      border: newSessionType === 'participant' ? '2px solid #2563eb' : '1.5px solid var(--border-strong)',
+                      background: newSessionType === 'participant' ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
+                      color: newSessionType === 'participant' ? 'var(--text-brand)' : 'var(--text-secondary)',
                       fontSize: '0.825rem',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -4638,9 +4638,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     style={{
                       padding: '0.55rem',
                       borderRadius: '8px',
-                      border: newSessionType === 'internal' ? '2px solid #7c3aed' : '1.5px solid #cbd5e1',
-                      background: newSessionType === 'internal' ? '#f5f3ff' : '#ffffff',
-                      color: newSessionType === 'internal' ? '#6d28d9' : '#475569',
+                      border: newSessionType === 'internal' ? '2px solid #7c3aed' : '1.5px solid var(--border-strong)',
+                      background: newSessionType === 'internal' ? 'var(--tint-purple-bg)' : 'var(--bg-surface)',
+                      color: newSessionType === 'internal' ? 'var(--status-purple-text)' : 'var(--text-secondary)',
                       fontSize: '0.825rem',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -4652,7 +4652,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </div>
 
               {newSessionType === 'participant' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fffbeb', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--tint-amber-bg)', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1px solid var(--tint-amber-border)' }}>
                   <input
                     type="checkbox"
                     id="newSessionIsMain"
@@ -4660,13 +4660,13 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     onChange={(e) => setNewSessionIsMain(e.target.checked)}
                     style={{ width: '16px', height: '16px', accentColor: '#d97706' }}
                   />
-                  <label htmlFor="newSessionIsMain" style={{ fontSize: '0.825rem', fontWeight: 700, color: '#92400e', cursor: 'pointer' }}>
+                  <label htmlFor="newSessionIsMain" style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--status-amber-text)', cursor: 'pointer' }}>
                     ⭐ Đặt làm Ca Chính (Hiển thị ngày giờ trên trang Đăng ký)
                   </label>
                 </div>
               )}
 
-              <p style={{ margin: '0.2rem 0 0', fontSize: '0.775rem', color: '#64748b' }}>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.775rem', color: 'var(--text-muted)' }}>
                 <LightbulbIcon size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> <em>Điểm danh sẽ tự động mở trước giờ bắt đầu 15 phút và đóng sau giờ kết thúc 1 tiếng.</em>
               </p>
 
@@ -4676,9 +4676,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   onClick={() => setShowAddSessionModal(false)}
                   style={{
                     padding: '0.55rem 1rem',
-                    background: '#f1f5f9',
-                    color: '#475569',
-                    border: '1px solid #cbd5e1',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: '8px',
                     fontWeight: 700,
                     fontSize: '0.85rem',
@@ -4729,7 +4729,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
         >
           <div
             style={{
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
               borderRadius: '16px',
               maxWidth: '460px',
               width: '100%',
@@ -4739,7 +4739,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 Chỉnh Sửa Sức Chứa Sự Kiện
               </h3>
               <button
@@ -4749,7 +4749,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   background: 'transparent',
                   border: 'none',
                   fontSize: '1.25rem',
-                  color: '#94a3b8',
+                  color: 'var(--text-subtle)',
                   cursor: 'pointer',
                   padding: '4px',
                   lineHeight: 1,
@@ -4759,14 +4759,14 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </button>
             </div>
 
-            <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
               Điều chỉnh giới hạn số lượng sinh viên tham gia tối đa được phép điểm danh vào sự kiện.
               Điểm danh sẽ bị hệ thống tự động khóa khi chạm ngưỡng này để đảm bảo sức chứa hội trường.
             </p>
 
             <form onSubmit={handleUpdateCapacity} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                   Số người tham gia tối đa (0 = Không giới hạn):
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -4780,22 +4780,22 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       width: '100%',
                       padding: '0.65rem 0.85rem',
                       borderRadius: '8px',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       fontSize: '1rem',
                       fontWeight: 700,
-                      color: '#0f172a',
+                      color: 'var(--text-primary)',
                       boxSizing: 'border-box',
                     }}
                     required
                   />
-                  <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                     người
                   </span>
                 </div>
               </div>
 
               <div>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
                   Chọn nhanh:
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
@@ -4807,9 +4807,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                       style={{
                         padding: '0.35rem 0.75rem',
                         borderRadius: '6px',
-                        border: newCapacity === cap ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
-                        background: newCapacity === cap ? '#eff6ff' : '#f8fafc',
-                        color: newCapacity === cap ? '#1d4ed8' : '#475569',
+                        border: newCapacity === cap ? '1.5px solid #2563eb' : '1px solid var(--border-color)',
+                        background: newCapacity === cap ? 'var(--tint-blue-bg)' : 'var(--bg-subtle)',
+                        color: newCapacity === cap ? 'var(--text-brand)' : 'var(--text-secondary)',
                         fontWeight: newCapacity === cap ? 700 : 500,
                         fontSize: '0.8rem',
                         cursor: 'pointer',
@@ -4823,21 +4823,21 @@ export default function EventDetailPage({ params }: { params?: any }) {
               </div>
 
               <div style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-color)',
                 borderRadius: '8px',
                 padding: '0.65rem 0.85rem',
                 fontSize: '0.8rem',
-                color: '#475569',
+                color: 'var(--text-secondary)',
               }}>
                 Hiện tại đã có <strong>{stats.checkedParticipant}</strong> người tham gia điểm danh thực tế.
                 {newCapacity > 0 && stats.checkedParticipant >= newCapacity && (
-                  <div style={{ color: '#dc2626', fontWeight: 700, marginTop: '0.25rem' }}>
+                  <div style={{ color: 'var(--status-red-text)', fontWeight: 700, marginTop: '0.25rem' }}>
                     Lưu ý: Với sức chứa {newCapacity}, hệ thống sẽ khóa điểm danh vì đã đạt/vượt số lượng!
                   </div>
                 )}
                 {newCapacity > 0 && stats.checkedParticipant < newCapacity && (
-                  <div style={{ color: '#059669', fontWeight: 600, marginTop: '0.25rem' }}>
+                  <div style={{ color: 'var(--status-green-text)', fontWeight: 600, marginTop: '0.25rem' }}>
                     Còn trống {newCapacity - stats.checkedParticipant} chỗ điểm danh.
                   </div>
                 )}
@@ -4849,9 +4849,9 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   onClick={() => setShowCapacityModal(false)}
                   style={{
                     padding: '0.55rem 1rem',
-                    background: '#f1f5f9',
-                    color: '#475569',
-                    border: '1px solid #cbd5e1',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: '8px',
                     fontWeight: 700,
                     fontSize: '0.85rem',
@@ -4899,11 +4899,11 @@ export default function EventDetailPage({ params }: { params?: any }) {
         >
           <div
             style={{
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
               borderRadius: '16px',
               maxWidth: '520px',
               width: '100%',
-              border: '1px solid #e2e8f0',
+              border: '1px solid var(--border-color)',
               boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.25)',
               overflow: 'hidden',
             }}
@@ -4912,18 +4912,18 @@ export default function EventDetailPage({ params }: { params?: any }) {
             <div
               style={{
                 padding: '1rem 1.35rem',
-                borderBottom: '1px solid #e2e8f0',
-                borderLeft: '3px solid #1d4ed8',
+                borderBottom: '1px solid var(--border-color)',
+                borderLeft: '3px solid var(--brand-accent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}
             >
               <div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#1d4ed8' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-brand)' }}>
                   Điều chỉnh thông tin sự kiện
                 </div>
-                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   Thời gian kết thúc &amp; Địa điểm
                 </div>
               </div>
@@ -4931,14 +4931,14 @@ export default function EventDetailPage({ params }: { params?: any }) {
                 type="button"
                 onClick={() => !savingEventMeta && setShowEditMetaModal(false)}
                 style={{
-                  background: '#f1f5f9',
+                  background: 'var(--bg-muted)',
                   border: 'none',
                   borderRadius: '50%',
                   width: 30,
                   height: 30,
                   fontWeight: 700,
                   cursor: 'pointer',
-                  color: '#475569',
+                  color: 'var(--text-secondary)',
                 }}
               >
                 ×
@@ -5001,7 +5001,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
               style={{ padding: '1.25rem 1.35rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
             >
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: 4 }}>
                   Tên sự kiện *
                 </label>
                 <input
@@ -5009,38 +5009,38 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   required
                   value={editEventForm.event_name}
                   onChange={(e) => setEditEventForm({ ...editEventForm, event_name: e.target.value })}
-                  style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.88rem' }}
+                  style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 8, border: '1.5px solid var(--border-strong)', fontSize: '0.88rem' }}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: 4 }}>
                     Ngày bắt đầu
                   </label>
                   <input
                     type="date"
                     value={editEventForm.event_date}
                     onChange={(e) => setEditEventForm({ ...editEventForm, event_date: e.target.value })}
-                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.86rem' }}
+                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid var(--border-strong)', fontSize: '0.86rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: 4 }}>
                     Giờ bắt đầu
                   </label>
                   <input
                     type="time"
                     value={editEventForm.start_time}
                     onChange={(e) => setEditEventForm({ ...editEventForm, start_time: e.target.value })}
-                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.86rem' }}
+                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid var(--border-strong)', fontSize: '0.86rem' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: 4 }}>
                     Ngày kết thúc
                   </label>
                   <input
@@ -5048,24 +5048,24 @@ export default function EventDetailPage({ params }: { params?: any }) {
                     value={editEventForm.end_date}
                     min={editEventForm.event_date || undefined}
                     onChange={(e) => setEditEventForm({ ...editEventForm, end_date: e.target.value })}
-                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.86rem' }}
+                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid var(--border-strong)', fontSize: '0.86rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: 4 }}>
                     Giờ kết thúc
                   </label>
                   <input
                     type="time"
                     value={editEventForm.end_time}
                     onChange={(e) => setEditEventForm({ ...editEventForm, end_time: e.target.value })}
-                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.86rem' }}
+                    style={{ width: '100%', height: 38, padding: '0 0.65rem', borderRadius: 8, border: '1.5px solid var(--border-strong)', fontSize: '0.86rem' }}
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: 4 }}>
                   Địa điểm tổ chức
                 </label>
                 <input
@@ -5073,7 +5073,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   value={editEventForm.location}
                   onChange={(e) => setEditEventForm({ ...editEventForm, location: e.target.value })}
                   placeholder="VD: Hội trường A, Sân bóng PTIT..."
-                  style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: '0.88rem' }}
+                  style={{ width: '100%', height: 38, padding: '0 0.7rem', borderRadius: 8, border: '1.5px solid var(--border-strong)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -5082,7 +5082,7 @@ export default function EventDetailPage({ params }: { params?: any }) {
                   type="button"
                   disabled={savingEventMeta}
                   onClick={() => setShowEditMetaModal(false)}
-                  style={{ padding: '0.5rem 0.95rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 8, fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 0.95rem', background: 'var(--bg-muted)', color: 'var(--text-secondary)', border: '1px solid var(--border-strong)', borderRadius: 8, fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer' }}
                 >
                   Hủy
                 </button>

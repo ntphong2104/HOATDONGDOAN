@@ -1,6 +1,6 @@
 .container {
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--bg-primary);
   display: flex;
   flex-direction: column;
 }
@@ -25,28 +25,28 @@
   gap: 0.5rem;
   font-size: 0.9rem;
   font-weight: 700;
-  color: #2563eb;
+  color: var(--text-brand);
   text-decoration: none;
   margin-bottom: 0.75rem;
   transition: all 0.2s ease;
 }
 
 .backLink:hover {
-  color: #1d4ed8;
+  color: var(--text-brand);
   transform: translateX(-3px);
 }
 
 .title {
   font-size: 2rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
   letter-spacing: -0.02em;
 }
 
 .subtitle {
   font-size: 1rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -59,18 +59,18 @@
 
 /* Luxury Section Card */
 .sectionCard {
-  background: #ffffff;
-  border: 1.5px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-color);
   border-radius: 20px;
   padding: 1.75rem 2rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--card-shadow);
   transition: all 0.2s ease;
   margin-bottom: 0.5rem;
 }
 
 .sectionCard:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+  border-color: var(--border-strong);
+  box-shadow: var(--card-shadow);
 }
 
 .sectionHeader {
@@ -79,31 +79,31 @@
   gap: 0.75rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1.5px solid #f1f5f9;
+  border-bottom: 1.5px solid var(--border-color);
 }
 
 .sectionIconWrapper {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  background: var(--tint-blue-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #2563eb;
+  color: var(--text-brand);
   font-size: 1.25rem;
 }
 
 .sectionTitle {
   font-size: 1.2rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .sectionDesc {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0.15rem 0 0;
 }
 
@@ -194,7 +194,7 @@
 .fieldLabel {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #334155;
+  color: var(--text-body);
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -210,11 +210,11 @@
   min-height: 48px;
   padding: 0.65rem 1rem;
   line-height: 1.4;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--border-strong);
   border-radius: 12px;
   font-size: 0.95rem;
-  color: #0f172a;
-  background-color: #f8fafc;
+  color: var(--text-primary);
+  background-color: var(--bg-subtle);
   font-family: inherit;
   transition: all 0.2s ease;
   width: 100%;
@@ -234,8 +234,8 @@
 }
 
 .selectField:disabled {
-  background-color: #e2e8f0;
-  color: #475569;
+  background-color: var(--border-color);
+  color: var(--text-secondary);
   cursor: not-allowed;
   font-weight: 600;
 }
@@ -243,13 +243,13 @@
 .inputField:focus,
 .selectField:focus {
   outline: none;
-  background-color: #ffffff;
+  background-color: var(--bg-surface);
   border-color: #2563eb;
   box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.12);
 }
 
 .inputField::placeholder {
-  color: #94a3b8;
+  color: var(--text-subtle);
 }
 
 /* Ô nhập trong từng ca – cùng chiều cao để thẳng hàng */
@@ -257,12 +257,12 @@
   height: 40px;
   min-height: 40px;
   padding: 0 0.65rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 0.85rem;
   font-family: inherit;
-  color: #0f172a;
-  background-color: #ffffff;
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
   width: 100%;
   box-sizing: border-box;
 }
@@ -292,8 +292,8 @@ select.sessionField {
 
 /* Number Mini Cards */
 .numberCard {
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
+  background: var(--bg-subtle);
+  border: 1.5px solid var(--border-color);
   border-radius: 14px;
   padding: 1.1rem;
   display: flex;
@@ -304,7 +304,7 @@ select.sessionField {
 
 .numberCard:focus-within {
   border-color: #2563eb;
-  background: #ffffff;
+  background: var(--bg-surface);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
 }
 
@@ -317,7 +317,7 @@ select.sessionField {
 .numberCardLabel {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-secondary);
 }
 
 .numberCardBadge {
@@ -328,28 +328,28 @@ select.sessionField {
 }
 
 .badgeParticipant {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--tint-blue-strong);
+  color: var(--text-brand-strong);
 }
 
 .badgeVolunteer {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--tint-amber-strong);
+  color: var(--status-amber-text);
 }
 
 .badgeOrganizer {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--tint-red-strong);
+  color: var(--status-red-text);
 }
 
 .numberInput {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   padding: 0.5rem 0.75rem;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--border-strong);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--bg-surface);
   width: 100%;
   box-sizing: border-box;
 }
@@ -361,8 +361,8 @@ select.sessionField {
 
 /* Summary Banner */
 .totalBanner {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border: 1.5px solid #86efac;
+  background: var(--tint-green-bg);
+  border: 1.5px solid var(--tint-green-border);
   border-radius: 14px;
   padding: 1.1rem 1.5rem;
   margin-top: 1.25rem;
@@ -375,7 +375,7 @@ select.sessionField {
 .totalLabel {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #166534;
+  color: var(--status-green-text);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -384,7 +384,7 @@ select.sessionField {
 .totalValue {
   font-size: 1.35rem;
   font-weight: 800;
-  color: #15803d;
+  color: var(--status-green-text);
 }
 
 /* Stepper Visual Workflow */
@@ -399,21 +399,21 @@ select.sessionField {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
+  background: var(--bg-subtle);
+  border: 1.5px solid var(--border-color);
   border-radius: 14px;
   transition: all 0.2s ease;
 }
 
 .stepCardActive {
-  background: #ffffff;
-  border-color: #bfdbfe;
+  background: var(--bg-surface);
+  border-color: var(--tint-blue-border);
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);
 }
 
 .stepCardSkipped {
-  background: #f8fafc;
-  border-color: #f1f5f9;
+  background: var(--bg-subtle);
+  border-color: var(--border-color);
   opacity: 0.65;
 }
 
@@ -443,12 +443,12 @@ select.sessionField {
 .stepTitleText {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .stepSubtitleText {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin-top: 0.15rem;
 }
 
@@ -462,48 +462,48 @@ select.sessionField {
 }
 
 .pillRequired {
-  background: #dbeafe;
-  color: #1e40af;
-  border: 1px solid #bfdbfe;
+  background: var(--tint-blue-strong);
+  color: var(--text-brand-strong);
+  border: 1px solid var(--tint-blue-border);
 }
 
 .pillActive {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #86efac;
+  background: var(--tint-green-strong);
+  color: var(--status-green-text);
+  border: 1px solid var(--tint-green-border);
 }
 
 .pillSkipped {
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
 }
 
 /* Submit Footer Bar */
 .submitBar {
-  background: #ffffff;
-  border: 1.5px solid #e2e8f0;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-color);
   border-radius: 20px;
   padding: 1.25rem 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--card-shadow);
 }
 
 .cancelButton {
   padding: 0.75rem 1.5rem;
   font-size: 0.95rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-muted);
   text-decoration: none;
   border-radius: 12px;
   transition: all 0.2s ease;
 }
 
 .cancelButton:hover {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--bg-muted);
+  color: var(--text-body);
 }
 
 .submitButton {

@@ -811,18 +811,18 @@ function SuperAdminContent() {
       return {
         type: 'rejected' as const,
         label: '● Đã từ chối',
-        badgeBg: '#fef2f2',
-        badgeColor: '#b91c1c',
-        badgeBorder: '#fecaca',
+        badgeBg: 'var(--tint-red-bg)',
+        badgeColor: 'var(--status-red-text)',
+        badgeBorder: 'var(--tint-red-border)',
       };
     }
     if (p.status === 'pending') {
       return {
         type: 'pending' as const,
         label: `● Chờ: ${getStageLabel(p.current_stage)}`,
-        badgeBg: '#fffbeb',
-        badgeColor: '#b45309',
-        badgeBorder: '#fde68a',
+        badgeBg: 'var(--tint-amber-bg)',
+        badgeColor: 'var(--status-amber-text)',
+        badgeBorder: 'var(--tint-amber-border)',
       };
     }
 
@@ -854,9 +854,9 @@ function SuperAdminContent() {
       return {
         type: 'closed' as const,
         label: '● Đã kết thúc',
-        badgeBg: '#f8fafc',
-        badgeColor: '#64748b',
-        badgeBorder: '#e2e8f0',
+        badgeBg: 'var(--bg-subtle)',
+        badgeColor: 'var(--text-muted)',
+        badgeBorder: 'var(--border-color)',
       };
     }
 
@@ -864,18 +864,18 @@ function SuperAdminContent() {
       return {
         type: 'upcoming' as const,
         label: '● Đang mở đăng ký',
-        badgeBg: '#eff6ff',
-        badgeColor: '#1d4ed8',
-        badgeBorder: '#bfdbfe',
+        badgeBg: 'var(--tint-blue-bg)',
+        badgeColor: 'var(--text-brand)',
+        badgeBorder: 'var(--tint-blue-border)',
       };
     }
 
     return {
       type: 'active' as const,
       label: '● Đang mở điểm danh',
-      badgeBg: '#f0fdf4',
-      badgeColor: '#15803d',
-      badgeBorder: '#bbf7d0',
+      badgeBg: 'var(--tint-green-bg)',
+      badgeColor: 'var(--status-green-text)',
+      badgeBorder: 'var(--tint-green-border)',
     };
   }, [events]);
 
@@ -1982,10 +1982,10 @@ function SuperAdminContent() {
                 borderRadius: '12px',
                 background:
                   toast.type === 'success'
-                    ? '#0f172a'
+                    ? 'var(--btn-dark-bg)'
                     : toast.type === 'error'
-                    ? '#7f1d1d'
-                    : '#1e293b',
+                    ? 'var(--status-red-text)'
+                    : 'var(--btn-dark-hover)',
                 color: '#ffffff',
                 border:
                   toast.type === 'success'
@@ -2133,12 +2133,12 @@ function SuperAdminContent() {
               <div className={styles.sectionHeader}>
                 <div>
                   <h2 className={styles.sectionTitle}>
-                    <CalendarIcon size={20} color="#2563eb" />
+                    <CalendarIcon size={20} color="var(--text-brand)" />
                     Danh Sách Sự Kiện & Kế Hoạch Toàn Trường ({pendingProposals.length + filteredEvents.length})
                   </h2>
                   {selectedUnitFilter && (
                     <p className={styles.sectionSubtitle}>
-                      Đang lọc hiển thị theo đơn vị: <strong style={{ color: '#2563eb' }}>{selectedUnitFilter}</strong>
+                      Đang lọc hiển thị theo đơn vị: <strong style={{ color: 'var(--text-brand)' }}>{selectedUnitFilter}</strong>
                     </p>
                   )}
                 </div>
@@ -2148,9 +2148,9 @@ function SuperAdminContent() {
                       type="button"
                       onClick={() => setSelectedUnitFilter(null)}
                       style={{
-                        background: '#eff6ff',
-                        border: '1.5px solid #bfdbfe',
-                        color: '#2563eb',
+                        background: 'var(--tint-blue-bg)',
+                        border: '1.5px solid var(--tint-blue-border)',
+                        color: 'var(--text-brand)',
                         borderRadius: '8px',
                         padding: '0.4rem 0.85rem',
                         fontSize: '0.825rem',
@@ -2170,9 +2170,9 @@ function SuperAdminContent() {
                         alignItems: 'center',
                         gap: '0.35rem',
                         padding: '0.5rem 0.85rem',
-                        background: '#fee2e2',
-                        color: '#b91c1c',
-                        border: '1px solid #fecaca',
+                        background: 'var(--tint-red-strong)',
+                        color: 'var(--status-red-text)',
+                        border: '1px solid var(--tint-red-border)',
                         borderRadius: '8px',
                         fontSize: '0.825rem',
                         fontWeight: 700,
@@ -2180,7 +2180,7 @@ function SuperAdminContent() {
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      <TrashIcon size={15} color="#b91c1c" />
+                      <TrashIcon size={15} color="var(--status-red-text)" />
                       <span>Xóa Hết Sự Kiện ({events.length})</span>
                     </button>
                   )}
@@ -2233,9 +2233,9 @@ function SuperAdminContent() {
                       padding: '0.45rem 0.95rem',
                       borderRadius: '20px',
                       border: '1.5px solid',
-                      borderColor: eventStatusFilter === 'all' ? '#2563eb' : '#e2e8f0',
-                      background: eventStatusFilter === 'all' ? '#2563eb' : '#ffffff',
-                      color: eventStatusFilter === 'all' ? '#ffffff' : '#475569',
+                      borderColor: eventStatusFilter === 'all' ? '#2563eb' : 'var(--border-color)',
+                      background: eventStatusFilter === 'all' ? '#2563eb' : 'var(--bg-surface)',
+                      color: eventStatusFilter === 'all' ? '#ffffff' : 'var(--text-secondary)',
                       fontSize: '0.85rem',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -2251,9 +2251,9 @@ function SuperAdminContent() {
                       padding: '0.45rem 0.95rem',
                       borderRadius: '20px',
                       border: '1.5px solid',
-                      borderColor: eventStatusFilter === 'pending' ? '#d97706' : '#fed7aa',
-                      background: eventStatusFilter === 'pending' ? '#d97706' : '#fffbeb',
-                      color: eventStatusFilter === 'pending' ? '#ffffff' : '#b45309',
+                      borderColor: eventStatusFilter === 'pending' ? '#d97706' : 'var(--tint-amber-border)',
+                      background: eventStatusFilter === 'pending' ? '#d97706' : 'var(--tint-amber-bg)',
+                      color: eventStatusFilter === 'pending' ? '#ffffff' : 'var(--status-amber-text)',
                       fontSize: '0.85rem',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -2269,9 +2269,9 @@ function SuperAdminContent() {
                       padding: '0.45rem 0.95rem',
                       borderRadius: '20px',
                       border: '1.5px solid',
-                      borderColor: eventStatusFilter === 'active' ? '#16a34a' : '#bbf7d0',
-                      background: eventStatusFilter === 'active' ? '#16a34a' : '#f0fdf4',
-                      color: eventStatusFilter === 'active' ? '#ffffff' : '#15803d',
+                      borderColor: eventStatusFilter === 'active' ? '#16a34a' : 'var(--tint-green-border)',
+                      background: eventStatusFilter === 'active' ? '#16a34a' : 'var(--tint-green-bg)',
+                      color: eventStatusFilter === 'active' ? '#ffffff' : 'var(--status-green-text)',
                       fontSize: '0.85rem',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -2287,9 +2287,9 @@ function SuperAdminContent() {
                       padding: '0.45rem 0.95rem',
                       borderRadius: '20px',
                       border: '1.5px solid',
-                      borderColor: eventStatusFilter === 'closed' ? '#475569' : '#e2e8f0',
-                      background: eventStatusFilter === 'closed' ? '#475569' : '#f8fafc',
-                      color: eventStatusFilter === 'closed' ? '#ffffff' : '#64748b',
+                      borderColor: eventStatusFilter === 'closed' ? '#475569' : 'var(--border-color)',
+                      background: eventStatusFilter === 'closed' ? '#475569' : 'var(--bg-subtle)',
+                      color: eventStatusFilter === 'closed' ? '#ffffff' : 'var(--text-muted)',
                       fontSize: '0.85rem',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -2343,7 +2343,7 @@ function SuperAdminContent() {
                     {eventsLoading && proposalsLoading ? (
                       <tr>
                         <td colSpan={4} className={styles.emptyState} style={{ padding: '3.5rem 1rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: '#64748b' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: 'var(--text-muted)' }}>
                             <div className={styles.tableSpinner}></div>
                             <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Đang tải danh sách sự kiện & kế hoạch...</span>
                           </div>
@@ -2356,7 +2356,7 @@ function SuperAdminContent() {
                           pendingProposals.map((p) => (
                             <tr
                               key={`prop-${p.id}`}
-                              style={{ background: '#fffdfa' }}
+                              style={{ background: 'var(--tint-amber-bg)' }}
                               className={styles.clickableRow}
                               onClick={() => router.push(`/admin/proposals/${p.id}`)}
                               title="Bấm vào để xem hồ sơ kế hoạch"
@@ -2369,7 +2369,7 @@ function SuperAdminContent() {
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       gap: '0.4rem',
-                                      color: '#1e40af',
+                                      color: 'var(--text-brand-strong)',
                                       fontWeight: 800,
                                       fontSize: '0.975rem',
                                       textDecoration: 'none',
@@ -2378,10 +2378,10 @@ function SuperAdminContent() {
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <span>{p.title}</span>
-                                    <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>➔</span>
+                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-brand)' }}>➔</span>
                                   </Link>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.775rem', color: '#64748b' }}>
-                                    <span style={{ padding: '0.15rem 0.5rem', background: '#ffedd5', color: '#9a3412', borderRadius: '4px', fontWeight: 700 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.775rem', color: 'var(--text-muted)' }}>
+                                    <span style={{ padding: '0.15rem 0.5rem', background: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)', borderRadius: '4px', fontWeight: 700 }}>
                                       {p.organization_unit}
                                     </span>
                                   </div>
@@ -2389,14 +2389,14 @@ function SuperAdminContent() {
                               </td>
                               <td>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.825rem' }}>
-                                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                                  <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                                     {p.end_date && p.end_date !== p.start_date
                                       ? `${formatVNDateStr(p.start_date)} → ${formatVNDateStr(p.end_date)}`
                                       : formatVNDateStr(p.start_date)}
                                     {` (${p.start_time?.slice(0, 5) || '07:30'} – ${p.end_time?.slice(0, 5) || '11:30'})`}
                                   </span>
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#475569', fontSize: '0.8rem' }}>
-                                    <MapPinIcon size={13} color="#64748b" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                                    <MapPinIcon size={13} color="var(--text-muted)" />
                                     <span>{p.room_name && p.room_name !== 'Không mượn' ? p.room_name : 'Chưa chọn địa điểm'} • {p.total_count} người</span>
                                   </span>
                                 </div>
@@ -2407,9 +2407,9 @@ function SuperAdminContent() {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     padding: '0.35rem 0.75rem',
-                                    background: '#fffbeb',
-                                    color: '#b45309',
-                                    border: '1.5px solid #fde68a',
+                                    background: 'var(--tint-amber-bg)',
+                                    color: 'var(--status-amber-text)',
+                                    border: '1.5px solid var(--tint-amber-border)',
                                     borderRadius: '20px',
                                     fontSize: '0.78rem',
                                     fontWeight: 700,
@@ -2422,10 +2422,10 @@ function SuperAdminContent() {
                               <td onClick={(e) => e.stopPropagation()}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.8rem', color: '#475569', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.created_by}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.created_by}>
                                       {p.created_by}
                                     </span>
-                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Người lập hồ sơ</span>
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)' }}>Người lập hồ sơ</span>
                                   </div>
 
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
@@ -2454,9 +2454,9 @@ function SuperAdminContent() {
                                       onClick={() => rejectProposal(p.id)}
                                       style={{
                                         padding: '0.45rem 0.8rem',
-                                        background: '#fff1f2',
-                                        color: '#dc2626',
-                                        border: '1.5px solid #fecaca',
+                                        background: 'var(--tint-red-bg)',
+                                        color: 'var(--status-red-text)',
+                                        border: '1.5px solid var(--tint-red-border)',
                                         borderRadius: '8px',
                                         fontSize: '0.8rem',
                                         fontWeight: 700,
@@ -2474,9 +2474,9 @@ function SuperAdminContent() {
                                       style={{
                                         padding: '0.45rem 0.85rem',
                                         borderRadius: '8px',
-                                        border: '1.5px solid #bfdbfe',
-                                        background: '#eff6ff',
-                                        color: '#1d4ed8',
+                                        border: '1.5px solid var(--tint-blue-border)',
+                                        background: 'var(--tint-blue-bg)',
+                                        color: 'var(--text-brand)',
                                         fontSize: '0.8rem',
                                         fontWeight: 700,
                                         textDecoration: 'none',
@@ -2537,7 +2537,7 @@ function SuperAdminContent() {
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         gap: '0.4rem',
-                                        color: '#1e40af',
+                                        color: 'var(--text-brand-strong)',
                                         fontWeight: 800,
                                         fontSize: '0.975rem',
                                         textDecoration: 'none',
@@ -2546,10 +2546,10 @@ function SuperAdminContent() {
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span>{event.event_name}</span>
-                                      <span style={{ fontSize: '0.85rem', color: '#2563eb' }}>➔</span>
+                                      <span style={{ fontSize: '0.85rem', color: 'var(--text-brand)' }}>➔</span>
                                     </Link>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.775rem', color: '#64748b' }}>
-                                      <span style={{ padding: '0.15rem 0.5rem', background: '#eff6ff', color: '#1e40af', borderRadius: '4px', fontWeight: 600 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.775rem', color: 'var(--text-muted)' }}>
+                                      <span style={{ padding: '0.15rem 0.5rem', background: 'var(--tint-blue-bg)', color: 'var(--text-brand-strong)', borderRadius: '4px', fontWeight: 600 }}>
                                         Sự kiện chính thức
                                       </span>
                                     </div>
@@ -2557,7 +2557,7 @@ function SuperAdminContent() {
                                 </td>
                                 <td>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.825rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', fontWeight: 700, color: '#0f172a' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', fontWeight: 700, color: 'var(--text-primary)' }}>
                                       <span>
                                         {startDate && endDate && endDate !== startDate
                                           ? `${formatVNDateStr(startDate)} → ${formatVNDateStr(endDate)}`
@@ -2566,15 +2566,15 @@ function SuperAdminContent() {
                                           : 'Hôm nay'}
                                       </span>
                                       {sessionCount > 1 && (
-                                        <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '999px', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700 }}>
+                                        <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '999px', background: 'var(--tint-blue-bg)', color: 'var(--text-brand)', fontWeight: 700 }}>
                                           {sessionCount} ca
                                         </span>
                                       )}
                                     </div>
-                                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                                       {displayStartTime} – {displayEndTime}
                                     </span>
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: displayLocation ? '#334155' : '#94a3b8' }}>
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: displayLocation ? 'var(--text-body)' : 'var(--text-subtle)' }}>
                                       <MapPinIcon size={13} color={displayLocation ? '#2563eb' : '#94a3b8'} />
                                       <span style={{ fontWeight: displayLocation ? 600 : 400, fontStyle: displayLocation ? 'normal' : 'italic' }}>
                                         {displayLocation || 'Chưa cập nhật địa điểm'}
@@ -2601,7 +2601,7 @@ function SuperAdminContent() {
                                         }`}
                                         style={
                                           lifecycle === 'upcoming'
-                                            ? { background: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
+                                            ? { background: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)', borderColor: 'var(--tint-amber-border)' }
                                             : undefined
                                         }
                                         title={
@@ -2636,18 +2636,18 @@ function SuperAdminContent() {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                                       {(event as any).event_roles && (event as any).event_roles.length > 0 ? (
                                         <details style={{ width: '100%' }}>
-                                          <summary style={{ cursor: 'pointer', listStyle: 'none', fontSize: '0.775rem', color: '#1e40af', fontWeight: 600, userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                          <summary style={{ cursor: 'pointer', listStyle: 'none', fontSize: '0.775rem', color: 'var(--text-brand-strong)', fontWeight: 600, userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                             Admin đã gán
-                                            <span style={{ background: '#dbeafe', padding: '1px 7px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 700 }}>{(event as any).event_roles.length}</span>
-                                            <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>▼</span>
+                                            <span style={{ background: 'var(--tint-blue-strong)', padding: '1px 7px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 700 }}>{(event as any).event_roles.length}</span>
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-subtle)' }}>▼</span>
                                           </summary>
                                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.35rem' }}>
                                             {(event as any).event_roles.map((r: any) => (
-                                              <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.775rem', color: '#1e40af', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                              <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.5rem', background: 'var(--tint-blue-bg)', border: '1px solid var(--tint-blue-border)', borderRadius: '6px', fontSize: '0.775rem', color: 'var(--text-brand-strong)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {r.email}
                                                 <button 
                                                   onClick={() => removeAdmin(event.event_id, r.id, r.email)} 
-                                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 'bold', padding: '0 2px' }} 
+                                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--status-red-text)', fontWeight: 'bold', padding: '0 2px' }} 
                                                   title="Thu hồi quyền"
                                                 >
                                                   ×
@@ -2657,7 +2657,7 @@ function SuperAdminContent() {
                                           </div>
                                         </details>
                                       ) : (
-                                        <span style={{ fontSize: '0.775rem', color: '#94a3b8' }}>Chưa gán Admin</span>
+                                        <span style={{ fontSize: '0.775rem', color: 'var(--text-subtle)' }}>Chưa gán Admin</span>
                                       )}
                                       <button
                                         type="button"
@@ -2693,9 +2693,9 @@ function SuperAdminContent() {
                                         style={{
                                           padding: '0.45rem 0.75rem',
                                           borderRadius: '8px',
-                                          border: '1.5px solid #cbd5e1',
-                                          background: '#ffffff',
-                                          color: '#334155',
+                                          border: '1.5px solid var(--border-strong)',
+                                          background: 'var(--bg-surface)',
+                                          color: 'var(--text-body)',
                                           fontSize: '0.8rem',
                                           fontWeight: 700,
                                           cursor: 'pointer',
@@ -2716,9 +2716,9 @@ function SuperAdminContent() {
                                         style={{
                                           padding: '0.45rem 0.85rem',
                                           borderRadius: '8px',
-                                          border: '1.5px solid #bfdbfe',
-                                          background: '#eff6ff',
-                                          color: '#1d4ed8',
+                                          border: '1.5px solid var(--tint-blue-border)',
+                                          background: 'var(--tint-blue-bg)',
+                                          color: 'var(--text-brand)',
                                           fontSize: '0.8rem',
                                           fontWeight: 700,
                                           textDecoration: 'none',
@@ -2740,9 +2740,9 @@ function SuperAdminContent() {
                                         style={{
                                           padding: '0.45rem 0.8rem',
                                           borderRadius: '8px',
-                                          border: '1.5px solid #fecaca',
-                                          background: '#fff1f2',
-                                          color: '#dc2626',
+                                          border: '1.5px solid var(--tint-red-border)',
+                                          background: 'var(--tint-red-bg)',
+                                          color: 'var(--status-red-text)',
                                           fontSize: '0.8rem',
                                           fontWeight: 700,
                                           cursor: 'pointer',
@@ -2783,9 +2783,9 @@ function SuperAdminContent() {
                                     style={{
                                       padding: '0.35rem 0.85rem',
                                       borderRadius: '8px',
-                                      border: '1.5px solid #bfdbfe',
-                                      background: '#eff6ff',
-                                      color: '#2563eb',
+                                      border: '1.5px solid var(--tint-blue-border)',
+                                      background: 'var(--tint-blue-bg)',
+                                      color: 'var(--text-brand)',
                                       fontSize: '0.825rem',
                                       fontWeight: 700,
                                       cursor: 'pointer',
@@ -2814,12 +2814,12 @@ function SuperAdminContent() {
               <div className={styles.sectionHeader}>
                 <div>
                   <h2 className={styles.sectionTitle}>
-                    <ShieldCheckIcon size={20} color="#c2410c" />
+                    <ShieldCheckIcon size={20} color="var(--status-amber-text)" />
                     Danh Sách Kế Hoạch Trình Duyệt ({filteredProposals.length})
                   </h2>
                   {selectedUnitFilter && (
                     <p className={styles.sectionSubtitle}>
-                      Đang lọc kế hoạch của đơn vị: <strong style={{ color: '#c2410c' }}>{selectedUnitFilter}</strong>
+                      Đang lọc kế hoạch của đơn vị: <strong style={{ color: 'var(--status-amber-text)' }}>{selectedUnitFilter}</strong>
                     </p>
                   )}
                 </div>
@@ -2829,9 +2829,9 @@ function SuperAdminContent() {
                       type="button"
                       onClick={() => setSelectedUnitFilter(null)}
                       style={{
-                        background: '#fff7ed',
-                        border: '1px solid #fed7aa',
-                        color: '#c2410c',
+                        background: 'var(--tint-amber-bg)',
+                        border: '1px solid var(--tint-amber-border)',
+                        color: 'var(--status-amber-text)',
                         borderRadius: '8px',
                         padding: '0.4rem 0.85rem',
                         fontSize: '0.825rem',
@@ -2890,9 +2890,9 @@ function SuperAdminContent() {
                     padding: '0.4rem 0.85rem',
                     borderRadius: '20px',
                     border: '1.5px solid',
-                    borderColor: proposalStatusFilter === 'all' ? '#2563eb' : '#e2e8f0',
-                    background: proposalStatusFilter === 'all' ? '#2563eb' : '#ffffff',
-                    color: proposalStatusFilter === 'all' ? '#ffffff' : '#475569',
+                    borderColor: proposalStatusFilter === 'all' ? '#2563eb' : 'var(--border-color)',
+                    background: proposalStatusFilter === 'all' ? '#2563eb' : 'var(--bg-surface)',
+                    color: proposalStatusFilter === 'all' ? '#ffffff' : 'var(--text-secondary)',
                     fontSize: '0.825rem',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -2908,9 +2908,9 @@ function SuperAdminContent() {
                     padding: '0.4rem 0.85rem',
                     borderRadius: '20px',
                     border: '1.5px solid',
-                    borderColor: proposalStatusFilter === 'pending' ? '#d97706' : '#fed7aa',
-                    background: proposalStatusFilter === 'pending' ? '#d97706' : '#fffbeb',
-                    color: proposalStatusFilter === 'pending' ? '#ffffff' : '#b45309',
+                    borderColor: proposalStatusFilter === 'pending' ? '#d97706' : 'var(--tint-amber-border)',
+                    background: proposalStatusFilter === 'pending' ? '#d97706' : 'var(--tint-amber-bg)',
+                    color: proposalStatusFilter === 'pending' ? '#ffffff' : 'var(--status-amber-text)',
                     fontSize: '0.825rem',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -2926,9 +2926,9 @@ function SuperAdminContent() {
                     padding: '0.4rem 0.85rem',
                     borderRadius: '20px',
                     border: '1.5px solid',
-                    borderColor: proposalStatusFilter === 'active' ? '#16a34a' : '#bbf7d0',
-                    background: proposalStatusFilter === 'active' ? '#16a34a' : '#f0fdf4',
-                    color: proposalStatusFilter === 'active' ? '#ffffff' : '#15803d',
+                    borderColor: proposalStatusFilter === 'active' ? '#16a34a' : 'var(--tint-green-border)',
+                    background: proposalStatusFilter === 'active' ? '#16a34a' : 'var(--tint-green-bg)',
+                    color: proposalStatusFilter === 'active' ? '#ffffff' : 'var(--status-green-text)',
                     fontSize: '0.825rem',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -2944,9 +2944,9 @@ function SuperAdminContent() {
                     padding: '0.4rem 0.85rem',
                     borderRadius: '20px',
                     border: '1.5px solid',
-                    borderColor: proposalStatusFilter === 'closed' ? '#475569' : '#e2e8f0',
-                    background: proposalStatusFilter === 'closed' ? '#475569' : '#f8fafc',
-                    color: proposalStatusFilter === 'closed' ? '#ffffff' : '#64748b',
+                    borderColor: proposalStatusFilter === 'closed' ? '#475569' : 'var(--border-color)',
+                    background: proposalStatusFilter === 'closed' ? '#475569' : 'var(--bg-subtle)',
+                    color: proposalStatusFilter === 'closed' ? '#ffffff' : 'var(--text-muted)',
                     fontSize: '0.825rem',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -2972,7 +2972,7 @@ function SuperAdminContent() {
                     {proposalsLoading ? (
                       <tr>
                         <td colSpan={5} className={styles.emptyState} style={{ padding: '3.5rem 1rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: '#64748b' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: 'var(--text-muted)' }}>
                             <div className={styles.tableSpinner}></div>
                             <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Đang tải danh sách kế hoạch sự kiện...</span>
                           </div>
@@ -2989,7 +2989,7 @@ function SuperAdminContent() {
                                 href={`/admin/proposals/${p.id}`}
                                 style={{
                                   fontWeight: 800,
-                                  color: '#1e40af',
+                                  color: 'var(--text-brand-strong)',
                                   textDecoration: 'none',
                                   fontSize: '0.925rem',
                                   lineHeight: 1.35,
@@ -2997,8 +2997,8 @@ function SuperAdminContent() {
                               >
                                 {p.title}
                               </Link>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#64748b' }}>
-                                  <span style={{ fontWeight: 600, color: '#334155' }}>{p.organization_unit}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                  <span style={{ fontWeight: 600, color: 'var(--text-body)' }}>{p.organization_unit}</span>
                                   <span style={{ color: '#cbd5e1' }}>•</span>
                                   <span>{p.created_by}</span>
                                   {isSafeExternalUrl(p.plan_url) && (
@@ -3013,11 +3013,11 @@ function SuperAdminContent() {
                                           display: 'inline-flex',
                                           alignItems: 'center',
                                           gap: '0.2rem',
-                                          color: '#2563eb',
+                                          color: 'var(--text-brand)',
                                           fontWeight: 700,
                                           textDecoration: 'none',
-                                          background: '#eff6ff',
-                                          border: '1px solid #bfdbfe',
+                                          background: 'var(--tint-blue-bg)',
+                                          border: '1px solid var(--tint-blue-border)',
                                           borderRadius: '6px',
                                           padding: '1px 6px',
                                           fontSize: '0.75rem',
@@ -3032,16 +3032,16 @@ function SuperAdminContent() {
                             </td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem' }}>
-                              <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                                 {new Date(p.start_date).toLocaleDateString('vi-VN')} ({p.start_time.slice(0, 5)} - {p.end_time.slice(0, 5)})
                               </span>
-                              <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.8rem' }}>
+                              <span style={{ color: 'var(--status-green-text)', fontWeight: 700, fontSize: '0.8rem' }}>
                                 {p.total_count} người ({p.participant_count} SV, {p.volunteer_count} CTV)
                               </span>
                             </div>
                           </td>
                           <td>
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-body)' }}>
                               {p.room_name || 'Hội trường / Phòng họp'}
                             </span>
                           </td>
@@ -3058,7 +3058,7 @@ function SuperAdminContent() {
                                     padding: '0.4rem 0.85rem',
                                     background: displayStatus.badgeBg,
                                     color: displayStatus.badgeColor,
-                                    border: `1.5px solid ${displayStatus.badgeBorder || '#e2e8f0'}`,
+                                    border: `1.5px solid ${displayStatus.badgeBorder || 'var(--border-color)'}`,
                                     borderRadius: '20px',
                                     fontSize: '0.78rem',
                                     fontWeight: 700,
@@ -3094,9 +3094,9 @@ function SuperAdminContent() {
                                     onClick={() => rejectProposal(p.id)}
                                     style={{
                                       padding: '0.4rem 0.75rem',
-                                      background: '#fee2e2',
-                                      color: '#b91c1c',
-                                      border: '1px solid #fecaca',
+                                      background: 'var(--tint-red-strong)',
+                                      color: 'var(--status-red-text)',
+                                      border: '1px solid var(--tint-red-border)',
                                       borderRadius: '8px',
                                       fontWeight: 700,
                                       fontSize: '0.8rem',
@@ -3115,9 +3115,9 @@ function SuperAdminContent() {
                                   alignItems: 'center',
                                   gap: '0.25rem',
                                   padding: '0.4rem 0.75rem',
-                                  background: '#eff6ff',
-                                  color: '#2563eb',
-                                  border: '1px solid #bfdbfe',
+                                  background: 'var(--tint-blue-bg)',
+                                  color: 'var(--text-brand)',
+                                  border: '1px solid var(--tint-blue-border)',
                                   borderRadius: '8px',
                                   fontSize: '0.8rem',
                                   fontWeight: 700,
@@ -3145,29 +3145,29 @@ function SuperAdminContent() {
             {/* Form Cấp Quyền Cán Bộ Mới Card */}
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-surface)',
                 borderRadius: '16px',
-                border: '1.5px solid #cbd5e1',
+                border: '1.5px solid var(--border-strong)',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                 padding: '1.25rem 1.5rem',
                 marginBottom: '1.5rem',
               }}
             >
               <div style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#fee2e2', color: '#991b1b', padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <ShieldCheckIcon size={13} color="#991b1b" /> Phân Quyền Cán Bộ
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--tint-red-strong)', color: 'var(--status-red-text)', padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <ShieldCheckIcon size={13} color="var(--status-red-text)" /> Phân Quyền Cán Bộ
                 </div>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: '0.35rem 0 0.15rem' }}>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.35rem 0 0.15rem' }}>
                   Thêm & Gán Quyền Cán Bộ / Ban Chấp Hành
                 </h2>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.35 }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
                   Cấp quyền cho cán bộ, chuyên viên các phòng ban, Bí thư/Phó Bí thư LCĐ, Tổ Bảo vệ sử dụng tài khoản Google (@ptithcm.edu.vn hoặc @student.ptithcm.edu.vn)
                 </p>
               </div>
 
               <form onSubmit={grantOfficerRole} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem', alignItems: 'flex-end' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                     Email Cán Bộ / Sinh Viên *
                   </label>
                   <input
@@ -3197,12 +3197,12 @@ function SuperAdminContent() {
                       width: '100%',
                       height: '40px',
                       padding: '0 0.75rem',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       borderRadius: '8px',
                       fontSize: '0.875rem',
                       fontWeight: 600,
-                      color: '#0f172a',
-                      background: '#f8fafc',
+                      color: 'var(--text-primary)',
+                      background: 'var(--bg-subtle)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -3210,7 +3210,7 @@ function SuperAdminContent() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                     Họ và Tên Cán Bộ
                   </label>
                   <input
@@ -3222,12 +3222,12 @@ function SuperAdminContent() {
                       width: '100%',
                       height: '40px',
                       padding: '0 0.75rem',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       borderRadius: '8px',
                       fontSize: '0.875rem',
                       fontWeight: 600,
-                      color: '#0f172a',
-                      background: '#f8fafc',
+                      color: 'var(--text-primary)',
+                      background: 'var(--bg-subtle)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -3235,7 +3235,7 @@ function SuperAdminContent() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                     Cấp Quyền / Vai Trò *
                   </label>
                   <select
@@ -3245,12 +3245,12 @@ function SuperAdminContent() {
                       width: '100%',
                       height: '40px',
                       padding: '0 0.75rem',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       borderRadius: '8px',
                       fontSize: '0.825rem',
                       fontWeight: 700,
-                      color: '#0f172a',
-                      background: '#f8fafc',
+                      color: 'var(--text-primary)',
+                      background: 'var(--bg-subtle)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -3267,7 +3267,7 @@ function SuperAdminContent() {
 
                 {officerRoleTier === 'event_admin' && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                       Chọn Khoa Đào Tạo / Đơn Vị LCĐ / CLB Phụ Trách *
                     </label>
                     <select
@@ -3277,12 +3277,12 @@ function SuperAdminContent() {
                         width: '100%',
                         height: '40px',
                         padding: '0 0.75rem',
-                        border: '1.5px solid #cbd5e1',
+                        border: '1.5px solid var(--border-strong)',
                         borderRadius: '8px',
                         fontSize: '0.825rem',
                         fontWeight: 600,
-                        color: '#0f172a',
-                        background: '#f8fafc',
+                        color: 'var(--text-primary)',
+                        background: 'var(--bg-subtle)',
                         outline: 'none',
                         boxSizing: 'border-box',
                       }}
@@ -3316,7 +3316,7 @@ function SuperAdminContent() {
                 {officerRoleTier === 'event_admin' && officerUnitCode === '__NEW_CUSTOM__' && (
                   <>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-brand)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                         Mã Đơn Vị Mới (VD: LCD_AI) *
                       </label>
                       <input
@@ -3333,15 +3333,15 @@ function SuperAdminContent() {
                           borderRadius: '8px',
                           fontSize: '0.875rem',
                           fontWeight: 700,
-                          color: '#1e40af',
-                          background: '#eff6ff',
+                          color: 'var(--text-brand-strong)',
+                          background: 'var(--tint-blue-bg)',
                           outline: 'none',
                           boxSizing: 'border-box',
                         }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-brand)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                         Tên Đơn Vị / LCĐ Mới *
                       </label>
                       <input
@@ -3358,15 +3358,15 @@ function SuperAdminContent() {
                           borderRadius: '8px',
                           fontSize: '0.875rem',
                           fontWeight: 600,
-                          color: '#0f172a',
-                          background: '#eff6ff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--tint-blue-bg)',
                           outline: 'none',
                           boxSizing: 'border-box',
                         }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-brand)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                         Phân Loại Đơn Vị
                       </label>
                       <select
@@ -3380,8 +3380,8 @@ function SuperAdminContent() {
                           borderRadius: '8px',
                           fontSize: '0.825rem',
                           fontWeight: 600,
-                          color: '#0f172a',
-                          background: '#eff6ff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--tint-blue-bg)',
                           outline: 'none',
                           boxSizing: 'border-box',
                         }}
@@ -3394,7 +3394,7 @@ function SuperAdminContent() {
                       </select>
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-brand)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                         Email Đơn Vị (Tùy chọn)
                       </label>
                       <input
@@ -3410,8 +3410,8 @@ function SuperAdminContent() {
                           borderRadius: '8px',
                           fontSize: '0.875rem',
                           fontWeight: 600,
-                          color: '#0f172a',
-                          background: '#eff6ff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--tint-blue-bg)',
                           outline: 'none',
                           boxSizing: 'border-box',
                         }}
@@ -3421,7 +3421,7 @@ function SuperAdminContent() {
                 )}
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                     Chức Vụ / Ghi Chú Phân Công
                   </label>
                   <input
@@ -3433,12 +3433,12 @@ function SuperAdminContent() {
                       width: '100%',
                       height: '40px',
                       padding: '0 0.75rem',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       borderRadius: '8px',
                       fontSize: '0.875rem',
                       fontWeight: 600,
-                      color: '#0f172a',
-                      background: '#f8fafc',
+                      color: 'var(--text-primary)',
+                      background: 'var(--bg-subtle)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -3480,10 +3480,10 @@ function SuperAdminContent() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div>
                     <h2 className={styles.sectionTitle} style={{ fontSize: '1.15rem', marginBottom: '0.2rem' }}>
-                      <UsersIcon size={18} color="#dc2626" />
+                      <UsersIcon size={18} color="var(--status-red-text)" />
                       Danh Sách Cán Bộ & Phân Quyền ({officers.length})
                     </h2>
-                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                       Quyền Admin/CTV sự kiện gán cho sinh viên sẽ tự động thu hồi sau 3 ngày kết thúc SK (LCĐ / CLB / Phòng ban giữ vĩnh viễn).
                     </p>
                   </div>
@@ -3496,9 +3496,9 @@ function SuperAdminContent() {
                       alignItems: 'center',
                       gap: '0.4rem',
                       padding: '0.45rem 0.95rem',
-                      background: '#fff1f2',
-                      color: '#e11d48',
-                      border: '1px solid #fecdd3',
+                      background: 'var(--tint-red-bg)',
+                      color: 'var(--status-red-text)',
+                      border: '1px solid var(--tint-red-border)',
                       borderRadius: '8px',
                       fontSize: '0.8rem',
                       fontWeight: 700,
@@ -3529,9 +3529,9 @@ function SuperAdminContent() {
                       style={{
                         padding: '0.35rem 0.75rem',
                         borderRadius: '20px',
-                        border: officerFilter === f.key ? '1.5px solid #dc2626' : '1px solid #e2e8f0',
-                        background: officerFilter === f.key ? '#dc2626' : '#ffffff',
-                        color: officerFilter === f.key ? '#ffffff' : '#64748b',
+                        border: officerFilter === f.key ? '1.5px solid #dc2626' : '1px solid var(--border-color)',
+                        background: officerFilter === f.key ? '#dc2626' : 'var(--bg-surface)',
+                        color: officerFilter === f.key ? '#ffffff' : 'var(--text-muted)',
                         fontSize: '0.78rem',
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -3562,7 +3562,7 @@ function SuperAdminContent() {
                     <tbody>
                       {officersLoading ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                          <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
                             Đang tải danh sách cán bộ...
                           </td>
                         </tr>
@@ -3577,7 +3577,7 @@ function SuperAdminContent() {
                           return o.role_tier === officerFilter;
                         }).length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                          <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
                             Chưa có cán bộ nào trong mục này.
                           </td>
                         </tr>
@@ -3597,14 +3597,14 @@ function SuperAdminContent() {
                             <tr key={officer.id || officer.email}>
                               <td>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                                  <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>
+                                  <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>
                                     {officer.full_name || officer.email}
                                   </strong>
-                                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontFamily: 'monospace' }}>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                                     {officer.email}
                                   </span>
                                   {officer.mssv && (
-                                    <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-brand)', fontWeight: 600 }}>
                                       MSSV: {officer.mssv} {officer.class_id ? `• Lớp ${officer.class_id}` : ''}
                                     </span>
                                   )}
@@ -3612,72 +3612,72 @@ function SuperAdminContent() {
                               </td>
                               <td>
                                 {officer.role_tier === 'super_admin' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#fee2e2', color: '#991b1b', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <ShieldCheckIcon size={14} color="#991b1b" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: 'var(--tint-red-strong)', color: 'var(--status-red-text)', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <ShieldCheckIcon size={14} color="var(--status-red-text)" />
                                     <span>Super Admin</span>
                                   </span>
                                 ) : officer.role_tier === 'youth_union' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#dcfce7', color: '#166534', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <CheckCircleIcon size={14} color="#166534" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: 'var(--tint-green-strong)', color: 'var(--status-green-text)', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <CheckCircleIcon size={14} color="var(--status-green-text)" />
                                     <span>Đoàn Học Viện</span>
                                   </span>
                                 ) : officer.role_tier === 'ctsv' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#dbeafe', color: '#1e40af', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <UsersIcon size={14} color="#1e40af" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: 'var(--tint-blue-strong)', color: 'var(--text-brand-strong)', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <UsersIcon size={14} color="var(--text-brand-strong)" />
                                     <span>Phòng CTSV</span>
                                   </span>
                                 ) : officer.role_tier === 'facility' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ffedd5', color: '#9a3412', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <BuildingIcon size={14} color="#9a3412" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <BuildingIcon size={14} color="var(--status-amber-text)" />
                                     <span>Phòng. TC-HC-QT</span>
                                   </span>
                                 ) : officer.role_tier === 'security' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ecfdf5', color: '#047857', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <KeyIcon size={14} color="#047857" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: 'var(--tint-green-bg)', color: 'var(--status-green-text)', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <KeyIcon size={14} color="var(--status-green-text)" />
                                     <span>Tổ Bảo Vệ</span>
                                   </span>
                                 ) : officer.role_tier === 'office_admin' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#fef3c7', color: '#92400e', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <BuildingIcon size={14} color="#92400e" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <BuildingIcon size={14} color="var(--status-amber-text)" />
                                     <span>Admin Văn phòng Đoàn</span>
                                   </span>
                                 ) : officer.notes?.includes('CTV quét mã') || (officer as any).event_role_type === 'checker' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#e0f2fe', color: '#0369a1', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <QrCodeIcon size={14} color="#0369a1" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: 'var(--tint-blue-strong)', color: 'var(--text-brand)', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <QrCodeIcon size={14} color="var(--text-brand)" />
                                     <span>CTV Quét Mã</span>
                                   </span>
                                 ) : officer.unit_name?.startsWith('Sự kiện:') || officer.notes?.includes('Admin sự kiện') || (officer as any).event_role_type === 'event_admin' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#ede9fe', color: '#6d28d9', fontSize: '0.78rem', fontWeight: 800 }}>
-                                    <CalendarIcon size={14} color="#6d28d9" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: 'var(--tint-purple-strong)', color: 'var(--status-purple-text)', fontSize: '0.78rem', fontWeight: 800 }}>
+                                    <CalendarIcon size={14} color="var(--status-purple-text)" />
                                     <span>Admin Sự Kiện</span>
                                   </span>
                                 ) : (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: '#fdf4ff', color: '#a21caf', fontSize: '0.78rem', fontWeight: 800 }}>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '8px', background: 'var(--tint-purple-bg)', color: '#a21caf', fontSize: '0.78rem', fontWeight: 800 }}>
                                     <SettingsIcon size={14} color="#a21caf" />
                                     <span>Admin LCĐ / CLB</span>
                                   </span>
                                 )}
                               </td>
                               <td>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-body)' }}>
                                   {officer.unit_name || officer.unit_code || '—'}
                                 </span>
                               </td>
                               <td>
-                                <span style={{ fontSize: '0.85rem', color: '#475569' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                   {officer.notes || '—'}
                                 </span>
                               </td>
                               <td>
-                                <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: '#64748b' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                   <span>{new Date(officer.created_at).toLocaleDateString('vi-VN')}</span>
-                                  <span style={{ fontSize: '0.725rem', color: '#94a3b8' }}>Bởi: {officer.created_by || 'Super Admin'}</span>
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--text-subtle)' }}>Bởi: {officer.created_by || 'Super Admin'}</span>
                                 </div>
                               </td>
                               <td style={{ textAlign: 'center' }}>
                                 {officer.isRootAdmin || officer.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', fontWeight: 800, color: '#16a34a', background: '#f0fdf4', padding: '0.3rem 0.65rem', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                                    <ShieldCheckIcon size={13} color="#16a34a" />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', fontWeight: 800, color: 'var(--status-green-text)', background: 'var(--tint-green-bg)', padding: '0.3rem 0.65rem', borderRadius: '6px', border: '1px solid var(--tint-green-border)' }}>
+                                    <ShieldCheckIcon size={13} color="var(--status-green-text)" />
                                     <span>Admin Gốc</span>
                                   </span>
                                 ) : (
@@ -3686,9 +3686,9 @@ function SuperAdminContent() {
                                     onClick={() => revokeOfficerRole(officer)}
                                     style={{
                                       padding: '0.35rem 0.75rem',
-                                      background: '#fee2e2',
-                                      color: '#dc2626',
-                                      border: '1px solid #fca5a5',
+                                      background: 'var(--tint-red-strong)',
+                                      color: 'var(--status-red-text)',
+                                      border: '1px solid var(--tint-red-border)',
                                       borderRadius: '8px',
                                       fontSize: '0.8rem',
                                       fontWeight: 700,
@@ -3710,7 +3710,7 @@ function SuperAdminContent() {
               {/* MOBILE CARD VIEW FOR OFFICERS */}
               <div className={styles.officerCardsMobile}>
                 {officersLoading ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '0.875rem' }}>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                     Đang tải danh sách cán bộ...
                   </div>
                 ) : officers.filter((o) => {
@@ -3723,7 +3723,7 @@ function SuperAdminContent() {
                     }
                     return o.role_tier === officerFilter;
                   }).length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '0.875rem', background: '#ffffff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px dashed var(--border-strong)' }}>
                     Chưa có cán bộ nào trong mục này.
                   </div>
                 ) : (
@@ -3754,39 +3754,39 @@ function SuperAdminContent() {
                           </div>
                           <div>
                             {officer.role_tier === 'super_admin' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#fee2e2', color: '#991b1b', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <ShieldCheckIcon size={12} color="#991b1b" /> Super Admin
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--tint-red-strong)', color: 'var(--status-red-text)', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <ShieldCheckIcon size={12} color="var(--status-red-text)" /> Super Admin
                               </span>
                             ) : officer.role_tier === 'youth_union' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#dcfce7', color: '#166534', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <CheckCircleIcon size={12} color="#166534" /> Đoàn Học Viện
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--tint-green-strong)', color: 'var(--status-green-text)', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <CheckCircleIcon size={12} color="var(--status-green-text)" /> Đoàn Học Viện
                               </span>
                             ) : officer.role_tier === 'ctsv' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#dbeafe', color: '#1e40af', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <UsersIcon size={12} color="#1e40af" /> Phòng CTSV
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--tint-blue-strong)', color: 'var(--text-brand-strong)', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <UsersIcon size={12} color="var(--text-brand-strong)" /> Phòng CTSV
                               </span>
                             ) : officer.role_tier === 'facility' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#ffedd5', color: '#9a3412', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <BuildingIcon size={12} color="#9a3412" /> Phòng. TC-HC-QT
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <BuildingIcon size={12} color="var(--status-amber-text)" /> Phòng. TC-HC-QT
                               </span>
                             ) : officer.role_tier === 'security' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#ecfdf5', color: '#047857', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <KeyIcon size={12} color="#047857" /> Tổ Bảo Vệ
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--tint-green-bg)', color: 'var(--status-green-text)', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <KeyIcon size={12} color="var(--status-green-text)" /> Tổ Bảo Vệ
                               </span>
                             ) : officer.role_tier === 'office_admin' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#fef3c7', color: '#92400e', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <BuildingIcon size={12} color="#92400e" /> Admin Văn phòng Đoàn
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--tint-amber-strong)', color: 'var(--status-amber-text)', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <BuildingIcon size={12} color="var(--status-amber-text)" /> Admin Văn phòng Đoàn
                               </span>
                             ) : officer.notes?.includes('CTV quét mã') || (officer as any).event_role_type === 'checker' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#e0f2fe', color: '#0369a1', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <QrCodeIcon size={12} color="#0369a1" /> CTV Quét Mã
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--tint-blue-strong)', color: 'var(--text-brand)', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <QrCodeIcon size={12} color="var(--text-brand)" /> CTV Quét Mã
                               </span>
                             ) : officer.unit_name?.startsWith('Sự kiện:') || officer.notes?.includes('Admin sự kiện') || (officer as any).event_role_type === 'event_admin' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#ede9fe', color: '#6d28d9', fontSize: '0.72rem', fontWeight: 800 }}>
-                                <CalendarIcon size={12} color="#6d28d9" /> Admin Sự Kiện
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--tint-purple-strong)', color: 'var(--status-purple-text)', fontSize: '0.72rem', fontWeight: 800 }}>
+                                <CalendarIcon size={12} color="var(--status-purple-text)" /> Admin Sự Kiện
                               </span>
                             ) : (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: '#fdf4ff', color: '#a21caf', fontSize: '0.72rem', fontWeight: 800 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--tint-purple-bg)', color: '#a21caf', fontSize: '0.72rem', fontWeight: 800 }}>
                                 <SettingsIcon size={12} color="#a21caf" /> LCĐ / CLB
                               </span>
                             )}
@@ -3817,8 +3817,8 @@ function SuperAdminContent() {
                             Cấp bởi: {officer.created_by || 'Super Admin'}
                           </span>
                           {officer.isRootAdmin || officer.email.toLowerCase() === 'n22dccn158@student.ptithcm.edu.vn' ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 800, color: '#16a34a', background: '#f0fdf4', padding: '0.25rem 0.55rem', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                              <ShieldCheckIcon size={12} color="#16a34a" /> Admin Gốc
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 800, color: 'var(--status-green-text)', background: 'var(--tint-green-bg)', padding: '0.25rem 0.55rem', borderRadius: '6px', border: '1px solid var(--tint-green-border)' }}>
+                              <ShieldCheckIcon size={12} color="var(--status-green-text)" /> Admin Gốc
                             </span>
                           ) : (
                             <button
@@ -3826,9 +3826,9 @@ function SuperAdminContent() {
                               onClick={() => revokeOfficerRole(officer)}
                               style={{
                                 padding: '0.35rem 0.75rem',
-                                background: '#fee2e2',
-                                color: '#dc2626',
-                                border: '1px solid #fca5a5',
+                                background: 'var(--tint-red-strong)',
+                                color: 'var(--status-red-text)',
+                                border: '1px solid var(--tint-red-border)',
                                 borderRadius: '8px',
                                 fontSize: '0.8rem',
                                 fontWeight: 700,
@@ -3855,7 +3855,7 @@ function SuperAdminContent() {
               <div className={styles.sectionHeader}>
                 <div>
                   <h2 className={styles.sectionTitle}>
-                    <SettingsIcon size={20} color="#2563eb" />
+                    <SettingsIcon size={20} color="var(--text-brand)" />
                     Thêm Phòng / Hội Trường / Sân Bãi Mới
                   </h2>
                   <p className={styles.sectionSubtitle}>
@@ -3908,7 +3908,7 @@ function SuperAdminContent() {
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>
-                  <SettingsIcon size={20} color="#2563eb" />
+                  <SettingsIcon size={20} color="var(--text-brand)" />
                   Danh Sách Phòng & Sân Bãi Trong Hệ Thống ({rooms.length})
                 </h2>
               </div>
@@ -3927,7 +3927,7 @@ function SuperAdminContent() {
                     {roomsLoading ? (
                       <tr>
                         <td colSpan={4} className={styles.emptyState} style={{ padding: '3.5rem 1rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: '#64748b' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: 'var(--text-muted)' }}>
                             <div className={styles.tableSpinner}></div>
                             <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Đang tải danh sách phòng & sân bãi...</span>
                           </div>
@@ -3938,22 +3938,22 @@ function SuperAdminContent() {
                     ) : (
                       rooms.map((r) => (
                         <tr key={r.id}>
-                          <td style={{ fontWeight: 700, color: '#0f172a' }}>{r.room_name}</td>
+                          <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{r.room_name}</td>
                           <td>
-                            <span style={{ padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1e40af', borderRadius: '6px', fontWeight: 600, fontSize: '0.85rem' }}>
+                            <span style={{ padding: '0.2rem 0.5rem', background: 'var(--tint-blue-bg)', color: 'var(--text-brand-strong)', borderRadius: '6px', fontWeight: 600, fontSize: '0.85rem' }}>
                               {r.capacity} người
                             </span>
                           </td>
-                          <td style={{ color: '#64748b', fontSize: '0.9rem' }}>{r.location || 'Khuôn viên trường'}</td>
+                          <td style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{r.location || 'Khuôn viên trường'}</td>
                           <td>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                               <button
                                 onClick={() => editRoom(r)}
                                 style={{
                                   padding: '0.3rem 0.6rem',
-                                  background: '#eff6ff',
-                                  color: '#1d4ed8',
-                                  border: '1px solid #bfdbfe',
+                                  background: 'var(--tint-blue-bg)',
+                                  color: 'var(--text-brand)',
+                                  border: '1px solid var(--tint-blue-border)',
                                   borderRadius: '6px',
                                   fontSize: '0.8rem',
                                   fontWeight: 700,
@@ -3966,9 +3966,9 @@ function SuperAdminContent() {
                                 onClick={() => deleteRoom(r.id, r.room_name)}
                                 style={{
                                   padding: '0.3rem 0.6rem',
-                                  background: '#fee2e2',
-                                  color: '#dc2626',
-                                  border: '1px solid #fca5a5',
+                                  background: 'var(--tint-red-strong)',
+                                  color: 'var(--status-red-text)',
+                                  border: '1px solid var(--tint-red-border)',
                                   borderRadius: '6px',
                                   fontSize: '0.8rem',
                                   fontWeight: 700,
@@ -3996,7 +3996,7 @@ function SuperAdminContent() {
               <div className={styles.sectionHeader} style={{ flexWrap: 'wrap', gap: '0.85rem' }}>
                 <div>
                   <h2 className={styles.sectionTitle}>
-                    <BuildingIcon size={20} color="#2563eb" />
+                    <BuildingIcon size={20} color="var(--text-brand)" />
                     Danh Sách Các Đơn Vị & Liên Chi Đoàn ({unitsList.length})
                   </h2>
                   <p className={styles.sectionSubtitle}>
@@ -4046,7 +4046,7 @@ function SuperAdminContent() {
               {showAddUnitModal && (
                 <div
                   style={{
-                    background: '#f8fafc',
+                    background: 'var(--bg-subtle)',
                     border: '1.5px solid #3b82f6',
                     borderRadius: '14px',
                     padding: '1.25rem',
@@ -4054,12 +4054,12 @@ function SuperAdminContent() {
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                   }}
                 >
-                  <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#1e3a8a', margin: '0 0 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-brand-strong)', margin: '0 0 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <PlusIcon size={16} /> Thêm Đơn Vị / Liên Chi Đoàn Mới Vào Hệ Thống
                   </h3>
                   <form onSubmit={handleCreateUnit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem', alignItems: 'flex-end' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                         Mã Định Danh (Code) *
                       </label>
                       <input
@@ -4072,19 +4072,19 @@ function SuperAdminContent() {
                           width: '100%',
                           height: '40px',
                           padding: '0 0.75rem',
-                          border: '1.5px solid #cbd5e1',
+                          border: '1.5px solid var(--border-strong)',
                           borderRadius: '8px',
                           fontSize: '0.875rem',
                           fontWeight: 700,
-                          color: '#0f172a',
-                          background: '#ffffff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--bg-surface)',
                           boxSizing: 'border-box',
                         }}
                       />
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                         Tên Đơn Vị / LCĐ *
                       </label>
                       <input
@@ -4097,19 +4097,19 @@ function SuperAdminContent() {
                           width: '100%',
                           height: '40px',
                           padding: '0 0.75rem',
-                          border: '1.5px solid #cbd5e1',
+                          border: '1.5px solid var(--border-strong)',
                           borderRadius: '8px',
                           fontSize: '0.875rem',
                           fontWeight: 600,
-                          color: '#0f172a',
-                          background: '#ffffff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--bg-surface)',
                           boxSizing: 'border-box',
                         }}
                       />
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                         Phân Loại Đơn Vị *
                       </label>
                       <select
@@ -4119,12 +4119,12 @@ function SuperAdminContent() {
                           width: '100%',
                           height: '40px',
                           padding: '0 0.75rem',
-                          border: '1.5px solid #cbd5e1',
+                          border: '1.5px solid var(--border-strong)',
                           borderRadius: '8px',
                           fontSize: '0.825rem',
                           fontWeight: 600,
-                          color: '#0f172a',
-                          background: '#ffffff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--bg-surface)',
                           boxSizing: 'border-box',
                         }}
                       >
@@ -4138,7 +4138,7 @@ function SuperAdminContent() {
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.3rem', textTransform: 'uppercase' }}>
                         Email Đăng Nhập Chính Thức
                       </label>
                       <input
@@ -4150,12 +4150,12 @@ function SuperAdminContent() {
                           width: '100%',
                           height: '40px',
                           padding: '0 0.75rem',
-                          border: '1.5px solid #cbd5e1',
+                          border: '1.5px solid var(--border-strong)',
                           borderRadius: '8px',
                           fontSize: '0.875rem',
                           fontWeight: 600,
-                          color: '#0f172a',
-                          background: '#ffffff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--bg-surface)',
                           boxSizing: 'border-box',
                         }}
                       />
@@ -4196,8 +4196,8 @@ function SuperAdminContent() {
                   onClick={() => setUnitFilterTab(unitFilterTab === 'lcd' ? 'all' : 'lcd')}
                   style={{
                     textAlign: 'left',
-                    background: unitFilterTab === 'lcd' ? '#eff6ff' : '#ffffff',
-                    border: unitFilterTab === 'lcd' ? '2px solid #2563eb' : '1.5px solid #bfdbfe',
+                    background: unitFilterTab === 'lcd' ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
+                    border: unitFilterTab === 'lcd' ? '2px solid #2563eb' : '1.5px solid var(--tint-blue-border)',
                     borderRadius: '14px',
                     padding: '1rem',
                     cursor: 'pointer',
@@ -4207,17 +4207,17 @@ function SuperAdminContent() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#1e40af' }}>LIÊN CHI ĐOÀN KHOA</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-brand-strong)' }}>LIÊN CHI ĐOÀN KHOA</div>
                     {unitFilterTab === 'lcd' && (
                       <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#2563eb', color: '#fff', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
                         Đang lọc
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e3a8a', marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-brand-strong)', marginTop: '0.25rem' }}>
                     {unitsList.filter(u => u.type.includes('LCĐ') || u.code.startsWith('LCD_')).length} Đơn vị
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Bấm để lọc Đoàn các Khoa</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Bấm để lọc Đoàn các Khoa</div>
                 </button>
 
                 <button
@@ -4225,8 +4225,8 @@ function SuperAdminContent() {
                   onClick={() => setUnitFilterTab(unitFilterTab === 'clb' ? 'all' : 'clb')}
                   style={{
                     textAlign: 'left',
-                    background: unitFilterTab === 'clb' ? '#f0fdf4' : '#ffffff',
-                    border: unitFilterTab === 'clb' ? '2px solid #16a34a' : '1.5px solid #bbf7d0',
+                    background: unitFilterTab === 'clb' ? 'var(--tint-green-bg)' : 'var(--bg-surface)',
+                    border: unitFilterTab === 'clb' ? '2px solid #16a34a' : '1.5px solid var(--tint-green-border)',
                     borderRadius: '14px',
                     padding: '1rem',
                     cursor: 'pointer',
@@ -4236,7 +4236,7 @@ function SuperAdminContent() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#166534' }}>CLB / ĐỘI / NHÓM</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--status-green-text)' }}>CLB / ĐỘI / NHÓM</div>
                     {unitFilterTab === 'clb' && (
                       <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#16a34a', color: '#fff', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
                         Đang lọc
@@ -4246,7 +4246,7 @@ function SuperAdminContent() {
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#14532d', marginTop: '0.25rem' }}>
                     {unitsList.filter(u => !u.type.includes('LCĐ') && !u.code.startsWith('LCD_')).length} Đơn vị
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Bấm để lọc CLB / Đội / Nhóm</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Bấm để lọc CLB / Đội / Nhóm</div>
                 </button>
 
                 <button
@@ -4254,8 +4254,8 @@ function SuperAdminContent() {
                   onClick={() => setUnitFilterTab('all')}
                   style={{
                     textAlign: 'left',
-                    background: unitFilterTab === 'all' ? '#faf5ff' : '#ffffff',
-                    border: unitFilterTab === 'all' ? '2px solid #9333ea' : '1.5px solid #e9d5ff',
+                    background: unitFilterTab === 'all' ? 'var(--tint-purple-bg)' : 'var(--bg-surface)',
+                    border: unitFilterTab === 'all' ? '2px solid #9333ea' : '1.5px solid var(--tint-purple-border)',
                     borderRadius: '14px',
                     padding: '1rem',
                     cursor: 'pointer',
@@ -4265,17 +4265,17 @@ function SuperAdminContent() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#6b21a8' }}>TỔNG SỐ ĐƠN VỊ</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--status-purple-text)' }}>TỔNG SỐ ĐƠN VỊ</div>
                     {unitFilterTab === 'all' && (
                       <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#9333ea', color: '#fff', padding: '0.15rem 0.45rem', borderRadius: '12px' }}>
                         Tất cả
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#581c87', marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--status-purple-text)', marginTop: '0.25rem' }}>
                     {unitsList.length} Đơn vị
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Bấm để xem toàn bộ 24 đơn vị</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Bấm để xem toàn bộ 24 đơn vị</div>
                 </button>
               </div>
 
@@ -4295,13 +4295,13 @@ function SuperAdminContent() {
                     <tbody>
                       {unitsLoading ? (
                         <tr>
-                          <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                             Đang tải danh sách đơn vị...
                           </td>
                         </tr>
                       ) : filteredUnitsList.length === 0 ? (
                         <tr>
-                          <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                             Không có đơn vị nào phù hợp bộ lọc.
                           </td>
                         </tr>
@@ -4311,20 +4311,20 @@ function SuperAdminContent() {
                           return (
                             <tr key={unit.code}>
                               <td>
-                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#1e40af', background: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.825rem' }}>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--text-brand-strong)', background: 'var(--tint-blue-bg)', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.825rem' }}>
                                   {unit.code}
                                 </span>
                               </td>
                               <td>
-                                <strong style={{ color: '#0f172a', fontSize: '0.9rem' }}>{unit.name}</strong>
+                                <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{unit.name}</strong>
                               </td>
                               <td>
-                                <span style={{ fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'var(--bg-muted)', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
                                   {unit.type}
                                 </span>
                               </td>
                               <td>
-                                <span style={{ fontSize: '0.85rem', color: '#0f172a', fontFamily: 'monospace' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                                   {unit.email || '—'}
                                 </span>
                               </td>
@@ -4335,9 +4335,9 @@ function SuperAdminContent() {
                                     onClick={() => handleDeleteUnit(unit.code, unit.name)}
                                     style={{
                                       padding: '0.3rem 0.6rem',
-                                      background: '#fee2e2',
-                                      color: '#dc2626',
-                                      border: '1px solid #fca5a5',
+                                      background: 'var(--tint-red-strong)',
+                                      color: 'var(--status-red-text)',
+                                      border: '1px solid var(--tint-red-border)',
                                       borderRadius: '6px',
                                       fontSize: '0.78rem',
                                       fontWeight: 700,
@@ -4347,7 +4347,7 @@ function SuperAdminContent() {
                                     Xóa
                                   </button>
                                 ) : (
-                                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Mặc định</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', fontWeight: 600 }}>Mặc định</span>
                                 )}
                               </td>
                             </tr>
@@ -4362,11 +4362,11 @@ function SuperAdminContent() {
               {/* MOBILE CARD VIEW FOR UNITS */}
               <div className={styles.officerCardsMobile}>
                 {unitsLoading ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '0.875rem' }}>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                     Đang tải danh sách đơn vị...
                   </div>
                 ) : filteredUnitsList.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', fontSize: '0.875rem', background: '#ffffff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px dashed var(--border-strong)' }}>
                     Không có đơn vị nào phù hợp bộ lọc.
                   </div>
                 ) : (
@@ -4377,14 +4377,14 @@ function SuperAdminContent() {
                         <div className={styles.officerCardHeader} style={{ alignItems: 'flex-start' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#1e40af', background: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.775rem' }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--text-brand-strong)', background: 'var(--tint-blue-bg)', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '0.775rem' }}>
                                 {unit.code}
                               </span>
-                              <span style={{ fontSize: '0.75rem', color: '#475569', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--bg-muted)', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 600 }}>
                                 {unit.type}
                               </span>
                             </div>
-                            <strong style={{ color: '#0f172a', fontSize: '0.95rem', lineHeight: 1.35 }}>{unit.name}</strong>
+                            <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem', lineHeight: 1.35 }}>{unit.name}</strong>
                           </div>
                           <div>
                             {isCustom ? (
@@ -4393,9 +4393,9 @@ function SuperAdminContent() {
                                 onClick={() => handleDeleteUnit(unit.code, unit.name)}
                                 style={{
                                   padding: '0.35rem 0.65rem',
-                                  background: '#fee2e2',
-                                  color: '#dc2626',
-                                  border: '1px solid #fca5a5',
+                                  background: 'var(--tint-red-strong)',
+                                  color: 'var(--status-red-text)',
+                                  border: '1px solid var(--tint-red-border)',
                                   borderRadius: '8px',
                                   fontSize: '0.75rem',
                                   fontWeight: 700,
@@ -4405,7 +4405,7 @@ function SuperAdminContent() {
                                 Xóa
                               </button>
                             ) : (
-                              <span style={{ fontSize: '0.725rem', color: '#94a3b8', fontWeight: 600, fontStyle: 'italic' }}>Mặc định</span>
+                              <span style={{ fontSize: '0.725rem', color: 'var(--text-subtle)', fontWeight: 600, fontStyle: 'italic' }}>Mặc định</span>
                             )}
                           </div>
                         </div>
@@ -4434,7 +4434,7 @@ function SuperAdminContent() {
               <div className={styles.sectionHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                   <h2 className={styles.sectionTitle}>
-                    <UsersIcon size={20} color="#2563eb" />
+                    <UsersIcon size={20} color="var(--text-brand)" />
                     Thêm & Nạp Sinh Viên Thủ Công
                   </h2>
                   <p className={styles.sectionSubtitle}>
@@ -4442,7 +4442,7 @@ function SuperAdminContent() {
                   </p>
                 </div>
                 {/* Mode Selector Tabs */}
-                <div style={{ display: 'flex', gap: '0.4rem', background: '#f1f5f9', padding: '0.25rem', borderRadius: '10px' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--bg-muted)', padding: '0.25rem', borderRadius: '10px' }}>
                   <button
                     type="button"
                     onClick={() => setStudentInputMode('table')}
@@ -4453,8 +4453,8 @@ function SuperAdminContent() {
                       fontSize: '0.82rem',
                       fontWeight: 700,
                       cursor: 'pointer',
-                      background: studentInputMode === 'table' ? '#ffffff' : 'transparent',
-                      color: studentInputMode === 'table' ? '#1d4ed8' : '#64748b',
+                      background: studentInputMode === 'table' ? 'var(--bg-surface)' : 'transparent',
+                      color: studentInputMode === 'table' ? 'var(--text-brand)' : 'var(--text-muted)',
                       boxShadow: studentInputMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
@@ -4463,7 +4463,7 @@ function SuperAdminContent() {
                   >
                     <span>Bảng điền nhiều SV</span>
                     {manualTableRows.filter((r) => r.mssv.trim() || r.full_name.trim()).length > 0 && (
-                      <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '10px', fontSize: '0.72rem' }}>
+                      <span style={{ background: 'var(--tint-blue-strong)', color: 'var(--text-brand-strong)', padding: '0.1rem 0.4rem', borderRadius: '10px', fontSize: '0.72rem' }}>
                         {manualTableRows.filter((r) => r.mssv.trim() || r.full_name.trim()).length}
                       </span>
                     )}
@@ -4478,8 +4478,8 @@ function SuperAdminContent() {
                       fontSize: '0.82rem',
                       fontWeight: 700,
                       cursor: 'pointer',
-                      background: studentInputMode === 'single' ? '#ffffff' : 'transparent',
-                      color: studentInputMode === 'single' ? '#1d4ed8' : '#64748b',
+                      background: studentInputMode === 'single' ? 'var(--bg-surface)' : 'transparent',
+                      color: studentInputMode === 'single' ? 'var(--text-brand)' : 'var(--text-muted)',
                       boxShadow: studentInputMode === 'single' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                     }}
                   >
@@ -4498,12 +4498,12 @@ function SuperAdminContent() {
                     marginBottom: '0.75rem',
                     flexWrap: 'wrap',
                     gap: '0.5rem',
-                    background: '#f8fafc',
+                    background: 'var(--bg-subtle)',
                     padding: '0.65rem 0.85rem',
                     borderRadius: '10px',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--border-color)',
                   }}>
-                    <span style={{ fontSize: '0.82rem', color: '#475569' }}>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       <strong>Mẹo:</strong> Gõ MSSV thì hệ thống tự động viết hoa và tự sinh email sinh viên.
                     </span>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -4514,8 +4514,8 @@ function SuperAdminContent() {
                           padding: '0.35rem 0.75rem',
                           borderRadius: '6px',
                           border: '1.5px solid #2563eb',
-                          background: showQuickPaste ? '#2563eb' : '#eff6ff',
-                          color: showQuickPaste ? '#ffffff' : '#1d4ed8',
+                          background: showQuickPaste ? '#2563eb' : 'var(--tint-blue-bg)',
+                          color: showQuickPaste ? '#ffffff' : 'var(--text-brand)',
                           fontSize: '0.8rem',
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -4532,9 +4532,9 @@ function SuperAdminContent() {
                         style={{
                           padding: '0.35rem 0.65rem',
                           borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          background: '#ffffff',
-                          color: '#334155',
+                          border: '1px solid var(--border-strong)',
+                          background: 'var(--bg-surface)',
+                          color: 'var(--text-body)',
                           fontSize: '0.8rem',
                           fontWeight: 600,
                           cursor: 'pointer',
@@ -4552,9 +4552,9 @@ function SuperAdminContent() {
                         style={{
                           padding: '0.35rem 0.65rem',
                           borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          background: '#ffffff',
-                          color: '#334155',
+                          border: '1px solid var(--border-strong)',
+                          background: 'var(--bg-surface)',
+                          color: 'var(--text-body)',
                           fontSize: '0.8rem',
                           fontWeight: 600,
                           cursor: 'pointer',
@@ -4568,9 +4568,9 @@ function SuperAdminContent() {
                         style={{
                           padding: '0.35rem 0.65rem',
                           borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          background: '#ffffff',
-                          color: '#64748b',
+                          border: '1px solid var(--border-strong)',
+                          background: 'var(--bg-surface)',
+                          color: 'var(--text-muted)',
                           fontSize: '0.8rem',
                           fontWeight: 600,
                           cursor: 'pointer',
@@ -4613,17 +4613,17 @@ function SuperAdminContent() {
                   {/* QUICK PASTE BOX */}
                   {showQuickPaste && (
                     <div style={{
-                      background: '#eff6ff',
-                      border: '1.5px solid #bfdbfe',
+                      background: 'var(--tint-blue-bg)',
+                      border: '1.5px solid var(--tint-blue-border)',
                       borderRadius: '10px',
                       padding: '1rem',
                       marginBottom: '0.85rem',
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e40af' }}>
+                        <label style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-brand-strong)' }}>
                           Dán danh sách sinh viên vào đây (mỗi SV 1 dòng):
                         </label>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           Hỗ trợ: <em>Họ và tên MSSV</em>, <em>MSSV Họ tên</em> hoặc copy từ Excel
                         </span>
                       </div>
@@ -4639,16 +4639,16 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           width: '100%',
                           padding: '0.6rem 0.75rem',
                           borderRadius: '8px',
-                          border: '1px solid #93c5fd',
+                          border: '1px solid var(--tint-blue-border)',
                           fontSize: '0.85rem',
                           fontFamily: 'monospace',
                           marginBottom: '0.5rem',
-                          background: '#ffffff',
+                          background: 'var(--bg-surface)',
                           boxSizing: 'border-box',
                         }}
                       />
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600 }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--status-green-text)', fontWeight: 600 }}>
                           Đuôi email @student.ptithcm.edu.vn và mã lớp sẽ được tự động điền ngay lập tức!
                         </span>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -4661,8 +4661,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                             style={{
                               padding: '0.35rem 0.75rem',
                               borderRadius: '6px',
-                              border: '1px solid #cbd5e1',
-                              background: '#ffffff',
+                              border: '1px solid var(--border-strong)',
+                              background: 'var(--bg-surface)',
                               fontSize: '0.8rem',
                               cursor: 'pointer',
                             }}
@@ -4690,29 +4690,29 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     </div>
                   )}
 
-                  <div style={{ overflowX: 'auto', border: '1px solid #cbd5e1', borderRadius: '10px' }}>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border-strong)', borderRadius: '10px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead>
-                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
-                          <th style={{ padding: '0.6rem 0.5rem', width: '40px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>#</th>
-                          <th style={{ padding: '0.6rem 0.5rem', width: '145px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>MSSV *</th>
-                          <th style={{ padding: '0.6rem 0.5rem', minWidth: '180px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>Họ và tên *</th>
-                          <th style={{ padding: '0.6rem 0.5rem', width: '150px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>Lớp sinh hoạt *</th>
-                          <th style={{ padding: '0.6rem 0.5rem', minWidth: '240px', textAlign: 'left', color: '#1e3a8a', fontWeight: 700 }}>
+                        <tr style={{ background: 'var(--bg-muted)', borderBottom: '2px solid var(--border-strong)' }}>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '40px', textAlign: 'center', color: 'var(--text-secondary)', fontWeight: 700 }}>#</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '145px', textAlign: 'left', color: 'var(--text-brand-strong)', fontWeight: 700 }}>MSSV *</th>
+                          <th style={{ padding: '0.6rem 0.5rem', minWidth: '180px', textAlign: 'left', color: 'var(--text-brand-strong)', fontWeight: 700 }}>Họ và tên *</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '150px', textAlign: 'left', color: 'var(--text-brand-strong)', fontWeight: 700 }}>Lớp sinh hoạt *</th>
+                          <th style={{ padding: '0.6rem 0.5rem', minWidth: '240px', textAlign: 'left', color: 'var(--text-brand-strong)', fontWeight: 700 }}>
                             <span>Email sinh viên</span>
-                            <span style={{ display: 'block', fontSize: '0.72rem', color: '#16a34a', fontWeight: 600 }}>
+                            <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--status-green-text)', fontWeight: 600 }}>
                               (Tự động gắn @student.ptithcm.edu.vn)
                             </span>
                           </th>
-                          <th style={{ padding: '0.6rem 0.5rem', width: '105px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Giới tính</th>
-                          <th style={{ padding: '0.6rem 0.5rem', width: '130px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>SĐT</th>
-                          <th style={{ padding: '0.6rem 0.5rem', width: '55px', textAlign: 'center', color: '#64748b' }}>Xóa</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '105px', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 700 }}>Giới tính</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '130px', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 700 }}>SĐT</th>
+                          <th style={{ padding: '0.6rem 0.5rem', width: '55px', textAlign: 'center', color: 'var(--text-muted)' }}>Xóa</th>
                         </tr>
                       </thead>
                       <tbody>
                         {manualTableRows.map((row, idx) => (
-                          <tr key={row.id} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                            <td style={{ padding: '0.4rem', textAlign: 'center', color: '#94a3b8', fontWeight: 600 }}>{idx + 1}</td>
+                          <tr key={row.id} style={{ borderBottom: '1px solid var(--border-color)', background: idx % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-subtle)' }}>
+                            <td style={{ padding: '0.4rem', textAlign: 'center', color: 'var(--text-subtle)', fontWeight: 600 }}>{idx + 1}</td>
                             <td style={{ padding: '0.4rem' }}>
                               <input
                                 type="text"
@@ -4723,7 +4723,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                   width: '100%',
                                   padding: '0.4rem 0.55rem',
                                   borderRadius: '6px',
-                                  border: '1px solid #cbd5e1',
+                                  border: '1px solid var(--border-strong)',
                                   fontFamily: 'monospace',
                                   fontWeight: 700,
                                   fontSize: '0.85rem',
@@ -4741,7 +4741,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                   width: '100%',
                                   padding: '0.4rem 0.55rem',
                                   borderRadius: '6px',
-                                  border: '1px solid #cbd5e1',
+                                  border: '1px solid var(--border-strong)',
                                   fontSize: '0.85rem',
                                   fontWeight: 600,
                                 }}
@@ -4757,7 +4757,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                   width: '100%',
                                   padding: '0.4rem 0.55rem',
                                   borderRadius: '6px',
-                                  border: '1px solid #cbd5e1',
+                                  border: '1px solid var(--border-strong)',
                                   fontSize: '0.85rem',
                                   textTransform: 'uppercase',
                                 }}
@@ -4774,10 +4774,10 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                   width: '100%',
                                   padding: '0.4rem 0.55rem',
                                   borderRadius: '6px',
-                                  border: '1px solid #cbd5e1',
+                                  border: '1px solid var(--border-strong)',
                                   fontSize: '0.82rem',
-                                  color: '#334155',
-                                  background: row.email ? '#f0fdf4' : '#ffffff',
+                                  color: 'var(--text-body)',
+                                  background: row.email ? 'var(--tint-green-bg)' : 'var(--bg-surface)',
                                 }}
                               />
                             </td>
@@ -4789,9 +4789,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                   width: '100%',
                                   padding: '0.4rem 0.35rem',
                                   borderRadius: '6px',
-                                  border: '1px solid #cbd5e1',
+                                  border: '1px solid var(--border-strong)',
                                   fontSize: '0.82rem',
-                                  background: '#ffffff',
+                                  background: 'var(--bg-surface)',
                                 }}
                               >
                                 <option value="">--</option>
@@ -4809,7 +4809,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                   width: '100%',
                                   padding: '0.4rem 0.55rem',
                                   borderRadius: '6px',
-                                  border: '1px solid #cbd5e1',
+                                  border: '1px solid var(--border-strong)',
                                   fontSize: '0.82rem',
                                 }}
                               />
@@ -4845,8 +4845,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         padding: '0.45rem 0.85rem',
                         borderRadius: '8px',
                         border: '1px dashed #3b82f6',
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
+                        background: 'var(--tint-blue-bg)',
+                        color: 'var(--text-brand)',
                         fontSize: '0.82rem',
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -4899,10 +4899,10 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                   gap: '1rem',
-                  background: '#f8fafc',
+                  background: 'var(--bg-subtle)',
                   padding: '1.25rem',
                   borderRadius: '12px',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid var(--border-color)',
                 }}>
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Mã Số Sinh Viên (MSSV) *</label>
@@ -4954,7 +4954,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   <div className={styles.formGroup}>
                     <label className={styles.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Email Sinh Viên</span>
-                      <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--status-green-text)', fontWeight: 600 }}>
                         (Tự động gắn @student.ptithcm.edu.vn)
                       </span>
                     </label>
@@ -4970,9 +4970,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         }))
                       }
                       className={styles.input}
-                      style={{ background: manualSingleStudent.email ? '#f0fdf4' : '#ffffff' }}
+                      style={{ background: manualSingleStudent.email ? 'var(--tint-green-bg)' : 'var(--bg-surface)' }}
                     />
-                    <span style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
+                    <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
                       Tự động điền theo MSSV. Đuôi <code>@student.ptithcm.edu.vn</code> luôn được tự động gắn kèm khi lưu.
                     </span>
                   </div>
@@ -4983,7 +4983,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       value={manualSingleStudent.gender}
                       onChange={(e) => setManualSingleStudent((prev) => ({ ...prev, gender: e.target.value }))}
                       className={styles.input}
-                      style={{ background: '#fff' }}
+                      style={{ background: 'var(--bg-surface)' }}
                     >
                       <option value="">Chọn giới tính</option>
                       <option value="Nam">Nam</option>
@@ -5041,7 +5041,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>
-                  <UsersIcon size={20} color="#16a34a" />
+                  <UsersIcon size={20} color="var(--status-green-text)" />
                   Hoặc Nạp Danh Sách Bằng File Excel (.xlsx, .xls)
                 </h2>
               </div>
@@ -5058,7 +5058,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>
-                  <UsersIcon size={20} color="#16a34a" />
+                  <UsersIcon size={20} color="var(--status-green-text)" />
                   Danh sách sinh viên trong hệ thống ({stats.students || students.length})
                 </h2>
                 <ExcelExportButton
@@ -5084,7 +5084,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     key: 'mssv',
                     label: 'MSSV',
                     render: (val) => (
-                      <span style={{ fontWeight: 800, color: '#1d4ed8', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                      <span style={{ fontWeight: 800, color: 'var(--text-brand)', fontFamily: 'monospace', fontSize: '0.9rem' }}>
                         {val}
                       </span>
                     ),
@@ -5092,7 +5092,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   {
                     key: 'full_name',
                     label: 'Họ và tên',
-                    render: (val) => <span style={{ fontWeight: 700, color: '#0f172a' }}>{val}</span>,
+                    render: (val) => <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{val}</span>,
                   },
                   { key: 'class_id', label: 'Lớp' },
                   {
@@ -5100,14 +5100,14 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     label: 'SĐT',
                     render: (val) =>
                       val ? (
-                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a', fontSize: '0.84rem' }}>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.84rem' }}>
                           {val}
                         </span>
                       ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>—</span>
+                        <span style={{ color: 'var(--text-subtle)', fontSize: '0.8rem' }}>—</span>
                       ),
                   },
-                  { key: 'email', label: 'Email', render: (val) => <span style={{ color: '#64748b' }}>{val}</span> },
+                  { key: 'email', label: 'Email', render: (val) => <span style={{ color: 'var(--text-muted)' }}>{val}</span> },
                   {
                     key: 'actions',
                     label: 'Thao Tác',
@@ -5120,9 +5120,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           alignItems: 'center',
                           gap: '0.3rem',
                           padding: '0.4rem 0.72rem',
-                          background: '#f8fafc',
-                          border: '1px solid #cbd5e1',
-                          color: '#334155',
+                          background: 'var(--bg-subtle)',
+                          border: '1px solid var(--border-strong)',
+                          color: 'var(--text-body)',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.8rem',
@@ -5160,9 +5160,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             {/* Form Cấp Quyền Card */}
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-surface)',
                 borderRadius: '16px',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border-color)',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
                 padding: '1.75rem',
                 marginBottom: '1.75rem',
@@ -5170,13 +5170,13 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#eff6ff', color: '#1d4ed8', padding: '0.25rem 0.65rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--tint-blue-bg)', color: 'var(--text-brand)', padding: '0.25rem 0.65rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     <CheckCircleIcon size={14} /> Phân Quyền Tạm Thời 30 Ngày
                   </div>
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '0.4rem 0 0.2rem' }}>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0.4rem 0 0.2rem' }}>
                     Cấp Quyền Tra Cứu ĐRL Cho Bí Thư / Phó Bí Thư Chi Đoàn
                   </h2>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
                     Cấp quyền trong 1 tháng để Bí thư/Phó Bí thư tra cứu và xuất dữ liệu minh chứng của đoàn viên trong Chi đoàn (Lớp) mình phụ trách.
                   </p>
                 </div>
@@ -5184,7 +5184,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
 
               <form onSubmit={grantPermission} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr)) auto', gap: '1rem', alignItems: 'flex-end' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
                     MSSV Bí Thư / Phó Bí Thư
                   </label>
                   <input
@@ -5197,13 +5197,13 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       width: '100%',
                       height: '44px',
                       padding: '0 0.85rem',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       borderRadius: '10px',
                       fontSize: '0.9rem',
                       fontWeight: 700,
-                      color: '#0f172a',
+                      color: 'var(--text-primary)',
                       fontFamily: 'monospace',
-                      background: '#f8fafc',
+                      background: 'var(--bg-subtle)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -5211,7 +5211,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
                     Chức Vụ Trong Chi Đoàn
                   </label>
                   <select
@@ -5221,12 +5221,12 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       width: '100%',
                       height: '44px',
                       padding: '0 0.85rem',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       borderRadius: '10px',
                       fontSize: '0.85rem',
                       fontWeight: 600,
-                      color: '#0f172a',
-                      background: '#f8fafc',
+                      color: 'var(--text-primary)',
+                      background: 'var(--bg-subtle)',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
@@ -5272,19 +5272,19 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   style={{
                     marginTop: '0.85rem',
                     padding: '0.6rem 0.9rem',
-                    background: '#f0fdf4',
-                    border: '1.5px solid #86efac',
+                    background: 'var(--tint-green-bg)',
+                    border: '1.5px solid var(--tint-green-border)',
                     borderRadius: '10px',
                     fontSize: '0.82rem',
-                    color: '#15803d',
+                    color: 'var(--status-green-text)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
                   }}
                 >
-                  <CheckCircleIcon size={16} color="#15803d" />
+                  <CheckCircleIcon size={16} color="var(--status-green-text)" />
                   <span>
-                    Đã nhận diện: <strong style={{ color: '#0f172a' }}>{students.find((s) => s.mssv.toUpperCase() === grantMssv.trim().toUpperCase())?.full_name}</strong> — Chi đoàn (Lớp): <strong style={{ color: '#1e40af', background: '#dbeafe', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>{students.find((s) => s.mssv.toUpperCase() === grantMssv.trim().toUpperCase())?.class_id}</strong>
+                    Đã nhận diện: <strong style={{ color: 'var(--text-primary)' }}>{students.find((s) => s.mssv.toUpperCase() === grantMssv.trim().toUpperCase())?.full_name}</strong> — Chi đoàn (Lớp): <strong style={{ color: 'var(--text-brand-strong)', background: 'var(--tint-blue-strong)', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>{students.find((s) => s.mssv.toUpperCase() === grantMssv.trim().toUpperCase())?.class_id}</strong>
                   </span>
                 </div>
               )}
@@ -5293,23 +5293,23 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             {/* Bảng danh sách cán bộ được cấp quyền */}
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-surface)',
                 borderRadius: '16px',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border-color)',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
                 padding: '1.5rem',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--tint-blue-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-brand)' }}>
                     <UsersIcon size={20} />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                       Danh Sách Cán Bộ Chi Đoàn Đang Được Ủy Quyền
                     </h3>
-                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                       Tổng cộng {delegates.length} tài khoản có hiệu lực
                     </span>
                   </div>
@@ -5319,7 +5319,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               <div className={styles.tableWrapper}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0', color: '#475569' }}>
+                    <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1.5px solid var(--border-color)', color: 'var(--text-secondary)' }}>
                       <th style={{ padding: '0.85rem 1rem', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em' }}>MSSV</th>
                       <th style={{ padding: '0.85rem 1rem', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em' }}>Họ Và Tên</th>
                       <th style={{ padding: '0.85rem 1rem', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Chi Đoàn (Lớp)</th>
@@ -5333,7 +5333,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   <tbody>
                     {delegatesLoading ? (
                       <tr>
-                        <td colSpan={8} style={{ padding: '3.5rem 1rem', textAlign: 'center', color: '#64748b' }}>
+                        <td colSpan={8} style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
                             <div className={styles.tableSpinner}></div>
                             <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Đang tải danh sách cán bộ Chi đoàn...</span>
@@ -5342,47 +5342,47 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       </tr>
                     ) : delegates.length === 0 ? (
                       <tr>
-                        <td colSpan={8} style={{ padding: '3rem 1rem', textAlign: 'center', color: '#64748b' }}>
+                        <td colSpan={8} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
-                            <UsersIcon size={32} color="#94a3b8" />
+                            <UsersIcon size={32} color="var(--text-subtle)" />
                           </div>
                           Chưa có cán bộ Chi đoàn nào được cấp quyền tra cứu ĐRL.
                         </td>
                       </tr>
                     ) : (
                       delegates.map((del) => (
-                        <tr key={del.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
-                          <td style={{ padding: '0.85rem 1rem', fontWeight: 800, fontFamily: 'monospace', color: '#1d4ed8', whiteSpace: 'nowrap' }}>
+                        <tr key={del.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.15s ease' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontWeight: 800, fontFamily: 'monospace', color: 'var(--text-brand)', whiteSpace: 'nowrap' }}>
                             {del.mssv}
                           </td>
                           <td style={{ padding: '0.85rem 1rem' }}>
-                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{del.full_name}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{del.email}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{del.full_name}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{del.email}</div>
                           </td>
                           <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                            <span style={{ display: 'inline-block', padding: '0.25rem 0.65rem', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                            <span style={{ display: 'inline-block', padding: '0.25rem 0.65rem', background: 'var(--tint-blue-bg)', color: 'var(--text-brand-strong)', border: '1px solid var(--tint-blue-border)', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                               {del.class_id}
                             </span>
                           </td>
                           <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                            <span style={{ display: 'inline-block', padding: '0.25rem 0.65rem', background: '#f3e8ff', color: '#7e22ce', border: '1px solid #e9d5ff', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem' }}>
+                            <span style={{ display: 'inline-block', padding: '0.25rem 0.65rem', background: 'var(--tint-purple-strong)', color: '#7e22ce', border: '1px solid var(--tint-purple-border)', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem' }}>
                               {del.notes || 'Bí thư Chi đoàn'}
                             </span>
                           </td>
-                          <td style={{ padding: '0.85rem 1rem', color: '#64748b', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
                             {new Date(del.granted_at).toLocaleDateString('vi-VN')}
                           </td>
-                          <td style={{ padding: '0.85rem 1rem', color: '#64748b', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
                             {new Date(del.expires_at).toLocaleDateString('vi-VN')}
                           </td>
                           <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
                             {del.status === 'active' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.65rem', background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '12px', fontSize: '0.78rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.65rem', background: 'var(--tint-green-strong)', color: 'var(--status-green-text)', border: '1px solid var(--tint-green-border)', borderRadius: '12px', fontSize: '0.78rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }}></span>
                                 Còn {del.daysLeft} ngày
                               </span>
                             ) : (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.65rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: '12px', fontSize: '0.78rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.65rem', background: 'var(--tint-red-strong)', color: 'var(--status-red-text)', border: '1px solid var(--tint-red-border)', borderRadius: '12px', fontSize: '0.78rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#dc2626' }}></span>
                                 Đã Hết Hạn
                               </span>
@@ -5394,9 +5394,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               onClick={() => revokePermission(del.id, del.full_name)}
                               style={{
                                 padding: '0.4rem 0.85rem',
-                                background: '#fff1f2',
-                                border: '1px solid #fecdd3',
-                                color: '#e11d48',
+                                background: 'var(--tint-red-bg)',
+                                border: '1px solid var(--tint-red-border)',
+                                color: 'var(--status-red-text)',
                                 borderRadius: '8px',
                                 fontWeight: 700,
                                 fontSize: '0.78rem',
@@ -5428,7 +5428,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               <div className={styles.sectionHeader}>
                 <div>
                   <h2 className={styles.sectionTitle}>
-                    <ShieldCheckIcon size={20} color="#dc2626" />
+                    <ShieldCheckIcon size={20} color="var(--status-red-text)" />
                     Khóa Đăng Ký Thủ Công (Thêm Vào Blacklist)
                   </h2>
                   <p className={styles.sectionSubtitle}>
@@ -5475,8 +5475,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             {/* Hướng dẫn nghiệp vụ xử lý khiếu nại & miễn vắng */}
             <div
               style={{
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: '12px',
                 padding: '1.25rem 1.5rem',
                 marginBottom: '1.5rem',
@@ -5487,8 +5487,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             >
               <div
                 style={{
-                  background: '#eff6ff',
-                  color: '#2563eb',
+                  background: 'var(--tint-blue-bg)',
+                  color: 'var(--text-brand)',
                   borderRadius: '10px',
                   padding: '0.6rem',
                   display: 'flex',
@@ -5499,8 +5499,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               >
                 <ShieldCheckIcon size={24} />
               </div>
-              <div style={{ flex: 1, fontSize: '0.88rem', color: '#334155', lineHeight: 1.6 }}>
-                <strong style={{ color: '#0f172a', fontSize: '0.95rem', display: 'block', marginBottom: '0.25rem' }}>
+              <div style={{ flex: 1, fontSize: '0.88rem', color: 'var(--text-body)', lineHeight: 1.6 }}>
+                <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem', display: 'block', marginBottom: '0.25rem' }}>
                   Quy trình nghiệp vụ xử lý khiếu nại & Miễn trừ điểm vắng (Super Admin)
                 </strong>
                 <span>
@@ -5526,10 +5526,10 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: '1.25rem',
-                background: '#ffffff',
+                background: 'var(--bg-surface)',
                 padding: '1rem 1.25rem',
                 borderRadius: '12px',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border-color)',
               }}
             >
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -5542,9 +5542,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     border: '1px solid',
-                    borderColor: blacklistFilter === 'all' ? '#2563eb' : '#e2e8f0',
-                    background: blacklistFilter === 'all' ? '#eff6ff' : '#ffffff',
-                    color: blacklistFilter === 'all' ? '#1d4ed8' : '#64748b',
+                    borderColor: blacklistFilter === 'all' ? '#2563eb' : 'var(--border-color)',
+                    background: blacklistFilter === 'all' ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
+                    color: blacklistFilter === 'all' ? 'var(--text-brand)' : 'var(--text-muted)',
                     cursor: 'pointer',
                   }}
                 >
@@ -5559,9 +5559,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     border: '1px solid',
-                    borderColor: blacklistFilter === 'blacklisted' ? '#ef4444' : '#e2e8f0',
-                    background: blacklistFilter === 'blacklisted' ? '#fef2f2' : '#ffffff',
-                    color: blacklistFilter === 'blacklisted' ? '#b91c1c' : '#64748b',
+                    borderColor: blacklistFilter === 'blacklisted' ? '#ef4444' : 'var(--border-color)',
+                    background: blacklistFilter === 'blacklisted' ? 'var(--tint-red-bg)' : 'var(--bg-surface)',
+                    color: blacklistFilter === 'blacklisted' ? 'var(--status-red-text)' : 'var(--text-muted)',
                     cursor: 'pointer',
                   }}
                 >
@@ -5576,9 +5576,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     border: '1px solid',
-                    borderColor: blacklistFilter === 'warning' ? '#f59e0b' : '#e2e8f0',
-                    background: blacklistFilter === 'warning' ? '#fffbeb' : '#ffffff',
-                    color: blacklistFilter === 'warning' ? '#b45309' : '#64748b',
+                    borderColor: blacklistFilter === 'warning' ? '#f59e0b' : 'var(--border-color)',
+                    background: blacklistFilter === 'warning' ? 'var(--tint-amber-bg)' : 'var(--bg-surface)',
+                    color: blacklistFilter === 'warning' ? 'var(--status-amber-text)' : 'var(--text-muted)',
                     cursor: 'pointer',
                   }}
                 >
@@ -5593,9 +5593,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     border: '1px solid',
-                    borderColor: blacklistFilter === 'pardoned' ? '#10b981' : '#e2e8f0',
-                    background: blacklistFilter === 'pardoned' ? '#f0fdf4' : '#ffffff',
-                    color: blacklistFilter === 'pardoned' ? '#15803d' : '#64748b',
+                    borderColor: blacklistFilter === 'pardoned' ? '#10b981' : 'var(--border-color)',
+                    background: blacklistFilter === 'pardoned' ? 'var(--tint-green-bg)' : 'var(--bg-surface)',
+                    color: blacklistFilter === 'pardoned' ? 'var(--status-green-text)' : 'var(--text-muted)',
                     cursor: 'pointer',
                   }}
                 >
@@ -5616,13 +5616,13 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     width: '100%',
                     padding: '0.5rem 0.75rem 0.5rem 2.2rem',
                     borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--border-strong)',
                     fontSize: '0.85rem',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
                 />
-                <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }}>
                   <SearchIcon size={15} />
                 </div>
               </div>
@@ -5633,7 +5633,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               <div className={styles.sectionHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                   <h2 className={styles.sectionTitle}>
-                    <ShieldCheckIcon size={20} color="#dc2626" />
+                    <ShieldCheckIcon size={20} color="var(--status-red-text)" />
                     Danh Sách Sinh Viên Vi Phạm & Đang Bị Khóa ({penalties.length})
                   </h2>
                   <p className={styles.sectionSubtitle}>
@@ -5697,7 +5697,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     {penaltiesLoading ? (
                       <tr>
                         <td colSpan={6} className={styles.emptyState} style={{ padding: '3.5rem 1rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: '#64748b' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: 'var(--text-muted)' }}>
                             <div className={styles.tableSpinner}></div>
                             <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Đang tải danh sách vi phạm & Blacklist...</span>
                           </div>
@@ -5722,14 +5722,14 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           <tr key={pen.mssv}>
                             <td>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                <span style={{ fontWeight: 700, color: '#0f172a' }}>{pen.mssv}</span>
-                                <span style={{ fontSize: '0.85rem', color: '#475569' }}>{displayName}</span>
+                                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{pen.mssv}</span>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{displayName}</span>
                               </div>
                             </td>
                             <td>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.85rem' }}>
                                 <span style={{ fontWeight: 600 }}>{displayClass}</span>
-                                <span style={{ color: '#64748b' }}>{displayEmail}</span>
+                                <span style={{ color: 'var(--text-muted)' }}>{displayEmail}</span>
                               </div>
                             </td>
                           <td>
@@ -5737,8 +5737,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               <span
                                 style={{
                                   padding: '0.25rem 0.65rem',
-                                  background: isPenBlacklisted(pen) || pen.missed_count >= 3 ? '#fee2e2' : pen.missed_count === 2 ? '#fef3c7' : pen.missed_count === 1 ? '#eff6ff' : '#dcfce7',
-                                  color: isPenBlacklisted(pen) || pen.missed_count >= 3 ? '#b91c1c' : pen.missed_count === 2 ? '#b45309' : pen.missed_count === 1 ? '#1e40af' : '#15803d',
+                                  background: isPenBlacklisted(pen) || pen.missed_count >= 3 ? 'var(--tint-red-strong)' : pen.missed_count === 2 ? 'var(--tint-amber-strong)' : pen.missed_count === 1 ? 'var(--tint-blue-bg)' : 'var(--tint-green-strong)',
+                                  color: isPenBlacklisted(pen) || pen.missed_count >= 3 ? 'var(--status-red-text)' : pen.missed_count === 2 ? 'var(--status-amber-text)' : pen.missed_count === 1 ? 'var(--text-brand-strong)' : 'var(--status-green-text)',
                                   borderRadius: '12px',
                                   fontWeight: 800,
                                   fontSize: '0.85rem',
@@ -5753,8 +5753,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               <span
                                 style={{
                                   padding: '0.3rem 0.75rem',
-                                  background: '#fee2e2',
-                                  color: '#b91c1c',
+                                  background: 'var(--tint-red-strong)',
+                                  color: 'var(--status-red-text)',
                                   borderRadius: '16px',
                                   fontSize: '0.8rem',
                                   fontWeight: 800,
@@ -5769,8 +5769,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               <span
                                 style={{
                                   padding: '0.3rem 0.75rem',
-                                  background: '#fef3c7',
-                                  color: '#b45309',
+                                  background: 'var(--tint-amber-strong)',
+                                  color: 'var(--status-amber-text)',
                                   borderRadius: '16px',
                                   fontSize: '0.8rem',
                                   fontWeight: 700,
@@ -5782,8 +5782,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               <span
                                 style={{
                                   padding: '0.3rem 0.75rem',
-                                  background: '#dcfce7',
-                                  color: '#15803d',
+                                  background: 'var(--tint-green-strong)',
+                                  color: 'var(--status-green-text)',
                                   borderRadius: '16px',
                                   fontSize: '0.8rem',
                                   fontWeight: 700,
@@ -5793,12 +5793,12 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               </span>
                             )}
                           </td>
-                          <td style={{ fontSize: '0.85rem', color: '#475569', minWidth: '320px', maxWidth: '440px' }}>
+                          <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', minWidth: '320px', maxWidth: '440px' }}>
                             {(() => {
                               const items = parsePenaltyNotes(pen.notes);
                               if (items.length === 0) {
                                 return (
-                                  <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                                  <span style={{ color: 'var(--text-subtle)', fontStyle: 'italic' }}>
                                     {pen.notes || 'Chưa có ghi chú vi phạm cụ thể'}
                                   </span>
                                 );
@@ -5811,8 +5811,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                         <div
                                           key={item.id || idx}
                                           style={{
-                                            background: '#f0fdf4',
-                                            border: '1px solid #bbf7d0',
+                                            background: 'var(--tint-green-bg)',
+                                            border: '1px solid var(--tint-green-border)',
                                             borderRadius: '8px',
                                             padding: '0.5rem 0.65rem',
                                             display: 'flex',
@@ -5827,8 +5827,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
                                               <span
                                                 style={{
-                                                  background: '#dcfce7',
-                                                  color: '#15803d',
+                                                  background: 'var(--tint-green-strong)',
+                                                  color: 'var(--status-green-text)',
                                                   fontSize: '0.72rem',
                                                   fontWeight: 800,
                                                   padding: '0.15rem 0.45rem',
@@ -5841,12 +5841,12 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                                 <CheckCircleIcon size={12} />
                                                 Đã miễn vắng
                                               </span>
-                                              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#166534' }}>
+                                              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--status-green-text)' }}>
                                                 {item.eventName}
                                               </span>
                                             </div>
                                             {item.eventDate && (
-                                              <span style={{ fontSize: '0.72rem', color: '#16a34a', whiteSpace: 'nowrap' }}>
+                                              <span style={{ fontSize: '0.72rem', color: 'var(--status-green-text)', whiteSpace: 'nowrap' }}>
                                                 {item.eventDate}
                                               </span>
                                             )}
@@ -5857,7 +5857,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                             </div>
                                           )}
                                           {item.pardonedBy && (
-                                            <div style={{ fontSize: '0.7rem', color: '#15803d', opacity: 0.9 }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--status-green-text)', opacity: 0.9 }}>
                                               Xử lý: <strong>{item.pardonedBy}</strong> {item.pardonedAt ? `• ${item.pardonedAt}` : ''}
                                             </div>
                                           )}
@@ -5870,8 +5870,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                       <div
                                         key={item.id || idx}
                                         style={{
-                                          background: '#fff1f2',
-                                          border: '1px solid #fecdd3',
+                                          background: 'var(--tint-red-bg)',
+                                          border: '1px solid var(--tint-red-border)',
                                           borderRadius: '8px',
                                           padding: '0.5rem 0.65rem',
                                           display: 'flex',
@@ -5886,8 +5886,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
                                             <span
                                               style={{
-                                                background: '#fee2e2',
-                                                color: '#b91c1c',
+                                                background: 'var(--tint-red-strong)',
+                                                color: 'var(--status-red-text)',
                                                 fontSize: '0.72rem',
                                                 fontWeight: 800,
                                                 padding: '0.15rem 0.45rem',
@@ -5901,7 +5901,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                               style={{
                                                 fontWeight: 700,
                                                 fontSize: '0.82rem',
-                                                color: '#1e293b',
+                                                color: 'var(--text-body)',
                                                 whiteSpace: 'normal',
                                                 overflowWrap: 'anywhere',
                                                 wordBreak: 'break-word',
@@ -5912,7 +5912,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                             </span>
                                           </div>
                                           {item.eventDate && (
-                                            <span style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                               {item.eventDate}
                                             </span>
                                           )}
@@ -5923,9 +5923,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                             onClick={() => openPardonSingleModal(pen, item)}
                                             style={{
                                               padding: '0.25rem 0.6rem',
-                                              background: '#ffffff',
+                                              background: 'var(--bg-surface)',
                                               border: '1px solid #f87171',
-                                              color: '#b91c1c',
+                                              color: 'var(--status-red-text)',
                                               borderRadius: '6px',
                                               fontSize: '0.75rem',
                                               fontWeight: 700,
@@ -5978,10 +5978,10 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '0.3rem',
-                                  color: '#15803d',
+                                  color: 'var(--status-green-text)',
                                   fontSize: '0.8rem',
                                   fontWeight: 700,
-                                  background: '#f0fdf4',
+                                  background: 'var(--tint-green-bg)',
                                   padding: '0.35rem 0.65rem',
                                   borderRadius: '6px',
                                 }}
@@ -6080,7 +6080,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>
-                  <ShieldCheckIcon size={20} color="#dc2626" />
+                  <ShieldCheckIcon size={20} color="var(--status-red-text)" />
                   Bảo trì chốt điểm rèn luyện & Toàn hệ thống
                 </h2>
               </div>
@@ -6106,7 +6106,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
           >
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-surface)',
                 borderRadius: '20px',
                 maxWidth: '780px',
                 width: '100%',
@@ -6114,7 +6114,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 display: 'flex',
                 flexDirection: 'column',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border-color)',
                 overflow: 'hidden',
               }}
               onClick={(e) => e.stopPropagation()}
@@ -6165,7 +6165,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               {/* Modal Content */}
               <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
                 {historyLoading ? (
-                  <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                  <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <div style={{ width: '28px', height: '28px', border: '3px solid #2563eb', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }}></div>
                     Đang tải dữ liệu hoạt động của sinh viên {selectedStudentMssv}...
                   </div>
@@ -6173,27 +6173,27 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   <>
                     {/* Summary Cards */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                      <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '12px', padding: '0.85rem 1rem' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>
+                      <div style={{ background: 'var(--tint-green-bg)', border: '1.5px solid var(--tint-green-border)', borderRadius: '12px', padding: '0.85rem 1rem' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--status-green-text)', textTransform: 'uppercase' }}>
                           Sự Kiện Đã Điểm Danh
                         </div>
-                        <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#15803d', marginTop: '0.2rem' }}>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--status-green-text)', marginTop: '0.2rem' }}>
                           {studentHistoryData.total_attended} sự kiện
                         </div>
                       </div>
 
-                      <div style={{ background: studentHistoryData.penalty?.is_blacklisted ? '#fef2f2' : '#f8fafc', border: `1.5px solid ${studentHistoryData.penalty?.is_blacklisted ? '#fca5a5' : '#e2e8f0'}`, borderRadius: '12px', padding: '0.85rem 1rem' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: studentHistoryData.penalty?.is_blacklisted ? '#b91c1c' : '#64748b', textTransform: 'uppercase' }}>
+                      <div style={{ background: studentHistoryData.penalty?.is_blacklisted ? 'var(--tint-red-bg)' : 'var(--bg-subtle)', border: `1.5px solid ${studentHistoryData.penalty?.is_blacklisted ? 'var(--tint-red-border)' : 'var(--border-color)'}`, borderRadius: '12px', padding: '0.85rem 1rem' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: studentHistoryData.penalty?.is_blacklisted ? 'var(--status-red-text)' : 'var(--text-muted)', textTransform: 'uppercase' }}>
                           Trạng Thái Kỷ Luật
                         </div>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: studentHistoryData.penalty?.is_blacklisted ? '#dc2626' : '#16a34a', marginTop: '0.35rem' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: studentHistoryData.penalty?.is_blacklisted ? 'var(--status-red-text)' : 'var(--status-green-text)', marginTop: '0.35rem' }}>
                           {studentHistoryData.penalty?.is_blacklisted ? 'Đang Bị Khóa Đăng Ký' : `Bình Thường (Vắng ${studentHistoryData.penalty?.missed_count || 0}/3)`}
                         </div>
                       </div>
                     </div>
 
                     {/* History Table */}
-                    <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', fontWeight: 800, color: '#1e293b' }}>
+                    <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-body)' }}>
                       Danh Sách Sự Kiện Đã Tham Gia ({studentHistoryData.history?.length || 0})
                     </h4>
 
@@ -6201,7 +6201,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       <div className={styles.tableWrapper}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
                           <thead>
-                            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
+                            <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                               <th style={{ padding: '0.75rem 1rem' }}>Tên Sự Kiện</th>
                               <th style={{ padding: '0.75rem 1rem' }}>Số Buổi</th>
                               <th style={{ padding: '0.75rem 1rem' }}>Đơn Vị Tổ Chức</th>
@@ -6215,11 +6215,11 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               const sTotal = h.total_sessions || 1;
                               const isFull = sCount >= sTotal;
                               return (
-                                <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                  <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f172a' }}>
+                                <tr key={h.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                  <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                                     <div>{h.event_name}</div>
                                     {(sTotal > 1 || (h.session_names && h.session_names !== 'Buổi chính')) && (
-                                      <div style={{ fontSize: '0.73rem', color: '#475569', fontWeight: 600, marginTop: '0.15rem' }}>
+                                      <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '0.15rem' }}>
                                         Buổi: {h.session_names}
                                       </div>
                                     )}
@@ -6231,18 +6231,18 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                         borderRadius: '999px',
                                         fontSize: '0.75rem',
                                         fontWeight: 800,
-                                        background: isFull ? '#dcfce7' : '#fef3c7',
-                                        color: isFull ? '#15803d' : '#b45309',
-                                        border: `1px solid ${isFull ? '#bbf7d0' : '#fde68a'}`,
+                                        background: isFull ? 'var(--tint-green-strong)' : 'var(--tint-amber-strong)',
+                                        color: isFull ? 'var(--status-green-text)' : 'var(--status-amber-text)',
+                                        border: `1px solid ${isFull ? 'var(--tint-green-border)' : 'var(--tint-amber-border)'}`,
                                       }}
                                     >
                                       {sCount}/{sTotal} buổi
                                     </span>
                                   </td>
-                                  <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>
+                                  <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)' }}>
                                     {h.organizer}
                                   </td>
-                                  <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>
+                                  <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>
                                     {new Date(h.checkin_time).toLocaleString('vi-VN')}
                                   </td>
                                   <td style={{ padding: '0.75rem 1rem' }}>
@@ -6252,8 +6252,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                         borderRadius: '12px',
                                         fontSize: '0.75rem',
                                         fontWeight: 700,
-                                        background: h.participate_role === 'volunteer' ? '#fef3c7' : h.participate_role === 'organizer' ? '#f3e8ff' : '#dcfce7',
-                                        color: h.participate_role === 'volunteer' ? '#b45309' : h.participate_role === 'organizer' ? '#7e22ce' : '#15803d',
+                                        background: h.participate_role === 'volunteer' ? 'var(--tint-amber-strong)' : h.participate_role === 'organizer' ? 'var(--tint-purple-strong)' : 'var(--tint-green-strong)',
+                                        color: h.participate_role === 'volunteer' ? 'var(--status-amber-text)' : h.participate_role === 'organizer' ? '#7e22ce' : 'var(--status-green-text)',
                                       }}
                                     >
                                       {h.participate_role === 'volunteer' ? 'Tình Nguyện Viên' : h.participate_role === 'organizer' ? 'Ban Tổ Chức' : 'Người Tham Gia'}
@@ -6266,7 +6266,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         </table>
                       </div>
                     ) : (
-                      <div style={{ padding: '2.5rem', textAlign: 'center', background: '#f8fafc', borderRadius: '12px', color: '#64748b' }}>
+                      <div style={{ padding: '2.5rem', textAlign: 'center', background: 'var(--bg-subtle)', borderRadius: '12px', color: 'var(--text-muted)' }}>
                         Sinh viên chưa có dữ liệu điểm danh sự kiện nào trong hệ thống.
                       </div>
                     )}
@@ -6275,19 +6275,19 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               </div>
 
               {/* Modal Footer */}
-              <div style={{ padding: '1rem 1.5rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-subtle)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => setSelectedStudentMssv(null)}
                   style={{
                     padding: '0.5rem 1.25rem',
-                    background: '#ffffff',
-                    border: '1px solid #cbd5e1',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: '8px',
                     fontWeight: 700,
                     fontSize: '0.85rem',
                     cursor: 'pointer',
-                    color: '#334155',
+                    color: 'var(--text-body)',
                   }}
                 >
                   Đóng
@@ -6315,12 +6315,12 @@ Phạm Cao Huyền Trinh N24DCQT083`}
           >
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-surface)',
                 borderRadius: '16px',
                 maxWidth: '540px',
                 width: '100%',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border-color)',
                 overflow: 'hidden',
               }}
               onClick={(e) => e.stopPropagation()}
@@ -6328,18 +6328,18 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               <div
                 style={{
                   padding: '1.1rem 1.4rem',
-                  borderBottom: '1px solid #e2e8f0',
-                  borderLeft: '3px solid #1d4ed8',
+                  borderBottom: '1px solid var(--border-color)',
+                  borderLeft: '3px solid var(--brand-accent)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1d4ed8' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-brand)' }}>
                     Cập nhật nhanh thông tin sự kiện
                   </div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginTop: '0.15rem' }}>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.15rem' }}>
                     {editEventModal.event_name}
                   </div>
                 </div>
@@ -6347,9 +6347,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   type="button"
                   onClick={() => !editEventSaving && setEditEventModal(null)}
                   style={{
-                    background: '#f1f5f9',
+                    background: 'var(--bg-muted)',
                     border: 'none',
-                    color: '#475569',
+                    color: 'var(--text-secondary)',
                     width: '32px',
                     height: '32px',
                     borderRadius: '50%',
@@ -6428,7 +6428,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 style={{ padding: '1.25rem 1.4rem', display: 'flex', flexDirection: 'column', gap: '0.95rem' }}
               >
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                     Tên sự kiện *
                   </label>
                   <input
@@ -6436,38 +6436,38 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     required
                     value={editEventModal.event_name}
                     onChange={(e) => setEditEventModal({ ...editEventModal, event_name: e.target.value })}
-                    style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a' }}
+                    style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1.5px solid var(--border-strong)', fontSize: '0.9rem', color: 'var(--text-primary)' }}
                   />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                       Ngày bắt đầu
                     </label>
                     <input
                       type="date"
                       value={editEventModal.event_date}
                       onChange={(e) => setEditEventModal({ ...editEventModal, event_date: e.target.value })}
-                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a' }}
+                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid var(--border-strong)', fontSize: '0.88rem', color: 'var(--text-primary)' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                       Giờ bắt đầu
                     </label>
                     <input
                       type="time"
                       value={editEventModal.start_time}
                       onChange={(e) => setEditEventModal({ ...editEventModal, start_time: e.target.value })}
-                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a' }}
+                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid var(--border-strong)', fontSize: '0.88rem', color: 'var(--text-primary)' }}
                     />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                       Ngày kết thúc
                     </label>
                     <input
@@ -6475,24 +6475,24 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       value={editEventModal.end_date}
                       min={editEventModal.event_date || undefined}
                       onChange={(e) => setEditEventModal({ ...editEventModal, end_date: e.target.value })}
-                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a' }}
+                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid var(--border-strong)', fontSize: '0.88rem', color: 'var(--text-primary)' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                       Giờ kết thúc
                     </label>
                     <input
                       type="time"
                       value={editEventModal.end_time}
                       onChange={(e) => setEditEventModal({ ...editEventModal, end_time: e.target.value })}
-                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a' }}
+                      style={{ width: '100%', height: '40px', padding: '0 0.65rem', borderRadius: '8px', border: '1.5px solid var(--border-strong)', fontSize: '0.88rem', color: 'var(--text-primary)' }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-body)', marginBottom: '0.35rem' }}>
                     Địa điểm tổ chức
                   </label>
                   <input
@@ -6501,7 +6501,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     value={editEventModal.location}
                     onChange={(e) => setEditEventModal({ ...editEventModal, location: e.target.value })}
                     placeholder="VD: Hội trường A, Sân bóng PTIT, Phòng 2A08..."
-                    style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', color: '#0f172a' }}
+                    style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: '8px', border: '1.5px solid var(--border-strong)', fontSize: '0.9rem', color: 'var(--text-primary)' }}
                   />
                   <datalist id="super-admin-event-rooms">
                     {rooms.map((r) => (
@@ -6511,7 +6511,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 </div>
 
                 {editEventModal.sessionsCount > 1 && (
-                  <div style={{ fontSize: '0.78rem', color: '#475569', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.6rem 0.75rem' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.75rem' }}>
                     Sự kiện hiện có <strong>{editEventModal.sessionsCount} ca</strong>. Cập nhật tại đây áp dụng cho thông tin tổng quan; chi tiết từng ca có thể chỉnh trong mục <strong>Vào Sự Kiện</strong>.
                   </div>
                 )}
@@ -6521,7 +6521,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     type="button"
                     disabled={editEventSaving}
                     onClick={() => setEditEventModal(null)}
-                    style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', color: 'var(--text-secondary)', fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer' }}
                   >
                     Hủy
                   </button>
@@ -6556,12 +6556,12 @@ Phạm Cao Huyền Trinh N24DCQT083`}
           >
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-surface)',
                 borderRadius: '20px',
                 maxWidth: '540px',
                 width: '100%',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border-color)',
                 overflow: 'hidden',
               }}
               onClick={(e) => e.stopPropagation()}
@@ -6650,7 +6650,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               >
                 {/* Unit Selector */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 800, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 800, color: 'var(--text-body)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                     1. Chọn Đơn Vị Trực Thuộc Được Phân Quyền
                   </label>
                   <select
@@ -6670,11 +6670,11 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       height: '46px',
                       padding: '0 0.85rem',
                       borderRadius: '10px',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       fontSize: '0.9rem',
                       fontWeight: 600,
-                      color: '#0f172a',
-                      background: '#ffffff',
+                      color: 'var(--text-primary)',
+                      background: 'var(--bg-surface)',
                       outline: 'none',
                     }}
                   >
@@ -6698,7 +6698,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
 
                 {/* Email Display / Custom Input */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 800, color: '#334155', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 800, color: 'var(--text-body)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                     2. MSSV hoặc Email Tài Khoản Tiếp Nhận Quyền
                   </label>
                   <input
@@ -6713,16 +6713,16 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       height: '44px',
                       padding: '0 0.85rem',
                       borderRadius: '10px',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       fontSize: '0.9rem',
                       fontWeight: 600,
-                      color: '#0f172a',
-                      background: selectedUnitCode === 'CUSTOM' ? '#ffffff' : '#f8fafc',
+                      color: 'var(--text-primary)',
+                      background: selectedUnitCode === 'CUSTOM' ? 'var(--bg-surface)' : 'var(--bg-subtle)',
                       boxSizing: 'border-box',
                     }}
                   />
                   {selectedUnitCode !== 'CUSTOM' && (
-                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.775rem', color: '#16a34a', fontWeight: 600 }}>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.775rem', color: 'var(--status-green-text)', fontWeight: 600 }}>
                       Email chính thức của: <strong>{unitsList.find(u => u.code === selectedUnitCode)?.name}</strong>
                     </p>
                   )}
@@ -6730,7 +6730,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
 
                 {/* Role Type Selector */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 800, color: '#334155', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 800, color: 'var(--text-body)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                     3. Vai Trò Được Cấp
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -6741,8 +6741,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         gap: '0.25rem',
                         padding: '0.85rem',
                         borderRadius: '12px',
-                        border: selectedRoleType === 'event_admin' ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
-                        background: selectedRoleType === 'event_admin' ? '#eff6ff' : '#ffffff',
+                        border: selectedRoleType === 'event_admin' ? '2px solid #2563eb' : '1.5px solid var(--border-color)',
+                        background: selectedRoleType === 'event_admin' ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
                       }}
@@ -6755,11 +6755,11 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           checked={selectedRoleType === 'event_admin'}
                           onChange={() => setSelectedRoleType('event_admin')}
                         />
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem', color: '#1e40af' }}>
-                          <ShieldCheckIcon size={15} color="#1e40af" /> Admin Sự Kiện
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-brand-strong)' }}>
+                          <ShieldCheckIcon size={15} color="var(--text-brand-strong)" /> Admin Sự Kiện
                         </span>
                       </div>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '1.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '1.5rem' }}>
                         Toàn quyền xem danh sách, chiếu mã QR & xuất Excel
                       </span>
                     </label>
@@ -6771,8 +6771,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         gap: '0.25rem',
                         padding: '0.85rem',
                         borderRadius: '12px',
-                        border: selectedRoleType === 'checker' ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
-                        background: selectedRoleType === 'checker' ? '#eff6ff' : '#ffffff',
+                        border: selectedRoleType === 'checker' ? '2px solid #2563eb' : '1.5px solid var(--border-color)',
+                        background: selectedRoleType === 'checker' ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
                       }}
@@ -6785,11 +6785,11 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           checked={selectedRoleType === 'checker'}
                           onChange={() => setSelectedRoleType('checker')}
                         />
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem', color: '#1e40af' }}>
-                          <QrCodeIcon size={15} color="#1e40af" /> CTV Quét Mã
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-brand-strong)' }}>
+                          <QrCodeIcon size={15} color="var(--text-brand-strong)" /> CTV Quét Mã
                         </span>
                       </div>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '1.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '1.5rem' }}>
                         Chỉ mở máy quét camera điểm danh sinh viên
                       </span>
                     </label>
@@ -6797,16 +6797,16 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 </div>
 
                 {/* Modal Actions */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                   <button
                     type="button"
                     onClick={() => setAssignModalEvent(null)}
                     style={{
                       padding: '0.6rem 1.25rem',
                       borderRadius: '10px',
-                      border: '1.5px solid #cbd5e1',
-                      background: '#ffffff',
-                      color: '#475569',
+                      border: '1.5px solid var(--border-strong)',
+                      background: 'var(--bg-surface)',
+                      color: 'var(--text-secondary)',
                       fontWeight: 700,
                       fontSize: '0.875rem',
                       cursor: 'pointer',
@@ -6854,31 +6854,32 @@ Phạm Cao Huyền Trinh N24DCQT083`}
           >
             <div
               style={{
-                background: 'white',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-color)',
                 borderRadius: '16px',
                 width: '100%',
                 maxWidth: '520px',
                 margin: '1rem',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                boxShadow: 'var(--dropdown-shadow)',
                 overflow: 'hidden',
               }}
               onClick={(e) => e.stopPropagation()}
             >
               <div style={{
                 padding: '1.25rem 1.5rem',
-                borderBottom: '1px solid #e2e8f0',
-                background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                borderBottom: '1px solid var(--border-color)',
+                background: 'var(--tint-amber-bg)',
               }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#92400e' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-amber-text)' }}>
                   🛡️ Gỡ Vi Phạm Theo Sự Kiện
                 </h3>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#a16207' }}>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--status-amber-text)' }}>
                   Tất cả SV bị đánh vắng ở sự kiện được chọn sẽ được giảm 1 lần vắng và cập nhật trạng thái
                 </p>
               </div>
               <form onSubmit={handlePardonEvent} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: '#374151' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-body)' }}>
                     Chọn sự kiện *
                   </label>
                   <select
@@ -6889,7 +6890,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       width: '100%',
                       padding: '0.6rem 0.75rem',
                       borderRadius: '8px',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       fontSize: '0.85rem',
                       outline: 'none',
                       boxSizing: 'border-box',
@@ -6908,7 +6909,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: '#374151' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-body)' }}>
                     Lý do nghiệp vụ *
                   </label>
                   <textarea
@@ -6921,7 +6922,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       width: '100%',
                       padding: '0.6rem 0.75rem',
                       borderRadius: '8px',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       fontSize: '0.85rem',
                       outline: 'none',
                       resize: 'vertical',
@@ -6937,8 +6938,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     style={{
                       padding: '0.55rem 1.25rem',
                       borderRadius: '8px',
-                      border: '1px solid #d1d5db',
-                      background: 'white',
+                      border: '1px solid var(--border-strong)',
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--text-body)',
                       fontSize: '0.85rem',
                       cursor: 'pointer',
                     }}
@@ -6991,7 +6993,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
           >
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-surface)',
                 borderRadius: '20px',
                 maxWidth: '600px',
                 width: '100%',
@@ -6999,7 +7001,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 display: 'flex',
                 flexDirection: 'column',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border-color)',
                 overflow: 'hidden',
               }}
               onClick={(e) => e.stopPropagation()}
@@ -7065,8 +7067,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 {/* Sinh viên Info Card */}
                 <div
                   style={{
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--bg-subtle)',
+                    border: '1px solid var(--border-color)',
                     borderRadius: '12px',
                     padding: '1rem',
                     display: 'flex',
@@ -7075,7 +7077,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
                       Sinh viên vi phạm
                     </span>
                     <span
@@ -7084,8 +7086,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         borderRadius: '6px',
                         fontSize: '0.75rem',
                         fontWeight: 800,
-                        background: pardonTarget.student.is_blacklisted ? '#fee2e2' : '#fef3c7',
-                        color: pardonTarget.student.is_blacklisted ? '#b91c1c' : '#b45309',
+                        background: pardonTarget.student.is_blacklisted ? 'var(--tint-red-strong)' : 'var(--tint-amber-strong)',
+                        color: pardonTarget.student.is_blacklisted ? 'var(--status-red-text)' : 'var(--status-amber-text)',
                       }}
                     >
                       {pardonTarget.student.is_blacklisted ? 'Đang bị Blacklist' : 'Cảnh báo vi phạm'}
@@ -7093,13 +7095,13 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   </div>
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'baseline' }}>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                       {pardonTarget.student.full_name}
                     </div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2563eb' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-brand)' }}>
                       MSSV: {pardonTarget.student.mssv}
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: '#475569' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                       Lớp: <strong>{pardonTarget.student.class_id}</strong>
                     </div>
                   </div>
@@ -7109,11 +7111,11 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     style={{
                       marginTop: '0.25rem',
                       padding: '0.65rem 0.85rem',
-                      background: '#ffffff',
-                      border: '1px dashed #cbd5e1',
+                      background: 'var(--bg-surface)',
+                      border: '1px dashed var(--border-strong)',
                       borderRadius: '8px',
                       fontSize: '0.82rem',
-                      color: '#334155',
+                      color: 'var(--text-body)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.5rem',
@@ -7121,7 +7123,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   >
                     <span>Số lần vắng hiện tại: <strong>{pardonTarget.student.missed_count}/3</strong></span>
                     <span>&rarr;</span>
-                    <span style={{ color: '#16a34a', fontWeight: 800 }}>
+                    <span style={{ color: 'var(--status-green-text)', fontWeight: 800 }}>
                       Sau khi gỡ:{' '}
                       {pardonTarget.action === 'single_event'
                         ? `${Math.max(0, pardonTarget.student.missed_count - 1)}/3 lần`
@@ -7130,7 +7132,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     {pardonTarget.action === 'single_event' &&
                       pardonTarget.student.is_blacklisted &&
                       Math.max(0, pardonTarget.student.missed_count - 1) < 3 && (
-                        <span style={{ color: '#2563eb', fontWeight: 700 }}>
+                        <span style={{ color: 'var(--text-brand)', fontWeight: 700 }}>
                           (Tự động mở khóa đăng ký)
                         </span>
                       )}
@@ -7141,8 +7143,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                 {pardonTarget.action === 'single_event' && (
                   <div
                     style={{
-                      background: '#eff6ff',
-                      border: '1px solid #bfdbfe',
+                      background: 'var(--tint-blue-bg)',
+                      border: '1px solid var(--tint-blue-border)',
                       borderRadius: '12px',
                       padding: '0.85rem 1rem',
                       display: 'flex',
@@ -7150,14 +7152,14 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       gap: '0.25rem',
                     }}
                   >
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1d4ed8', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-brand)', textTransform: 'uppercase' }}>
                       Sự kiện được miễn điểm vắng
                     </span>
-                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1e3a8a' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-brand-strong)' }}>
                       {pardonTarget.eventItem?.eventName || 'Sự kiện đã chọn'}
                     </div>
                     {pardonTarget.eventItem?.eventDate && (
-                      <div style={{ fontSize: '0.8rem', color: '#2563eb' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-brand)' }}>
                         Thời gian diễn ra: {pardonTarget.eventItem.eventDate}
                       </div>
                     )}
@@ -7171,7 +7173,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       display: 'block',
                       fontSize: '0.82rem',
                       fontWeight: 800,
-                      color: '#334155',
+                      color: 'var(--text-body)',
                       marginBottom: '0.45rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.03em',
@@ -7187,10 +7189,10 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         onClick={() => setPardonReason(reason)}
                         style={{
                           padding: '0.35rem 0.65rem',
-                          background: pardonReason === reason ? '#2563eb' : '#f1f5f9',
-                          color: pardonReason === reason ? '#ffffff' : '#334155',
+                          background: pardonReason === reason ? '#2563eb' : 'var(--bg-muted)',
+                          color: pardonReason === reason ? '#ffffff' : 'var(--text-body)',
                           border: '1px solid',
-                          borderColor: pardonReason === reason ? '#2563eb' : '#e2e8f0',
+                          borderColor: pardonReason === reason ? '#2563eb' : 'var(--border-color)',
                           borderRadius: '8px',
                           fontSize: '0.78rem',
                           fontWeight: 600,
@@ -7211,13 +7213,13 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       display: 'block',
                       fontSize: '0.82rem',
                       fontWeight: 800,
-                      color: '#334155',
+                      color: 'var(--text-body)',
                       marginBottom: '0.45rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.03em',
                     }}
                   >
-                    Ghi chú chi tiết / Căn cứ lưu vết nghiệp vụ <span style={{ color: '#dc2626' }}>*</span>
+                    Ghi chú chi tiết / Căn cứ lưu vết nghiệp vụ <span style={{ color: 'var(--status-red-text)' }}>*</span>
                   </label>
                   <textarea
                     rows={3}
@@ -7229,14 +7231,14 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       width: '100%',
                       padding: '0.75rem',
                       borderRadius: '10px',
-                      border: '1.5px solid #cbd5e1',
+                      border: '1.5px solid var(--border-strong)',
                       fontSize: '0.88rem',
                       fontFamily: 'inherit',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
                   />
-                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     Thông tin này sẽ được lưu cố định vào nhật ký kỷ luật và ghi nhận tài khoản Super Admin thực hiện để phục vụ công tác thanh tra.
                   </p>
                 </div>
@@ -7248,7 +7250,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     justifyContent: 'flex-end',
                     gap: '0.75rem',
                     paddingTop: '0.75rem',
-                    borderTop: '1px solid #e2e8f0',
+                    borderTop: '1px solid var(--border-color)',
                   }}
                 >
                   <button
@@ -7260,9 +7262,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     }}
                     style={{
                       padding: '0.6rem 1.25rem',
-                      background: '#f1f5f9',
-                      color: '#475569',
-                      border: '1px solid #cbd5e1',
+                      background: 'var(--bg-muted)',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: '10px',
                       fontWeight: 700,
                       fontSize: '0.85rem',
@@ -7335,13 +7337,13 @@ Phạm Cao Huyền Trinh N24DCQT083`}
         >
           <div
             style={{
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
               borderRadius: '16px',
               width: '100%',
               maxWidth: '580px',
               boxShadow: '0 24px 64px rgba(15, 23, 42, 0.25)',
               overflow: 'hidden',
-              border: '1px solid #e2e8f0',
+              border: '1px solid var(--border-color)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -7423,8 +7425,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           fontWeight: 700,
                           padding: '2px 8px',
                           borderRadius: '6px',
-                          background: '#ffffff',
-                          color: '#1e3a8a',
+                          background: 'var(--bg-surface)',
+                          color: 'var(--text-brand-strong)',
                         }}
                       >
                         {detailStudentExtra.user.lcd_short_name}
@@ -7472,8 +7474,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     {/* Phone highlight card */}
                     <div
                       style={{
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--bg-subtle)',
+                        border: '1px solid var(--border-color)',
                         borderRadius: '12px',
                         padding: '0.9rem 1rem',
                         display: 'flex',
@@ -7484,7 +7486,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                           Số Điện Thoại Liên Hệ
                         </div>
                         <div
@@ -7493,7 +7495,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                             fontFamily: 'monospace',
                             fontSize: '1.1rem',
                             fontWeight: 800,
-                            color: phoneVal ? '#0f172a' : '#94a3b8',
+                            color: phoneVal ? 'var(--text-primary)' : 'var(--text-subtle)',
                           }}
                         >
                           {detailStudentLoading && !phoneVal ? 'Đang kiểm tra...' : phoneVal || 'Chưa cập nhật SĐT'}
@@ -7511,9 +7513,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               style={{
                                 padding: '0.4rem 0.75rem',
                                 borderRadius: '8px',
-                                border: '1px solid #cbd5e1',
-                                background: '#ffffff',
-                                color: '#334155',
+                                border: '1px solid var(--border-strong)',
+                                background: 'var(--bg-surface)',
+                                color: 'var(--text-body)',
                                 fontWeight: 700,
                                 fontSize: '0.78rem',
                                 cursor: 'pointer',
@@ -7528,9 +7530,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               style={{
                                 padding: '0.4rem 0.75rem',
                                 borderRadius: '8px',
-                                border: '1px solid #bfdbfe',
-                                background: '#eff6ff',
-                                color: '#1d4ed8',
+                                border: '1px solid var(--tint-blue-border)',
+                                background: 'var(--tint-blue-bg)',
+                                color: 'var(--text-brand)',
                                 fontWeight: 700,
                                 fontSize: '0.78rem',
                                 textDecoration: 'none',
@@ -7543,9 +7545,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               style={{
                                 padding: '0.4rem 0.75rem',
                                 borderRadius: '8px',
-                                border: '1px solid #bbf7d0',
-                                background: '#f0fdf4',
-                                color: '#15803d',
+                                border: '1px solid var(--tint-green-border)',
+                                background: 'var(--tint-green-bg)',
+                                color: 'var(--status-green-text)',
                                 fontWeight: 700,
                                 fontSize: '0.78rem',
                                 textDecoration: 'none',
@@ -7569,9 +7571,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                             style={{
                               padding: '0.4rem 0.8rem',
                               borderRadius: '8px',
-                              border: '1px solid #bfdbfe',
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
+                              border: '1px solid var(--tint-blue-border)',
+                              background: 'var(--tint-blue-bg)',
+                              color: 'var(--text-brand)',
                               fontWeight: 700,
                               fontSize: '0.78rem',
                               cursor: 'pointer',
@@ -7591,39 +7593,39 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                         gap: '0.75rem',
                       }}
                     >
-                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                      <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                           Lớp Niên Chế
                         </div>
-                        <div style={{ marginTop: '0.2rem', fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
+                        <div style={{ marginTop: '0.2rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                           {detailStudent.class_id || 'Chưa rõ'}
                         </div>
                       </div>
 
-                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                      <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                           Giới Tính
                         </div>
-                        <div style={{ marginTop: '0.2rem', fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
+                        <div style={{ marginTop: '0.2rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                           {genderVal || 'Chưa cập nhật'}
                         </div>
                       </div>
 
-                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                      <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                           Liên Chi Đoàn
                         </div>
-                        <div style={{ marginTop: '0.2rem', fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
+                        <div style={{ marginTop: '0.2rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                           {detailStudentLoading && !detailStudentExtra ? 'Đang tải...' : lcdName}
                         </div>
                       </div>
 
-                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.75rem 0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                             Email Học Viện
                           </div>
-                          <div style={{ marginTop: '0.2rem', fontWeight: 600, color: '#334155', fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div style={{ marginTop: '0.2rem', fontWeight: 600, color: 'var(--text-body)', fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {detailStudent.email}
                           </div>
                         </div>
@@ -7636,11 +7638,11 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                           style={{
                             padding: '0.28rem 0.55rem',
                             borderRadius: '6px',
-                            border: '1px solid #cbd5e1',
-                            background: '#ffffff',
+                            border: '1px solid var(--border-strong)',
+                            background: 'var(--bg-surface)',
                             fontSize: '0.72rem',
                             fontWeight: 700,
-                            color: '#475569',
+                            color: 'var(--text-secondary)',
                             cursor: 'pointer',
                             flexShrink: 0,
                           }}
@@ -7653,13 +7655,13 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     {/* Roles & Status Badges */}
                     <div
                       style={{
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--bg-subtle)',
+                        border: '1px solid var(--border-color)',
                         borderRadius: '10px',
                         padding: '0.75rem 0.9rem',
                       }}
                     >
-                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.45rem' }}>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.45rem' }}>
                         Vai Trò &amp; Hoạt Động Trong Hệ Thống
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
@@ -7669,8 +7671,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                             borderRadius: '999px',
                             fontSize: '0.76rem',
                             fontWeight: 700,
-                            background: '#dbeafe',
-                            color: '#1e40af',
+                            background: 'var(--tint-blue-strong)',
+                            color: 'var(--text-brand-strong)',
                           }}
                         >
                           {detailStudentLoading ? 'Đang tải minh chứng...' : `${totalAttended} minh chứng ĐRL`}
@@ -7682,8 +7684,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               borderRadius: '999px',
                               fontSize: '0.76rem',
                               fontWeight: 700,
-                              background: '#dcfce7',
-                              color: '#15803d',
+                              background: 'var(--tint-green-strong)',
+                              color: 'var(--status-green-text)',
                             }}
                           >
                             CTV Trực VPĐ
@@ -7696,8 +7698,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               borderRadius: '999px',
                               fontSize: '0.76rem',
                               fontWeight: 700,
-                              background: '#fef3c7',
-                              color: '#b45309',
+                              background: 'var(--tint-amber-strong)',
+                              color: 'var(--status-amber-text)',
                             }}
                           >
                             {delegateRole.role_title || 'BCH Chi đoàn'} ({delegateRole.class_id})
@@ -7710,8 +7712,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                               borderRadius: '999px',
                               fontSize: '0.76rem',
                               fontWeight: 700,
-                              background: '#fee2e2',
-                              color: '#b91c1c',
+                              background: 'var(--tint-red-strong)',
+                              color: 'var(--status-red-text)',
                             }}
                           >
                             Danh sách đen ({penaltyInfo.missed_count || 0} lần vắng)
@@ -7724,8 +7726,8 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                                 borderRadius: '999px',
                                 fontSize: '0.76rem',
                                 fontWeight: 700,
-                                background: '#f0fdf4',
-                                color: '#15803d',
+                                background: 'var(--tint-green-bg)',
+                                color: 'var(--status-green-text)',
                               }}
                             >
                               Hồ sơ sạch (Vắng: {penaltyInfo?.missed_count || 0})
@@ -7747,7 +7749,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   alignItems: 'center',
                   gap: '0.6rem',
                   paddingTop: '0.5rem',
-                  borderTop: '1px solid #e2e8f0',
+                  borderTop: '1px solid var(--border-color)',
                 }}
               >
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -7764,9 +7766,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       gap: '0.35rem',
                       padding: '0.48rem 0.9rem',
                       borderRadius: '9px',
-                      border: '1px solid #bfdbfe',
-                      background: '#eff6ff',
-                      color: '#1e40af',
+                      border: '1px solid var(--tint-blue-border)',
+                      background: 'var(--tint-blue-bg)',
+                      color: 'var(--text-brand-strong)',
                       fontWeight: 700,
                       fontSize: '0.82rem',
                       cursor: 'pointer',
@@ -7792,15 +7794,15 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       gap: '0.35rem',
                       padding: '0.48rem 0.9rem',
                       borderRadius: '9px',
-                      border: '1px solid #bbf7d0',
-                      background: '#f0fdf4',
-                      color: '#15803d',
+                      border: '1px solid var(--tint-green-border)',
+                      background: 'var(--tint-green-bg)',
+                      color: 'var(--status-green-text)',
                       fontWeight: 700,
                       fontSize: '0.82rem',
                       cursor: 'pointer',
                     }}
                   >
-                    <PencilIcon size={13} color="#15803d" />
+                    <PencilIcon size={13} color="var(--status-green-text)" />
                     <span>Sửa Thông Tin</span>
                   </button>
                   <button
@@ -7813,9 +7815,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                       gap: '0.35rem',
                       padding: '0.48rem 0.85rem',
                       borderRadius: '9px',
-                      border: '1px solid #fecaca',
-                      background: '#fee2e2',
-                      color: '#dc2626',
+                      border: '1px solid var(--tint-red-border)',
+                      background: 'var(--tint-red-strong)',
+                      color: 'var(--status-red-text)',
                       fontWeight: 700,
                       fontSize: '0.82rem',
                       cursor: deletingStudentMssv === detailStudent.mssv ? 'not-allowed' : 'pointer',
@@ -7823,7 +7825,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                     }}
                     title="Xóa sinh viên khỏi hệ thống"
                   >
-                    <TrashIcon size={13} color="#dc2626" />
+                    <TrashIcon size={13} color="var(--status-red-text)" />
                     <span>{deletingStudentMssv === detailStudent.mssv ? 'Đang xóa...' : 'Xóa'}</span>
                   </button>
                 </div>
@@ -7833,9 +7835,9 @@ Phạm Cao Huyền Trinh N24DCQT083`}
                   style={{
                     padding: '0.48rem 1.1rem',
                     borderRadius: '9px',
-                    border: '1px solid #cbd5e1',
-                    background: '#f1f5f9',
-                    color: '#334155',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-body)',
                     fontWeight: 700,
                     fontSize: '0.82rem',
                     cursor: 'pointer',
@@ -7861,35 +7863,35 @@ Phạm Cao Huyền Trinh N24DCQT083`}
         >
           <div
             style={{
-              background: 'white', borderRadius: '16px', padding: '2rem',
-              width: '90%', maxWidth: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2rem',
+              width: '90%', maxWidth: '460px', boxShadow: 'var(--dropdown-shadow)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>
+            <h3 style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-body)' }}>
               ✏️ Sửa thông tin: {editStudent.mssv}
             </h3>
             <div style={{ marginBottom: '0.9rem' }}>
-              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Họ và tên</label>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: 'var(--text-body)' }}>Họ và tên</label>
               <input
                 type="text"
                 value={editStudent.full_name}
                 onChange={(e) => setEditStudent({ ...editStudent, full_name: e.target.value })}
                 style={{
-                  width: '100%', padding: '0.6rem 0.8rem', border: '1.5px solid #d1d5db',
+                  width: '100%', padding: '0.6rem 0.8rem', border: '1.5px solid var(--border-strong)',
                   borderRadius: '10px', fontSize: '0.9rem', outline: 'none',
                 }}
                 placeholder="Nhập họ và tên"
               />
             </div>
             <div style={{ marginBottom: '0.9rem' }}>
-              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Lớp</label>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: 'var(--text-body)' }}>Lớp</label>
               <input
                 type="text"
                 value={editStudent.class_id}
                 onChange={(e) => setEditStudent({ ...editStudent, class_id: e.target.value })}
                 style={{
-                  width: '100%', padding: '0.6rem 0.8rem', border: '1.5px solid #d1d5db',
+                  width: '100%', padding: '0.6rem 0.8rem', border: '1.5px solid var(--border-strong)',
                   borderRadius: '10px', fontSize: '0.9rem', outline: 'none',
                 }}
                 placeholder="Nhập mã lớp"
@@ -7897,26 +7899,26 @@ Phạm Cao Huyền Trinh N24DCQT083`}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Số điện thoại</label>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: 'var(--text-body)' }}>Số điện thoại</label>
                 <input
                   type="text"
                   value={editStudent.phone}
                   onChange={(e) => setEditStudent({ ...editStudent, phone: e.target.value })}
                   style={{
-                    width: '100%', padding: '0.6rem 0.8rem', border: '1.5px solid #d1d5db',
+                    width: '100%', padding: '0.6rem 0.8rem', border: '1.5px solid var(--border-strong)',
                     borderRadius: '10px', fontSize: '0.9rem', outline: 'none', fontFamily: 'monospace',
                   }}
                   placeholder="09xxxxxxxx"
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: '#374151' }}>Giới tính</label>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.3rem', color: 'var(--text-body)' }}>Giới tính</label>
                 <select
                   value={editStudent.gender}
                   onChange={(e) => setEditStudent({ ...editStudent, gender: e.target.value })}
                   style={{
-                    width: '100%', padding: '0.6rem 0.7rem', border: '1.5px solid #d1d5db',
-                    borderRadius: '10px', fontSize: '0.9rem', outline: 'none', background: '#fff',
+                    width: '100%', padding: '0.6rem 0.7rem', border: '1.5px solid var(--border-strong)',
+                    borderRadius: '10px', fontSize: '0.9rem', outline: 'none', background: 'var(--bg-surface)',
                   }}
                 >
                   <option value="">Chưa rõ</option>
@@ -7929,7 +7931,7 @@ Phạm Cao Huyền Trinh N24DCQT083`}
               <button
                 onClick={() => setEditStudent(null)}
                 style={{
-                  padding: '0.5rem 1.25rem', background: '#f1f5f9', border: '1px solid #e2e8f0',
+                  padding: '0.5rem 1.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-color)',
                   borderRadius: '10px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
                 }}
               >

@@ -226,7 +226,7 @@ export default function EventRecruitmentPage({
         <Header showBack backHref="/" title="CỔNG TUYỂN DỤNG BAN CHUYÊN TRÁCH" />
         <div style={{ textAlign: 'center', padding: '5rem' }}>
           <SpinnerIcon size={36} color="var(--primary-600)" />
-          <p style={{ marginTop: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+          <p style={{ marginTop: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
             Đang tải thông tin tuyển dụng...
           </p>
         </div>
@@ -262,9 +262,9 @@ export default function EventRecruitmentPage({
             <span
               style={{
                 display: 'inline-block',
-                background: '#eff6ff',
-                color: '#1d4ed8',
-                border: '1px solid #bfdbfe',
+                background: 'var(--tint-blue-bg)',
+                color: 'var(--text-brand)',
+                border: '1px solid var(--tint-blue-border)',
                 padding: '4px 12px',
                 borderRadius: '20px',
                 fontSize: '0.8rem',
@@ -275,7 +275,7 @@ export default function EventRecruitmentPage({
               TUYỂN DỤNG BAN CHUYÊN TRÁCH & CTV
             </span>
             <h1 className={styles.title}>{event.event_name}</h1>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Học Viện Công Nghệ Bưu Chính Viễn Thông — Cơ Sở Tại TP. Hồ Chí Minh
             </p>
           </div>
@@ -306,7 +306,7 @@ export default function EventRecruitmentPage({
               <span className={styles.infoLabel}>Trạng Thái</span>
               <span
                 className={styles.infoValue}
-                style={{ color: registrationWindow?.isOpen ? '#16a34a' : '#dc2626' }}
+                style={{ color: registrationWindow?.isOpen ? 'var(--status-green-text)' : 'var(--status-red-text)' }}
               >
                 {registrationWindow?.isOpen ? '● Đang mở nhận đơn' : '● Đã đóng cổng'}
               </span>
@@ -316,8 +316,8 @@ export default function EventRecruitmentPage({
           {/* Switch link to Participant Registration */}
           <div
             style={{
-              background: '#f8fafc',
-              border: '1px dashed #cbd5e1',
+              background: 'var(--bg-subtle)',
+              border: '1px dashed var(--border-strong)',
               borderRadius: '12px',
               padding: '0.75rem 1rem',
               marginBottom: '1.25rem',
@@ -329,10 +329,10 @@ export default function EventRecruitmentPage({
               gap: '0.5rem',
             }}
           >
-            <span style={{ color: '#475569' }}>Bạn chỉ muốn tham gia nhận điểm rèn luyện (Khán giả)?</span>
+            <span style={{ color: 'var(--text-secondary)' }}>Bạn chỉ muốn tham gia nhận điểm rèn luyện (Khán giả)?</span>
             <Link
               href={`/events/${event.event_id}/register`}
-              style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}
+              style={{ color: 'var(--text-brand)', fontWeight: 700, textDecoration: 'none' }}
             >
               Đăng ký tham gia sự kiện ➔
             </Link>
@@ -342,7 +342,7 @@ export default function EventRecruitmentPage({
           {isBlacklisted && (
             <div className={styles.blacklistAlert}>
               <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <AlertTriangleIcon size={20} color="#b91c1c" />
+                <AlertTriangleIcon size={20} color="var(--status-red-text)" />
                 <span>TÀI KHOẢN CỦA BẠN ĐANG BỊ KHÓA (BLACKLIST)</span>
               </h3>
               <p className={styles.blacklistDesc}>
@@ -355,15 +355,15 @@ export default function EventRecruitmentPage({
           {!isBlacklisted && penaltyStatus && penaltyStatus.missed_count > 0 && (
             <div
               style={{
-                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                background: 'var(--tint-amber-bg)',
                 border: '1.5px solid #f59e0b',
                 borderRadius: '16px',
                 padding: '1.25rem 1.5rem',
                 marginBottom: '1rem',
               }}
             >
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <AlertTriangleIcon size={18} color="#d97706" />
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--status-amber-text)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <AlertTriangleIcon size={18} color="var(--status-amber-text)" />
                 <span>Cảnh báo: Bạn đã vắng mặt {penaltyStatus.missed_count}/3 lần</span>
               </h3>
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#78350f', lineHeight: 1.5 }}>
@@ -387,16 +387,16 @@ export default function EventRecruitmentPage({
                   marginBottom: '0.75rem',
                   background:
                     myRegistration.review_status === 'accepted'
-                      ? '#dcfce7'
+                      ? 'var(--tint-green-strong)'
                       : myRegistration.review_status === 'rejected'
-                      ? '#fee2e2'
-                      : '#fef3c7',
+                      ? 'var(--tint-red-strong)'
+                      : 'var(--tint-amber-strong)',
                   color:
                     myRegistration.review_status === 'accepted'
-                      ? '#15803d'
+                      ? 'var(--status-green-text)'
                       : myRegistration.review_status === 'rejected'
-                      ? '#b91c1c'
-                      : '#b45309',
+                      ? 'var(--status-red-text)'
+                      : 'var(--status-amber-text)',
                 }}
               >
                 {myRegistration.review_status === 'accepted'
@@ -406,12 +406,12 @@ export default function EventRecruitmentPage({
                   : 'ĐƠN ĐANG CHỜ PHÊ DUYỆT'}
               </span>
 
-              <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a', fontSize: '1.15rem', fontWeight: 800 }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 800 }}>
                 {myRegistration.review_status === 'accepted'
                   ? `Chúc mừng bạn đã trúng tuyển vào ${myRegistration.department_name || 'Ban CTV'}!`
                   : `Bạn đã nộp đơn ứng tuyển vào ${myRegistration.department_name || 'Ban CTV'}`}
               </h3>
-              <p style={{ margin: '0 0 1.25rem 0', color: '#64748b', fontSize: '0.875rem' }}>
+              <p style={{ margin: '0 0 1.25rem 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 MSSV: <strong>{myRegistration.mssv}</strong> • Ban: <strong>{myRegistration.department_name || 'Cộng tác viên'}</strong>
               </p>
 
@@ -451,7 +451,7 @@ export default function EventRecruitmentPage({
                       style={{
                         margin: '0.85rem 0 0 0',
                         fontSize: '0.78rem',
-                        color: cancelEligibility.canCancel ? '#475569' : '#b45309',
+                        color: cancelEligibility.canCancel ? 'var(--text-secondary)' : 'var(--status-amber-text)',
                         fontWeight: cancelEligibility.canCancel ? 500 : 600,
                       }}
                     >
@@ -467,15 +467,15 @@ export default function EventRecruitmentPage({
           {(!registrationWindow?.isOpen || event.is_recruitment_open === false) && !isBlacklisted && (
             <div
               style={{
-                background: '#fffbeb',
-                border: '1.5px solid #fde68a',
+                background: 'var(--tint-amber-bg)',
+                border: '1.5px solid var(--tint-amber-border)',
                 borderRadius: '16px',
                 padding: '1.5rem',
                 marginBottom: '1.75rem',
-                color: '#92400e',
+                color: 'var(--status-amber-text)',
               }}
             >
-              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 800, color: '#b45309' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 800, color: 'var(--status-amber-text)' }}>
                 CỔNG TUYỂN DỤNG CTV ĐÃ ĐÓNG
               </h3>
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', lineHeight: 1.5 }}>
@@ -494,7 +494,7 @@ export default function EventRecruitmentPage({
             currentUser && !cohortEligibility.eligible ? (
               <div className={styles.blacklistAlert}>
                 <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <AlertTriangleIcon size={20} color="#b91c1c" />
+                  <AlertTriangleIcon size={20} color="var(--status-red-text)" />
                   <span>BẠN KHÔNG NẰM TRONG KHÓA ĐƯỢC ĐĂNG KÝ</span>
                 </h3>
                 <p className={styles.blacklistDesc}>
@@ -504,12 +504,12 @@ export default function EventRecruitmentPage({
             ) : (
               <div
                 style={{
-                  background: '#f0f9ff',
-                  border: '1.5px solid #7dd3fc',
+                  background: 'var(--tint-blue-bg)',
+                  border: '1.5px solid var(--tint-blue-border)',
                   borderRadius: '16px',
                   padding: '1rem 1.5rem',
                   marginBottom: '1rem',
-                  color: '#0369a1',
+                  color: 'var(--text-brand)',
                   fontWeight: 700,
                   fontSize: '0.9rem',
                 }}
@@ -524,7 +524,7 @@ export default function EventRecruitmentPage({
             currentUser && !lcdEligibility.eligible ? (
               <div className={styles.blacklistAlert}>
                 <h3 className={styles.blacklistTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <AlertTriangleIcon size={20} color="#b91c1c" />
+                  <AlertTriangleIcon size={20} color="var(--status-red-text)" />
                   <span>BẠN KHÔNG THUỘC LIÊN CHI ĐOÀN ĐƯỢC ĐĂNG KÝ</span>
                 </h3>
                 <p className={styles.blacklistDesc}>
@@ -534,12 +534,12 @@ export default function EventRecruitmentPage({
             ) : (
               <div
                 style={{
-                  background: '#faf5ff',
+                  background: 'var(--tint-purple-bg)',
                   border: '1.5px solid #d8b4fe',
                   borderRadius: '16px',
                   padding: '1rem 1.5rem',
                   marginBottom: '1rem',
-                  color: '#6b21a8',
+                  color: 'var(--status-purple-text)',
                   fontWeight: 700,
                   fontSize: '0.9rem',
                   display: 'flex',
@@ -547,7 +547,7 @@ export default function EventRecruitmentPage({
                   gap: '0.45rem',
                 }}
               >
-                <BuildingIcon size={16} color="#6b21a8" />
+                <BuildingIcon size={16} color="var(--status-purple-text)" />
                 <span>Chỉ nhận đơn sinh viên thuộc: {formatLcdsLabel(lcdEligibility.allowed)}</span>
               </div>
             )
@@ -560,7 +560,7 @@ export default function EventRecruitmentPage({
             <form onSubmit={handleApply} className={styles.formSection}>
               {!currentUser ? (
                 <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                  <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
                     Vui lòng đăng nhập để nộp đơn ứng tuyển Ban chuyên trách.
                   </p>
                   <Link
@@ -577,7 +577,7 @@ export default function EventRecruitmentPage({
                   <div className={styles.formGroup}>
                     <label className={styles.label}>1. Chọn Ban Bạn Muốn Ứng Tuyển *</label>
                     {(!event.departments || event.departments.length === 0) ? (
-                      <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '10px', color: '#64748b', fontSize: '0.875rem' }}>
+                      <div style={{ padding: '1rem', background: 'var(--bg-subtle)', borderRadius: '10px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                         Ban tổ chức đang tuyển Cộng tác viên chung cho toàn bộ sự kiện.
                       </div>
                     ) : (
@@ -591,14 +591,14 @@ export default function EventRecruitmentPage({
                               style={{
                                 padding: '0.85rem 1rem',
                                 borderRadius: '12px',
-                                border: isSelected ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
-                                background: isSelected ? '#eff6ff' : '#ffffff',
+                                border: isSelected ? '2px solid #2563eb' : '1.5px solid var(--border-color)',
+                                background: isSelected ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease',
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.925rem' }}>
+                                <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.925rem' }}>
                                   {dept.name}
                                 </span>
                                 <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
@@ -610,16 +610,16 @@ export default function EventRecruitmentPage({
                                       borderRadius: '12px',
                                       background:
                                         dept.gender_req === 'male'
-                                          ? '#dbeafe'
+                                          ? 'var(--tint-blue-strong)'
                                           : dept.gender_req === 'female'
-                                          ? '#fce7f3'
-                                          : '#dcfce7',
+                                          ? 'var(--tint-pink-strong)'
+                                          : 'var(--tint-green-strong)',
                                       color:
                                         dept.gender_req === 'male'
-                                          ? '#1e40af'
+                                          ? 'var(--text-brand-strong)'
                                           : dept.gender_req === 'female'
                                           ? '#be185d'
-                                          : '#166534',
+                                          : 'var(--status-green-text)',
                                     }}
                                   >
                                     {dept.gender_req === 'male'
@@ -628,13 +628,13 @@ export default function EventRecruitmentPage({
                                       ? 'Yêu cầu Nữ'
                                       : 'Nam & Nữ'}
                                   </span>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                                     (Chỉ tiêu: {dept.quota})
                                   </span>
                                 </div>
                               </div>
                               {dept.description && (
-                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4 }}>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
                                   {dept.description}
                                 </p>
                               )}
@@ -651,12 +651,12 @@ export default function EventRecruitmentPage({
                     <div
                       style={{
                         padding: '0.85rem 1.15rem',
-                        background: '#f8fafc',
-                        border: '1.5px solid #e2e8f0',
+                        background: 'var(--bg-subtle)',
+                        border: '1.5px solid var(--border-color)',
                         borderRadius: '12px',
                         fontSize: '0.925rem',
                         fontWeight: 600,
-                        color: '#0f172a',
+                        color: 'var(--text-primary)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.45rem',
@@ -664,9 +664,9 @@ export default function EventRecruitmentPage({
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span><strong>Họ và tên:</strong> {currentUser.full_name}</span>
-                        <span style={{ color: '#2563eb', fontWeight: 700 }}>MSSV: {currentUser.mssv || currentUser.email}</span>
+                        <span style={{ color: 'var(--text-brand)', fontWeight: 700 }}>MSSV: {currentUser.mssv || currentUser.email}</span>
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         Lớp: <strong>{currentUser.class_id || 'PTIT-HCM'}</strong>
                       </div>
                     </div>
@@ -675,7 +675,7 @@ export default function EventRecruitmentPage({
                   {/* Gender & Phone */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem', marginBottom: '1rem' }}>
                     <div className={styles.formGroup} style={{ margin: 0 }}>
-                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-body)' }}>
                         Giới Tính Của Bạn <span style={{ color: '#ef4444' }}>*</span>
                       </label>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', height: '44px' }}>
@@ -687,10 +687,10 @@ export default function EventRecruitmentPage({
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '0.35rem',
-                            border: gender === 'Nam' ? '2px solid #2563eb' : '1.5px solid #e2e8f0',
+                            border: gender === 'Nam' ? '2px solid #2563eb' : '1.5px solid var(--border-color)',
                             borderRadius: '10px',
-                            background: gender === 'Nam' ? '#eff6ff' : '#ffffff',
-                            color: gender === 'Nam' ? '#1d4ed8' : '#64748b',
+                            background: gender === 'Nam' ? 'var(--tint-blue-bg)' : 'var(--bg-surface)',
+                            color: gender === 'Nam' ? 'var(--text-brand)' : 'var(--text-muted)',
                             fontWeight: gender === 'Nam' ? 700 : 600,
                             fontSize: '0.9rem',
                             cursor: 'pointer',
@@ -707,10 +707,10 @@ export default function EventRecruitmentPage({
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '0.35rem',
-                            border: gender === 'Nữ' ? '2px solid #ec4899' : '1.5px solid #e2e8f0',
+                            border: gender === 'Nữ' ? '2px solid #ec4899' : '1.5px solid var(--border-color)',
                             borderRadius: '10px',
-                            background: gender === 'Nữ' ? '#fdf2f8' : '#ffffff',
-                            color: gender === 'Nữ' ? '#be185d' : '#64748b',
+                            background: gender === 'Nữ' ? 'var(--tint-pink-bg)' : 'var(--bg-surface)',
+                            color: gender === 'Nữ' ? '#be185d' : 'var(--text-muted)',
                             fontWeight: gender === 'Nữ' ? 700 : 600,
                             fontSize: '0.9rem',
                             cursor: 'pointer',
@@ -723,7 +723,7 @@ export default function EventRecruitmentPage({
                     </div>
 
                     <div className={styles.formGroup} style={{ margin: 0 }}>
-                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                      <label className={styles.label} style={{ display: 'block', marginBottom: '0.45rem', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-body)' }}>
                         Số Điện Thoại / Zalo <span style={{ color: '#ef4444' }}>*</span>
                       </label>
                       <input
@@ -736,13 +736,13 @@ export default function EventRecruitmentPage({
                           width: '100%',
                           height: '44px',
                           padding: '0 0.9rem',
-                          border: '1.5px solid #e2e8f0',
+                          border: '1.5px solid var(--border-color)',
                           borderRadius: '10px',
                           boxSizing: 'border-box',
                           fontWeight: 600,
                           fontSize: '0.9rem',
-                          color: '#0f172a',
-                          background: '#ffffff',
+                          color: 'var(--text-primary)',
+                          background: 'var(--bg-surface)',
                           outline: 'none',
                         }}
                       />
@@ -760,7 +760,7 @@ export default function EventRecruitmentPage({
                       style={{
                         width: '100%',
                         padding: '0.65rem 0.85rem',
-                        border: '1.5px solid #cbd5e1',
+                        border: '1.5px solid var(--border-strong)',
                         borderRadius: '8px',
                         boxSizing: 'border-box',
                         fontFamily: 'inherit',

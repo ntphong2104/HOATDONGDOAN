@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f8fafc;
+  background-color: var(--bg-primary);
 }
 
 .main {
@@ -33,43 +33,43 @@
   font-size: 0.95rem;
   text-decoration: none;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--card-shadow);
 }
 
 .superAdminLink {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: var(--tint-red-bg);
+  color: var(--status-red-text);
+  border: 1px solid var(--tint-red-border);
 }
 
 .superAdminLink:hover {
-  background: #fee2e2;
+  background: var(--tint-red-strong);
   border-color: #f87171;
   box-shadow: 0 4px 10px rgba(220, 38, 38, 0.15);
   transform: translateY(-1px);
 }
 
 .eventAdminLink {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+  background: var(--tint-blue-bg);
+  color: var(--text-brand);
+  border: 1px solid var(--tint-blue-border);
 }
 
 .eventAdminLink:hover {
-  background: #dbeafe;
+  background: var(--tint-blue-strong);
   border-color: #60a5fa;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
   transform: translateY(-1px);
 }
 
 .scannerLink {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  color: #15803d;
-  border: 1px solid #bbf7d0;
+  background: var(--tint-green-bg);
+  color: var(--status-green-text);
+  border: 1px solid var(--tint-green-border);
 }
 
 .scannerLink:hover {
-  background: #dcfce7;
+  background: var(--tint-green-strong);
   border-color: #4ade80;
   box-shadow: 0 4px 10px rgba(22, 163, 74, 0.15);
   transform: translateY(-1px);
@@ -82,11 +82,11 @@
 }
 
 .historySection {
-  background: #ffffff;
+  background: var(--bg-surface);
   border-radius: 16px;
   padding: 1.75rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e2e8f0;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
 }
 
 .historyHeader {
@@ -95,21 +95,21 @@
   justify-content: space-between;
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .historyTitle {
   font-size: 1.15rem;
   font-weight: 700;
   margin: 0;
-  color: #0f172a;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
 .emptyHistory {
-  color: #94a3b8;
+  color: var(--text-subtle);
   text-align: center;
   padding: 3rem 1rem;
   font-size: 0.95rem;
@@ -126,8 +126,8 @@
 
 .historyItem {
   padding: 1.125rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -136,9 +136,9 @@
 }
 
 .historyItem:hover {
-  background: #ffffff;
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  background: var(--bg-surface);
+  border-color: var(--border-strong);
+  box-shadow: var(--card-shadow);
 }
 
 .historyMeta {
@@ -150,12 +150,12 @@
 .eventName {
   font-weight: 700;
   font-size: 1rem;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .semester {
   font-size: 0.825rem;
-  color: #64748b;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -167,12 +167,12 @@
   align-items: center;
   margin-top: 0.35rem;
   padding-top: 0.625rem;
-  border-top: 1px dashed #e2e8f0;
+  border-top: 1px dashed var(--border-color);
 }
 
 .time {
   font-size: 0.825rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 500;
 }
 

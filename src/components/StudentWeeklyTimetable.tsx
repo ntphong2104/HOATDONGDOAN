@@ -224,7 +224,7 @@ export default function StudentWeeklyTimetable({
       {/* Header Row */}
       <div className={styles.headerRow}>
         <div className={styles.titleGroup}>
-          <CalendarIcon size={17} color="#1e3a8a" />
+          <CalendarIcon size={17} color="var(--text-brand-strong)" />
           <h3 className={styles.titleText}>Lịch hoạt động tuần</h3>
           {weekRangeLabel && <span className={styles.weekRange}>{weekRangeLabel}</span>}
           {filteredWeekItems.length > 0 && (
@@ -270,7 +270,7 @@ export default function StudentWeeklyTimetable({
       {overdueItems.length > 0 && (
         <div className={styles.overdueBanner} role="alert">
           <div className={styles.overdueLeft}>
-            <AlertTriangleIcon size={15} color="#dc2626" />
+            <AlertTriangleIcon size={15} color="var(--status-red-text)" />
             <span>
               Bạn có <strong>{overdueItems.length}</strong> lịch trả dụng cụ VPĐ đã quá hạn!
             </span>
@@ -285,7 +285,7 @@ export default function StudentWeeklyTimetable({
       {isViewingCurrentWeek && todayPendingItems.length > 0 && (
         <div className={styles.todayBanner}>
           <div className={styles.todayLeft}>
-            <ClockIcon size={15} color="#1d4ed8" />
+            <ClockIcon size={15} color="var(--text-brand)" />
             <span>
               Hôm nay ({formatDateShortVN(todayVN)}) có{' '}
               <strong>{todayPendingItems.length}</strong> lịch: {todayPendingItems[0].title} (

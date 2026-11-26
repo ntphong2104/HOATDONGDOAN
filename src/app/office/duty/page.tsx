@@ -164,13 +164,13 @@ export default function OfficeDutyPage() {
 
   if (forbidden) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
         <Header title="TRỰC VĂN PHÒNG ĐOÀN" />
         <main style={{ maxWidth: 720, margin: '3rem auto', padding: '0 1.25rem' }}>
-          <div style={{ background: '#fff', border: '1px solid #fecaca', borderRadius: 16, padding: '2rem', textAlign: 'center' }}>
-            <AlertTriangleIcon size={36} color="#dc2626" />
-            <h2 style={{ marginTop: '0.75rem', color: '#0f172a' }}>Chỉ dành cho CTV Trực Văn phòng Đoàn</h2>
-            <p style={{ color: '#64748b', fontSize: '0.92rem' }}>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--tint-red-border)', borderRadius: 16, padding: '2rem', textAlign: 'center' }}>
+            <AlertTriangleIcon size={36} color="var(--status-red-text)" />
+            <h2 style={{ marginTop: '0.75rem', color: 'var(--text-primary)' }}>Chỉ dành cho CTV Trực Văn phòng Đoàn</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem' }}>
               Tài khoản của bạn hiện chưa có trong danh sách CTV trực văn phòng. Vui lòng liên hệ Admin Văn phòng Đoàn nếu bạn thuộc đội CTV trực.
             </p>
           </div>
@@ -183,19 +183,19 @@ export default function OfficeDutyPage() {
   const myEmail = (data?.volunteer?.email || '').toLowerCase();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       <Header title="TRỰC VĂN PHÒNG ĐOÀN" />
       <main style={{ maxWidth: 1360, margin: '0 auto', padding: '1.25rem 1.5rem 3rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {/* Hero */}
         <section
           style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderLeft: '3px solid #1d4ed8',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-color)',
+            borderLeft: '3px solid var(--brand-accent)',
             borderRadius: 16,
             padding: '1.25rem 1.5rem',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
-            color: '#0f172a',
+            color: 'var(--text-primary)',
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'space-between',
@@ -204,13 +204,13 @@ export default function OfficeDutyPage() {
           }}
         >
           <div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1d4ed8' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-brand)' }}>
               Văn phòng Đoàn • Giờ hành chính Thứ 2 – Thứ 6
             </div>
-            <h1 style={{ margin: '0.2rem 0', fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+            <h1 style={{ margin: '0.2rem 0', fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
               Đăng Ký &amp; Chấm Công Trực Văn Phòng
             </h1>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Ca Sáng ({data?.config?.shifts?.morning?.start || '07:30'}–{data?.config?.shifts?.morning?.end || '11:30'}) &amp; Ca Chiều ({data?.config?.shifts?.afternoon?.start || '13:00'}–{data?.config?.shifts?.afternoon?.end || '17:00'}) • Tối đa {maxPerShift} người/ca • Check-in sớm 30p, Check-out trễ 30p qua WiFi VPĐ.
             </p>
           </div>
@@ -218,9 +218,9 @@ export default function OfficeDutyPage() {
           {data?.network && (
             <div
               style={{
-                background: data.network.allowed ? '#f0fdf4' : '#fef2f2',
-                border: `1px solid ${data.network.allowed ? '#bbf7d0' : '#fecaca'}`,
-                color: data.network.allowed ? '#15803d' : '#b91c1c',
+                background: data.network.allowed ? 'var(--tint-green-bg)' : 'var(--tint-red-bg)',
+                border: `1px solid ${data.network.allowed ? 'var(--tint-green-border)' : 'var(--tint-red-border)'}`,
+                color: data.network.allowed ? 'var(--status-green-text)' : 'var(--status-red-text)',
                 borderRadius: 12,
                 padding: '0.65rem 0.95rem',
                 fontSize: '0.8rem',
@@ -237,25 +237,25 @@ export default function OfficeDutyPage() {
         </section>
 
         {/* Chấm công hôm nay */}
-        <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.2rem' }}>
+        <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <ClockIcon size={18} color="#1d4ed8" />
-              <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+              <ClockIcon size={18} color="var(--text-brand)" />
+              <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 Chấm công ca trực hôm nay ({data?.today_vn ? fmtDateVN(data.today_vn) : '—'})
               </h2>
             </div>
             <button
               type="button"
               onClick={() => loadAll(weekAnchor || undefined)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.4rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
             >
               <RefreshIcon size={14} /> Làm mới
             </button>
           </div>
 
           {!data?.today_my_shifts?.length ? (
-            <div style={{ padding: '1rem', borderRadius: 10, background: '#f8fafc', color: '#64748b', fontSize: '0.87rem' }}>
+            <div style={{ padding: '1rem', borderRadius: 10, background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: '0.87rem' }}>
               Hôm nay bạn chưa có ca trực nào được đăng ký.
             </div>
           ) : (
@@ -267,17 +267,17 @@ export default function OfficeDutyPage() {
                   <div
                     key={sh.id}
                     style={{
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 12,
                       padding: '1rem',
-                      background: '#f8fafc',
+                      background: 'var(--bg-subtle)',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '0.65rem',
                     }}
                   >
-                    <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem' }}>{shiftLabel}</div>
-                    <div style={{ fontSize: '0.82rem', color: '#475569' }}>
+                    <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{shiftLabel}</div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       Check-in: <strong>{fmtTimeVN(att?.check_in_at)}</strong> • Check-out: <strong>{fmtTimeVN(att?.check_out_at)}</strong>
                       {att?.worked_minutes > 0 && ` • ${att.worked_minutes} phút`}
                     </div>
@@ -301,8 +301,8 @@ export default function OfficeDutyPage() {
                           {busyKey === `${sh.id}_check_out` ? 'Đang xử lý...' : 'Check-out hết ca'}
                         </button>
                       ) : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#15803d', fontWeight: 800, fontSize: '0.84rem' }}>
-                          <CheckCircleIcon size={16} color="#15803d" /> Đã hoàn thành ca trực
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--status-green-text)', fontWeight: 800, fontSize: '0.84rem' }}>
+                          <CheckCircleIcon size={16} color="var(--status-green-text)" /> Đã hoàn thành ca trực
                         </span>
                       )}
                     </div>
@@ -314,33 +314,33 @@ export default function OfficeDutyPage() {
         </section>
 
         {/* Lịch trực tuần T2 -> T6 */}
-        <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.2rem' }}>
+        <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.2rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <CalendarIcon size={18} color="#1d4ed8" />
-              <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+              <CalendarIcon size={18} color="var(--text-brand)" />
+              <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 Lịch Trực Tuần ({data?.workdays?.[0] ? `${fmtDateVN(data.workdays[0])} – ${fmtDateVN(data.workdays[4])}` : '...'})
               </h2>
             </div>
 
             <div style={{ display: 'flex', gap: '0.45rem' }}>
-              <button type="button" onClick={() => handleShiftChangeWeek(-7)} style={{ padding: '0.42rem 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
+              <button type="button" onClick={() => handleShiftChangeWeek(-7)} style={{ padding: '0.42rem 0.75rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
                 ← Tuần trước
               </button>
-              <button type="button" onClick={() => { setWeekAnchor(''); loadAll(); }} style={{ padding: '0.42rem 0.75rem', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
+              <button type="button" onClick={() => { setWeekAnchor(''); loadAll(); }} style={{ padding: '0.42rem 0.75rem', borderRadius: 8, border: '1px solid var(--tint-blue-border)', background: 'var(--tint-blue-bg)', color: 'var(--text-brand)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
                 Tuần này
               </button>
-              <button type="button" onClick={() => handleShiftChangeWeek(7)} style={{ padding: '0.42rem 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
+              <button type="button" onClick={() => handleShiftChangeWeek(7)} style={{ padding: '0.42rem 0.75rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-surface)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
                 Tuần sau →
               </button>
             </div>
           </div>
 
           {loading && !data ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Đang tải lịch trực...</div>
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Đang tải lịch trực...</div>
           ) : (
             <>
-              <p style={{ margin: '0 0 0.85rem', fontSize: '0.82rem', color: '#64748b' }}>
+              <p style={{ margin: '0 0 0.85rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                 Bấm vào ô <strong>Sáng / Chiều</strong> trên dòng của bạn (được tô xanh nhạt ở đầu bảng) để tick ✓ đăng ký hoặc bỏ chọn khi đợt đăng ký đang mở.
               </p>
               <DutyMatrixTable
@@ -361,23 +361,23 @@ export default function OfficeDutyPage() {
         </section>
 
         {/* Lịch sử chấm công cá nhân */}
-        <section style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.2rem' }}>
+        <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '1.2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-            <UsersIcon size={18} color="#1d4ed8" />
-            <h2 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 800, color: '#0f172a' }}>
+            <UsersIcon size={18} color="var(--text-brand)" />
+            <h2 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               Lịch sử chấm công của bạn ({attendanceHistory.length} ca)
             </h2>
           </div>
 
           {attendanceHistory.length === 0 ? (
-            <div style={{ padding: '1rem', borderRadius: 10, background: '#f8fafc', color: '#64748b', fontSize: '0.85rem' }}>
+            <div style={{ padding: '1rem', borderRadius: 10, background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               Chưa có dữ liệu chấm công.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 10 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'left' }}>Ngày trực</th>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'left' }}>Ca</th>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'left' }}>Check-in</th>
@@ -388,12 +388,12 @@ export default function OfficeDutyPage() {
                 </thead>
                 <tbody>
                   {attendanceHistory.map((a) => (
-                    <tr key={a.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <tr key={a.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                       <td style={{ padding: '0.65rem 0.85rem', fontWeight: 700 }}>{fmtDateVN(a.duty_date)}</td>
                       <td style={{ padding: '0.65rem 0.85rem' }}>{a.shift === 'morning' ? 'Ca Sáng' : 'Ca Chiều'}</td>
                       <td style={{ padding: '0.65rem 0.85rem' }}>
                         {fmtTimeVN(a.check_in_at)}
-                        {a.late_minutes > 0 && <span style={{ color: '#dc2626', fontSize: '0.75rem' }}> (trễ {a.late_minutes}p)</span>}
+                        {a.late_minutes > 0 && <span style={{ color: 'var(--status-red-text)', fontSize: '0.75rem' }}> (trễ {a.late_minutes}p)</span>}
                       </td>
                       <td style={{ padding: '0.65rem 0.85rem' }}>{fmtTimeVN(a.check_out_at)}</td>
                       <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 700 }}>
@@ -406,8 +406,8 @@ export default function OfficeDutyPage() {
                             borderRadius: 999,
                             fontSize: '0.74rem',
                             fontWeight: 800,
-                            background: a.status === 'completed' ? '#dcfce7' : '#fef3c7',
-                            color: a.status === 'completed' ? '#15803d' : '#b45309',
+                            background: a.status === 'completed' ? 'var(--tint-green-strong)' : 'var(--tint-amber-strong)',
+                            color: a.status === 'completed' ? 'var(--status-green-text)' : 'var(--status-amber-text)',
                           }}
                         >
                           {a.status === 'completed' ? 'Hoàn thành' : 'Đang trực'}

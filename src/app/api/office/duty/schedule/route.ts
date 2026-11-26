@@ -13,6 +13,7 @@ import {
 } from '@/lib/utils/office-duty';
 import { getMasterStudentByMssv } from '@/lib/utils/student-profile';
 import { isValidMSSV } from '@/lib/utils/extract-mssv';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -42,8 +43,9 @@ export async function GET(req: Request) {
     const toDate = workdays[workdays.length - 1];
     const todayVN = getTodayVN();
 
-    const cleanEmail = auth.email.trim().toLowerCase();
-    const todayFilter = volunteer?.mssv ? `email.ilike.${cleanEmail},mssv.eq.${volunteer.mssv}` : null;
+    const cleanEmail = sanitizePostgrestValue(auth.email.trim().toLowerCase(), 120);
+    const safeVolMssv = volunteer?.mssv ? sanitizePostgrestValue(volunteer.mssv, 40) : '';
+    const todayFilter = safeVolMssv ? `email.ilike.${cleanEmail},mssv.eq.${safeVolMssv}` : null;
 
     const [config, { data: windows }, { data: weekRegs }, { data: todayRegs }, { data: todayAtt }, { data: allVolunteers }] =
       await Promise.all([
@@ -258,7 +260,8 @@ export async function POST(req: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+      console.error('POST /api/office/duty/schedule error:', error);
+      return NextResponse.json({ success: false, error: 'Không thể lưu đăng ký ca trực.' }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -267,8 +270,9 @@ export async function POST(req: Request) {
       data,
     });
   } catch (err: any) {
+    console.error('POST /api/office/duty/schedule exception:', err);
     return NextResponse.json(
-      { success: false, error: err?.message || 'Lỗi đăng ký ca trực' },
+      { success: false, error: 'Lỗi đăng ký ca trực' },
       { status: 500 }
     );
   }

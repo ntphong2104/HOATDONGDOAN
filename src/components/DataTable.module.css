@@ -1,7 +1,7 @@
 .container {
-  background: white;
+  background: var(--bg-surface);
   border-radius: 12px;
-  border: 1px solid var(--neutral-200);
+  border: 1px solid var(--border-color);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -47,7 +47,7 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f8fafc;
+  scrollbar-color: var(--scrollbar-thumb) var(--bg-subtle);
 }
 
 .tableWrapper::-webkit-scrollbar {
@@ -56,18 +56,18 @@
 }
 
 .tableWrapper::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: var(--bg-subtle);
   border-radius: 999px;
 }
 
 .tableWrapper::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--scrollbar-thumb);
   border-radius: 999px;
   transition: background 0.15s ease;
 }
 
 .tableWrapper::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--scrollbar-thumb-hover);
 }
 
 .table {
@@ -79,21 +79,21 @@
 }
 
 .table th {
-  background-color: #f8fafc;
-  color: #475569;
+  background-color: var(--bg-subtle);
+  color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
 }
 
 .table td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-body);
   vertical-align: middle;
 }
 
@@ -106,11 +106,11 @@
 }
 
 .table tbody tr:hover {
-  background-color: #f8fafc;
+  background-color: var(--bg-muted);
 }
 
 .table tbody tr:nth-child(even) {
-  background-color: rgba(248, 250, 252, 0.4);
+  background-color: var(--bg-subtle);
 }
 
 .emptyState {
@@ -123,7 +123,7 @@
 .spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid #e2e8f0;
+  border: 3px solid var(--border-color);
   border-top-color: #2563eb;
   border-radius: 50%;
   animation: dtSpin 0.75s linear infinite;
@@ -157,9 +157,9 @@
 
 .pageBtn {
   padding: 0.35rem 0.75rem;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #334155;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-body);
   border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -168,7 +168,7 @@
 }
 
 .pageBtn:hover:not(:disabled) {
-  background: #f1f5f9;
+  background: var(--bg-muted);
   border-color: #94a3b8;
 }
 
@@ -179,7 +179,7 @@
 
 .pageInfo {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 600;
 }
 

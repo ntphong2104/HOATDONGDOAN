@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getAuthContext } from '@/lib/supabase/auth-helper';
 import { extractMSSV } from '@/lib/utils/extract-mssv';
 import { getRegistrationExtras, getEventMeta, getSessionCheckIns } from '@/lib/constants/event-meta-store';
+import { sanitizePostgrestValue } from '@/lib/security/sanitizer';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -16,6 +17,8 @@ export async function GET() {
 
     const lowerEmail = auth.email.toLowerCase().trim();
     const rawMssv = (extractMSSV(lowerEmail) || lowerEmail.split('@')[0]).toUpperCase();
+    const safeEmail = sanitizePostgrestValue(lowerEmail, 120);
+    const safeMssv = sanitizePostgrestValue(rawMssv, 40);
     const getSupabase = typeof createAdminClient === 'function' ? createAdminClient : createClient;
     const supabase = (await getSupabase()) || (await createClient());
 
@@ -39,7 +42,7 @@ export async function GET() {
           is_active
         )
       `)
-      .or(`email.eq.${lowerEmail},mssv.eq.${rawMssv}`)
+      .or(`email.eq.${safeEmail},mssv.eq.${safeMssv}`)
       .order('created_at', { ascending: false });
 
     if (error) {

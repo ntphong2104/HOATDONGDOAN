@@ -18,6 +18,7 @@ import {
   BuildingIcon,
 } from '@/components/icons';
 import { isUnitAccount } from '@/lib/utils/extract-mssv';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 import type { SessionUser } from '@/lib/types';
 import styles from './UserMenuDropdown.module.css';
 
@@ -259,7 +260,7 @@ export default function UserMenuDropdown({
                   currentUser.mssv !== 'PHONG-TCHCQT' && (
                     <span
                       className={styles.tierBadge}
-                      style={{ background: '#f1f5f9', color: '#475569' }}
+                      style={{ background: 'var(--bg-muted)', color: 'var(--text-secondary)' }}
                     >
                       {currentUser.mssv}
                     </span>
@@ -278,7 +279,7 @@ export default function UserMenuDropdown({
                   className={styles.menuItem}
                   onClick={() => setIsOpen(false)}
                 >
-                  <div className={styles.menuItemIcon} style={{ color: '#16a34a' }}>
+                  <div className={styles.menuItemIcon} style={{ color: 'var(--status-green-text)' }}>
                     <QrCodeIcon size={16} />
                   </div>
                   <span>Cổng Sinh Viên & Mã QR Cá Nhân</span>
@@ -291,7 +292,7 @@ export default function UserMenuDropdown({
                   className={styles.menuItem}
                   onClick={() => setIsOpen(false)}
                 >
-                  <div className={styles.menuItemIcon} style={{ color: '#2563eb' }}>
+                  <div className={styles.menuItemIcon} style={{ color: 'var(--text-brand)' }}>
                     <BuildingIcon size={16} />
                   </div>
                   <span>Bàn Làm Việc LCĐ &amp; Quản Lý Sự Kiện</span>
@@ -307,7 +308,7 @@ export default function UserMenuDropdown({
                   className={styles.menuItem}
                   onClick={() => setIsOpen(false)}
                 >
-                  <div className={styles.menuItemIcon} style={{ color: '#ea580c' }}>
+                  <div className={styles.menuItemIcon} style={{ color: 'var(--status-amber-text)' }}>
                     <ShieldCheckIcon size={16} />
                   </div>
                   <span>Bàn Phê Duyệt Kế Hoạch</span>
@@ -323,7 +324,7 @@ export default function UserMenuDropdown({
                   className={styles.menuItem}
                   onClick={() => setIsOpen(false)}
                 >
-                  <div className={styles.menuItemIcon} style={{ color: '#dc2626' }}>
+                  <div className={styles.menuItemIcon} style={{ color: 'var(--status-red-text)' }}>
                     <ShieldCheckIcon size={16} />
                   </div>
                   <span>Bảng Quản Trị Toàn Trường</span>
@@ -339,7 +340,7 @@ export default function UserMenuDropdown({
                   className={styles.menuItem}
                   onClick={() => setIsOpen(false)}
                 >
-                  <div className={styles.menuItemIcon} style={{ color: '#b45309' }}>
+                  <div className={styles.menuItemIcon} style={{ color: 'var(--status-amber-text)' }}>
                     <BuildingIcon size={16} />
                   </div>
                   <span>Quản Trị Văn Phòng Đoàn</span>
@@ -355,8 +356,8 @@ export default function UserMenuDropdown({
                   className={styles.menuItem}
                   onClick={() => setIsOpen(false)}
                 >
-                  <div className={styles.menuItemIcon} style={{ color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <KeyIcon size={16} color="#059669" />
+                  <div className={styles.menuItemIcon} style={{ color: 'var(--status-green-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <KeyIcon size={16} color="var(--status-green-text)" />
                   </div>
                   <span>Sổ Trực Bàn Giao Chìa Khóa</span>
                 </Link>
@@ -372,7 +373,7 @@ export default function UserMenuDropdown({
                     className={styles.menuItem}
                     onClick={() => setIsOpen(false)}
                   >
-                    <div className={styles.menuItemIcon} style={{ color: '#ea580c' }}>
+                    <div className={styles.menuItemIcon} style={{ color: 'var(--status-amber-text)' }}>
                       <CalendarIcon size={16} />
                     </div>
                     <span>Trình & Duyệt Kế Hoạch Sự Kiện</span>
@@ -384,7 +385,7 @@ export default function UserMenuDropdown({
                     className={styles.menuItem}
                     onClick={() => setIsOpen(false)}
                   >
-                    <div className={styles.menuItemIcon} style={{ color: '#d97706' }}>
+                    <div className={styles.menuItemIcon} style={{ color: 'var(--status-amber-text)' }}>
                       <SettingsIcon size={16} />
                     </div>
                     <span>Quản Lý Sự Kiện & Điểm Danh</span>
@@ -398,7 +399,7 @@ export default function UserMenuDropdown({
               <>
                 <li className={styles.divider} />
                 <li style={{ padding: '0.35rem 1rem 0.15rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--status-purple-text)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                     Sự kiện tôi quản lý
                   </span>
                 </li>
@@ -412,7 +413,7 @@ export default function UserMenuDropdown({
                         className={styles.menuItem}
                         onClick={() => setIsOpen(false)}
                       >
-                        <div className={styles.menuItemIcon} style={{ color: '#7c3aed' }}>
+                        <div className={styles.menuItemIcon} style={{ color: 'var(--status-purple-text)' }}>
                           <CalendarIcon size={16} />
                         </div>
                         <span style={{ fontSize: '0.85rem' }}>{evt.event_name || 'Sự kiện'}</span>
@@ -425,7 +426,7 @@ export default function UserMenuDropdown({
                     className={styles.menuItem}
                     onClick={() => setIsOpen(false)}
                   >
-                    <div className={styles.menuItemIcon} style={{ color: '#2563eb' }}>
+                    <div className={styles.menuItemIcon} style={{ color: 'var(--text-brand)' }}>
                       <ScanCameraIcon size={16} />
                     </div>
                     <span>Máy Quét Điểm Danh (Camera)</span>
@@ -444,13 +445,20 @@ export default function UserMenuDropdown({
                     className={styles.menuItem}
                     onClick={() => setIsOpen(false)}
                   >
-                    <div className={styles.menuItemIcon} style={{ color: '#2563eb' }}>
+                    <div className={styles.menuItemIcon} style={{ color: 'var(--text-brand)' }}>
                       <ScanCameraIcon size={16} />
                     </div>
                     <span>Máy Quét Điểm Danh (Camera)</span>
                   </Link>
                 </li>
               )}
+
+            <li className={styles.divider} />
+
+            {/* Theme Preference Switcher (Sáng / Tối / Hệ thống) */}
+            <li>
+              <ThemeToggleButton variant="segmented" />
+            </li>
 
             <li className={styles.divider} />
 

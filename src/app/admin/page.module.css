@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f8fafc;
+  background-color: var(--bg-primary);
 }
 
 .main {
@@ -18,7 +18,7 @@
   display: flex;
   gap: 0.5rem;
   margin-bottom: 2rem;
-  background: #e2e8f0;
+  background: var(--border-color);
   padding: 0.35rem;
   border-radius: 12px;
   width: fit-content;
@@ -32,12 +32,12 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1.25rem;
-  background: #ffffff;
-  color: #1e40af;
+  background: var(--bg-surface);
+  color: var(--text-brand-strong);
   border-radius: 8px;
   font-weight: 700;
   font-size: 0.9rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: var(--card-shadow);
   white-space: nowrap;
 }
 
@@ -46,7 +46,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1.25rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 600;
   font-size: 0.9rem;
   border-radius: 8px;
@@ -55,8 +55,8 @@
 }
 
 .tabInactive:hover {
-  color: #1e293b;
-  background: rgba(255, 255, 255, 0.5);
+  color: var(--text-body);
+  background: var(--bg-elevated);
 }
 
 .titleArea {
@@ -66,14 +66,14 @@
 .title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 0.35rem 0;
   letter-spacing: -0.02em;
 }
 
 .subtitle {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -97,12 +97,12 @@
 }
 
 .empty {
-  color: #94a3b8;
+  color: var(--text-subtle);
   text-align: center;
   padding: 4rem 1.5rem;
-  background: #ffffff;
+  background: var(--bg-surface);
   border-radius: 16px;
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--border-strong);
   grid-column: 1 / -1;
   font-size: 0.95rem;
 }

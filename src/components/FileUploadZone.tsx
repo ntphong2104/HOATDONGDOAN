@@ -142,7 +142,7 @@ export default function FileUploadZone({
             <CheckIcon size={20} />
             <div>
               <strong>{selectedFile.name}</strong>
-              <div style={{ fontSize: '0.775rem', color: '#15803d' }}>
+              <div style={{ fontSize: '0.775rem', color: 'var(--status-green-text)' }}>
                 {(selectedFile.size / 1024).toFixed(1)} KB • Sẵn sàng nạp vào cơ sở dữ liệu
               </div>
             </div>
@@ -171,8 +171,8 @@ export default function FileUploadZone({
       )}
 
       {uploading && (
-        <div className={styles.selectedCard} style={{ background: '#eff6ff', borderColor: '#bfdbfe' }}>
-          <div className={styles.selectedInfo} style={{ color: '#1e40af' }}>
+        <div className={styles.selectedCard} style={{ background: 'var(--tint-blue-bg)', borderColor: 'var(--tint-blue-border)' }}>
+          <div className={styles.selectedInfo} style={{ color: 'var(--text-brand-strong)' }}>
             <div style={{ width: '18px', height: '18px', border: '2px solid #2563eb', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
             <div>
               <strong>Đang nạp dữ liệu danh sách sinh viên...</strong>
@@ -184,7 +184,7 @@ export default function FileUploadZone({
 
       {error && (
         <div className={styles.error}>
-          <AlertTriangleIcon size={16} color="#dc2626" />
+          <AlertTriangleIcon size={16} color="var(--status-red-text)" />
           <span>{error}</span>
         </div>
       )}

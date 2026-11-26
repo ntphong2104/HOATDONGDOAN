@@ -485,10 +485,10 @@ export default function ScannerPage() {
             <div
               style={{
                 padding: '0.85rem 1rem',
-                background: '#f8fafc',
-                border: '1.5px solid #e2e8f0',
+                background: 'var(--bg-subtle)',
+                border: '1.5px solid var(--border-color)',
                 borderRadius: '10px',
-                color: '#64748b',
+                color: 'var(--text-muted)',
                 fontSize: '0.9rem',
                 textAlign: 'center',
                 fontWeight: 600,
@@ -508,9 +508,9 @@ export default function ScannerPage() {
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: '0.5rem',
-              background: activeSession.session_type === 'internal' ? '#fef3c7' : '#f0fdf4',
-              border: `1.5px solid ${activeSession.session_type === 'internal' ? '#fde68a' : '#bbf7d0'}`,
-              color: activeSession.session_type === 'internal' ? '#92400e' : '#166534',
+              background: activeSession.session_type === 'internal' ? 'var(--tint-amber-strong)' : 'var(--tint-green-bg)',
+              border: `1.5px solid ${activeSession.session_type === 'internal' ? 'var(--tint-amber-border)' : 'var(--tint-green-border)'}`,
+              color: activeSession.session_type === 'internal' ? 'var(--status-amber-text)' : 'var(--status-green-text)',
             }}>
               <span>
                 {activeSession.session_type === 'internal' ? '🔒 Ca nội bộ:' : '⭐ Ca:'}{' '}
@@ -570,7 +570,7 @@ export default function ScannerPage() {
             <div className={`${styles.externalScanBox} ${styles.externalScanBoxActive}`}>
               <div className={styles.externalHeader}>
                 <div className={styles.externalTitle}>
-                  <QrCodeIcon size={20} color="#2563eb" />
+                  <QrCodeIcon size={20} color="var(--text-brand)" />
                   Chế Độ Bắn Mã Siêu Tốc
                 </div>
                 <div className={styles.readyBadge}>
@@ -603,7 +603,7 @@ export default function ScannerPage() {
               />
 
               <div className={styles.externalInputHint}>
-                <LightbulbIcon size={14} color="#64748b" />
+                <LightbulbIcon size={14} color="var(--text-muted)" />
                 Máy bắn mã USB/Bluetooth tự gõ & nhấn Enter tức thì — Không bị gián đoạn hay đơ màn hình!
               </div>
             </div>
@@ -670,7 +670,7 @@ export default function ScannerPage() {
           <div className={styles.historyContainer}>
             <div className={styles.historyHeader}>
               <div className={styles.historyTitle}>
-                <HistoryIcon size={16} color="#475569" />
+                <HistoryIcon size={16} color="var(--text-secondary)" />
                 Lịch sử quét vừa qua ({scanHistory.length})
               </div>
               <button
