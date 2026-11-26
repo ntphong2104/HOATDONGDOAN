@@ -7,7 +7,7 @@
 .heroCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-left: 3px solid var(--brand-accent);
+  border-left: var(--hero-border-left, 3px solid var(--brand-accent));
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
   color: var(--text-primary);
@@ -178,31 +178,30 @@
   align-items: flex-start;
   gap: 0.25rem;
   padding: 0.78rem 1rem;
-  border-radius: 12px;
-  border: 1.5px solid transparent;
+  border-radius: 11px;
+  border: 1px solid transparent;
   background: var(--bg-subtle);
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
-  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
 
 .scopeTabBtn:hover {
   background: var(--bg-muted);
-  border-color: var(--border-strong);
+  border-color: var(--border-color);
   color: var(--text-primary);
 }
 
 .scopeTabBtnActive {
-  background: var(--tint-blue-bg);
-  border-color: var(--brand-accent);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-xs);
+  background: var(--scope-active-bg, #eff6ff);
+  border-color: var(--scope-active-border, #3b82f6);
+  color: var(--scope-active-title, #1e40af);
 }
 
 .scopeTabBtnActive:hover {
-  background: var(--tint-blue-bg);
-  border-color: var(--brand-accent);
+  background: var(--scope-active-bg, #eff6ff);
+  border-color: var(--scope-active-border, #3b82f6);
 }
 
 .scopeTabTop {
@@ -224,7 +223,7 @@
 }
 
 .scopeTabBtnActive .scopeTabTitle {
-  color: var(--text-brand);
+  color: var(--scope-active-title, #1e40af);
 }
 
 .scopeCountPill {
@@ -249,10 +248,14 @@
 }
 
 .scopeTabDesc {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  color: var(--text-muted);
-  line-height: 1.35;
+  color: var(--text-secondary);
+  line-height: 1.38;
+}
+
+.scopeTabBtnActive .scopeTabDesc {
+  color: var(--scope-active-desc, #334155);
 }
 
 .campaignBadgeSupport {
@@ -355,19 +358,21 @@
 }
 
 .podiumFirst {
-  border-color: #f59e0b;
-  background: linear-gradient(180deg, var(--tint-amber-bg) 0%, var(--bg-surface) 60%);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.12);
+  border-color: var(--tint-amber-border);
+  background: linear-gradient(180deg, var(--tint-amber-bg) 0%, var(--bg-surface) 75%);
+  box-shadow: var(--card-shadow);
 }
 
 .podiumSecond {
-  border-color: #94a3b8;
-  background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg-surface) 60%);
+  border-color: var(--border-strong);
+  background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg-surface) 75%);
+  box-shadow: var(--card-shadow);
 }
 
 .podiumThird {
-  border-color: #d97706;
-  background: linear-gradient(180deg, var(--tint-amber-bg) 0%, var(--bg-surface) 60%);
+  border-color: var(--tint-amber-border);
+  background: linear-gradient(180deg, var(--tint-amber-bg) 0%, var(--bg-surface) 80%);
+  box-shadow: var(--card-shadow);
 }
 
 .podiumTop {
@@ -491,14 +496,15 @@
 }
 
 .tabBtnActive {
-  background: #1d4ed8;
-  border-color: var(--brand-accent);
-  color: #ffffff;
+  background: var(--pill-active-bg, #1d4ed8);
+  border-color: var(--pill-active-border, var(--brand-accent));
+  color: var(--pill-active-fg, #ffffff);
 }
 
 .tabBtnActive:hover {
-  background: #1e40af;
-  color: #ffffff;
+  background: var(--pill-active-bg, #1e40af);
+  border-color: var(--pill-active-border, var(--brand-accent));
+  color: var(--pill-active-fg, #ffffff);
 }
 
 .filterRow {

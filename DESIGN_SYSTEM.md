@@ -2,33 +2,41 @@
 
 Comprehensive design-to-code architecture, token contracts, and component standards for integrating Figma designs via the **Figma Model Context Protocol (MCP)** across **Hoạt Động Đoàn PTIT HCM** (`https://ptithcm.com`).
 
-> **Core Aesthetic Mandate**: Dual-theme institutional craftsmanship — **Crisp Institutional Light** (`:root`) paired with **5-Tier Obsidian Deep Black** (`html[data-theme='dark']`). Every surface, hairline border, input well, and status pill MUST consume semantic CSS Custom Properties so Light and Dark modes render with zero FOUC, WCAG AA contrast, and zero washed-out slate gray.
+> **Core Aesthetic Mandate**: Dual-theme institutional craftsmanship combining **Layer 1 (Seamless L-Shell & `14px` Inset Rounded Viewport Frame)** and **Layer 2 (`1px` Translucent Hairline Monolith Architecture)**:
+> - **Crisp Institutional Light (`:root`)**: Royal Blue header (`#1e3a8a → #1e40af`), `#eef2f7` desktop shell bezel, and pure `#ffffff` / `#f8fafc` surfaces.
+> - **Monolith Obsidian Hairline Dark (`html[data-theme='dark']`)**: Seamless neutral charcoal `#111215` L-shell (top bar + persistent left sidebar) framing a recessed `#050507` pitch-black viewport (`border-radius: 14px`, `border: 1px solid rgba(255, 255, 255, 0.095)`), paired with `#0a0b0e` monolith cards, `1px solid rgba(255, 255, 255, 0.08)` silver-graphite hairlines, and `inset 0 1px 0 rgba(255, 255, 255, 0.035)` top specular highlights.
 
 ---
 
 ## 1. Token Definitions
 
 ### Where Tokens Live & Format
-- **Single Source of Truth**: [`src/app/globals.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/globals.css) defines all primitive and semantic tokens using native **CSS Custom Properties** (`--*`).
-- **Token Transformation**: None (no Style Dictionary, Sass, PostCSS custom plugins, or Tailwind). Native CSS variables switch instantaneously at runtime via `html[data-theme='dark']` with `0 KB` CSS bundle duplication.
-- **Zero-FOUC Theme Hydration**: [`src/app/layout.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/layout.tsx) injects a synchronous `<head>` script (`THEME_INIT_SCRIPT`) that reads `localStorage.getItem('hdd_theme')` before first paint and sets `document.documentElement.setAttribute('data-theme', 'dark' | 'light')` + `<meta name="theme-color">`.
+- **Single Source of Truth**: [`src/app/globals.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/globals.css) defines all primitive, shell, surface, border, and semantic status tokens using native **CSS Custom Properties** (`--*`).
+- **Token Transformation**: None (zero Tailwind, Sass, or build-time token compiler). Runtime switching occurs in `0 ms` via `html[data-theme='dark' | 'light']` and `html[data-theme-pref='light' | 'dark' | 'system']`.
+- **Zero-FOUC & Extension-Safe Theme Hydration**: [`src/app/layout.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/layout.tsx) injects `<meta name="darkreader-lock" />`, `colorScheme: 'light dark'`, and synchronous `THEME_INIT_SCRIPT` in `<head>` to resolve `'light' | 'dark' | 'system'` (via `window.matchMedia('(prefers-color-scheme: dark)')`) prior to first paint.
 
-### Semantic Surface & Elevation Hierarchy (5-Tier Obsidian vs. Institutional Light)
+### Layer 1 & Layer 2 Semantic Surface & Hairline Hierarchy
 
-| Semantic Token | Light Mode (`:root`) | Obsidian Dark (`[data-theme='dark']`) | Mandatory Usage Contract |
+| Semantic Token | Light Mode (`:root`) | Monolith Obsidian (`[data-theme='dark']`) | Mandatory Usage Contract |
 | :--- | :--- | :--- | :--- |
-| `--bg-primary` | `#f8fafc` | `#050608` (True Pitch Obsidian) | Outer full-page canvas (`body`, `.container`, `min-height: 100vh` wrappers) |
-| `--bg-input` | `#ffffff` | `#050608` (Recessed Obsidian Well) | Search bars, text inputs, `<select>`, `<textarea>` inside cards/toolbars |
-| `--bg-surface` | `#ffffff` | `#0b0d12` (Deep Obsidian Card) | Primary cards, KPI tiles, data tables, modals, desktop sidebar |
-| `--bg-subtle` | `#f8fafc` | `#10131a` (Subtle Obsidian Panel) | Filter bars, `<thead>`, nested metadata panels, inner list rows |
-| `--bg-elevated` | `#ffffff` | `#12161f` (Floating Popover) | Dropdown menus (`UserMenuDropdown`), floating controls, tooltips |
-| `--bg-muted` | `#f1f5f9` | `#171c26` (Chip & Hover Fill) | Inactive filter chips, row hover states, count badges, skeletons |
-| `--header-bg` | `linear-gradient(135deg, #1e3a8a, #1e40af)` | `linear-gradient(180deg, #080a0f, #06080c)` | Top fixed `60px` institutional app bar |
-| `--bottom-nav-bg` | `rgba(255, 255, 255, 0.96)` | `rgba(7, 9, 13, 0.94)` | Translucent mobile bottom tab bar (`backdrop-filter: blur(14px)`) |
-| `--border-color` | `#e2e8f0` | `#1c2029` (Crisp Hairline) | Default `1px` card, table, and divider borders |
-| `--border-strong` | `#cbd5e1` | `#272d3b` (Interactive Border) | Input borders, secondary button borders, card hover borders |
+| `--shell-bg` | `#eef2f7` | `#111215` (Matte Neutral Charcoal) | Outer desktop L-shell bezel (`body[data-sidebar]` & `.viewportFrame` mask) |
+| `--frame-border` | `rgba(15, 23, 42, 0.09)` | `rgba(255, 255, 255, 0.095)` | `1px` hairline border around the `14px` rounded desktop viewport frame |
+| `--header-bg` | `linear-gradient(135deg, #1e3a8a, #1e40af)` | `#111215` (Seamless L-Shell Top) | Fixed `60px` top bar (`--header-border: transparent` in Dark Mode) |
+| `--sidebar-bg` | `#eef2f7` | `#111215` (Seamless L-Shell Left) | Persistent `260px` left navigation rail (`border-right: none` on desktop) |
+| `--sidebar-active-bg` | `#ffffff` | `rgba(255, 255, 255, 0.065)` | Active sidebar item smoky-graphite pill (`border: 1px solid --sidebar-active-border`) |
+| `--pill-active-bg` | `#1d4ed8` | `rgba(255, 255, 255, 0.075)` | Active segmented/scope/board tab pill (`border: 1px solid --pill-active-border`) |
+| `--bg-primary` | `#f8fafc` | `#050507` (Recessed Pitch Black) | Main content viewport canvas inside the `14px` rounded frame |
+| `--bg-input` | `#ffffff` | `#08090b` (Recessed Input Well) | Search bars, text inputs, `<select>`, `<textarea>` inside cards/toolbars |
+| `--bg-surface` | `#ffffff` | `#0a0b0e` (Monolith Card Surface) | Primary cards, KPI tiles, data tables, modals, sidebar account card |
+| `--bg-subtle` | `#f8fafc` | `#0f1014` (Subtle Inner Surface) | Filter bars, `<thead>`, segmented tracks, nested list items |
+| `--bg-elevated` | `#ffffff` | `#14151a` (Floating Popover) | Dropdown menus (`UserMenuDropdown`), notification inbox popover |
+| `--bg-muted` | `#f1f5f9` | `#191b21` (Interactive Hover Fill) | Row hover states, neutral count pills, skeleton shimmers |
+| `--border-color` | `#e2e8f0` | `rgba(255, 255, 255, 0.08)` | Default `1px` translucent hairline border on cards, tables, and dividers |
+| `--border-strong` | `#cbd5e1` | `rgba(255, 255, 255, 0.14)` | Interactive input borders, secondary buttons, hover hairlines |
+| `--card-shadow` | `0 1px 3px rgba(15, 23, 42, 0.04)` | `inset 0 1px 0 rgba(255, 255, 255, 0.035)` | Subtle drop shadow in Light; subpixel top glass rim in Dark |
+| `--hero-border-left` | `3px solid var(--brand-accent)` | `1px solid rgba(255, 255, 255, 0.085)` | Institutional left accent in Light; uniform `1px` hairline in Dark |
 
-### Typography & Brand Accent Tokens
+### Typography & True Neutral Zinc Scale
 
 ```css
 /* src/app/globals.css — Typography & Brand Tokens */
@@ -38,85 +46,58 @@ Comprehensive design-to-code architecture, token contracts, and component standa
   --font-sans: var(--font-plus-jakarta), var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  --text-primary: #0f172a;       /* Dark: #f8fafc (Pure crisp white headings) */
-  --text-body: #334155;          /* Dark: #dce3ee (Readable body copy & table cells) */
-  --text-secondary: #475569;     /* Dark: #94a3b8 (Subtitles & secondary labels) */
-  --text-muted: #64748b;         /* Dark: #7f8b9e (Timestamps & helper copy, >= 5.2:1 AA) */
-  --text-subtle: #94a3b8;        /* Dark: #5c6678 (Placeholders & disabled labels) */
-  --text-brand: #1d4ed8;         /* Dark: #60a5fa (Interactive links & royal blue badges) */
+  --text-primary: #0f172a;       /* Dark: #f4f4f6 (Crisp off-white headings) */
+  --text-body: #334155;          /* Dark: #d4d4d8 (Neutral zinc body & table cells) */
+  --text-secondary: #475569;     /* Dark: #a1a1aa (Subtitles & inactive nav items) */
+  --text-muted: #64748b;         /* Dark: #71717a (Timestamps & metadata) */
+  --text-subtle: #94a3b8;        /* Dark: #52525b (Placeholders & section eyebrows) */
+  --text-brand: #1d4ed8;         /* Dark: #60a5fa (Interactive links & semantic highlights) */
   --text-brand-strong: #1e40af;  /* Dark: #93c5fd (Emphasized brand callouts) */
-  --brand-accent: #1d4ed8;       /* Dark: #2563eb (3px institutional left accent border) */
+  --brand-accent: #1d4ed8;       /* Dark: #2563eb (Primary CTA buttons) */
 }
 ```
 
-### Semantic Status & Callout Tints
-Never hardcode light pastel hexes (`#eff6ff`, `#dcfce7`, `#fee2e2`, `#fef3c7`, `#f5f3ff`, `#f0fdfa`, `#ecfeff`, `#fdf2f8`) in CSS Modules or inline `style={{}}`. Always pair the semantic tint family:
-- **Blue (Brand / Official)**: `--tint-blue-bg`, `--tint-blue-strong`, `--tint-blue-border` + `--text-brand`
-- **Green (Open / Checked-in / Approved)**: `--tint-green-bg`, `--tint-green-strong`, `--tint-green-border` + `--status-green-text`
-- **Red (Urgent / Rejected / Overdue)**: `--tint-red-bg`, `--tint-red-strong`, `--tint-red-border` + `--status-red-text`
-- **Amber (Pending / Volunteer / Warning)**: `--tint-amber-bg`, `--tint-amber-strong`, `--tint-amber-border` + `--status-amber-text`
-- **Purple (LCĐ Scoped / Academic)**: `--tint-purple-bg`, `--tint-purple-strong`, `--tint-purple-border` + `--status-purple-text`
-- **Teal (Office Duty / CTV Recruitment)**: `--tint-teal-bg`, `--tint-teal-strong`, `--tint-teal-border` + `--status-teal-text`
-- **Cyan (Cohort Scoped)**: `--tint-cyan-bg`, `--tint-cyan-strong`, `--tint-cyan-border` + `--status-cyan-text`
-- **Pink (Gender Scoped Pills)**: `--tint-pink-bg`, `--tint-pink-strong`, `--tint-pink-border` + `--status-pink-text`
-
-### 8-Faculty (LCĐ) Adaptive Identity Tokens
-Defined in [`src/app/globals.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/globals.css) and consumed via [`src/lib/utils/lcd.ts`](file:///Users/mac/Dev/HOATDONGDOAN/src/lib/utils/lcd.ts) (`LCD_DEFINITIONS`):
-- `--lcd-{cntt|cndpt|attt|vt|dt|qtkd|mkt|kt}-{fg|bg|border}` — automatically shifts ultra-dark faculty colors (`LCD_DT`, `LCD_MKT`, `LCD_VT`) to luminous WCAG AA tones in Dark Mode.
-
-### Locked Physical Surfaces (Never Invert in Dark Mode!)
-- **QR Code Quiet Zones** (`--qr-surface: #ffffff`, `--qr-fg: #000000`): Optical & infrared camera scanners require high-contrast black modules on a pure `#ffffff` quiet zone ([`QRCodeDisplay.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/QRCodeDisplay.tsx), [`DynamicEventQRModal.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/DynamicEventQRModal.tsx)).
-- **Print Stylesheet** (`@media print` in [`src/app/globals.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/globals.css#L313-L335)): Automatically resets `html[data-theme='dark']` back to white paper `#ffffff` and `#0f172a` ink when printing administrative proposals or attendance sheets.
-
-### Layout Container Tiers & Motion Curves
-- **`--page-max-wide` (`1600px`)**: High-density school-wide tables & executive dashboards ([`src/app/super-admin/page.module.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/super-admin/page.module.css)).
-- **`--page-max-standard` (`1360px`)**: Standard portals & workspaces (`/`, `/events`, `/ranking`, `/admin`, `/admin/proposals`, `/admin/events/[id]`, `/office/duty`, `/office/borrow`, `/office/admin`, `/security`).
-- **`--page-max-detail` (`960px`)**: Proposal authoring & document detail views ([`src/app/admin/proposals/new/page.module.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/admin/proposals/new/page.module.css), [`src/app/admin/proposals/[id]/page.module.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/admin/proposals/[id]/page.module.css)).
-- **`--page-max-form` (`680px`)**: Focused registration forms & camera scanner flows ([`src/app/events/[id]/register/page.module.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/events/[id]/register/page.module.css), [`src/app/scanner/scanner.module.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/scanner/scanner.module.css)).
-- **Radii & Motion**: `--card-radius: 16px` (`--radius-sm: 6px`, `--radius-md: 8px`, `--radius-lg: 12px`, `--radius-xl: 16px`, `--radius-full: 9999px`), `--ease-spring: cubic-bezier(0.16, 1, 0.3, 1)`, `--ease-smooth: cubic-bezier(0.4, 0, 0.2, 1)`.
+### Whisper-Quiet Semantic Status Tints & 8-LCĐ Identity
+Never hardcode light pastel hexes (`#eff6ff`, `#dcfce7`, `#fee2e2`, `#fef3c7`) or opaque bright borders (`#f59e0b`, `#94a3b8`) on cards. Always consume semantic tint triplets (`0.09–0.10` alpha fill + `0.24–0.26` hairline border in Dark Mode):
+- **Status Families**: `blue`, `green`, `red`, `amber`, `purple`, `teal`, `cyan`, `pink` (`--tint-{color}-{bg|strong|border}` + `--status-{color}-text`).
+- **8-LCĐ Adaptive Tokens**: `--lcd-{cntt|cndpt|attt|vt|dt|qtkd|mkt|kt}-{fg|bg|border}` mapped in [`src/lib/utils/lcd.ts`](file:///Users/mac/Dev/HOATDONGDOAN/src/lib/utils/lcd.ts).
+- **Locked Optical & Print Surfaces**: QR quiet zones (`--qr-surface: #ffffff`, `--qr-fg: #000000`) never invert; `@media print` restores white paper `#ffffff` and hides `.viewportFrame`.
 
 ---
 
 ## 2. Component Library
 
-All UI components are bespoke React 19 components in [`src/components/`](file:///Users/mac/Dev/HOATDONGDOAN/src/components) paired 1:1 with `*.module.css` files (no external UI kit or Storybook; verified via Jest + React Testing Library in [`__tests__/unit/components/`](file:///Users/mac/Dev/HOATDONGDOAN/__tests__/unit/components)).
+All UI components are bespoke React 19 components in [`src/components/`](file:///Users/mac/Dev/HOATDONGDOAN/src/components) paired 1:1 with `*.module.css` files and tested via Jest + React Testing Library in [`__tests__/unit/components/`](file:///Users/mac/Dev/HOATDONGDOAN/__tests__/unit/components).
 
-### Architecture & Core Reusable Components
-1. **SSR Auth + Client Workspace Split**:
-   - Server `page.tsx` routes resolve `getAuthContext()` ([`src/lib/auth/permissions.ts`](file:///Users/mac/Dev/HOATDONGDOAN/src/lib/auth/permissions.ts)), fetch initial Supabase data in parallel, and hydrate interactive `'use client'` views (e.g., [`StudentDashboardClient.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/StudentDashboardClient.tsx)).
-2. **Global Navigation & Theme Shell**:
-   - [`Header.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/Header.tsx) + [`Header.module.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/Header.module.css): Fixed `60px` top bar, [`DualLogos.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/DualLogos.tsx), [`ThemeToggleButton.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/ThemeToggleButton.tsx), [`UserMenuDropdown.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/UserMenuDropdown.tsx), collapsible `256px` desktop left sidebar, and [`MobileBottomNav.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/MobileBottomNav.tsx).
-   - [`ThemeToggleButton.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/ThemeToggleButton.tsx): Supports `variant="header"` (`36×36px` glass pill in top bar) and `variant="floating"` (`40×40px` corner toggle on `/login`), broadcasting `'hdd-theme-change'` + `storage` events across tabs.
-3. **Domain Display & Data Primitives**:
-   - [`StatCard.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/StatCard.tsx): KPI metric card with `tabular-nums`, semantic icon badge (`primary | success | warning | error`), and shimmer skeleton state.
-   - [`DataTable.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/DataTable.tsx): Responsive data table with sticky/subtle `--bg-subtle` header, empty state, and horizontal touch scroll.
-   - [`EventCard.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/EventCard.tsx): Event summary card with live status dot (`active | pending | rejected | closed`), date/end-date range, resolved location, and check-in counter.
-   - [`StudentWeeklyTimetable.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/StudentWeeklyTimetable.tsx): 7-column desktop weekly grid (`Sáng / Chiều / Tối`) that adapts into a 7-day interactive strip + agenda list below `680px`.
-   - [`RoleBadge.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/RoleBadge.tsx): Semantic role pill (`participant | volunteer | organizer`).
-   - [`QRCodeDisplay.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/QRCodeDisplay.tsx), [`DynamicEventQRModal.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/DynamicEventQRModal.tsx), [`QRScanner.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/QRScanner.tsx): Optical QR rendering and camera scanning suite.
-   - [`ToastProvider.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/ToastProvider.tsx) + [`Toast.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/Toast.tsx): Imperative `useToast()` notification stack.
+### Core Shell & Domain Components
+1. **L-Shell App Frame & Navigation**:
+   - [`Header.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/Header.tsx) + [`Header.module.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/Header.module.css): Renders the fixed `60px` top bar (`z-index: 140`), the desktop `.viewportFrame` rounded cutout (`top: 60px; left: 260px | 8px; right: 8px; bottom: 8px; border-radius: 14px; border: 1px solid var(--frame-border); box-shadow: 0 0 0 12px var(--shell-bg); pointer-events: none; z-index: 130`), the seamless `260px` persistent left sidebar (`z-index: 125`), and [`MobileBottomNav.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/MobileBottomNav.tsx) (`≤ 768px`).
+   - [`ThemeToggleButton.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/ThemeToggleButton.tsx): Supports `variant="header"` (`36×36px`, `9px` radius hairline button), `variant="floating"` (`40×40px` on `/login`), and `variant="segmented"` (3-pill `Sáng / Tối / Hệ thống` control inside [`UserMenuDropdown.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/UserMenuDropdown.tsx)).
+2. **Data, Portal & Emulation Components**:
+   - [`StudentDashboardClient.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/StudentDashboardClient.tsx): 2-column stretch-aligned student workspace (`360px minmax(0, 1fr)`) with digital QR ID card, [`StudentWeeklyTimetable.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/StudentWeeklyTimetable.tsx), and attendance history.
+   - [`RankingBoard.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/RankingBoard.tsx) + [`ranking-scope.ts`](file:///Users/mac/Dev/HOATDONGDOAN/src/lib/utils/ranking-scope.ts): 3-scope emulation leaderboard (*Tổng hợp Toàn trường*, *Đoàn Trường & Phát động*, *Hoạt động Cơ sở — Còn lại*) with 6-sheet Excel export.
+   - [`StatCard.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/StatCard.tsx), [`DataTable.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/DataTable.tsx), [`EventCard.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/EventCard.tsx), [`AdminOverviewDashboard.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/AdminOverviewDashboard.tsx), [`QRCodeDisplay.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/QRCodeDisplay.tsx), [`DynamicEventQRModal.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/DynamicEventQRModal.tsx), [`ToastProvider.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/ToastProvider.tsx).
 
-### Canonical Institutional Hero & Filter Bar Pattern
+### Canonical Hairline Card & Pill Tab Pattern
 
 ```css
-/* Unified Institutional Hero Banner */
-.heroBanner {
+/* Layer 2: Monolith Surface + 1px Translucent Hairline Card */
+.card {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-left: 3px solid var(--brand-accent);
-  border-radius: var(--card-radius, 16px);
+  border-left: var(--hero-border-left, 1px solid var(--border-color));
+  border-radius: 14px;
   padding: 1.25rem 1.5rem;
   color: var(--text-primary);
   box-shadow: var(--card-shadow);
 }
 
-/* Recessed Search Input Inside Filter Card */
-.searchInput {
-  height: 40px;
-  border-radius: 12px;
-  border: 1.5px solid var(--border-strong);
-  background: var(--bg-input); /* #ffffff in Light, #050608 recessed well in Obsidian Dark */
-  color: var(--text-primary);
+/* Smoky-Graphite Active Pill Tab (Dark) / Royal Blue Pill (Light) */
+.tabBtnActive {
+  background: var(--pill-active-bg);
+  border: 1px solid var(--pill-active-border);
+  color: var(--pill-active-fg);
+  border-radius: 9px;
 }
 ```
 
@@ -125,54 +106,44 @@ All UI components are bespoke React 19 components in [`src/components/`](file://
 ## 3. Frameworks & Libraries
 
 Configured in [`package.json`](file:///Users/mac/Dev/HOATDONGDOAN/package.json):
-- **UI & Routing Framework**: Next.js `16.3.1` (App Router) + React `19.2.8` (`react-dom` `19.2.8`)
-- **Bundler & Build System**: `next dev` (Turbopack) for local development; `next build --webpack` for production builds
-- **Styling Engine**: Native CSS Modules (`*.module.css`) + Global CSS Custom Properties ([`src/app/globals.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/globals.css))
-- **Data, Auth & Utilities**: `@supabase/ssr` (`^0.12.4`), `@supabase/supabase-js` (`^2.112.3`), `qrcode.react` (`^4.2.0`), `html5-qrcode` (`^2.3.8`), `xlsx` (`^0.18.5`)
-- **Verification Toolchain**: TypeScript `5` (`strict`), ESLint `9` (`eslint-config-next`), Jest `30.4.2` (`ts-jest` + `jest-environment-jsdom` + `identity-obj-proxy` for CSS Modules), `@testing-library/react` `16.3.2`
+- **Framework**: Next.js `16.3.1` (App Router) + React `19.2.8` (`react-dom` `19.2.8`)
+- **Bundler**: `next dev` (Turbopack) in development; `next build --webpack` in production
+- **Styling**: Native CSS Modules (`*.module.css`) + Global CSS Custom Properties ([`src/app/globals.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/globals.css))
+- **Data, Auth & Export**: `@supabase/ssr` (`^0.12.4`), `@supabase/supabase-js` (`^2.112.3`), `qrcode.react` (`^4.2.0`), `html5-qrcode` (`^2.3.8`), `xlsx` (`^0.18.5`)
+- **Testing & Quality**: TypeScript `5` (`strict`), ESLint `9` (`eslint-config-next`, `react-hooks/purity`), Jest `30.4.2` + `@testing-library/react` `16.3.2`
 
 ---
 
 ## 4. Asset Management
 
-- **Static Brand Assets**: Stored in [`public/`](file:///Users/mac/Dev/HOATDONGDOAN/public) and [`public/logos/`](file:///Users/mac/Dev/HOATDONGDOAN/public/logos) (`logo-ptit.png`, `logo-doan.png`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`).
-- **Dual Brand Logos**: Always render institutional emblems via [`DualLogos.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/DualLogos.tsx), which wraps both PNG emblems in crisp circular white `#ffffff` badges so official red/blue/green crests remain authentic on both Navy and Obsidian `#050608` surfaces.
-- **Web Fonts**: `Plus Jakarta Sans` (weights `400–800`) and `Inter` (weights `400–800`) loaded via Google Fonts in [`src/app/layout.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/layout.tsx).
-- **Image Optimization & CSP**: [`next.config.ts`](file:///Users/mac/Dev/HOATDONGDOAN/next.config.ts) enables `formats: ['image/avif', 'image/webp']`, `minimumCacheTTL: 31536000`, immutable `1-year` caching on `/logos/*`, and strict `Content-Security-Policy` (`img-src 'self' data: blob: https://*.googleusercontent.com https://accounts.google.com https://ptithcm.com https://*.ptithcm.edu.vn`).
-- **User Avatars**: Google OAuth profile images (`lh3.googleusercontent.com`) MUST include `referrerPolicy="no-referrer"` and an `onError` initial-letter fallback (see [`UserMenuDropdown.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/UserMenuDropdown.tsx)).
+- **Static Brand Assets**: Stored in [`public/`](file:///Users/mac/Dev/HOATDONGDOAN/public) and [`public/logos/`](file:///Users/mac/Dev/HOATDONGDOAN/public/logos) (`logo-ptit.png`, `logo-doan.png`, PWA icons).
+- **Institutional Emblems**: Rendered exclusively through [`DualLogos.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/DualLogos.tsx) on circular `#ffffff` badges so official crests remain crisp on `#111215` and `#1e3a8a` headers.
+- **Typography**: `Plus Jakarta Sans` (`400–800`) and `Inter` (`400–800`) via Google Fonts in [`src/app/layout.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/layout.tsx).
+- **Optimization & Security**: [`next.config.ts`](file:///Users/mac/Dev/HOATDONGDOAN/next.config.ts) enforces `image/avif` + `image/webp`, `1-year` immutable caching on `/logos/*`, and strict `Content-Security-Policy`. Google avatars require `referrerPolicy="no-referrer"` + initial-letter fallback.
 
 ---
 
 ## 5. Icon System
 
-All vector icons live in [`src/components/icons/Icons.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/icons/Icons.tsx) with shared `IconProps` in [`src/components/icons/types.ts`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/icons/types.ts) and barrel re-exports in [`src/components/icons/index.ts`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/icons/index.ts).
+All vector icons reside in [`src/components/icons/Icons.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/icons/Icons.tsx) (`IconProps` in [`types.ts`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/icons/types.ts), barrel exports in [`index.ts`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/icons/index.ts)):
 
 ```tsx
-import { CalendarIcon, MapPinIcon, ShieldCheckIcon, SunIcon, MoonIcon } from '@/components/icons';
+import { CalendarIcon, BadgeMedalIcon, SunIcon, MoonIcon, MonitorIcon } from '@/components/icons';
 
-// Usage: inherits currentColor by default, or accepts CSS token strings
-<CalendarIcon size={16} color="var(--text-brand)" />
+<BadgeMedalIcon size={16} color="var(--text-brand)" />
 ```
 
-### Icon Conventions when Translating Figma Designs
-1. **Check `@/components/icons` First**: Reuse existing `*Icon` PascalCase exports before adding new SVGs.
-2. **Adding New Figma Icons**: Register new `24×24` stroke-based icons inside [`src/components/icons/Icons.tsx`](file:///Users/mac/Dev/HOATDONGDOAN/src/components/icons/Icons.tsx) using the `createIcon(displayName, svgContent, defaultStrokeWidth)` factory and export with the `*Icon` suffix. Never scatter raw inline `<svg>` paths across feature pages unless rendering third-party brand marks (e.g., Google/Facebook).
-3. **Color Binding**: Pass `color="currentColor"` (default) or `color="var(--status-*-text)"` rather than hardcoded dark/light hex strings.
+- Always import existing `*Icon` components from `@/components/icons` first; register any new `24×24` stroke icons via `createIcon(...)` inside `Icons.tsx` with `currentColor` stroke binding.
 
 ---
 
 ## 6. Styling Approach
 
-- **Methodology**: Scoped **CSS Modules** (`Component.module.css` / `page.module.css`) consuming global CSS variables from [`src/app/globals.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/globals.css).
-- **Numeric Precision**: Apply `font-variant-numeric: tabular-nums` on all KPI counters, attendance ratios, timestamps, and countdown timers.
-- **Global Viewport Offsets**:
-  - `body[data-sidebar='expanded']` applies `padding-left: 256px` at `min-width: 1024px` (`padding-top: 60px` for fixed header).
-  - `body[data-has-bottom-nav='true']` applies `padding-bottom: calc(68px + env(safe-area-inset-bottom))` at `max-width: 768px`.
-- **Responsive Breakpoints**:
-  - `1080px` / `1040px` / `1024px`: 3-column card grids step down to 2 columns; desktop sidebar switches to slide-over drawer below `1024px`.
-  - `880px`: Student Portal 2-column grid (`360px minmax(0, 1fr)`) collapses to 1 column.
-  - `768px` / `680px`: Mobile bottom navigation activates (`768px`); weekly timetable switches from 7-column table to mobile day-strip agenda (`679px`); card grids collapse to `1fr` (`680px`).
-  - `640px` / `480px`: Compact mobile padding (`0.85rem–1rem`), full-width search inputs, stacked action buttons.
+- **CSS Modules + Global Token Engine**: Co-located `*.module.css` files consuming semantic variables from [`src/app/globals.css`](file:///Users/mac/Dev/HOATDONGDOAN/src/app/globals.css).
+- **Responsive Shell Geometry**:
+  - **Desktop (`min-width: 1024px`)**: `body[data-sidebar]` applies `background-color: var(--shell-bg); padding: 60px 8px 8px 260px` (`8px` left when unpinned), while `.viewportFrame` masks and borders the `14px` rounded main viewport at all scroll positions.
+  - **Tablet & Mobile (`max-width: 1023px`)**: `.viewportFrame` hides (`display: none`) so content utilizes 100% horizontal width without double-bezel nesting; `body[data-has-bottom-nav='true']` reserves `calc(68px + env(safe-area-inset-bottom))` at `≤ 768px`.
+- **Tabular Numerals**: Always set `font-variant-numeric: tabular-nums` on KPIs, ranking counts, percentages, and timers.
 
 ---
 
@@ -180,28 +151,27 @@ import { CalendarIcon, MapPinIcon, ShieldCheckIcon, SunIcon, MoonIcon } from '@/
 
 ```text
 src/
-├── app/                        # Next.js 16 App Router pages, route CSS Modules, and API Route Handlers
-│   ├── globals.css             # Master Light + Obsidian Dark CSS Custom Property token engine
-│   ├── layout.tsx              # Root HTML shell, zero-FOUC theme init script, Google Fonts, ToastProvider
-│   ├── login/                  # Authentication portal with ParticleCanvas & floating ThemeToggleButton
-│   ├── page.tsx                # Student Portal SSR entry (smart-redirects officers to default workspace)
+├── app/                        # Next.js 16 App Router pages, route CSS Modules, and 79 API Route Handlers
+│   ├── globals.css             # Master Light + L-Shell Monolith Obsidian CSS Custom Property engine
+│   ├── layout.tsx              # Root HTML shell, darkreader-lock, zero-FOUC theme script, ToastProvider
+│   ├── login/                  # Auth portal with ParticleCanvas & floating ThemeToggleButton
+│   ├── page.tsx                # Student Portal SSR entry
 │   ├── events/                 # Event discovery (/events), registration (/register), CTV (/recruitment)
-│   ├── ranking/                # Semester & 8-LCĐ participation leaderboard
-│   ├── admin/                  # Event Admin workbench, Proposals workflow (/proposals), Event detail (/events/[id])
+│   ├── ranking/                # 3-scope emulation & 8-LCĐ / 16-CLB leaderboard (/ranking)
+│   ├── admin/                  # Event Admin workbench, Proposals (/proposals), Event detail (/events/[id])
 │   ├── office/                 # VPĐ Admin (/office/admin), CTV Duty (/office/duty), Equipment (/office/borrow)
 │   ├── scanner/                # Camera QR check-in scanner (/scanner)
 │   ├── security/               # Guard room key handover ledger (/security)
 │   ├── super-admin/            # Executive school-wide control center (/super-admin)
-│   └── api/                    # Backend endpoints (auth, me, events, admin, office, proposals, cron)
-├── components/                 # Reusable UI primitives + sibling *.module.css + icons/
-├── hooks/                      # Client hooks (e.g., useGoogleOneTap.ts)
-└── lib/                        # Auth permissions, security sanitizers, JSON/Supabase stores, types.ts, utils/
-__tests__/                      # Jest unit & whitebox suites mirroring src/
+│   └── api/                    # Backend API routes (auth, me, events, ranking, admin, office, proposals, cron)
+├── components/                 # Reusable React 19 UI primitives + *.module.css + icons/
+├── hooks/                      # Client hooks (useGoogleOneTap.ts)
+└── lib/                        # Auth/RBAC helpers, security sanitizers, ranking-scope.ts, types.ts, utils/
+__tests__/                      # 58 Jest unit & whitebox test suites
 ```
 
-### Mandatory Checklist When Implementing Figma Frames via MCP
-1. **Outer Page Wrapper**: Always set `background: var(--bg-primary)` on `.container` / `.page` (`#f8fafc` Light / `#050608` Pitch Obsidian Dark).
-2. **Cards & Panels**: Set `background: var(--bg-surface)` + `border: 1px solid var(--border-color)` + `box-shadow: var(--card-shadow)`. Never use slate-gray hexes (`#111827`, `#1e293b`, `#334155`) for card surfaces.
-3. **Inputs & Selects**: Set `background: var(--bg-input)` + `border: 1.5px solid var(--border-strong)` + `color: var(--text-primary)` so controls appear recessed (`#050608`) inside `#0b0d12` / `#10131a` cards in Dark Mode.
-4. **Badges & Callouts**: Map every colored Figma badge to `--tint-{blue|green|red|amber|purple|teal|cyan|pink}-{bg|strong|border}` and `--status-*-text`.
-5. **Dual-Theme Verification**: Verify every new Figma screen under both `html[data-theme='light']` and `html[data-theme='dark']` (plus mobile `390px` width) before completion.
+### Mandatory Checklist When Translating Figma Designs via MCP
+1. **Respect the Desktop L-Shell**: Never add duplicate outer page margins on `<main>`—`body[data-sidebar]` and `Header.tsx` `.viewportFrame` automatically provide the `#111215` bezel and `14px` rounded `1px` viewport border on desktop while keeping mobile full-bleed.
+2. **Use Hairline `1px` Borders**: Use `1px solid var(--border-color)` (`rgba(255, 255, 255, 0.08)` in Dark) and `--hero-border-left` rather than thick `2px–4px` solid colored borders or heavy drop shadows.
+3. **Neutral Active Pills**: Use `--pill-active-bg` / `--pill-active-border` / `--pill-active-fg` for segmented controls and view tabs; reserve solid `#2563eb` / `#1d4ed8` strictly for primary CTA buttons.
+4. **Dual-Theme + Mobile Check**: Validate every screen in both `data-theme="dark"` and `data-theme="light"` at `1440px` (L-shell frame active) and `390px` (full-bleed mobile nav active).

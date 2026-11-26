@@ -23,7 +23,7 @@
 .officerBanner {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-left: 3px solid var(--brand-accent);
+  border-left: var(--hero-border-left, 3px solid var(--brand-accent));
   border-radius: 12px;
   padding: 0.62rem 1rem;
   display: flex;
@@ -310,7 +310,7 @@ a.sideStatItem:hover {
 .sideRoleCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-left: 3px solid var(--brand-accent);
+  border-left: var(--hero-border-left, 3px solid var(--brand-accent));
   border-radius: 14px;
   padding: 0.85rem 0.95rem;
   box-shadow: var(--card-shadow);
@@ -453,7 +453,7 @@ a.kpiCard:hover {
 .delegateBanner {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-left: 3px solid var(--brand-accent);
+  border-left: var(--hero-border-left, 3px solid var(--brand-accent));
   border-radius: 12px;
   padding: 0.9rem 1.15rem;
   display: flex;

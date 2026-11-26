@@ -18,7 +18,7 @@
 .heroBanner {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-left: 3px solid var(--brand-accent);
+  border-left: var(--hero-border-left, 3px solid var(--brand-accent));
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
   color: var(--text-primary);

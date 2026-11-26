@@ -73,7 +73,15 @@ export function getTrustedOrigin(req: Request): string {
   const forwardedHost = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '')
     .split(',')[0]
     .trim();
-  const forwardedProtoRaw = (req.headers.get('x-forwarded-proto') || 'https')
+  const isLocalHost =
+    forwardedHost === 'localhost' ||
+    forwardedHost.startsWith('localhost:') ||
+    forwardedHost === '127.0.0.1' ||
+    forwardedHost.startsWith('127.0.0.1:');
+  const reqProto: 'http' | 'https' = req.url?.startsWith('http://') ? 'http' : 'https';
+  const defaultProto: 'http' | 'https' =
+    process.env.NODE_ENV === 'production' && !isLocalHost ? 'https' : reqProto;
+  const forwardedProtoRaw = (req.headers.get('x-forwarded-proto') || defaultProto)
     .split(',')[0]
     .trim()
     .toLowerCase();

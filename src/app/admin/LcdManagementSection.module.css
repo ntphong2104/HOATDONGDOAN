@@ -8,7 +8,7 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-left: 3px solid var(--brand-accent);
+  border-left: var(--hero-border-left, 3px solid var(--brand-accent));
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
   display: flex;

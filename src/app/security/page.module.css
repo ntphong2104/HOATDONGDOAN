@@ -18,7 +18,7 @@
   color: var(--text-primary);
   padding: 1.25rem 1.5rem;
   border: 1px solid var(--border-color);
-  border-left: 3px solid var(--brand-accent);
+  border-left: var(--hero-border-left, 3px solid var(--brand-accent));
   border-radius: 16px;
   margin-bottom: 1.25rem;
   box-shadow: var(--card-shadow);

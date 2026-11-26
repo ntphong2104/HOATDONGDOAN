@@ -133,11 +133,9 @@ export default function Header({
       if (cancelled) return;
       try {
         const saved = localStorage.getItem('hdd_sidebar_pinned');
-        if (saved === 'true') {
-          setDesktopExpanded(true);
-        } else if (saved === 'false') {
+        if (saved === 'false') {
           setDesktopExpanded(false);
-        } else if (pathname.startsWith('/super-admin')) {
+        } else {
           setDesktopExpanded(true);
         }
       } catch {}
@@ -515,9 +513,15 @@ export default function Header({
         </div>
       </header>
 
-      {/* Hover-Slide Drawer Left Sidebar */}
+      {/* Hover-Slide Drawer Left Sidebar & Inset Rounded Desktop Viewport Frame */}
       {usePersistentSidebar && (
         <>
+          <div
+            className={`${styles.viewportFrame} ${
+              desktopExpanded || desktopHovered ? styles.viewportFrameWithSidebar : ''
+            }`}
+            aria-hidden="true"
+          />
           {mobileOpen && (
             <div
               className={styles.mobileBackdrop}
